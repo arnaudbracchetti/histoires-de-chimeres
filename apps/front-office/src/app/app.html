@@ -1,0 +1,9 @@
+<main>
+  @if (convention.hasValue()) {
+    <h1>Bienvenue à {{ convention.value().name }}</h1>
+  } @else if (convention.error()) {
+    <p>Impossible de charger la convention.</p>
+  } @else {
+    <p>Chargement…</p>
+  }
+</main>

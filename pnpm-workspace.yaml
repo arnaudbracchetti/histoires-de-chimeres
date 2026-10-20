@@ -1,0 +1,22 @@
+packages:
+  - apps/*
+  - packages/*
+  - e2e
+
+# Scripts d'installation autorisés. Les autres paquets fournissent des binaires précompilés.
+allowBuilds:
+  '@prisma/engines': true
+  prisma: true
+  esbuild: true
+  '@parcel/watcher': false
+  lmdb: false
+  msgpackr-extract: false
+
+# Versions partagées par tous les paquets (`"typescript": "catalog:"`).
+# TypeScript reste en 6.0 : Angular 22 exige >=6.0 <6.1.
+catalog:
+  typescript: ~6.0.2
+  vitest: ^5.0.0
+  '@vitest/coverage-v8': ^5.0.0
+  oxlint: ^1.58.0
+  '@types/node': ^22.20.0

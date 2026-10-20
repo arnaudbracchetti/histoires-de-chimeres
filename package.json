@@ -1,0 +1,29 @@
+{
+  "name": "histoires-de-chimeres",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^22.22.3 || >=24.15.0"
+  },
+  "packageManager": "pnpm@12.6.0",
+  "scripts": {
+    "dev": "pnpm build:packages && pnpm run --workspace-concurrency=4 \"/^watch:/\"",
+    "watch:packages": "tsc -b --watch --preserveWatchOutput",
+    "watch:api": "pnpm --filter api dev",
+    "watch:front-office": "pnpm --filter front-office start",
+    "watch:back-office": "pnpm --filter back-office start",
+    "dev:db": "docker compose up -d postgres",
+    "build": "pnpm -r build",
+    "build:packages": "tsc -b",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "format": "prettier --write .",
+    "prisma:migrate": "pnpm --filter api exec prisma migrate dev",
+    "prisma:seed": "pnpm --filter api exec prisma db seed",
+    "test:e2e": "pnpm --filter e2e test:e2e"
+  },
+  "devDependencies": {
+    "prettier": "^3.8.1",
+    "typescript": "catalog:"
+  }
+}

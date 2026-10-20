@@ -1,0 +1,35 @@
+# Développement. `pnpm dev:db` ne lance que postgres ;
+# `docker compose up --build app` construit et lance l'image de production en local.
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: chimeres
+      POSTGRES_PASSWORD: chimeres
+      POSTGRES_DB: chimeres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      # 5435 : Agilometre occupe déjà 5433 et 5434 sur ce poste.
+      - '5435:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U chimeres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://chimeres:chimeres@postgres:5432/chimeres?schema=public
+    ports:
+      - '8080:3000'
+
+volumes:
+  postgres-data:

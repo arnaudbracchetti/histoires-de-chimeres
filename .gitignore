@@ -1,0 +1,21 @@
+node_modules/
+dist/
+out-tsc/
+coverage/
+.angular/
+*.tsbuildinfo
+*.log
+.env
+.env.local
+.DS_Store
+Thumbs.db
+.idea/
+__screenshots__/
+
+# Client Prisma généré (`prisma generate`) et builds Angular copiés par le Dockerfile
+apps/api/src/generated/
+apps/api/public/
+
+.claude/settings.local.json
+e2e/test-results/
+e2e/playwright-report/

@@ -1,0 +1,21 @@
+{
+  "name": "@chimeres/contract",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Types des DTO échangés entre l'API et les deux fronts.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "lint": "oxlint src"
+  },
+  "devDependencies": {
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

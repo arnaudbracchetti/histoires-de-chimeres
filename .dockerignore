@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/.angular
+**/*.tsbuildinfo
+.git
+**/.env
+**/.env.*
+apps/api/src/generated
+apps/api/public
