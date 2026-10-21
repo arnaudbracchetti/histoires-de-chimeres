@@ -48,7 +48,7 @@ Choix d'identification : voir [ADR 0001](adr/0001-identification-par-pseudo-et-c
 1. Un Organisateur crée la convention, ses **créneaux** (date, heure de début, heure de fin) et ses **tables** (nom).
 2. Il crée les comptes MJ et Organisateurs (email). Chaque compte reçoit un **code MJ** personnel, distribué par les Organisateurs.
 3. Le MJ se connecte au back office par lien magique, définit son **pseudo**, puis propose ses **scénarios** et ses **disponibilités** (les créneaux où il peut mener). Il peut modifier ses scénarios à tout moment ; il n'y a pas de validation par les Organisateurs.
-4. Les Organisateurs **programment** des scénarios sur un créneau et une table, ce qui crée des **parties**, ou les laissent en **réserve**.
+4. Les Organisateurs **programment** des scénarios sur un créneau et une table, dès avant la convention, ce qui crée des **parties**, ou les laissent en **réserve**. Le jour J, ils peuvent encore programmer une partie depuis la réserve (TI-6).
 
 Le **programme** est consultable en lecture seule avant la convention (emplacement à décider, cf. §8).
 
@@ -179,9 +179,8 @@ Pour les participants sans notifications :
 - MJ désigné à la volée le jour J : toutes les parties viennent de scénarios enregistrés à l'avance.
 - Espace Organisateur sur mobile, alertes push aux Organisateurs.
 - Badges QR, passkeys ou autre identification plus robuste (pistes d'évolution, cf. ADR 0001).
+- Reprise des données d'une convention à la suivante (comptes MJ, scénarios, tables) : chaque convention repart d'une base vide.
 
 ## 8. Points ouverts
 
 - **Programme public avant la convention** : dans l'application ou sur le site de l'association ?
-- **Éditions successives** : l'application sert-elle d'une année sur l'autre (conservation des comptes MJ et des scénarios, purge des données participants) ?
-- **Moment de la programmation** : les Organisateurs peuvent-ils programmer les parties dès avant la convention (ce que suppose un programme public consultable à l'avance), ou seulement le jour J ? Ce PRD suppose les deux.
