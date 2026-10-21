@@ -45,7 +45,7 @@ Choix d'identification : voir [ADR 0001](adr/0001-identification-par-pseudo-et-c
 
 ### 4.1 Préparation (avant la convention)
 
-1. Un Organisateur crée la convention, ses **créneaux** (date, heure de début, heure de fin) et ses **tables** (nom).
+1. Un Organisateur renseigne la convention (nom, date), ses **créneaux** (heure de début, heure de fin) et ses **tables** (nom).
 2. Il crée les comptes MJ et Organisateurs (email). Chaque compte reçoit un **code MJ** personnel, distribué par les Organisateurs.
 3. Le MJ se connecte au back office par lien magique, définit son **pseudo**, puis propose ses **scénarios** et ses **disponibilités** (les créneaux où il peut mener). Il peut modifier ses scénarios à tout moment ; il n'y a pas de validation par les Organisateurs.
 4. Les Organisateurs **programment** des scénarios sur un créneau et une table, dès avant la convention, ce qui crée des **parties**, ou les laissent en **réserve**. Le jour J, ils peuvent encore programmer une partie depuis la réserve (TI-6).
@@ -108,6 +108,10 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
   - une partie double occupe la même table sur ses deux créneaux consécutifs.
 - **PR-6** Les participants ne voient que les parties programmées ; la réserve leur est invisible.
 - **PR-7** L'image d'un scénario est redimensionnée et compressée par le serveur (ordre de grandeur : 100 Ko). Sans image, une illustration par défaut est affichée.
+- **PR-8** Les créneaux ne se chevauchent pas (deux créneaux bout à bout sont permis). Un créneau est désigné par son rang dans la journée (« créneau 2 »). Deux créneaux sont consécutifs quand aucun autre créneau ne se place entre eux, quelle que soit la pause qui les sépare.
+- **PR-9** Le nom d'une table est unique dans la convention, sans tenir compte de la casse ni des espaces au début et à la fin.
+- **PR-10** On ne peut pas supprimer un créneau ou une table qui porte des parties. Supprimer un créneau supprime les disponibilités qui s'y rattachent.
+- **PR-11** Les heures d'un créneau ne se modifient plus dès qu'une partie ou une disponibilité s'y rattache. Aucun créneau ne peut être ajouté ou déplacé entre les deux créneaux d'une partie double.
 
 ### 5.3 Fiche d'une partie (front office)
 

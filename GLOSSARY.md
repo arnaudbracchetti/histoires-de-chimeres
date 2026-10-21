@@ -7,10 +7,10 @@ Chaque terme est suivi du terme anglais qui le désigne dans le code (ADR 0003).
 ## Programme
 
 **Convention** · `Convention`:
-L'événement dans son ensemble, découpé en créneaux.
+L'événement dans son ensemble, sur une journée, découpé en créneaux.
 
 **Créneau** · `TimeSlot`:
-Plage horaire de 2h30 pendant laquelle se jouent les parties en parallèle. Deux créneaux peuvent être séparés par une pause (repas, etc.).
+Plage horaire de la journée, habituellement de 2h30, pendant laquelle se jouent les parties en parallèle. Les créneaux ne se chevauchent pas ; deux créneaux sont consécutifs quand aucun autre ne se place entre eux, même s'ils sont séparés par une pause (repas, etc.).
 _Avoid_: Session, tour, slot (seul)
 
 **Scénario** · `Scenario`:
