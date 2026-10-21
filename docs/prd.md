@@ -46,8 +46,8 @@ Choix d'identification : voir [ADR 0001](adr/0001-identification-par-pseudo-et-c
 ### 4.1 Préparation (avant la convention)
 
 1. Un Organisateur renseigne la convention (nom, date), ses **créneaux** (heure de début, heure de fin) et ses **tables** (nom).
-2. Il crée les comptes MJ et Organisateurs (email). Chaque compte reçoit un **code MJ** personnel, distribué par les Organisateurs.
-3. Le MJ se connecte au back office par lien magique, définit son **pseudo**, puis propose ses **scénarios** et ses **disponibilités** (les créneaux où il peut mener). Il peut modifier ses scénarios à tout moment ; il n'y a pas de validation par les Organisateurs.
+2. Il crée les MJ, chacun avec son **pseudo** (PR-12), puis les comptes MJ et Organisateurs (email). Chaque compte reçoit un **code MJ** personnel, distribué par les Organisateurs.
+3. Le MJ se connecte au back office par lien magique, puis propose ses **scénarios** et ses **disponibilités** (les créneaux où il peut mener). Il peut modifier ses scénarios à tout moment ; il n'y a pas de validation par les Organisateurs. Un Organisateur peut aussi les saisir et les modifier à sa place (PR-13).
 4. Les Organisateurs **programment** des scénarios sur un créneau et une table, dès avant la convention, ce qui crée des **parties**, ou les laissent en **réserve**. Le jour J, ils peuvent encore programmer une partie depuis la réserve (TI-6).
 
 Le **programme** est consultable en lecture seule avant la convention (emplacement à décider, cf. §8).
@@ -85,7 +85,7 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 
 ### 5.1 Identité
 
-- **ID-1** Un participant s'identifie par un pseudo, unique dans la convention, sans compte ni email.
+- **ID-1** Un participant s'identifie par un pseudo, unique dans la convention (ID-7), sans compte ni email.
 - **ID-2** À la création du pseudo, l'application remet un code de récupération qui permet de retrouver son identité sur un autre appareil.
 - **ID-3** Un MJ saisit son code MJ au lieu de créer un pseudo ; son pseudo, défini dans le back office, est récupéré. Le code MJ est réutilisable et lui sert aussi de code de récupération.
 - **ID-4** Les pseudos des MJ sont réservés : un participant ne peut pas les prendre.
@@ -94,6 +94,7 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
   - relier ou délier un pseudo et un compte MJ ; lors d'une liaison, les inscriptions du pseudo provisoire sont reportées sur le compte MJ et le pseudo provisoire disparaît ;
   - supprimer un pseudo (doublon, abus).
 - **ID-6** MJ et Organisateurs se connectent au back office par lien magique envoyé par email.
+- **ID-7** Deux pseudos sont le même pseudo quand ils ne diffèrent que par la casse, les accents ou les espaces (au début, à la fin, ou plusieurs à la suite) : « Élodie » et « elodie » sont le même pseudo. La ponctuation compte : « Jean-Luc » et « Jean Luc » sont deux pseudos distincts. Un pseudo s'affiche tel qu'il a été saisi.
 
 ### 5.2 Programme
 
@@ -109,9 +110,11 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 - **PR-6** Les participants ne voient que les parties programmées ; la réserve leur est invisible.
 - **PR-7** L'image d'un scénario est redimensionnée et compressée par le serveur (ordre de grandeur : 100 Ko). Sans image, une illustration par défaut est affichée.
 - **PR-8** Les créneaux ne se chevauchent pas (deux créneaux bout à bout sont permis). Un créneau est désigné par son rang dans la journée (« créneau 2 »). Deux créneaux sont consécutifs quand aucun autre créneau ne se place entre eux, quelle que soit la pause qui les sépare.
-- **PR-9** Le nom d'une table est unique dans la convention, sans tenir compte de la casse ni des espaces au début et à la fin.
+- **PR-9** Le nom d'une table est unique dans la convention, selon la même règle de comparaison que les pseudos (ID-7).
 - **PR-10** On ne peut pas supprimer un créneau ou une table qui porte des parties. Supprimer un créneau supprime les disponibilités qui s'y rattachent.
 - **PR-11** Les heures d'un créneau ne se modifient plus dès qu'une partie ou une disponibilité s'y rattache. Aucun créneau ne peut être ajouté ou déplacé entre les deux créneaux d'une partie double.
+- **PR-12** Un Organisateur crée les MJ, chacun avec un pseudo unique parmi les MJ (ID-7) et modifiable à tout moment. On ne peut pas supprimer un MJ qui a au moins un scénario. Supprimer un MJ supprime ses disponibilités.
+- **PR-13** Un Organisateur a, sur les scénarios et les disponibilités de chaque MJ, les mêmes droits que ce MJ.
 
 ### 5.3 Fiche d'une partie (front office)
 
@@ -188,3 +191,4 @@ Pour les participants sans notifications :
 ## 8. Points ouverts
 
 - **Programme public avant la convention** : dans l'application ou sur le site de l'association ?
+- **Pseudo du MJ** : une fois connecté au back office, le MJ peut-il modifier lui-même le pseudo qu'un Organisateur lui a donné (PR-12) ?
