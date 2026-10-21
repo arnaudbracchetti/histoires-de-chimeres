@@ -3,6 +3,7 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
+import { API_PREFIX } from '@chimeres/contract';
 import { AppModule } from './../src/app.module.js';
 
 // Démarre l'application complète contre la base de DATABASE_URL (`pnpm dev:db`).
@@ -15,7 +16,7 @@ describe('Application (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
+    app.setGlobalPrefix(API_PREFIX);
     await app.init();
   });
 

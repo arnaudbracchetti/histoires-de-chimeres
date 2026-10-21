@@ -30,12 +30,13 @@ Pièges :
 |---|---|---|
 | `packages/domain` | Agrégats, entités, value objects | rien |
 | `packages/application` | Commandes, ports (`<Concept>Reader`, `<Aggregate>Repository`) | `domain`, `contract` |
-| `packages/contract` | Types des DTO de l'API | rien |
+| `packages/contract` | DTO de l'API et descripteurs de ses endpoints (`<concept>Endpoints.<action>`) | rien |
 | `apps/api` | NestJS : controllers (`<module>/http/`), implémentations Prisma des ports (`<module>/persistence/`), câblage (`<module>.module.ts`) | tout |
 | `apps/front-office`, `apps/back-office` | Angular | `contract` uniquement |
 
 - La frontière est physique : un package ne voit que les dépendances de son `package.json`. `domain` et `application` restent sans framework, donc sans décorateur Nest. L'API injecte chaque port par un jeton `Symbol`, et construit les commandes par `useFactory`.
 - **Lecture** : le controller appelle directement un port `<Concept>Reader` (dans `application`), qui renvoie un DTO du `contract` ou `null` (→ 404 dans le controller). Exemple : `ConventionReader`. Une classe de requête n'existe que pour une vraie logique de lecture : combiner plusieurs ports, ou demander un verdict à un agrégat.
+- **Endpoint** : déclaré une fois dans `contract` par `endpoint<Dto>(méthode, chemin)`, regroupé par concept (`conventionEndpoints.read`) ; la clé reprend le verbe du glossaire. Le controller en tire son chemin (`@Controller()` vide, `@Get(conventionEndpoints.read.path)`) et son type de retour (`ResponseOf<…>`), les fronts l'appellent par `apiResource()` (`src/app/api-resource.ts`). Aucune route ni `/api` en dur dans le code TypeScript ([ADR 0004](docs/adr/0004-descripteurs-d-endpoints-dans-contract.md)).
 - **Commande** : une classe dans `application` charge l'agrégat par un `<Aggregate>Repository`, lui délègue la règle, le sauvegarde. Le controller ne traduit en HTTP que les erreurs connues et relance les autres.
 - Pour concevoir un agrégat ou placer une règle métier, utiliser le skill `ddd`. Choix de cette organisation : [ADR 0002](docs/adr/0002-domaine-et-application-en-packages-sans-framework.md).
 

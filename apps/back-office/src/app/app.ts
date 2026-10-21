@@ -1,6 +1,6 @@
-import { httpResource } from '@angular/common/http';
 import { Component } from '@angular/core';
-import type { ConventionDto } from '@chimeres/contract';
+import { conventionEndpoints } from '@chimeres/contract';
+import { apiResource } from './api-resource';
 
 @Component({
   selector: 'app-root',
@@ -8,6 +8,5 @@ import type { ConventionDto } from '@chimeres/contract';
   templateUrl: './app.html',
 })
 export class App {
-  // URL absolue : avec la base /gestion/, une URL relative viserait /gestion/api.
-  protected readonly convention = httpResource<ConventionDto>(() => '/api/convention');
+  protected readonly convention = apiResource(conventionEndpoints.read);
 }
