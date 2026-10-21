@@ -32,12 +32,19 @@ _Avoid_: Game (réservé à la partie)
 Créneau sur lequel un MJ déclare pouvoir mener.
 
 **Partie** · `Game`:
-Un scénario programmé par un Organisateur sur un créneau (deux créneaux consécutifs pour un scénario double), à une table. Un même scénario peut donner plusieurs parties.
+Un scénario programmé par un Organisateur sur un créneau (deux créneaux consécutifs pour un scénario double), à une table. Un même scénario peut donner plusieurs parties. Une partie a les places de son scénario, sauf si l'Organisateur lui en fixe d'autres.
 _Avoid_: Session, jeu, table
 
 **Programmer** · `schedule`:
 Action d'un Organisateur qui fait d'un scénario une partie, en lui attribuant un créneau et une table.
 _Avoid_: Ouvrir (réservé à l'ouverture des inscriptions), planifier
+
+**Déprogrammer** · `unschedule`:
+Action d'un Organisateur qui retire une partie du programme ; son scénario reste proposé.
+_Avoid_: Annuler (réservé à la partie sous son minimum, après le tirage)
+
+**Déplacer une partie** · `moveGame`:
+Action d'un Organisateur qui change le créneau ou la table d'une partie ; elle reste la même partie, avec ses places.
 
 **Programme** · `Schedule`:
 L'ensemble des parties programmées de la convention.
@@ -47,7 +54,7 @@ Partie qui occupe deux créneaux consécutifs ; ses joueurs sont les mêmes sur 
 _Avoid_: DoubleGame
 
 **Réserve** · `Reserve`:
-Les scénarios proposés qui pourraient être programmés sur un créneau, leur MJ y étant disponible, mais qui ne le sont pas. L'Organisateur y puise pour soulager un créneau surchargé.
+Les scénarios qui pourraient être programmés sur un créneau : leur MJ y est disponible et n'y mène aucune partie (sur ce créneau et le suivant pour un scénario double). Un scénario déjà programmé sur un autre créneau en fait partie. L'Organisateur y puise pour soulager un créneau surchargé.
 
 **Table** · `Table`:
 L'emplacement physique où se joue une partie.

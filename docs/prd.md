@@ -110,13 +110,13 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
   Seuls le titre, le jeu, la présentation, les places et la durée sont obligatoires.
 - **PR-2** Le MJ déclare ses disponibilités par créneau.
 - **PR-3** Un Organisateur programme un scénario sur un créneau et une table ; un même scénario peut être programmé plusieurs fois.
-- **PR-4** Une partie reprend les places de son scénario ; l'Organisateur peut les modifier pour cette partie.
+- **PR-4** Une partie reprend les places de son scénario, et les suit quand il change. L'Organisateur peut lui fixer d'autres places, qu'elle garde alors quels que soient les changements du scénario, ou la ramener aux places du scénario.
 - **PR-5** Contraintes de programmation :
   - une seule partie par table et par créneau ;
   - un MJ mène au plus une partie par créneau ;
   - une partie n'est programmée que sur un créneau où son MJ est disponible (les deux créneaux pour une partie double) ;
   - une partie double occupe la même table sur ses deux créneaux consécutifs.
-- **PR-6** Les participants ne voient que les parties programmées ; la réserve leur est invisible.
+- **PR-6** La réserve d'un créneau regroupe les scénarios dont le MJ est disponible sur ce créneau et n'y mène aucune partie (sur ce créneau et le suivant pour un scénario double), y compris ceux déjà programmés sur un autre créneau. Les participants ne voient que les parties programmées ; la réserve leur est invisible.
 - **PR-7** L'image d'un scénario est redimensionnée et compressée par le serveur (ordre de grandeur : 100 Ko). Sans image, une illustration par défaut est affichée.
 - **PR-8** Les créneaux ne se chevauchent pas (deux créneaux bout à bout sont permis). Un créneau est désigné par son rang dans la journée (« créneau 2 »). Deux créneaux sont consécutifs quand aucun autre créneau ne se place entre eux, quelle que soit la pause qui les sépare.
 - **PR-9** Le nom d'une table est unique dans la convention, selon la même règle de comparaison que les pseudos (ID-7).
@@ -127,6 +127,7 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 - **PR-14** Le contenu d'un scénario reste modifiable à tout moment. Sa durée ne se modifie plus dès qu'une partie en est programmée, et on ne peut pas supprimer un scénario qui a des parties.
 - **PR-15** Une disponibilité porte sur un créneau entier, pour le MJ, pas pour un scénario. On ne peut pas retirer une disponibilité sur laquelle le MJ mène une partie.
 - **PR-16** Un scénario appartient à un seul MJ, fixé à sa création.
+- **PR-17** Un Organisateur peut déprogrammer une partie, ou la déplacer sur un autre créneau ou une autre table. Le déplacement respecte les contraintes de PR-5, et la partie garde ses places (PR-4).
 
 ### 5.3 Fiche d'une partie (front office)
 
