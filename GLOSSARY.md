@@ -14,8 +14,15 @@ Plage horaire de la journée, habituellement de 2h30, pendant laquelle se jouent
 _Avoid_: Session, tour, slot (seul)
 
 **Scénario** · `Scenario`:
-Ce qu'un MJ propose de faire jouer : un contenu (titre, jeu, univers, présentation), un nombre de places minimum et maximum, et une durée d'un ou deux créneaux.
+Ce qu'un MJ propose de faire jouer : un contenu (titre, jeu, présentation, image, avertissements de contenu), un nombre de places minimum et maximum, MJ non compris, et une durée d'un ou deux créneaux. Un scénario appartient à un seul MJ.
 _Avoid_: Module, aventure, proposition
+
+**Places** · `Seats`:
+Nombre de joueurs qu'une partie accueille, MJ non compris, entre un minimum et un maximum.
+
+**Avertissements de contenu** · `ContentWarnings`:
+Thèmes sensibles qu'un scénario aborde, signalés aux participants avant qu'ils s'inscrivent.
+_Avoid_: Trigger warning
 
 **Jeu** · `System`:
 Le jeu de rôle publié (règles et univers) sur lequel repose un scénario, par exemple L'Appel de Cthulhu.

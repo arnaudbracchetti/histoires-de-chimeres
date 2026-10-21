@@ -98,7 +98,16 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 
 ### 5.2 Programme
 
-- **PR-1** Un scénario comporte : titre, jeu, présentation, image facultative, avertissements de contenu, places minimum et maximum, durée (un ou deux créneaux).
+- **PR-1** Un scénario comporte :
+  - un titre (80 caractères au plus, pas forcément unique) ;
+  - un jeu, en texte libre (60 caractères au plus) ;
+  - une présentation (1 500 caractères au plus), en Markdown restreint aux paragraphes, au gras, à l'italique et aux listes ;
+  - une image facultative ;
+  - des avertissements de contenu facultatifs, en texte libre (300 caractères au plus) ;
+  - des places minimum et maximum, MJ non compris, avec 1 ≤ minimum ≤ maximum ;
+  - une durée : un ou deux créneaux.
+
+  Seuls le titre, le jeu, la présentation, les places et la durée sont obligatoires.
 - **PR-2** Le MJ déclare ses disponibilités par créneau.
 - **PR-3** Un Organisateur programme un scénario sur un créneau et une table ; un même scénario peut être programmé plusieurs fois.
 - **PR-4** Une partie reprend les places de son scénario ; l'Organisateur peut les modifier pour cette partie.
@@ -115,6 +124,9 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 - **PR-11** Les heures d'un créneau ne se modifient plus dès qu'une partie ou une disponibilité s'y rattache. Aucun créneau ne peut être ajouté ou déplacé entre les deux créneaux d'une partie double.
 - **PR-12** Un Organisateur crée les MJ, chacun avec un pseudo unique parmi les MJ (ID-7) et modifiable à tout moment. On ne peut pas supprimer un MJ qui a au moins un scénario. Supprimer un MJ supprime ses disponibilités.
 - **PR-13** Un Organisateur a, sur les scénarios et les disponibilités de chaque MJ, les mêmes droits que ce MJ.
+- **PR-14** Le contenu d'un scénario reste modifiable à tout moment. Sa durée ne se modifie plus dès qu'une partie en est programmée, et on ne peut pas supprimer un scénario qui a des parties.
+- **PR-15** Une disponibilité porte sur un créneau entier, pour le MJ, pas pour un scénario. On ne peut pas retirer une disponibilité sur laquelle le MJ mène une partie.
+- **PR-16** Un scénario appartient à un seul MJ, fixé à sa création.
 
 ### 5.3 Fiche d'une partie (front office)
 
