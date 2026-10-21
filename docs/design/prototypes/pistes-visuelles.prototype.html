@@ -1,0 +1,863 @@
+<title>Pistes visuelles</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  PROTOTYPE JETABLE (ticket « Pistes visuelles », #8). Ne pas intégrer tel quel.
+  Trois déclinaisons de l'identité fixée par « Intentions d'identité visuelle » (#7),
+  sur les mêmes écrans types : extrait du calendrier du back office, carte de scénario
+  du front office. Passer de l'une à l'autre : barre du bas, flèches ← →, ou #A / #B / #C.
+  Les polices viennent ici de Google Fonts ; en production elles seront hébergées avec l'application.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martel:wght@800;900&family=Saira:wdth,wght@50..125,500..800&family=Chakra+Petch:wght@600;700&family=Exo+2:wght@600;700;800&display=swap">
+<style>
+/* Mise en page : en-tête de l'application, puis une section par question du ticket ;
+   le calendrier et la réserve côte à côte sur grand écran, empilés sur téléphone. */
+:root {
+  color-scheme: dark;
+  /* Fixes d'une déclinaison à l'autre */
+  --orange: #FC9203;          /* relevé sur l'affiche (aplats du texte orange) */
+  --on-orange: #161818;
+  --focus: #7CC4E4;           /* bleu clair de l'anneau du logo */
+  --ok: #6CC08B;
+  --warn: #E8D25C;
+  --danger: #EC7357;
+  --danger-fill: #B23A26;
+  --white: #FFFFFF;
+
+  --font-title: "Martel", Georgia, "Times New Roman", serif;
+  --font-caps: "Saira", "Arial Narrow", system-ui, sans-serif;
+  --caps-stretch: 125%;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Déclinaison A « Atelier » par défaut */
+  --bg: #151717;
+  --s1: #1B1E1E;
+  --s2: #222525;
+  --s3: #2A2D2D;
+  --line: #313535;
+  --cell-line: #2E3232;
+  --text: #ECEAE6;
+  --text-2: #A9A49E;
+  --engrave: #3A3E3E;
+  --r-card: 12px;
+  --r-ctl: 8px;
+  --r-thumb: 6px;
+  --halo: 0 0 0 1px var(--orange), 0 0 10px rgba(252, 146, 3, .20);
+  --halo-soft: 0 0 0 1px rgba(252, 146, 3, .45);
+  --min-px: .8px;
+  --pause-h: 26px;
+  --pad: 8px;
+  --fs: 13px;
+  --thumb: 32px;
+  --img-filter: none;
+  --img-filter-hover: none;
+}
+:root[data-variant="B"] {
+  --bg: #181614;
+  --s1: #201D1A;
+  --s2: #292521;
+  --s3: #332E29;
+  --line: rgba(140, 131, 124, .26);
+  --cell-line: rgba(140, 131, 124, .22);
+  --text: #F1ECE5;
+  --text-2: #B0A79D;
+  --engrave: #3B3530;
+  --r-card: 14px;
+  --r-thumb: 8px;
+  --halo: 0 0 0 1px var(--orange), 0 0 18px rgba(252, 146, 3, .30);
+  --halo-soft: 0 0 0 1px rgba(252, 146, 3, .5), 0 0 8px rgba(252, 146, 3, .12);
+  --min-px: 1px;
+  --pause-h: 30px;
+  --pad: 10px;
+  --fs: 14px;
+  --thumb: 44px;
+  --img-filter: grayscale(.55) sepia(.3) brightness(.9) contrast(1.05);
+  --img-filter-hover: none;
+}
+:root[data-variant="C"] {
+  --bg: #111313;
+  --s1: #1C1F1F;
+  --s2: #282C2C;
+  --s3: #353A3A;
+  --line: transparent;
+  --cell-line: #2B2F2F;
+  --text: #F2F0EC;
+  --text-2: #B3AEA8;
+  --engrave: #353939;
+  --r-card: 16px;
+  --r-thumb: 10px;
+  --halo: 0 0 0 2px var(--orange), 0 0 30px rgba(252, 146, 3, .40);
+  --halo-soft: 0 0 0 1px rgba(252, 146, 3, .55), 0 0 14px rgba(252, 146, 3, .18);
+  --min-px: 1.3px;
+  --pause-h: 36px;
+  --pad: 12px;
+  --fs: 15px;
+  --thumb: 0px;
+  --img-filter: none;
+  --img-filter-hover: none;
+}
+:root[data-caps="saira"]  { --font-caps: "Saira", "Arial Narrow", system-ui, sans-serif; --caps-stretch: 100%; }
+:root[data-caps="saira-e"] { --font-caps: "Saira", "Arial Narrow", system-ui, sans-serif; --caps-stretch: 125%; }
+:root[data-caps="chakra"] { --font-caps: "Chakra Petch", "Arial Narrow", system-ui, sans-serif; --caps-stretch: 100%; }
+:root[data-caps="exo"]    { --font-caps: "Exo 2", "Arial Narrow", system-ui, sans-serif; --caps-stretch: 100%; }
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs);
+  line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 96px;
+  transition: background-color .18s ease;
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+a { color: var(--orange); }
+.caps {
+  font-family: var(--font-caps);
+  font-stretch: var(--caps-stretch);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: .78em;
+}
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-2); }
+.wrap { max-width: 1280px; margin: 0 auto; }
+
+/* En-tête de l'application : un seuil, donc le motif gravé y a sa place */
+.app-header {
+  position: relative;
+  overflow: hidden;
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-block: 18px;
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+  background: var(--s1);
+  border-bottom: 1px solid var(--line);
+}
+.app-header .motif-bg { position: absolute; right: -120px; top: -190px; width: 520px; height: 520px; color: var(--engrave); pointer-events: none; }
+.brand { position: relative; display: flex; align-items: center; gap: 12px; max-width: 1280px; margin: 0 auto; }
+.brand svg { width: 40px; height: 40px; flex: none; }
+.brand-name { font-family: var(--font-title); font-weight: 900; font-size: 22px; line-height: 1.1; margin: 0; }
+.brand-by { margin: 2px 0 0; color: var(--text-2); font-size: 12px; }
+
+/* Annotations du prototype : volontairement neutres, hors de l'identité évaluée */
+.note {
+  font: 12px/1.5 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color: var(--text-2);
+  border-left: 2px solid var(--s3);
+  padding: 2px 0 2px 10px;
+  max-width: 80ch;
+  margin: 6px 0 0;
+}
+section.block { margin-top: 40px; }
+.block-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; margin-bottom: 14px; }
+.eyebrow { color: var(--text-2); margin: 0 0 4px; }
+h1.page-title { font-family: var(--font-title); font-weight: 800; font-size: 30px; line-height: 1.15; margin: 0; text-wrap: balance; }
+h2.sec { font-family: var(--font-caps); font-stretch: var(--caps-stretch); font-weight: 700; text-transform: uppercase; letter-spacing: .12em; font-size: 13px; color: var(--text-2); margin: 0; }
+
+/* Boutons */
+.btn {
+  font: 600 13px/1 var(--font-ui);
+  border-radius: var(--r-ctl);
+  padding: 10px 14px;
+  min-height: 36px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: filter .15s ease, background-color .15s ease;
+}
+.btn-primary { background: var(--orange); color: var(--on-orange); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-secondary { background: var(--s3); color: var(--text); border-color: var(--line); }
+.btn-ghost { background: transparent; color: var(--orange); padding-inline: 6px; }
+.btn-danger { background: var(--danger-fill); color: var(--white); }
+.btn.force-focus { outline: 2px solid var(--focus); outline-offset: 2px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Badges de statut : toujours icône + libellé */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11.5px; font-weight: 600; line-height: 1;
+  padding: 4px 7px 4px 5px; border-radius: 999px;
+  white-space: nowrap;
+}
+.badge svg { width: 12px; height: 12px; flex: none; }
+.badge.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, var(--s2)); }
+.badge.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, var(--s2)); }
+.badge.danger { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, var(--s2)); }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--text-2); background: var(--s3); border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
+
+/* Programme : calendrier + réserve */
+.prog { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 1120px) { .prog { grid-template-columns: minmax(0, 1fr) 300px; } }
+.panel { background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-card); min-width: 0; }
+.cal-scroll { overflow-x: auto; padding: var(--pad); }
+.cal {
+  display: grid;
+  grid-template-columns: 84px repeat(4, minmax(168px, 1fr));
+  grid-template-rows: auto calc(150 * var(--min-px)) var(--pause-h) calc(150 * var(--min-px)) var(--pause-h) calc(150 * var(--min-px));
+  gap: 6px;
+  min-width: 780px;
+}
+.cal-head { padding: 4px 6px 8px; color: var(--text-2); display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.cal-head .caps { color: var(--text); }
+.slot-label { padding: 6px 4px; display: flex; flex-direction: column; gap: 2px; }
+.slot-label .caps { color: var(--text); font-size: 11px; }
+.slot-label .t { color: var(--text-2); font-size: 12px; }
+.slot-label .t-end { margin-top: auto; }
+.pause {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 10px;
+  color: var(--text-2); font-size: 12px;
+  padding-inline: 4px;
+}
+.pause::before, .pause::after { content: ""; height: 1px; flex: 1; background: repeating-linear-gradient(90deg, var(--s3) 0 6px, transparent 6px 10px); }
+.pause::before { flex: 0 0 76px; }
+.cell { position: relative; border-radius: calc(var(--r-card) - 4px); min-width: 0; }
+.cell.empty { border: 1px dashed var(--cell-line); display: grid; place-items: center; color: var(--text-2); font-size: 12px; }
+
+.partie {
+  height: 100%;
+  background: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: calc(var(--r-card) - 4px);
+  padding: var(--pad);
+  display: grid;
+  grid-template-columns: var(--thumb) minmax(0, 1fr);
+  grid-template-rows: auto 1fr auto;
+  column-gap: 8px;
+  row-gap: 2px;
+  overflow: hidden;
+  cursor: grab;
+  transition: box-shadow .15s ease;
+}
+.partie:hover { box-shadow: var(--halo-soft); }
+.partie .thumb { grid-row: 1 / span 2; width: var(--thumb); height: var(--thumb); border-radius: var(--r-thumb); overflow: hidden; background: var(--s3); }
+.partie .thumb img, .partie .thumb svg { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; filter: var(--img-filter); transition: filter .2s ease; }
+.partie:hover .thumb img, .reserve-item:hover .thumb img { filter: var(--img-filter-hover); }
+.p-title { margin: 0; font-weight: 650; font-size: 1em; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.p-meta { margin: 0; color: var(--text-2); font-size: .88em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p-foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin-top: 6px; }
+.p-foot .places { color: var(--text-2); font-size: 12px; }
+.double-tag { color: var(--orange); }
+
+/* C : la partie montre un bandeau tiré de l'image 3:2 */
+:root[data-variant="C"] .partie { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto 1fr auto; padding: 0; }
+:root[data-variant="C"] .partie .thumb { grid-row: auto; width: 100%; height: 52px; border-radius: 0; }
+:root[data-variant="C"] .partie.double .thumb { height: 120px; }
+:root[data-variant="C"] .partie .p-title { padding: 8px var(--pad) 0; }
+:root[data-variant="C"] .partie .p-meta { padding: 0 var(--pad); }
+:root[data-variant="C"] .partie .p-foot { padding: 0 var(--pad) var(--pad); }
+
+/* Pendant un glisser-déposer */
+.cal.dragging .cell.refused { opacity: .32; }
+.cell.target-valid { border: 1px dashed rgba(252, 146, 3, .55); color: var(--orange); }
+.cell.target-hover { border: 1px solid transparent; box-shadow: var(--halo); background: color-mix(in srgb, var(--orange) 7%, var(--s1)); color: var(--orange); display: grid; place-items: center; text-align: center; font-size: 12px; }
+.ghost {
+  position: absolute; left: 18px; top: 34px; right: -22px;
+  transform: rotate(-2deg);
+  box-shadow: var(--halo);
+  pointer-events: none;
+  height: auto;
+  z-index: 2;
+}
+
+/* Réserve */
+.reserve { padding: var(--pad); display: flex; flex-direction: column; gap: 8px; }
+.reserve-head { padding: 4px 4px 6px; }
+.reserve-head .caps { color: var(--text); }
+.reserve-item {
+  background: var(--s2); border: 1px solid var(--line); border-radius: calc(var(--r-card) - 4px);
+  padding: var(--pad); display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px 10px; cursor: grab;
+}
+.reserve-item .thumb { width: 44px; height: 44px; border-radius: var(--r-thumb); overflow: hidden; grid-row: 1 / span 2; background: var(--s3); }
+.reserve-item .thumb img, .reserve-item .thumb svg { width: 100%; height: 100%; object-fit: cover; display: block; filter: var(--img-filter); transition: filter .2s ease; }
+.reserve-item .r-foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: space-between; }
+.reserve-item.origin { background: transparent; border: 1px dashed var(--cell-line); opacity: .55; }
+
+/* Front office : cartes dans un cadre de téléphone */
+.phones { display: flex; flex-wrap: wrap; gap: 24px; }
+.phone { width: 360px; max-width: 100%; background: var(--bg); border: 1px solid var(--s3); border-radius: 30px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.phone-bar { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 6px 0; }
+.phone-bar .caps { color: var(--text); }
+.fo-card { position: relative; border-radius: var(--r-card); overflow: hidden; background: var(--s1); isolation: isolate; }
+.fo-media { position: relative; aspect-ratio: 3 / 2; max-width: 100%; }
+.fo-media img, .fo-media > svg { width: 100%; height: 100%; object-fit: cover; display: block; filter: var(--img-filter); }
+.fo-media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, color-mix(in srgb, var(--s1) 70%, transparent) 72%, var(--s1) 100%); }
+:root[data-variant="C"] .fo-media { aspect-ratio: 4 / 3.4; }
+:root[data-variant="C"] .fo-media::after { background: linear-gradient(180deg, transparent 15%, color-mix(in srgb, var(--s1) 60%, transparent) 50%, var(--s1) 92%); }
+.fo-body { position: relative; margin-top: -64px; padding: 0 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+:root[data-variant="C"] .fo-body { margin-top: -120px; }
+.fo-body .caps { color: var(--orange); font-size: 11px; }
+.fo-title { margin: 0; font-size: 21px; line-height: 1.2; font-weight: 750; text-wrap: balance; }
+.fo-by { margin: 0; color: var(--text-2); }
+.fo-pitch { margin: 0; }
+.fo-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fo-cw { margin: 0; font-size: 12.5px; color: var(--text-2); display: flex; gap: 6px; align-items: flex-start; }
+.fo-cw svg { width: 14px; height: 14px; flex: none; margin-top: 2px; color: var(--warn); }
+.fo-card .btn-primary { min-height: 44px; justify-content: center; font-size: 15px; margin-top: 4px; }
+
+/* Jetons */
+.tokens { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.token { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 2px 10px; align-items: center; background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 8px; }
+.token .sw { width: 40px; height: 40px; border-radius: 6px; grid-row: 1 / span 2; border: 1px solid rgba(255, 255, 255, .08); }
+.token b { font-size: 12.5px; }
+.token code { font-size: 12px; color: var(--text-2); }
+.table-scroll { overflow-x: auto; margin-top: 14px; }
+table.contrast { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 13px; }
+table.contrast th, table.contrast td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--s3); }
+table.contrast th { color: var(--text-2); font-weight: 600; }
+table.contrast td.r { font-variant-numeric: tabular-nums; text-align: right; }
+.sample { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+.pass { color: var(--ok); }
+.fail { color: var(--danger); }
+
+/* Spécimens des capitales */
+.specimens { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.spec { background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-card); padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.spec[aria-pressed="true"] { box-shadow: var(--halo); }
+.spec .s-name { font: 600 12px/1.3 var(--font-ui); color: var(--text-2); margin: 0; }
+.spec .s-big { font-weight: 800; font-size: 30px; letter-spacing: .1em; line-height: 1; margin: 0; color: #8C837C; text-transform: uppercase; overflow-wrap: anywhere; }
+.spec .s-big .y { color: var(--text); }
+.spec .s-row { margin: 0; text-transform: uppercase; letter-spacing: .12em; font-weight: 700; font-size: 11px; }
+.spec .s-row.orange { color: var(--orange); }
+
+/* Emblème et motif */
+.emblems { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.emblem-card { background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-card); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.emblem-card .big { width: 180px; height: 180px; align-self: center; }
+.sizes { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+.sizes figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--text-2); }
+.maskable { width: 72px; height: 72px; border-radius: 50%; background: #161818; display: grid; place-items: center; overflow: hidden; }
+.maskable svg { width: 80%; height: 80%; }
+.motif-demo { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.motif-tile { background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-card); aspect-ratio: 3 / 2; max-width: 100%; overflow: hidden; color: var(--engrave); position: relative; }
+.motif-tile svg { width: 100%; height: 100%; display: block; }
+.motif-tile .lbl { position: absolute; left: 12px; bottom: 10px; font-size: 11px; color: var(--text-2); }
+
+/* Barre de bascule du prototype : volontairement hors identité */
+.switcher {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  z-index: 20;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
+  background: #F5F5F5; color: #111111;
+  border-radius: 999px; padding: 6px 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .5);
+  font: 600 13px/1 system-ui, sans-serif;
+  max-width: calc(100vw - 24px);
+}
+.switcher button, .switcher select { font: inherit; color: #111111; background: #E2E2E2; border: 0; border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+.switcher .label { padding: 0 6px; min-width: 150px; text-align: center; }
+.switcher select { padding-right: 8px; }
+.switcher :focus-visible { outline: 2px solid #1A6BB0; outline-offset: 2px; }
+</style>
+
+<header class="app-header">
+  <svg class="motif-bg" id="header-motif" viewBox="-100 -100 200 200" aria-hidden="true"></svg>
+  <div class="brand">
+    <svg id="header-emblem" viewBox="-100 -100 200 200" role="img" aria-label="Emblème"></svg>
+    <div>
+      <p class="brand-name">Histoires de Chimères</p>
+      <p class="brand-by">par les Tisseurs de Chimères</p>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="note" id="variant-note"></p>
+
+  <!-- Écran type 1 : extrait du calendrier du back office -->
+  <section class="block" aria-labelledby="t-prog">
+    <div class="block-head">
+      <div>
+        <p class="eyebrow caps">Convention 2026 · samedi 26 septembre</p>
+        <h1 class="page-title" id="t-prog">Programme</h1>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-primary" type="button" id="b-add-slot">Ajouter un créneau</button>
+        <button class="btn btn-secondary" type="button" id="b-add-table">Ajouter une table</button>
+        <button class="btn btn-ghost" type="button" id="b-reserve">Voir toute la réserve</button>
+      </div>
+    </div>
+    <div class="prog">
+      <div class="panel">
+        <div class="cal-scroll"><div class="cal dragging" id="cal"></div></div>
+      </div>
+      <aside class="panel reserve" id="reserve" aria-label="Réserve"></aside>
+    </div>
+    <p class="note">Glisser en cours : « Le Désert des Mille Soleils » quitte la réserve et survole Table 1 × créneau 2. Son MJ n'est disponible que sur le créneau 2 : les cases libres des autres créneaux restent éteintes. Les statuts (inscrits / places) sont ceux du jour J, montrés pour juger les couleurs. L'orientation du calendrier relève de l'« Écran de programmation » (#12) et n'est pas tranchée ici.</p>
+    <div class="toolbar" style="margin-top: 14px">
+      <span class="muted" style="font-size: 12px">Autres états :</span>
+      <button class="btn btn-secondary force-focus" type="button" id="b-focus">Focus visible</button>
+      <button class="btn btn-danger" type="button" id="b-del">Supprimer la table</button>
+      <span class="badge ok" id="bdg-ok"></span>
+      <span class="badge warn" id="bdg-warn"></span>
+      <span class="badge danger" id="bdg-danger"></span>
+    </div>
+  </section>
+
+  <!-- Écran type 2 : carte de scénario du front office -->
+  <section class="block" aria-labelledby="t-fo">
+    <div class="block-head"><h2 class="sec" id="t-fo">Front office · carte de scénario</h2></div>
+    <div class="phones" id="phones"></div>
+  </section>
+
+  <section class="block" aria-labelledby="t-tok">
+    <div class="block-head"><h2 class="sec" id="t-tok">Jetons de couleur et contrastes</h2></div>
+    <div class="tokens" id="tokens"></div>
+    <div class="table-scroll"><table class="contrast" id="contrast"></table></div>
+    <p class="note">Contrastes calculés en direct pour la déclinaison affichée (formule WCAG 2.2). Seuils : 4,5:1 pour le texte, 3:1 pour le focus et les composants. Les badges sont mesurés sur leur fond teinté.</p>
+  </section>
+
+  <section class="block" aria-labelledby="t-caps">
+    <div class="block-head"><h2 class="sec" id="t-caps">Police des capitales espacées</h2></div>
+    <div class="specimens" id="specimens"></div>
+    <p class="note">Cliquer un spécimen l'applique à toute la page (barre du bas aussi). Saira a un axe de largeur : « étendue » (125 %) est la plus proche du « CONVENTION 2026 » de l'affiche. Le gris des grands spécimens est celui relevé sur l'affiche (#8C837C).</p>
+  </section>
+
+  <section class="block" aria-labelledby="t-emb">
+    <div class="block-head"><h2 class="sec" id="t-emb">Brouillons de l'emblème</h2></div>
+    <div class="emblems" id="emblems"></div>
+    <p class="note">Le disque sombre de l'icône maskable simule le recadrage d'Android : le dessin doit tenir dans les 80 % centraux.</p>
+  </section>
+
+  <section class="block" aria-labelledby="t-mot">
+    <div class="block-head"><h2 class="sec" id="t-mot">Brouillons du motif gravé</h2></div>
+    <div class="motif-demo" id="motifs"></div>
+  </section>
+</main>
+
+<nav class="switcher" aria-label="Bascule du prototype">
+  <button type="button" id="prev" aria-label="Déclinaison précédente">←</button>
+  <span class="label" id="vlabel" aria-live="polite"></span>
+  <button type="button" id="next" aria-label="Déclinaison suivante">→</button>
+  <label for="caps-select" style="padding-left: 6px">Capitales</label>
+  <select id="caps-select">
+    <option value="saira-e">Saira étendue</option>
+    <option value="saira">Saira</option>
+    <option value="chakra">Chakra Petch</option>
+    <option value="exo">Exo 2</option>
+  </select>
+</nav>
+
+<script>
+const VARIANTS = {
+  A: { name: 'Atelier', note: 'A « Atelier » : dense, paliers resserrés et neutres comme le fond relevé sur l\'affiche, filets de 1 px, rayons de 12 px, halo fin. Images en couleurs d\'origine, en vignette carrée de 32 px.' },
+  B: { name: 'Affiche', note: 'B « Affiche » : densité moyenne, charbon chaud, filets gris chaud de l\'affiche, rayons de 14 px, halo moyen. Images virées vers les tons de l\'affiche (couleur rendue au survol), vignettes de 44 px.' },
+  C: { name: 'Veillée', note: 'C « Veillée » : aéré, trois paliers bien distincts sans filets, rayons de 16 px, halo large. Image en bandeau dans le calendrier et plus haute sur la carte du front office.' },
+};
+const KEYS = Object.keys(VARIANTS);
+const root = document.documentElement;
+
+/* ---------- Images de scénario factices (peintes au canevas, format 3:2) ---------- */
+function paint(kind) {
+  const c = document.createElement('canvas');
+  c.width = 600; c.height = 400;
+  const g = c.getContext('2d');
+  const sky = (stops) => { const l = g.createLinearGradient(0, 0, 0, 400); stops.forEach(([o, col]) => l.addColorStop(o, col)); g.fillStyle = l; g.fillRect(0, 0, 600, 400); };
+  const disc = (x, y, r, col, blur = 0) => { g.save(); g.shadowColor = col; g.shadowBlur = blur; g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.restore(); };
+  let seed = kind.length * 97;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  if (kind === 'desert') {
+    sky([[0, '#F7E7B4'], [.55, '#F6C46A'], [1, '#E08A3A']]);
+    disc(420, 150, 70, '#FFF6D8', 60);
+    [['#D9893C', 270, 60], ['#C26E2B', 310, 80], ['#A5551F', 350, 70]].forEach(([col, y, a]) => {
+      g.fillStyle = col; g.beginPath(); g.moveTo(0, 400); g.lineTo(0, y);
+      for (let x = 0; x <= 600; x += 20) g.lineTo(x, y - Math.sin(x / 110 + y) * a * .4);
+      g.lineTo(600, 400); g.fill();
+    });
+    g.fillStyle = '#3B2414'; g.fillRect(150, 268, 4, 22); g.fillRect(160, 270, 4, 20);
+  } else if (kind === 'neon') {
+    sky([[0, '#0B0420'], [.6, '#2A0B4A'], [1, '#55127A']]);
+    for (let i = 0; i < 14; i++) {
+      const w = 30 + rnd() * 50, h = 120 + rnd() * 230, x = i * 44 - 10;
+      g.fillStyle = '#0D0A1C'; g.fillRect(x, 400 - h, w, h);
+      for (let y = 400 - h + 10; y < 390; y += 14) for (let xx = x + 6; xx < x + w - 6; xx += 10) if (rnd() > .55) { g.fillStyle = rnd() > .5 ? '#FF3EB5' : '#3EE6FF'; g.fillRect(xx, y, 4, 6); }
+    }
+    g.fillStyle = 'rgba(255, 62, 181, .25)'; g.fillRect(0, 360, 600, 40);
+  } else if (kind === 'foret') {
+    sky([[0, '#C9DDB5'], [.5, '#7FA36B'], [1, '#2C4A2A']]);
+    [['#5E8552', 230, .9], ['#3E6338', 280, 1.1], ['#24402A', 330, 1.4]].forEach(([col, base, s]) => {
+      g.fillStyle = col;
+      for (let x = -20; x < 640; x += 34 * s) { const h = (90 + rnd() * 60) * s; g.beginPath(); g.moveTo(x, base); g.lineTo(x + 18 * s, base - h); g.lineTo(x + 36 * s, base); g.fill(); }
+      g.fillRect(0, base, 600, 400 - base);
+    });
+    g.fillStyle = 'rgba(255, 255, 230, .18)'; g.beginPath(); g.moveTo(380, 0); g.lineTo(460, 0); g.lineTo(300, 400); g.lineTo(180, 400); g.fill();
+  } else if (kind === 'mer') {
+    sky([[0, '#0E2B2B'], [.55, '#1F4F4A'], [1, '#0A1E1E']]);
+    disc(160, 110, 46, '#CFE8C8', 40);
+    for (let y = 250; y < 400; y += 12) { g.strokeStyle = `rgba(160, 220, 200, ${.08 + (y - 250) / 1500})`; g.lineWidth = 2; g.beginPath(); for (let x = 0; x <= 600; x += 10) g.lineTo(x, y + Math.sin(x / 30 + y) * 3); g.stroke(); }
+    g.fillStyle = '#061212'; g.fillRect(470, 140, 22, 120); g.beginPath(); g.moveTo(462, 140); g.lineTo(481, 112); g.lineTo(500, 140); g.fill();
+    g.fillStyle = '#F3E9A0'; g.fillRect(474, 124, 14, 10);
+  } else if (kind === 'chateau') {
+    sky([[0, '#0A1030'], [.7, '#1B2A5A'], [1, '#0B0F22']]);
+    disc(450, 120, 52, '#C9473A', 50);
+    g.fillStyle = '#05070F';
+    g.fillRect(90, 220, 300, 180); [[100, 140], [180, 100], [290, 160], [360, 120]].forEach(([x, y]) => { g.fillRect(x, y, 34, 260); g.beginPath(); g.moveTo(x - 6, y); g.lineTo(x + 17, y - 40); g.lineTo(x + 40, y); g.fill(); });
+    g.fillStyle = '#E8B94A'; [[110, 200], [190, 160], [300, 230], [372, 190]].forEach(([x, y]) => g.fillRect(x, y, 8, 12));
+  } else if (kind === 'port') {
+    sky([[0, '#3A2A4A'], [.45, '#B05A4A'], [.7, '#E39A5A'], [1, '#2A2230']]);
+    g.fillStyle = 'rgba(40, 30, 50, .9)'; g.fillRect(0, 300, 600, 100);
+    g.strokeStyle = '#1A1420'; g.fillStyle = '#1A1420'; g.lineWidth = 4;
+    [[120, 300], [260, 310], [420, 296]].forEach(([x, y]) => { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - 170); g.stroke(); g.beginPath(); g.moveTo(x - 70, y); g.lineTo(x + 80, y); g.lineTo(x + 60, y + 24); g.lineTo(x - 54, y + 24); g.fill(); g.beginPath(); g.moveTo(x + 4, y - 160); g.lineTo(x + 60, y - 40); g.lineTo(x + 4, y - 40); g.fill(); });
+    g.fillStyle = 'rgba(230, 200, 190, .14)'; g.fillRect(0, 270, 600, 40);
+  } else if (kind === 'abysses') {
+    sky([[0, '#1C6E7A'], [.4, '#0E3A4E'], [1, '#03121C']]);
+    g.fillStyle = 'rgba(200, 255, 250, .10)'; [[120, 60], [300, 90], [460, 50]].forEach(([x, w]) => { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + w, 0); g.lineTo(x + w * 2.2, 400); g.lineTo(x + w * .6, 400); g.fill(); });
+    for (let i = 0; i < 40; i++) disc(rnd() * 600, rnd() * 400, 1 + rnd() * 4, 'rgba(220, 255, 255, .35)');
+    g.fillStyle = '#020A10'; g.beginPath(); g.moveTo(0, 400); g.quadraticCurveTo(200, 300, 340, 360); g.quadraticCurveTo(480, 410, 600, 330); g.lineTo(600, 400); g.fill();
+  }
+  return c.toDataURL('image/jpeg', .85);
+}
+const IMG = {};
+['desert', 'neon', 'foret', 'mer', 'chateau', 'port', 'abysses'].forEach((k) => (IMG[k] = paint(k)));
+
+/* ---------- Motif gravé et emblème (SVG calculés) ---------- */
+const pol = (r, a) => [r * Math.cos(a), r * Math.sin(a)];
+const f = (n) => n.toFixed(2);
+function motifSVG({ spiral = true, ticks = true, rings = [18, 34, 52, 70, 88] } = {}) {
+  let s = '';
+  rings.forEach((r, i) => {
+    const dash = i % 2 ? ` stroke-dasharray="${f(r / 6)} ${f(r / 14)}"` : '';
+    s += `<circle cx="0" cy="0" r="${r}" fill="none" stroke="currentColor" stroke-width="${i === rings.length - 1 ? 2.4 : 1.2}"${dash}/>`;
+  });
+  if (ticks) {
+    const r1 = 74, r2 = 84;
+    for (let i = 0; i < 72; i++) {
+      const a = (i / 72) * Math.PI * 2, len = i % 6 === 0 ? r2 + 2 : r2 - 4;
+      const [x1, y1] = pol(r1, a), [x2, y2] = pol(len, a);
+      s += `<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke="currentColor" stroke-width="1"/>`;
+    }
+  }
+  if (spiral) {
+    let d = '';
+    for (let t = 0; t <= Math.PI * 7; t += .08) { const r = 2 + t * 2.3; const [x, y] = pol(r, t); d += (d ? 'L' : 'M') + f(x) + ' ' + f(y); }
+    s += `<path d="${d}" fill="none" stroke="currentColor" stroke-width="1.4"/>`;
+  }
+  return s;
+}
+function webPaths(color, width, { spokes = 8, rings = [14, 26, 38, 50, 61], rOut = 66, center = true } = {}) {
+  let s = '';
+  const step = (Math.PI * 2) / spokes, off = -Math.PI / 2 + step / 2;
+  for (let i = 0; i < spokes; i++) { const [x, y] = pol(rOut, off + i * step); s += `<line x1="0" y1="0" x2="${f(x)}" y2="${f(y)}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>`; }
+  rings.forEach((r) => {
+    let d = '';
+    for (let i = 0; i < spokes; i++) {
+      const a0 = off + i * step, a1 = a0 + step;
+      const [x0, y0] = pol(r, a0), [x1, y1] = pol(r, a1), [cx, cy] = pol(r * .82, a0 + step / 2);
+      d += `${i ? '' : `M${f(x0)} ${f(y0)}`}Q${f(cx)} ${f(cy)} ${f(x1)} ${f(y1)}`;
+    }
+    s += `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linejoin="round"/>`;
+  });
+  if (center) {
+    let d = '';
+    for (let t = 0; t <= Math.PI * 3; t += .15) { const r = .8 + t * .9; const [x, y] = pol(r, t); d += (d ? 'L' : 'M') + f(x) + ' ' + f(y); }
+    s += `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width * .8}" stroke-linecap="round"/>`;
+  }
+  return s;
+}
+function sector(r0, r1, a0, a1) {
+  const [x0, y0] = pol(r1, a0), [x1, y1] = pol(r1, a1), [x2, y2] = pol(r0, a1), [x3, y3] = pol(r0, a0);
+  const large = a1 - a0 > Math.PI ? 1 : 0;
+  return `M${f(x0)} ${f(y0)}A${r1} ${r1} 0 ${large} 1 ${f(x1)} ${f(y1)}L${f(x2)} ${f(y2)}A${r0} ${r0} 0 ${large} 0 ${f(x3)} ${f(y3)}Z`;
+}
+const EMBLEMS = {
+  segments: {
+    name: '1 · Anneau en segments',
+    desc: 'Fidèle au médaillon : un anneau découpé en douze segments, en gris chauds de l\'affiche avec trois segments orange ; la toile orange au centre, sa spirale comprise.',
+    svg: (small) => {
+      const tones = ['#FC9203', '#8C837C', '#5E5852', '#A39A92', '#FC9203', '#6E6862', '#8C837C', '#4E4944', '#FC9203', '#A39A92', '#5E5852', '#7D766F'];
+      let s = '<circle r="96" fill="#161818"/>';
+      const n = 12, gap = small ? .07 : .04;
+      for (let i = 0; i < n; i++) { const a0 = (i / n) * Math.PI * 2 - Math.PI / 2 + gap, a1 = ((i + 1) / n) * Math.PI * 2 - Math.PI / 2 - gap; s += `<path d="${sector(72, 94, a0, a1)}" fill="${tones[i]}"/>`; }
+      s += `<circle r="68" fill="#1E2121"/>`;
+      s += webPaths('#FC9203', small ? 4 : 2.2, small ? { rings: [22, 42, 60], spokes: 6, center: false } : {});
+      return s;
+    },
+  },
+  grave: {
+    name: '2 · Anneau gravé',
+    desc: 'Plus proche du médaillon gris de l\'affiche : un anneau plein orange, gravé de graduations, la toile en gris clair. Lisible en petit, mais l\'orange domine.',
+    svg: (small) => {
+      let s = '<circle r="96" fill="#161818"/>';
+      s += `<path d="${sector(74, 94, 0, Math.PI * 2 - .0001)}" fill="#FC9203"/>`;
+      if (!small) for (let i = 0; i < 48; i++) { const a = (i / 48) * Math.PI * 2; const [x1, y1] = pol(77, a), [x2, y2] = pol(i % 4 ? 84 : 91, a); s += `<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke="#161818" stroke-width="1.6"/>`; }
+      s += webPaths('#C9C2BA', small ? 4.5 : 2, small ? { rings: [24, 46, 64], spokes: 6, center: false } : {});
+      return s;
+    },
+  },
+  trait: {
+    name: '3 · Trait seul',
+    desc: 'Version au trait, monochrome orange, sans disque : pour les petites tailles, l\'icône maskable et les fonds autres que le charbon.',
+    svg: (small) => {
+      let s = `<circle r="${small ? 86 : 88}" fill="none" stroke="#FC9203" stroke-width="${small ? 12 : 7}"/>`;
+      if (!small) s += '<circle r="76" fill="none" stroke="#FC9203" stroke-width="1.5" stroke-dasharray="3 5"/>';
+      s += webPaths('#FC9203', small ? 6 : 2.6, small ? { rings: [26, 50], spokes: 6, rOut: 70, center: false } : { rOut: 70 });
+      return s;
+    },
+  },
+};
+
+/* ---------- Données de démonstration ---------- */
+const ICON = {
+  ok: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.3l2.2 2.2 4.8-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  warn: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.5l4.8 8.6H1.2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6 5v2.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="6" cy="8.7" r=".8" fill="currentColor"/></svg>',
+  danger: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 3.4v3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="6" cy="8.4" r=".85" fill="currentColor"/></svg>',
+};
+const STATUS = { ok: 'Complète', warn: 'Presque pleine', danger: 'Très demandée' };
+const badge = (st) => `<span class="badge ${st}">${ICON[st]}${STATUS[st]}</span>`;
+const SLOTS = [
+  { n: 1, start: '10:00', end: '12:30' },
+  { n: 2, start: '14:00', end: '16:30' },
+  { n: 3, start: '16:45', end: '19:15' },
+];
+const PAUSES = ['Pause déjeuner · 12:30 – 14:00', 'Pause · 16:30 – 16:45'];
+const TABLES = ['Table 1', 'Table 2', 'Table 3', 'Bibliothèque'];
+const SC = {
+  masques: { title: 'Les Masques de Nyarlathotep : prologue', system: 'L\'Appel de Cthulhu', gm: 'Ombrelune', img: 'mer', min: 3, max: 5 },
+  neons: { title: 'Néons sur Neo-Paris', system: 'Cyberpunk RED', gm: 'Kaïros', img: 'neon', min: 3, max: 4 },
+  foret: { title: 'La Forêt qui chuchote', system: 'Ryuutama', gm: 'Fougère', img: 'foret', min: 2, max: 4 },
+  siege: { title: 'Le Siège de Port-Brume', system: 'Donjons & Dragons 5e', gm: 'Tarasque', img: 'port', min: 4, max: 6, double: true },
+  reine: { title: 'Thé chez la Reine Rouge', system: 'Wonderland No More', gm: 'Lapinou', img: null, min: 3, max: 5 },
+  surface: { title: 'Sous la surface', system: 'L\'Appel de Cthulhu', gm: 'Ombrelune', img: 'abysses', min: 3, max: 5 },
+  desert: { title: 'Le Désert des Mille Soleils', system: 'Chroniques Oubliées', gm: 'Sirocco', img: 'desert', min: 3, max: 5 },
+  bal: { title: 'Le Bal des Ombres', system: 'Vampire : la Mascarade', gm: 'Nocturne', img: 'chateau', min: 4, max: 6 },
+  cartes: { title: 'Cartes sur table', system: 'Fiasco', gm: 'Kaïros', img: null, min: 3, max: 4 },
+};
+// Programme : [créneau, table] → partie
+const GAMES = [
+  { sc: 'masques', slot: 1, table: 0, st: 'warn', seats: '4/5' },
+  { sc: 'neons', slot: 1, table: 1, st: 'ok', seats: '4/4' },
+  { sc: 'foret', slot: 1, table: 3, st: 'danger', seats: '9/4' },
+  { sc: 'siege', slot: 2, table: 1, st: 'ok', seats: '6/6', span: 2 },
+  { sc: 'reine', slot: 2, table: 3, st: 'warn', seats: '4/5' },
+  { sc: 'surface', slot: 3, table: 0, st: 'ok', seats: '5/5' },
+];
+const DROP = { slot: 2, table: 0 }; // case survolée
+const VALID = [{ slot: 2, table: 2 }]; // autre cible valide
+
+const thumbHTML = (sc) => sc.img ? `<img src="${IMG[sc.img]}" alt="">` : `<svg viewBox="-100 -100 200 200" preserveAspectRatio="xMidYMid slice" style="color: var(--engrave); background: var(--s3)" aria-hidden="true">${motifSVG({ ticks: false, rings: [30, 60, 90] })}</svg>`;
+function partieHTML(g, extra = '') {
+  const sc = SC[g.sc];
+  return `<article class="partie${sc.double ? ' double' : ''}${extra}" tabindex="0" aria-label="${sc.title}">
+    <div class="thumb">${thumbHTML(sc)}</div>
+    <h3 class="p-title">${sc.title}</h3>
+    <p class="p-meta">${sc.system} · ${sc.gm}</p>
+    <div class="p-foot">${g.st ? badge(g.st) : ''}<span class="places num">${g.seats || `${sc.min} à ${sc.max} places`}</span>${sc.double ? '<span class="chip double-tag">Partie double</span>' : ''}</div>
+  </article>`;
+}
+
+function renderCalendar() {
+  const cal = document.getElementById('cal');
+  let h = '<div></div>';
+  TABLES.forEach((t, i) => (h += `<div class="cal-head" style="grid-column:${i + 2};grid-row:1"><span class="caps">${t}</span></div>`));
+  const rowOf = (slot) => 2 + (slot - 1) * 2;
+  SLOTS.forEach((s) => {
+    h += `<div class="slot-label" style="grid-column:1;grid-row:${rowOf(s.n)}"><span class="caps">Créneau ${s.n}</span><span class="t num">${s.start}</span><span class="t t-end num">${s.end}</span></div>`;
+  });
+  PAUSES.forEach((p, i) => (h += `<div class="pause" style="grid-row:${3 + i * 2}"><span class="num">${p}</span></div>`));
+  const occupied = new Set();
+  GAMES.forEach((g) => {
+    const span = g.span ? g.span * 2 - 1 : 1;
+    for (let k = 0; k < (g.span || 1); k++) occupied.add(`${g.slot + k}-${g.table}`);
+    h += `<div class="cell" style="grid-column:${g.table + 2};grid-row:${rowOf(g.slot)} / span ${span}">${partieHTML(g)}</div>`;
+  });
+  SLOTS.forEach((s) => TABLES.forEach((t, ti) => {
+    if (occupied.has(`${s.n}-${ti}`)) return;
+    const pos = `grid-column:${ti + 2};grid-row:${rowOf(s.n)}`;
+    if (s.n === DROP.slot && ti === DROP.table) {
+      h += `<div class="cell target-hover" style="${pos}"><span>Programmer ici<br><span class="num">${t} · créneau ${s.n}</span></span>${partieHTML({ sc: 'desert' }, ' ghost')}</div>`;
+    } else if (VALID.some((v) => v.slot === s.n && v.table === ti)) {
+      h += `<div class="cell empty target-valid" style="${pos}">Déposer ici</div>`;
+    } else {
+      h += `<div class="cell empty refused" style="${pos}">Libre</div>`;
+    }
+  }));
+  cal.innerHTML = h;
+}
+
+function renderReserve() {
+  const items = [
+    { sc: 'desert', origin: true },
+    { sc: 'bal' },
+    { sc: 'neons', tag: 'Déjà programmé · créneau 1' },
+    { sc: 'cartes' },
+  ];
+  let h = `<div class="reserve-head"><p class="caps" style="margin:0">Réserve</p><p class="muted num" style="margin:2px 0 0;font-size:12px">Créneau 2 · 14:00 – 16:30 · ${items.length} scénarios</p></div>`;
+  items.forEach((it) => {
+    const sc = SC[it.sc];
+    h += `<article class="reserve-item${it.origin ? ' origin' : ''}" tabindex="0" aria-label="${sc.title}">
+      <div class="thumb">${thumbHTML(sc)}</div>
+      <h3 class="p-title" style="font-size:13.5px">${sc.title}</h3>
+      <p class="p-meta">${sc.system} · ${sc.gm}</p>
+      <div class="r-foot">
+        <span class="muted num" style="font-size:12px">${sc.min} à ${sc.max} places · ${sc.double ? '2 créneaux' : '1 créneau'}</span>
+        ${it.origin ? '<span class="muted" style="font-size:12px">En cours de déplacement</span>' : '<button class="btn btn-ghost" type="button" style="min-height:28px;padding-block:4px;font-size:12px">Programmer sur…</button>'}
+        ${it.tag ? `<span class="chip">${it.tag}</span>` : ''}
+      </div>
+    </article>`;
+  });
+  document.getElementById('reserve').innerHTML = h;
+}
+
+function foCard(sc, slotTxt, pitch, cw) {
+  const media = sc.img ? `<img src="${IMG[sc.img]}" alt="">` : `<svg viewBox="-150 -100 300 200" preserveAspectRatio="xMidYMid slice" style="background: var(--s2); color: var(--engrave)" aria-hidden="true"><g transform="translate(70 -10) scale(1.35)">${motifSVG()}</g><g transform="translate(-95 -40) scale(.5)" opacity=".22">${EMBLEMS.trait.svg(false)}</g></svg>`;
+  return `<article class="fo-card">
+    <div class="fo-media">${media}</div>
+    <div class="fo-body">
+      <p class="caps num">${slotTxt}</p>
+      <h3 class="fo-title">${sc.title}</h3>
+      <p class="fo-by">${sc.system} · mené par ${sc.gm}</p>
+      <p class="fo-pitch">${pitch}</p>
+      <div class="fo-chips"><span class="chip num">${sc.min} à ${sc.max} places</span><span class="chip">${sc.double ? '2 créneaux' : '1 créneau'}</span></div>
+      ${cw ? `<p class="fo-cw">${ICON.warn}<span>Avertissements : ${cw}</span></p>` : ''}
+      <button class="btn btn-primary" type="button">M'inscrire</button>
+    </div>
+  </article>`;
+}
+function renderPhones() {
+  document.getElementById('phones').innerHTML = `
+    <div class="phone"><div class="phone-bar"><span class="caps">Créneau 2</span><span class="muted num">14:00 – 16:30</span></div>
+      ${foCard(SC.desert, 'Table 1 · 14:00 – 16:30', 'Une caravane perdue, un puits tari et sept soleils qui ne se couchent plus. Ta soif a-t-elle un prix ?', 'soif, isolement')}
+      <p class="note">Avec image : une image très claire, le cas le plus dur pour le texte.</p></div>
+    <div class="phone"><div class="phone-bar"><span class="caps">Créneau 2</span><span class="muted num">14:00 – 16:30</span></div>
+      ${foCard(SC.reine, 'Bibliothèque · 14:00 – 16:30', 'La Reine Rouge t\'invite pour le thé. Refuser serait impoli. Accepter serait pire.', '')}
+      <p class="note">Sans image : illustration par défaut construite sur le motif gravé, et l'emblème au trait.</p></div>
+    <div class="phone"><div class="phone-bar"><span class="caps">Créneau 1</span><span class="muted num">10:00 – 12:30</span></div>
+      ${foCard(SC.neons, 'Table 2 · 10:00 – 12:30', 'Une livraison de trop dans les tours de la Défense. Le client ne répond plus.', 'violence armée')}
+      <p class="note">Image saturée, magenta et cyan : voisine-t-elle bien avec l'orange ?</p></div>`;
+}
+
+/* ---------- Contrastes ---------- */
+function parse(col) {
+  const c = document.createElement('canvas').getContext('2d');
+  c.fillStyle = '#000'; c.fillStyle = col;
+  const v = c.fillStyle;
+  if (v.startsWith('#')) return [1, 3, 5].map((i) => parseInt(v.slice(i, i + 2), 16));
+  const m = v.match(/[\d.]+/g).map(Number);
+  return m.slice(0, 3);
+}
+const lum = (rgb) => { const [r, g, b] = rgb.map((v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + .05) / (y + .05); };
+const mix = (a, b, t) => a.map((v, i) => v * t + b[i] * (1 - t));
+const hex = (rgb) => '#' + rgb.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('').toUpperCase();
+const tok = (name) => getComputedStyle(root).getPropertyValue(name).trim();
+
+function renderTokens() {
+  const T = (n) => parse(tok(n));
+  const list = [
+    ['--bg', 'Charbon', 'fond de page'], ['--s1', 'Anthracite 1', 'panneaux, en-tête'], ['--s2', 'Anthracite 2', 'cartes, parties'], ['--s3', 'Anthracite 3', 'puces, champs, survol'],
+    ['--text', 'Texte', 'texte courant'], ['--text-2', 'Texte secondaire', 'métadonnées, heures'], ['--orange', 'Orange', 'action principale, liens, actif'], ['--focus', 'Focus', 'anneau de focus'],
+    ['--ok', 'Vert', 'correct, complète'], ['--warn', 'Jaune', 'attention'], ['--danger', 'Rouge brique', 'surcharge, erreur'], ['--danger-fill', 'Rouge (bouton)', 'action destructrice'],
+    ['--engrave', 'Gravure', 'motif gravé'],
+  ];
+  document.getElementById('tokens').innerHTML = list.map(([n, label, use]) => `<div class="token"><span class="sw" style="background:var(${n})"></span><b>${label}</b><code>${hex(T(n))} · ${use}</code></div>`).join('');
+  const badgeBg = (n) => mix(T(n), T('--s2'), .14);
+  const rows = [
+    ['Texte / charbon', T('--text'), T('--bg'), 4.5],
+    ['Texte / anthracite 3', T('--text'), T('--s3'), 4.5],
+    ['Secondaire / charbon', T('--text-2'), T('--bg'), 4.5],
+    ['Secondaire / anthracite 2', T('--text-2'), T('--s2'), 4.5],
+    ['Secondaire / anthracite 3', T('--text-2'), T('--s3'), 4.5],
+    ['Orange (lien) / charbon', T('--orange'), T('--bg'), 4.5],
+    ['Orange (lien) / anthracite 2', T('--orange'), T('--s2'), 4.5],
+    ['Charbon / orange (bouton principal)', T('--on-orange'), T('--orange'), 4.5],
+    ['Blanc / orange (exclu)', [255, 255, 255], T('--orange'), 4.5],
+    ['Vert / badge', T('--ok'), badgeBg('--ok'), 4.5],
+    ['Jaune / badge', T('--warn'), badgeBg('--warn'), 4.5],
+    ['Rouge brique / badge', T('--danger'), badgeBg('--danger'), 4.5],
+    ['Blanc / rouge (bouton destructif)', [255, 255, 255], T('--danger-fill'), 4.5],
+    ['Focus / charbon', T('--focus'), T('--bg'), 3],
+    ['Focus / anthracite 2', T('--focus'), T('--s2'), 3],
+    ['Gravure / anthracite 1 (décor, sans seuil)', T('--engrave'), T('--s1'), 0],
+  ];
+  let h = '<thead><tr><th>Couple</th><th>Aperçu</th><th class="r">Contraste</th><th class="r">Seuil</th><th>AA</th></tr></thead><tbody>';
+  rows.forEach(([label, fg, bg, min]) => {
+    const r = ratio(fg, bg);
+    const ok = min === 0 ? null : r >= min;
+    h += `<tr><td>${label}</td><td><span class="sample" style="color:${hex(fg)};background:${hex(bg)}">Créneau 2</span></td><td class="r">${r.toFixed(2).replace('.', ',')}:1</td><td class="r">${min ? String(min).replace('.', ',') + ':1' : '–'}</td><td>${ok === null ? '<span class="muted">décor</span>' : ok ? '<span class="pass">✓ conforme</span>' : '<span class="fail">✗ non conforme</span>'}</td></tr>`;
+  });
+  document.getElementById('contrast').innerHTML = h + '</tbody>';
+}
+
+function renderSpecimens() {
+  const fonts = [
+    ['saira-e', 'Saira étendue (largeur 125 %)', '"Saira"', '125%'],
+    ['saira', 'Saira (largeur normale)', '"Saira"', '100%'],
+    ['chakra', 'Chakra Petch', '"Chakra Petch"', '100%'],
+    ['exo', 'Exo 2', '"Exo 2"', '100%'],
+  ];
+  const cur = root.dataset.caps;
+  document.getElementById('specimens').innerHTML = fonts.map(([k, name, fam, st]) => {
+    const style = `font-family:${fam}, system-ui, sans-serif;font-stretch:${st}`;
+    return `<button type="button" class="spec" data-caps="${k}" aria-pressed="${k === cur}" style="text-align:left;color:inherit;font:inherit;cursor:pointer">
+      <p class="s-name">${name}</p>
+      <p class="s-big" style="${style}">Convention <span class="y">2026</span></p>
+      <p class="s-row" style="${style}">Créneau 2 · <span class="num">14:00 – 16:30</span></p>
+      <p class="s-row orange" style="${style}">Découverte / initiation jeux de rôle</p>
+      <p class="s-row" style="${style};color:var(--text-2)">Réserve · Table 3 · Bibliothèque · ÀÉÈÊÇŒ</p>
+    </button>`;
+  }).join('');
+  document.querySelectorAll('.spec').forEach((b) => b.addEventListener('click', () => setCaps(b.dataset.caps)));
+}
+
+function renderEmblems() {
+  document.getElementById('header-emblem').innerHTML = EMBLEMS.segments.svg(true);
+  document.getElementById('header-motif').innerHTML = motifSVG();
+  document.getElementById('emblems').innerHTML = Object.values(EMBLEMS).map((e) => `
+    <div class="emblem-card">
+      <p class="caps" style="margin:0">${e.name}</p>
+      <svg class="big" viewBox="-100 -100 200 200" aria-hidden="true">${e.svg(false)}</svg>
+      <div class="sizes">
+        ${[64, 32, 16].map((s) => `<figure><svg width="${s}" height="${s}" viewBox="-100 -100 200 200" aria-hidden="true">${e.svg(s < 64)}</svg><figcaption class="num">${s} px</figcaption></figure>`).join('')}
+        <figure><span class="maskable"><svg viewBox="-100 -100 200 200" aria-hidden="true">${e.svg(true)}</svg></span><figcaption>maskable</figcaption></figure>
+      </div>
+      <p class="muted" style="margin:0;font-size:12.5px">${e.desc}</p>
+    </div>`).join('');
+  document.getElementById('motifs').innerHTML = `
+    <div class="motif-tile"><svg viewBox="-150 -100 300 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g transform="translate(40 10) scale(1.5)">${motifSVG()}</g></svg><span class="lbl">Anneaux, graduations et spirale</span></div>
+    <div class="motif-tile"><svg viewBox="-150 -100 300 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g transform="scale(1.1)">${motifSVG({ ticks: false })}</g></svg><span class="lbl">Sans graduations, centré</span></div>
+    <div class="motif-tile"><svg viewBox="-150 -100 300 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g transform="translate(-150 100) scale(2.4)">${motifSVG({ spiral: false })}</g><g transform="translate(150 -100) scale(1.2)">${motifSVG({ ticks: false, rings: [20, 44] })}</g></svg><span class="lbl">Fragments en angle, pour les états vides</span></div>`;
+}
+
+/* ---------- Bascule ---------- */
+function setVariant(k) {
+  root.dataset.variant = k;
+  document.getElementById('vlabel').textContent = `${k} · ${VARIANTS[k].name}`;
+  document.getElementById('variant-note').textContent = VARIANTS[k].note;
+  try { history.replaceState(null, '', '#' + k); } catch (e) { /* hors navigateur */ }
+  renderTokens();
+}
+function setCaps(k) {
+  root.dataset.caps = k;
+  document.getElementById('caps-select').value = k;
+  document.querySelectorAll('.spec').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.caps === k)));
+}
+function cycle(d) { const i = KEYS.indexOf(root.dataset.variant); setVariant(KEYS[(i + d + KEYS.length) % KEYS.length]); }
+document.getElementById('prev').addEventListener('click', () => cycle(-1));
+document.getElementById('next').addEventListener('click', () => cycle(1));
+document.getElementById('caps-select').addEventListener('change', (e) => setCaps(e.target.value));
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') cycle(-1);
+  if (e.key === 'ArrowRight') cycle(1);
+});
+
+document.getElementById('bdg-ok').innerHTML = ICON.ok + 'Complète';
+document.getElementById('bdg-warn').innerHTML = ICON.warn + 'Presque pleine';
+document.getElementById('bdg-danger').innerHTML = ICON.danger + 'Très demandée';
+root.dataset.caps = 'saira-e';
+renderCalendar();
+renderReserve();
+renderPhones();
+renderSpecimens();
+renderEmblems();
+const fromHash = (location.hash || '').replace('#', '').toUpperCase();
+setVariant(KEYS.includes(fromHash) ? fromHash : 'A');
+</script>
