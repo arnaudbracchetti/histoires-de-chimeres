@@ -16,4 +16,6 @@ Chaque endpoint de l'API est déclaré une seule fois, dans `packages/contract`,
 
 - `contract` exporte désormais des valeurs, et plus seulement des types : l'API et les fronts le chargent à l'exécution (le Dockerfile copie déjà son `dist`).
 - La méthode HTTP est écrite deux fois : dans le descripteur et dans le décorateur Nest (`@Get`).
-- `Endpoint<Res, Params, Body>` prévoit les paramètres de chemin et les corps de requête. `apiUrl` ne gère pas encore les paramètres : il faudra l'étendre, et le tester, avec le premier endpoint qui en a.
+- `Endpoint<Res, Params, Body>` porte les paramètres de chemin et le corps de requête. Le chemin les écrit en `:param` (`games/:gameId/placement`), une syntaxe que Nest lit telle quelle. `apiUrl(endpoint, params)` remplace chaque `:param` par sa valeur encodée, et exige `params` dès que `Params` n'est pas `never`. Les corps sont des types `<Action>Body` de `contract`.
+- Les fronts lisent par `apiResource()` et écrivent par `apiCall(endpoint, { params, body })`, sur `HttpClient` : la méthode, l'URL, le corps et le type de la réponse viennent du descripteur.
+- Les endpoints d'image (multipart, ADR 0007) ont un descripteur pour leur chemin et ses paramètres, mais pas de `Body` typé.
