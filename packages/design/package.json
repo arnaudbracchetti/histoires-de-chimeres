@@ -1,0 +1,25 @@
+{
+  "name": "@chimeres/design",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Identité commune aux deux fronts : jetons CSS, polices, sprites SVG, icônes de PWA, initiale de l'illustration par défaut. Aucune dépendance.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./tokens.css": "./tokens.css",
+    "./fonts.css": "./fonts.css"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "lint": "oxlint src",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

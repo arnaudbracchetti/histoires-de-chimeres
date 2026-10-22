@@ -22,6 +22,25 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "*.svg",
+                "input": "node_modules/@chimeres/design/svg"
+              },
+              {
+                "glob": "*.png",
+                "input": "node_modules/@chimeres/design/pwa",
+                "output": "icons"
+              },
+              {
+                "glob": "*.txt",
+                "input": "node_modules/@chimeres/design/fonts",
+                "output": "licences"
+              },
+              {
+                "glob": "*.txt",
+                "input": "node_modules/@chimeres/design/svg",
+                "output": "licences"
               }
             ],
             "styles": ["src/styles.css"]

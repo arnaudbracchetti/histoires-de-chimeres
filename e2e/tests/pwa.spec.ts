@@ -30,3 +30,20 @@ test('le front office se charge hors ligne', async ({ page, context }) => {
   await expect(page).toHaveTitle('Histoires de Chimères');
   await expect(page.getByText('Impossible de charger la convention.')).toBeVisible();
 });
+
+test('le service worker précharge les polices', async ({ page }) => {
+  await installServiceWorker(page);
+
+  // Le groupe « app » (installMode: prefetch) les télécharge à l'installation, que la page s'en serve ou non.
+  const prefetched = () =>
+    page.evaluate(async () => {
+      const urls: string[] = [];
+      for (const name of await caches.keys()) {
+        if (!name.includes(':app:')) continue;
+        const cache = await caches.open(name);
+        for (const request of await cache.keys()) urls.push(new URL(request.url).pathname);
+      }
+      return urls.filter((url) => url.endsWith('.woff2')).length;
+    });
+  await expect.poll(prefetched).toBe(2);
+});

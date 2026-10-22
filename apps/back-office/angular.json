@@ -20,8 +20,22 @@
             "tsConfig": "tsconfig.app.json",
             "assets": [
               {
-                "glob": "**/*",
-                "input": "public"
+                "glob": "*.svg",
+                "input": "node_modules/@chimeres/design/svg"
+              },
+              {
+                "glob": "favicon-32.png",
+                "input": "node_modules/@chimeres/design/pwa"
+              },
+              {
+                "glob": "*.txt",
+                "input": "node_modules/@chimeres/design/fonts",
+                "output": "licences"
+              },
+              {
+                "glob": "*.txt",
+                "input": "node_modules/@chimeres/design/svg",
+                "output": "licences"
               }
             ],
             "styles": ["src/styles.css"],

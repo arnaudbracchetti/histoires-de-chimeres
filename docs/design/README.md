@@ -12,7 +12,7 @@ La charte fixe l'identité commune aux deux applications : le front office, PWA 
 
 ## Ce qui fait foi
 
-- Les **valeurs** (couleurs, tailles, rayons) sont fixées par [jetons.md](jetons.md) tant que `packages/design/tokens.css` n'existe pas. Une fois le package créé, c'est `tokens.css` qui fait foi, et `jetons.md` ne garde que les rôles, les contrastes et la correspondance avec les noms de la charte.
+- Les **valeurs** (couleurs, tailles, rayons) sont fixées par [`packages/design/tokens.css`](../../packages/design/tokens.css). [jetons.md](jetons.md) ne garde que les rôles, les contrastes et la correspondance avec les noms de la charte.
 - Le **vocabulaire** est celui de [GLOSSARY.md](../../GLOSSARY.md), interface comprise.
 - Le **choix technique** (CDK, Angular Aria, CSS natif, package `@chimeres/design`) est l'[ADR 0006](../adr/0006-interface-sans-bibliotheque-de-composants.md). Les erreurs de l'API et leurs messages relèvent de l'[ADR 0008](../adr/0008-le-domaine-donne-un-code-l-api-ecrit-le-message.md).
 

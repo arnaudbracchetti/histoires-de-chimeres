@@ -1,0 +1,16 @@
+/*
+ * Polices de la charte, hébergées avec l'application (licences OFL à côté des fichiers).
+ * Sous-ensemble latin étendu : latin de base, Latin-1, Latin étendu A, ponctuation générale.
+ * Le build de chaque front copie les fichiers dans sa sortie (`media/`), jamais Google Fonts.
+ */
+@font-face {
+  font-family: 'Uncial Antiqua';
+  src: url('./fonts/uncial-antiqua.woff2') format('woff2');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Aldrich';
+  src: url('./fonts/aldrich.woff2') format('woff2');
+  font-display: swap;
+}

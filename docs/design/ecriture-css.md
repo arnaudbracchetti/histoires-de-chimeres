@@ -9,11 +9,14 @@ Le choix et ses raisons sont dans l'[ADR 0006](../adr/0006-interface-sans-biblio
 | Contenu | Détail |
 |---|---|
 | `tokens.css` | les jetons de rôle de [jetons.md](jetons.md), sur `:root`, dans `@layer tokens` |
-| polices | Uncial Antiqua et Aldrich en WOFF2, `@font-face` en `font-display: swap`, licences OFL livrées. Chaque front les copie dans ses assets ; le service worker du front office les précharge |
-| `illustration.svg` | sprite du motif gravé, complet et simplifié |
-| `icons.svg` | sprite des icônes Lucide (licence ISC), copiées à mesure qu'on s'en sert, colorées par `currentColor` |
-| `emblem.svg` | l'emblème, complet et ≤ 32 px. Les PNG de la PWA en sont tirés une fois et versionnés |
+| `fonts.css`, `fonts/` | Uncial Antiqua et Aldrich en WOFF2, sous-ensemble latin étendu, `@font-face` en `font-display: swap`, licences OFL livrées. Le build de chaque front copie les fichiers dans sa sortie (`media/`, nom haché) ; le service worker du front office les précharge |
+| `svg/illustration.svg` | sprite du motif gravé : complet (`engraving`), complet sans spirale pour la lettrine (`engraving-initial`), simplifié (`engraving-small`) |
+| `svg/icons.svg` | sprite des icônes Lucide (licence ISC), copiées à mesure qu'on s'en sert, colorées par `currentColor` |
+| `svg/emblem.svg` | l'emblème, complet (`emblem`) et ≤ 32 px (`emblem-small`) |
+| `pwa/` | les PNG de la PWA et le favicon, tirés une fois de l'emblème et versionnés |
 | `initialOf(title)` | la seule logique du package : l'initiale de l'illustration par défaut, testée par Vitest |
+
+Chaque front importe `tokens.css` et `fonts.css` dans son `styles.css`, et copie les sprites à sa racine, les licences dans `licences/` (`assets` de `angular.json`). Le front office copie aussi `pwa/` dans `icons/`.
 
 Aucune couleur n'est écrite en TypeScript ni en dur dans un SVG : le SVG référence les jetons.
 

@@ -1,1 +1,66 @@
-/* You can add global styles to this file, and also import other style files */
+/* Styles globaux, courts : le reste vit dans les composants, en @layer components (docs/design/ecriture-css.md). */
+@layer reset, tokens, base, components;
+
+@import '@chimeres/design/tokens.css';
+@import '@chimeres/design/fonts.css';
+
+@layer reset {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body,
+  h1,
+  h2,
+  h3,
+  p {
+    margin: 0;
+  }
+
+  img,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+@layer base {
+  body {
+    background: var(--surface-0);
+    color: var(--text);
+    font-family: var(--font-ui);
+    /* Taille de base du back office : 13 px. */
+    font-size: var(--font-size-body);
+    line-height: 1.4;
+  }
+
+  h1,
+  h2,
+  h3 {
+    line-height: 1.2;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: var(--font-size-title);
+    font-weight: normal;
+  }
+
+  a {
+    color: var(--accent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+}

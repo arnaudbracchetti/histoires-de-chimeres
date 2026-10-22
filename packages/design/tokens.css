@@ -1,0 +1,68 @@
+/*
+ * Jetons de rôle de la charte (docs/design/jetons.md). Ce fichier fait foi pour les valeurs.
+ * Un seul thème, sombre. Aucun composant n'écrit de couleur en dur, et les SVG référencent ces jetons.
+ */
+@layer tokens {
+  :root {
+    color-scheme: dark;
+
+    /* Couleurs */
+    /* Charbon, repris en dur par le manifeste et la meta theme-color du front office. */
+    --surface-0: #151717;
+    --surface-1: #1b1e1e; /* Anthracite 1 */
+    --surface-2: #222525; /* Anthracite 2 */
+    --surface-3: #2a2d2d; /* Anthracite 3 */
+    --border: #313535; /* Filet */
+    --text: #eceae6; /* Texte */
+    --text-muted: #a9a49e; /* Texte secondaire */
+    --accent: #fc9203; /* Orange */
+    --on-accent: #161818; /* Texte sur orange */
+    --focus: #7cc4e4; /* Focus */
+    --success: #6cc08b; /* Vert */
+    --warning: #e8d25c; /* Jaune */
+    --danger: #f07f63; /* Rouge brique */
+    --danger-fill: #b23a26; /* Rouge (bouton) */
+    --engraving: #3a3e3e; /* Gravure */
+    --engraving-strong: #626767; /* Gravure relevée */
+    --initial: #8c837c; /* Lettrine */
+
+    /* Gris chauds des segments de l'emblème */
+    --emblem-1: #4e4944;
+    --emblem-2: #5e5852;
+    --emblem-3: #6e6862;
+    --emblem-4: #7d766f;
+    --emblem-5: #8c837c;
+    --emblem-6: #a39a92;
+
+    /* Polices */
+    --font-display: 'Uncial Antiqua', serif;
+    --font-caps: 'Aldrich', sans-serif;
+    --font-ui: system-ui, sans-serif;
+
+    /* Échelle typographique (back office) */
+    --font-size-title: 1.625rem; /* 26 px */
+    --font-size-section: 1.125rem; /* 18 px */
+    --font-size-block: 0.9375rem; /* 15 px */
+    --font-size-body: 0.8125rem; /* 13 px */
+    --font-size-meta: 0.75rem; /* 12 px */
+    --font-size-overline: 0.6875rem; /* 11 px */
+
+    /* Espacements */
+    --space-xxs: 2px;
+    --space-xs: 4px;
+    --space-s: 8px;
+    --space-m: 12px;
+    --space-l: 16px;
+    --space-xl: 24px;
+    --space-xxl: 32px;
+
+    /* Rayons */
+    --radius-card: 12px;
+    --radius-control: 8px;
+    --radius-thumb: 6px;
+
+    /* Halo : élément saisi pendant un glisser-déposer, cible valide. Halo discret : survol d'une partie. */
+    --halo: 0 0 0 1px var(--accent), 0 0 10px color-mix(in srgb, var(--accent) 20%, transparent);
+    --halo-soft: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+}

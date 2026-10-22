@@ -13,6 +13,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/contract/package.json packages/contract/package.json
 COPY packages/domain/package.json packages/domain/package.json
 COPY packages/application/package.json packages/application/package.json
+COPY packages/design/package.json packages/design/package.json
 COPY apps/api/package.json apps/api/package.json
 COPY apps/front-office/package.json apps/front-office/package.json
 COPY apps/back-office/package.json apps/back-office/package.json
