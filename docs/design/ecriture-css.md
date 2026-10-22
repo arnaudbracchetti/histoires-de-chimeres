@@ -1,0 +1,43 @@
+# Écriture du CSS et des composants
+
+Le choix et ses raisons sont dans l'[ADR 0006](../adr/0006-interface-sans-bibliotheque-de-composants.md). Cette page en donne les conventions d'écriture.
+
+## Le package `@chimeres/design`
+
+`packages/design`, sans framework, ne dépend de rien. Les deux fronts en dépendent, avec `contract`.
+
+| Contenu | Détail |
+|---|---|
+| `tokens.css` | les jetons de rôle de [jetons.md](jetons.md), sur `:root`, dans `@layer tokens` |
+| polices | Uncial Antiqua et Aldrich en WOFF2, `@font-face` en `font-display: swap`, licences OFL livrées. Chaque front les copie dans ses assets ; le service worker du front office les précharge |
+| `illustration.svg` | sprite du motif gravé, complet et simplifié |
+| `icons.svg` | sprite des icônes Lucide (licence ISC), copiées à mesure qu'on s'en sert, colorées par `currentColor` |
+| `emblem.svg` | l'emblème, complet et ≤ 32 px. Les PNG de la PWA en sont tirés une fois et versionnés |
+| `initialOf(title)` | la seule logique du package : l'initiale de l'illustration par défaut, testée par Vitest |
+
+Aucune couleur n'est écrite en TypeScript ni en dur dans un SVG : le SVG référence les jetons.
+
+## Composants
+
+- Chaque composant d'interface s'écrit à la main : bouton, champ, tableau triable, pastille, badge, notification, menu, dialogue.
+- Comportement et accessibilité viennent du CDK (`drag-drop`, `dialog`, `overlay`, `a11y`) et d'Angular Aria (motif Menu), jamais d'un ARIA réécrit à la main quand un motif existe.
+- Les composants qui enveloppent `design` (champ, illustration, icône) sont **minces et dupliqués dans chaque front**, comme `api-resource.ts`. Pas de bibliothèque Angular partagée.
+- Une icône s'affiche par `<svg><use href="icons.svg#nom"/></svg>`. Décorative, elle porte `aria-hidden="true"` ; seule dans un bouton, c'est le bouton qui porte le nom accessible.
+- Formulaires : Signal Forms, `[formField]` sur des contrôles natifs.
+
+## CSS
+
+- **Natif, sans préprocesseur** : imbrication native, aplatie par esbuild selon la `browserslist`.
+- **Couches**, déclarées une fois dans le `styles.css` de chaque front : `@layer reset, tokens, base, components;`.
+  - `reset` : remise à zéro courte ;
+  - `tokens` : l'import de `tokens.css` ;
+  - `base` : éléments HTML nus (corps, titres, liens, tableaux, champs), taille de base du front (13 px dans le back office) ;
+  - `components` : les styles des composants.
+- **Styles encapsulés** par composant (`ViewEncapsulation.Emulated`), écrits dans `@layer components`. Le `styles.css` global reste court.
+- **Unités** :
+  - `rem` pour le texte et les tailles qui suivent le texte ;
+  - `px` pour les filets, les rayons, les vignettes et les dimensions fixées par la charte (32 et 44 px, 0,8 px par minute) ;
+  - les espacements passent par les jetons `--space-*`, jamais par une valeur libre.
+- **Seulement des jetons** pour les couleurs, les polices, les tailles de texte, les espacements, les rayons et le halo.
+- **Mouvement** : transitions de moins de 200 ms, toutes neutralisées sous `@media (prefers-reduced-motion: reduce)`.
+- Pas d'ombre grise, pas de `backdrop-filter`.
