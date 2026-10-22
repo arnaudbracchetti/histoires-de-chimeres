@@ -32,7 +32,8 @@ Pièges :
 | `packages/application` | Commandes, ports (`<Concept>Reader`, `<Aggregate>Repository`) | `domain`, `contract` |
 | `packages/contract` | DTO de l'API et descripteurs de ses endpoints (`<concept>Endpoints.<action>`) | rien |
 | `apps/api` | NestJS : controllers (`<module>/http/`), implémentations Prisma des ports (`<module>/persistence/`), câblage (`<module>.module.ts`) | tout |
-| `apps/front-office`, `apps/back-office` | Angular | `contract` uniquement |
+| `packages/design` (à créer) | Identité commune aux fronts : jetons CSS, polices, sprites SVG, `initialOf` ([ADR 0006](docs/adr/0006-interface-sans-bibliotheque-de-composants.md)) | rien |
+| `apps/front-office`, `apps/back-office` | Angular, CDK et Aria, CSS natif, sans bibliothèque de composants | `contract`, `design` |
 
 - La frontière est physique : un package ne voit que les dépendances de son `package.json`. `domain` et `application` restent sans framework, donc sans décorateur Nest. L'API injecte chaque port par un jeton `Symbol`, et construit les commandes par `useFactory`.
 - **Lecture** : le controller appelle directement un port `<Concept>Reader` (dans `application`), qui renvoie un DTO du `contract` ou `null` (→ 404 dans le controller). Exemple : `ConventionReader`. Une classe de requête n'existe que pour une vraie logique de lecture : combiner plusieurs ports, ou demander un verdict à un agrégat.
