@@ -1,4 +1,5 @@
 import { Component, effect, input, signal, type Resource } from '@angular/core';
+import { Button } from '../ui/button';
 
 /** Ce que la zone lit d'une ressource (`apiResource()`, `httpResource()`). */
 export type LoadableResource = Pick<Resource<unknown>, 'isLoading' | 'error'> & {
@@ -15,6 +16,7 @@ const PROGRESS_DELAY_MS = 300;
  */
 @Component({
   selector: 'app-loadable',
+  imports: [Button],
   host: { '[attr.aria-busy]': 'resource().isLoading()' },
   template: `
     @if (slow()) {
@@ -23,7 +25,7 @@ const PROGRESS_DELAY_MS = 300;
     @if (resource().error() && !resource().isLoading()) {
       <div class="failure">
         <p>{{ failure() }}</p>
-        <button type="button" (click)="resource().reload()">Réessayer</button>
+        <button type="button" appButton="secondary" (click)="resource().reload()">Réessayer</button>
       </div>
     } @else {
       <ng-content />
@@ -75,19 +77,6 @@ const PROGRESS_DELAY_MS = 300;
         align-items: flex-start;
         padding: var(--space-s) 0;
         color: var(--text-muted);
-      }
-
-      button {
-        padding: var(--space-xs) var(--space-m);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-control);
-        background: none;
-        color: var(--text);
-        cursor: pointer;
-
-        &:hover {
-          background: var(--surface-3);
-        }
       }
     }
   `,

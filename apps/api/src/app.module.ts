@@ -1,10 +1,12 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { API_PREFIX } from '@chimeres/contract';
 import { ConventionModule } from './convention/convention.module.js';
 import { HealthModule } from './health/health.module.js';
+import { ProblemFilter } from './http/problem.filter.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
 // Le Dockerfile copie les builds Angular dans apps/api/public ; absent en dev,
@@ -32,5 +34,7 @@ const fronts = existsSync(publicDir)
 
 @Module({
   imports: [...fronts, PrismaModule, HealthModule, ConventionModule],
+  // Filtre global, déclaré ici pour valoir aussi dans les tests qui démarrent AppModule.
+  providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],
 })
 export class AppModule {}

@@ -59,6 +59,20 @@
     color: var(--accent);
   }
 
+  input,
+  textarea,
+  select {
+    padding: var(--space-xs) var(--space-s);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    background: var(--surface-1);
+    color: var(--text);
+
+    &[aria-invalid='true'] {
+      border-color: var(--danger);
+    }
+  }
+
   :focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;

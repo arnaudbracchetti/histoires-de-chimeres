@@ -25,7 +25,7 @@ describe('App', () => {
     fixture.detectChanges();
     TestBed.inject(HttpTestingController)
       .expectOne(apiUrl(conventionEndpoints.read))
-      .flush({ id: 'c1', name: 'Histoires de Chimères' });
+      .flush({ id: 'c1', name: 'Histoires de Chimères', date: null });
     await navigate('/');
     return { host: fixture.nativeElement as HTMLElement, navigate };
   }

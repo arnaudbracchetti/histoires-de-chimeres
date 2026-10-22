@@ -1,3 +1,2 @@
-// Aucun agrégat pour l'instant : la lecture de la convention est une requête,
-// qui ne charge pas d'agrégat (CQRS léger).
-export {};
+export { Convention, type ConventionState } from './convention/convention.js';
+export { Refusal, type RefusalCode, type RefusalParams } from './refusal.js';

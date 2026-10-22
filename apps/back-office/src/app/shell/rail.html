@@ -1,5 +1,7 @@
 <div class="brand">
-  <svg class="emblem" aria-hidden="true" focusable="false"><use href="emblem.svg#emblem-small" /></svg>
+  <svg class="emblem" aria-hidden="true" focusable="false">
+    <use href="emblem.svg#emblem-small" />
+  </svg>
   <span class="name">Histoires de Chimères</span>
 </div>
 
@@ -8,7 +10,7 @@
     @if (convention.hasValue()) {
       <a class="convention" routerLink="/creneaux-et-tables">
         <span class="convention-name">{{ convention.value().name }}</span>
-        <span class="convention-date">date à fixer</span>
+        <span class="convention-date">{{ formatDate(convention.value().date) }}</span>
       </a>
     }
   </app-loadable>
@@ -38,7 +40,9 @@
     @for (entry of dayOf; track entry.label) {
       <li class="entry upcoming">
         <app-icon [name]="entry.icon" />
-        <span class="label">{{ entry.label }} <span class="soon"><app-icon name="clock" />à venir</span></span>
+        <span class="label"
+          >{{ entry.label }} <span class="soon"><app-icon name="clock" />à venir</span></span
+        >
       </li>
     }
   </ul>

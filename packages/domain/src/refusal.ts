@@ -1,0 +1,21 @@
+/**
+ * Codes de refus du domaine, avec leurs paramètres. `contract` déclare la même carte, que l'API
+ * traduit en messages (ADR 0008) ; `application` vérifie à la compilation qu'elles concordent.
+ */
+export type RefusalParams = {
+  'convention-name-required': Record<string, never>;
+  'convention-name-too-long': { max: number };
+};
+
+export type RefusalCode = keyof RefusalParams;
+
+/** Refus d'une règle du domaine : un code et des paramètres, sans texte. */
+export class Refusal<C extends RefusalCode = RefusalCode> extends Error {
+  constructor(
+    readonly code: C,
+    readonly params: RefusalParams[C],
+  ) {
+    super(code);
+    this.name = 'Refusal';
+  }
+}

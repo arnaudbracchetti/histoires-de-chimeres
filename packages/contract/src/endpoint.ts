@@ -18,6 +18,9 @@ export type Endpoint<Res, Params = never, Body = never> = {
 /** Type de la réponse d'un endpoint. */
 export type ResponseOf<E> = E extends Endpoint<infer Res, unknown, unknown> ? Res : never;
 
+/** Type du corps de requête d'un endpoint (`never` s'il n'en a pas). */
+export type BodyOf<E> = E extends Endpoint<unknown, unknown, infer Body> ? Body : never;
+
 export function endpoint<Res, Params = never, Body = never>(
   method: HttpMethod,
   path: string,
@@ -29,6 +32,6 @@ export function endpoint<Res, Params = never, Body = never>(
  * URL d'un endpoint sans paramètre, par exemple `/api/convention`. Elle est absolue : le back
  * office est servi sous `/gestion/`, où une URL relative viserait `/gestion/api/...`.
  */
-export function apiUrl(endpoint: Endpoint<unknown>): string {
+export function apiUrl(endpoint: Endpoint<unknown, never, unknown>): string {
   return `/${API_PREFIX}/${endpoint.path}`;
 }

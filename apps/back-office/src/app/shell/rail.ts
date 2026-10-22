@@ -1,7 +1,7 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { conventionEndpoints } from '@chimeres/contract';
-import { apiResource } from '../api-resource';
+import { ConventionStore } from '../convention/convention-store';
+import { formatConventionDate } from '../convention/convention-date';
 import { Icon } from '../icon';
 import { Loadable } from './loadable';
 
@@ -55,7 +55,8 @@ function storeCollapsed(collapsed: boolean): void {
 export class Rail {
   protected readonly preparation = PREPARATION;
   protected readonly dayOf = DAY_OF;
-  protected readonly convention = apiResource(conventionEndpoints.read);
+  protected readonly convention = inject(ConventionStore).convention;
+  protected readonly formatDate = formatConventionDate;
   protected readonly collapsed = signal(readCollapsed());
 
   constructor() {

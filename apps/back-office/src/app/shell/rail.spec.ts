@@ -72,12 +72,23 @@ describe('Rail', () => {
 
     TestBed.inject(HttpTestingController)
       .expectOne(apiUrl(conventionEndpoints.read))
-      .flush({ id: 'c1', name: 'Histoires de Chimères 2027' });
+      .flush({ id: 'c1', name: 'Histoires de Chimères 2027', date: null });
     await fixture.whenStable();
 
     const convention = host.querySelector<HTMLAnchorElement>('a.convention')!;
     expect(convention.textContent).toContain('Histoires de Chimères 2027');
     expect(convention.textContent).toContain('date à fixer');
     expect(convention.getAttribute('href')).toBe('/creneaux-et-tables');
+  });
+
+  it('affiche la date de la convention en toutes lettres', async () => {
+    const { fixture, host } = render();
+
+    TestBed.inject(HttpTestingController)
+      .expectOne(apiUrl(conventionEndpoints.read))
+      .flush({ id: 'c1', name: 'Histoires de Chimères 2027', date: '2027-03-13' });
+    await fixture.whenStable();
+
+    expect(host.querySelector('a.convention')?.textContent).toContain('samedi 13 mars 2027');
   });
 });

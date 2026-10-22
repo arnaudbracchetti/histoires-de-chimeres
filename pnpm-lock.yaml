@@ -199,6 +199,9 @@ importers:
       '@chimeres/contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@chimeres/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.2.0(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1)
@@ -226,6 +229,9 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.2
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@nestjs/cli':
         specifier: ^12.0.0
