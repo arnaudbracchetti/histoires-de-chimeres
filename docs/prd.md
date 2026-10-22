@@ -127,7 +127,7 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 - **PR-14** Le contenu d'un scénario reste modifiable à tout moment. Sa durée ne se modifie plus dès qu'une partie en est programmée, et on ne peut pas supprimer un scénario qui a des parties.
 - **PR-15** Une disponibilité porte sur un créneau entier, pour le MJ, pas pour un scénario. On ne peut pas retirer une disponibilité sur laquelle le MJ mène une partie.
 - **PR-16** Un scénario appartient à un seul MJ, fixé à sa création.
-- **PR-17** Un Organisateur peut déprogrammer une partie, ou la déplacer sur un autre créneau ou une autre table. Le déplacement respecte les contraintes de PR-5, et la partie garde ses places (PR-4).
+- **PR-17** Un Organisateur peut déprogrammer une partie, la déplacer sur un autre créneau ou une autre table, ou échanger deux parties (chacune prend la place de l'autre). Le déplacement et l'échange respectent les contraintes de PR-5, et chaque partie garde ses places (PR-4).
 
 ### 5.3 Fiche d'une partie (front office)
 

@@ -46,6 +46,10 @@ _Avoid_: Annuler (réservé à la partie sous son minimum, après le tirage)
 **Déplacer une partie** · `moveGame`:
 Action d'un Organisateur qui change le créneau ou la table d'une partie ; elle reste la même partie, avec ses places.
 
+**Échanger deux parties** · `swapGames`:
+Action d'un Organisateur qui met chacune de deux parties à la place de l'autre, en un seul geste ; chacune reste la même partie, avec ses places.
+_Avoid_: Permuter, intervertir
+
 **Programme** · `Schedule`:
 L'ensemble des parties programmées de la convention.
 
