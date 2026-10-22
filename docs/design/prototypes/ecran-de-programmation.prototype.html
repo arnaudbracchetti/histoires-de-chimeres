@@ -1,0 +1,1074 @@
+<!doctype html>
+<html lang="fr">
+<!--
+  PROTOTYPE JETABLE : ne pas reprendre ce code en production.
+  Question : comment un Organisateur programme-t-il les scénarios ? Ticket « Écran de programmation » (#12).
+  Grille créneaux × tables, réserve, partie double, signalement des contraintes de PR-5, places d'une partie
+  (PR-4), déplacer et déprogrammer (PR-17), orientation du calendrier.
+  Trois variantes de la page Calendrier, dans la coquille A « Rail » retenue (#11), basculables par ?variant=A|B|C
+  et par les flèches du clavier (quand rien n'a le focus). Rien n'est enregistré : tout vit en mémoire.
+    A « Grille verticale »    : le temps descend, tables en colonnes ; réserve à droite, remplacée par la fiche de la partie choisie.
+    B « Frise horizontale »   : le temps court vers la droite, une ligne par table ; réserve en bac sous la frise ; bulle sur la partie ; échange par dépôt.
+    C « Créneau par créneau » : bande de la journée en haut ; tables du créneau choisi en lignes denses, places sur la ligne ; réserve du créneau à côté.
+  Gestes communs (tranchés dans #7) : glisser-déposer, cibles valides éclairées, cibles refusées éteintes ;
+  au clavier, Espace prend un élément, les flèches choisissent la cible, Entrée pose, Échap annule ;
+  au menu, « Programmer sur… » et « Déplacer vers… ». Une case libre propose « Programmer ici ».
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Écran de programmation · prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Aldrich&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  --orange: #FC9203;
+  --on-orange: #161818;
+  --focus: #7CC4E4;
+  --ok: #6CC08B;
+  --warn: #E8D25C;
+  --danger: #F07F63;
+  --bg: #151717;
+  --s1: #1B1E1E;
+  --s2: #222525;
+  --s3: #2A2D2D;
+  --line: #313535;
+  --cell-line: #2E3232;
+  --text: #ECEAE6;
+  --text-2: #A9A49E;
+  --engrave: #3A3E3E;
+  --engrave-up: #4A4F4F;
+  --font-title: "Uncial Antiqua", Georgia, serif;
+  --font-caps: "Aldrich", "Arial Narrow", system-ui, sans-serif;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --r-card: 12px;
+  --r-ctl: 8px;
+  --r-thumb: 6px;
+  --halo: 0 0 0 1px var(--orange), 0 0 10px rgba(252, 146, 3, .20);
+  --halo-soft: 0 0 0 1px rgba(252, 146, 3, .45);
+  --pad: 8px;
+  --thumb: 32px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--bg); color: var(--text); font: 13px/1.45 var(--font-ui); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+button { font: inherit; color: inherit; }
+.caps { font-family: var(--font-caps); text-transform: uppercase; letter-spacing: .12em; font-size: .78em; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-2); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.emblem { width: 32px; height: 32px; flex: none; }
+.brand-name { font-family: var(--font-title); font-size: 16px; line-height: 1.1; margin: 0; }
+.btn { font: 600 13px/1 var(--font-ui); border-radius: var(--r-ctl); padding: 9px 12px; min-height: 34px; border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn-sm { padding: 6px 9px; min-height: 28px; font-size: 12px; }
+.btn-primary { background: var(--orange); color: var(--on-orange); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-secondary { background: var(--s3); color: var(--text); border-color: var(--line); }
+.btn-secondary:hover { background: #313535; }
+.btn-ghost { background: transparent; color: var(--orange); border: 0; padding: 6px; cursor: pointer; font-size: 12px; }
+.btn-ghost:hover { text-decoration: underline; }
+.btn-icon { background: transparent; border: 0; color: var(--text-2); padding: 6px; border-radius: var(--r-ctl); cursor: pointer; display: inline-grid; place-items: center; }
+.btn-icon:hover { background: var(--s3); color: var(--text); }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--text-2); background: var(--s3); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+.chip svg.i { width: 12px; height: 12px; }
+.chip.orange { color: var(--orange); }
+.panel { background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-card); min-width: 0; }
+.sec { font-family: var(--font-caps); font-weight: 400; text-transform: uppercase; letter-spacing: .12em; font-size: 12px; color: var(--text-2); margin: 0; }
+.page-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 24px; margin-bottom: 12px; }
+.eyebrow { color: var(--text-2); margin: 0 0 4px; }
+.page-title { font-family: var(--font-title); font-weight: 400; font-size: 26px; line-height: 1.15; margin: 0; }
+.proto-note { font: 12px/1.5 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; color: var(--text-2); border-left: 2px solid var(--s3); padding: 2px 0 2px 10px; margin: 0 0 16px; max-width: 120ch; }
+.hint { display: flex; align-items: center; gap: 8px; min-height: 30px; margin: 0 0 10px; padding: 5px 10px; border-radius: var(--r-ctl); background: var(--s1); border: 1px solid var(--line); color: var(--text-2); font-size: 12.5px; }
+.hint kbd { font: 11px ui-monospace, monospace; background: var(--s3); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; color: var(--text); }
+.hint.ok { color: var(--text); border-color: rgba(252,146,3,.5); }
+.hint.ko { color: var(--text); }
+.hint.ko svg.i { color: var(--danger); }
+.thumbbox { width: var(--thumb); height: var(--thumb); border-radius: var(--r-thumb); overflow: hidden; background: var(--s3); flex: none; }
+.thumbbox img, .thumbbox svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.p-title { margin: 0; font-weight: 650; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.p-meta { margin: 0; color: var(--text-2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seats-txt { color: var(--text-2); font-size: 12px; display: inline-flex; gap: 4px; align-items: center; }
+.seats-txt .mod { color: var(--orange); }
+.double-tag { color: var(--orange); }
+.toast { position: fixed; left: 50%; top: 16px; translate: -50% 0; background: var(--s3); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 8px 8px 8px 14px; z-index: 60; box-shadow: 0 6px 24px rgba(0,0,0,.4); display: flex; gap: 12px; align-items: center; max-width: 80ch; }
+
+/* ---------- Coquille A « Rail » (retenue dans #11) ---------- */
+.shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; }
+.shell.collapsed { grid-template-columns: 60px minmax(0, 1fr); }
+.rail { position: sticky; top: 0; height: 100vh; background: var(--s1); border-right: 1px solid var(--line); display: flex; flex-direction: column; overflow: hidden; }
+.rail .motif-bg { position: absolute; left: -150px; bottom: -150px; width: 360px; height: 360px; color: var(--engrave); opacity: .7; pointer-events: none; }
+.rail-brand { display: flex; align-items: center; gap: 10px; padding: 16px 14px 12px; }
+.rail-fold { margin-left: auto; }
+.rail-conv { margin: 0 10px 8px; padding: 10px; border-radius: var(--r-ctl); background: var(--s2); border: 1px solid var(--line); }
+.rail-conv strong { display: block; font-weight: 650; }
+.rail-conv span { font-size: 12px; color: var(--text-2); }
+.rail nav { flex: 1; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; position: relative; }
+.rail .group { margin: 14px 8px 4px; color: var(--text-2); font-size: 10.5px; }
+.rail a.nav { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r-ctl); color: var(--text); text-decoration: none; position: relative; }
+.rail a.nav:hover { background: var(--s2); }
+.rail a.nav[aria-current=page] { background: var(--s3); color: var(--orange); }
+.rail a.nav[aria-current=page]::before { content: ""; position: absolute; left: -8px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--orange); }
+.rail a.nav.later { color: var(--text-2); }
+.badge-soon { font-size: 10.5px; color: var(--text-2); border: 1px solid var(--line); border-radius: 999px; padding: 1px 6px; margin-left: auto; }
+.rail-user { padding: 12px 14px; border-top: 1px solid var(--line); color: var(--text-2); font-size: 12px; position: relative; display: flex; gap: 8px; align-items: center; }
+.shell.collapsed .brand-name, .shell.collapsed .rail-conv, .shell.collapsed .lbl, .shell.collapsed .badge-soon, .shell.collapsed .rail-user .txt { display: none; }
+.shell.collapsed .rail-brand { flex-direction: column; padding: 14px 0 10px; }
+.shell.collapsed .rail-fold { margin-left: 0; }
+.shell.collapsed .group { font-size: 0; height: 1px; background: var(--line); margin: 10px 6px; }
+.shell.collapsed .rail a.nav { justify-content: center; padding: 10px 0; }
+.main { padding: 20px 24px 96px; min-width: 0; }
+
+/* ---------- Cibles pendant un glisser-déposer ou une prise au clavier ---------- */
+[data-cell] { position: relative; }
+.targeting [data-cell], .targeting [data-slot-tab], .targeting [data-reserve-drop] { transition: opacity .12s, box-shadow .12s, background-color .12s; }
+.targeting [data-cell].t-ok, .targeting [data-slot-tab].t-ok { box-shadow: var(--halo); background-color: color-mix(in srgb, var(--orange) 10%, transparent); border-color: transparent; }
+.targeting [data-cell].t-ok.t-over, .targeting [data-slot-tab].t-ok.t-over { background-color: color-mix(in srgb, var(--orange) 24%, transparent); }
+.targeting [data-cell].t-ko .card, .targeting [data-slot-tab].t-ko { opacity: .38; }
+.targeting [data-cell].t-self { outline: 1px dashed var(--text-2); outline-offset: 2px; }
+.targeting [data-cell].t-swap::after { content: "⇄ Échanger"; position: absolute; right: 6px; top: 6px; font-size: 11px; font-weight: 600; background: var(--orange); color: var(--on-orange); border-radius: 999px; padding: 2px 8px; }
+.why { display: none; font-size: 11px; color: var(--text-2); text-align: center; padding: 4px; line-height: 1.3; }
+.targeting .t-ko > .why { display: block; }
+.why.over { position: absolute; left: 6px; right: 6px; bottom: 6px; background: color-mix(in srgb, var(--s1) 90%, transparent); border-radius: 6px; color: var(--text); }
+.targeting [data-reserve-drop].t-ok { box-shadow: var(--halo); }
+.targeting [data-reserve-drop].t-ok .drop-back { display: flex; }
+.drop-back { display: none; align-items: center; justify-content: center; gap: 6px; border: 1px dashed var(--orange); color: var(--orange); border-radius: var(--r-ctl); padding: 12px; margin-bottom: 8px; font-size: 12px; }
+.dragging { opacity: .45; }
+
+/* Partie (commune) */
+.card { background: var(--s2); border: 1px solid var(--line); border-radius: 8px; padding: var(--pad); overflow: hidden; cursor: grab; min-width: 0; }
+.card:hover { box-shadow: var(--halo-soft); }
+.card.selected { box-shadow: var(--halo); }
+
+/* ================= A : grille verticale ================= */
+.prog-a { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+.cal-scroll { overflow-x: auto; padding: var(--pad); }
+.cal-a { display: grid; gap: 6px; }
+.cal-head { padding: 4px 6px 6px; }
+.cal-head .caps { color: var(--text); }
+.slot-label { padding: 6px 4px; display: flex; flex-direction: column; gap: 2px; border-radius: 8px; background: transparent; border: 0; text-align: left; cursor: pointer; }
+.slot-label:hover { background: var(--s2); }
+.slot-label[aria-pressed=true] { background: var(--s2); box-shadow: inset 3px 0 0 var(--orange); }
+.slot-label .caps { color: var(--text); font-size: 11px; white-space: nowrap; }
+.slot-label .t { color: var(--text-2); font-size: 12px; }
+.slot-label .t-end { margin-top: auto; }
+.pause-a { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; color: var(--text-2); font-size: 12px; padding-inline: 4px; }
+.pause-a::before, .pause-a::after { content: ""; height: 1px; flex: 1; background: repeating-linear-gradient(90deg, var(--s3) 0 6px, transparent 6px 10px); }
+.pause-a::before { flex: 0 0 76px; }
+.cell-empty { border: 1px dashed var(--cell-line); border-radius: 8px; background: transparent; cursor: pointer; display: grid; place-items: center; color: transparent; min-width: 0; }
+.cell-empty:hover { border-color: rgba(252,146,3,.5); color: var(--text-2); }
+.cell-empty .plus { font-size: 12px; display: inline-flex; gap: 4px; align-items: center; }
+.targeting .cell-empty .plus { display: none; }
+.card-a { height: 100%; display: grid; grid-template-columns: var(--thumb) minmax(0, 1fr); grid-template-rows: auto auto 1fr; column-gap: 8px; row-gap: 2px; }
+.card-a .thumbbox { grid-row: 1 / span 2; }
+.card-a .foot { grid-column: 1 / -1; align-self: end; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.side { position: sticky; top: 16px; }
+.reserve { padding: 10px; }
+.reserve-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.seg { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+.seg button { border: 1px solid var(--line); background: transparent; color: var(--text-2); border-radius: 999px; padding: 3px 9px; font-size: 11.5px; cursor: pointer; }
+.seg button[aria-pressed=true] { color: var(--on-orange); background: var(--orange); border-color: var(--orange); }
+.res-item { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px; border-radius: 8px; background: var(--s2); border: 1px solid var(--line); margin-bottom: 6px; cursor: grab; }
+.res-item:hover { box-shadow: var(--halo-soft); }
+.res-item .p-title { font-size: 12.5px; }
+.res-item .p-meta { font-size: 11.5px; white-space: normal; }
+.insp .media { aspect-ratio: 3 / 2; background: var(--s3); border-radius: var(--r-card) var(--r-card) 0 0; overflow: hidden; }
+.insp .media img, .insp .media svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.insp .body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.insp h3 { margin: 0; font-size: 15px; font-weight: 650; line-height: 1.25; }
+.insp dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12.5px; }
+.insp dt { color: var(--text-2); }
+.insp dd { margin: 0; }
+.insp .acts { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Places */
+.seats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.seats input { font: inherit; color: var(--text); background: var(--s3); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 5px 6px; width: 52px; min-height: 30px; text-align: center; }
+.seats .src { width: 100%; font-size: 11.5px; color: var(--text-2); }
+.seats.compact .src { width: auto; }
+
+/* ================= B : frise horizontale ================= */
+.frise { display: grid; gap: 6px 0; }
+.frise .col-head { padding: 4px 8px 6px; display: flex; flex-direction: column; gap: 1px; border-radius: 8px; }
+.frise .col-head .caps { color: var(--text); font-size: 11px; }
+.frise .col-head .t { color: var(--text-2); font-size: 12px; }
+.frise .row-head { display: flex; align-items: center; padding: 0 10px; }
+.frise .row-head .caps { color: var(--text); }
+.frise .pause-b { display: flex; justify-content: center; }
+.frise .pause-b::before { content: ""; width: 1px; height: 100%; background: repeating-linear-gradient(180deg, var(--s3) 0 6px, transparent 6px 10px); }
+.frise .pause-b-head { writing-mode: vertical-rl; rotate: 180deg; color: var(--text-2); font-size: 10.5px; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
+.frise .slot-cell { margin-inline: 3px; }
+.card-b { height: 100%; display: grid; grid-template-columns: var(--thumb) minmax(0, 1fr); column-gap: 8px; align-content: start; row-gap: 2px; }
+.card-b .thumbbox { grid-row: 1 / span 2; }
+.card-b .p-title { -webkit-line-clamp: 1; }
+.card-b .foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px; }
+.tray { margin-top: 16px; padding: 12px; }
+.tray-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-bottom: 10px; }
+.tray-head .seg { margin: 0; }
+.tray-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+.tray-card { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; padding: 8px; border-radius: 8px; background: var(--s2); border: 1px solid var(--line); cursor: grab; align-items: start; }
+.tray-card:hover { box-shadow: var(--halo-soft); }
+.tray-card .thumbbox { width: 64px; height: 43px; }
+.tray-card.out { opacity: .55; cursor: default; }
+.pills { display: inline-flex; gap: 3px; margin-top: 4px; }
+.pills span { min-width: 22px; height: 18px; border-radius: 4px; background: var(--s3); color: var(--text-2); font-size: 10.5px; display: grid; place-items: center; padding: 0 3px; }
+.pills span.r { background: color-mix(in srgb, var(--ok) 22%, var(--s2)); color: var(--ok); }
+.pills span.p { box-shadow: inset 0 0 0 1px var(--orange); color: var(--orange); }
+.pop { position: absolute; z-index: 30; width: 300px; background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: 0 10px 32px rgba(0,0,0,.5); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.pop h3 { margin: 0; font-size: 14px; font-weight: 650; }
+.pop .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ================= C : créneau par créneau ================= */
+.strip { display: flex; align-items: stretch; gap: 0; overflow-x: auto; padding-bottom: 2px; margin-bottom: 14px; }
+.tab-c { flex: 1 1 0; min-width: 170px; text-align: left; background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-card); padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.tab-c:hover { border-color: rgba(252,146,3,.45); }
+.tab-c[aria-selected=true] { background: var(--s2); box-shadow: inset 0 3px 0 var(--orange); border-color: var(--line); }
+.tab-c .caps { color: var(--text); font-size: 11px; }
+.tab-c .t { color: var(--text-2); font-size: 12px; }
+.tab-c .mini { display: flex; gap: 3px; margin-top: 4px; }
+.tab-c .mini span { width: 22px; height: 22px; border-radius: 4px; overflow: hidden; border: 1px dashed var(--cell-line); }
+.tab-c .mini span.on { border: 0; }
+.tab-c .mini span img, .tab-c .mini span svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tab-c .stat { font-size: 11.5px; color: var(--text-2); }
+.pause-c { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 6px; color: var(--text-2); font-size: 10.5px; min-width: 28px; }
+.pause-c .bar { width: 1px; flex: 1; background: repeating-linear-gradient(180deg, var(--s3) 0 6px, transparent 6px 10px); }
+.pause-c span { writing-mode: vertical-rl; rotate: 180deg; padding: 4px 0; white-space: nowrap; }
+.prog-c { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+.rows-c { padding: 4px 8px; }
+.row-c { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 8px 4px; border-bottom: 1px solid var(--line); border-radius: 8px; min-height: 64px; }
+.row-c:last-child { border-bottom: 0; }
+.row-c .tname { font-family: var(--font-caps); text-transform: uppercase; letter-spacing: .12em; font-size: 11px; }
+.row-c .card { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 10px; align-items: center; background: transparent; border: 0; padding: 0; }
+.row-c .card .thumbbox { --thumb: 48px; }
+.row-c .libre { color: var(--text-2); display: flex; align-items: center; gap: 8px; }
+.row-c .acts { display: flex; gap: 2px; }
+.row-c .why { text-align: left; grid-column: 2 / -1; padding: 0; }
+
+/* ---------- Dialogues « Programmer sur… », « Déplacer vers… », « Programmer ici » ---------- */
+dialog { background: var(--s1); color: var(--text); border: 1px solid var(--line); border-radius: var(--r-card); padding: 0; max-width: min(860px, 94vw); box-shadow: 0 16px 48px rgba(0,0,0,.6); }
+dialog::backdrop { background: rgba(0,0,0,.55); }
+.dlg-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.dlg-head h2 { font-family: var(--font-title); font-weight: 400; font-size: 19px; margin: 0; }
+.dlg-head .btn-icon { margin-left: auto; }
+.dlg-body { padding: 14px; overflow: auto; max-height: 70vh; }
+table.place { border-collapse: separate; border-spacing: 4px; }
+table.place th { font: 400 11px var(--font-caps); text-transform: uppercase; letter-spacing: .12em; color: var(--text-2); text-align: left; padding: 4px 6px; white-space: nowrap; }
+table.place td { vertical-align: top; min-width: 112px; }
+table.place .pick { width: 100%; min-height: 42px; justify-content: center; }
+table.place .no { display: block; border: 1px dashed var(--cell-line); border-radius: var(--r-ctl); padding: 6px; font-size: 11px; color: var(--text-2); min-height: 42px; }
+table.place .here { display: block; border: 1px dashed var(--text-2); border-radius: var(--r-ctl); padding: 6px; font-size: 11px; color: var(--text-2); min-height: 42px; text-align: center; }
+.pick-list { display: flex; flex-direction: column; gap: 6px; }
+.pick-sc { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 8px; border-radius: 8px; background: var(--s2); border: 1px solid var(--line); text-align: left; cursor: pointer; }
+.pick-sc:hover { box-shadow: var(--halo-soft); }
+.pick-sc[disabled] { cursor: default; background: transparent; border-style: dashed; }
+.pick-sc[disabled] .p-title { color: var(--text-2); font-weight: 500; }
+.pick-sc .reason { font-size: 11.5px; color: var(--text-2); }
+.dlg-sub { margin: 14px 0 6px; }
+
+/* ---------- Barre de bascule du prototype (hors identité évaluée) ---------- */
+.switcher { position: fixed; left: 50%; bottom: 16px; translate: -50% 0; z-index: 100; display: flex; align-items: center; gap: 6px; padding: 6px; background: #F4F4F4; color: #111; border-radius: 999px; box-shadow: 0 8px 28px rgba(0,0,0,.5); font: 600 13px/1 system-ui, sans-serif; }
+.switcher button { font: inherit; color: #111; background: #E2E2E2; border: 0; border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+.switcher .label { padding: 0 6px; min-width: 210px; text-align: center; }
+.switcher :focus-visible { outline: 2px solid #1A6BB0; outline-offset: 2px; }
+</style>
+<body>
+<div id="app"></div>
+<dialog id="dlg"></dialog>
+<div class="switcher" role="group" aria-label="Variantes du prototype">
+  <button type="button" id="prev" aria-label="Variante précédente">←</button>
+  <span class="label" id="sw-label" aria-live="polite"></span>
+  <button type="button" id="next" aria-label="Variante suivante">→</button>
+  <button type="button" id="reset" title="Remet le programme de démonstration">Réinitialiser</button>
+</div>
+<script>
+function paint(kind) {
+  const c = document.createElement('canvas');
+  c.width = 600; c.height = 400;
+  const g = c.getContext('2d');
+  const sky = (stops) => { const l = g.createLinearGradient(0, 0, 0, 400); stops.forEach(([o, col]) => l.addColorStop(o, col)); g.fillStyle = l; g.fillRect(0, 0, 600, 400); };
+  const disc = (x, y, r, col, blur = 0) => { g.save(); g.shadowColor = col; g.shadowBlur = blur; g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.restore(); };
+  let seed = kind.length * 97;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  if (kind === 'desert') {
+    sky([[0, '#F7E7B4'], [.55, '#F6C46A'], [1, '#E08A3A']]);
+    disc(420, 150, 70, '#FFF6D8', 60);
+    [['#D9893C', 270, 60], ['#C26E2B', 310, 80], ['#A5551F', 350, 70]].forEach(([col, y, a]) => {
+      g.fillStyle = col; g.beginPath(); g.moveTo(0, 400); g.lineTo(0, y);
+      for (let x = 0; x <= 600; x += 20) g.lineTo(x, y - Math.sin(x / 110 + y) * a * .4);
+      g.lineTo(600, 400); g.fill();
+    });
+    g.fillStyle = '#3B2414'; g.fillRect(150, 268, 4, 22); g.fillRect(160, 270, 4, 20);
+  } else if (kind === 'neon') {
+    sky([[0, '#0B0420'], [.6, '#2A0B4A'], [1, '#55127A']]);
+    for (let i = 0; i < 14; i++) {
+      const w = 30 + rnd() * 50, h = 120 + rnd() * 230, x = i * 44 - 10;
+      g.fillStyle = '#0D0A1C'; g.fillRect(x, 400 - h, w, h);
+      for (let y = 400 - h + 10; y < 390; y += 14) for (let xx = x + 6; xx < x + w - 6; xx += 10) if (rnd() > .55) { g.fillStyle = rnd() > .5 ? '#FF3EB5' : '#3EE6FF'; g.fillRect(xx, y, 4, 6); }
+    }
+    g.fillStyle = 'rgba(255, 62, 181, .25)'; g.fillRect(0, 360, 600, 40);
+  } else if (kind === 'foret') {
+    sky([[0, '#C9DDB5'], [.5, '#7FA36B'], [1, '#2C4A2A']]);
+    [['#5E8552', 230, .9], ['#3E6338', 280, 1.1], ['#24402A', 330, 1.4]].forEach(([col, base, s]) => {
+      g.fillStyle = col;
+      for (let x = -20; x < 640; x += 34 * s) { const h = (90 + rnd() * 60) * s; g.beginPath(); g.moveTo(x, base); g.lineTo(x + 18 * s, base - h); g.lineTo(x + 36 * s, base); g.fill(); }
+      g.fillRect(0, base, 600, 400 - base);
+    });
+    g.fillStyle = 'rgba(255, 255, 230, .18)'; g.beginPath(); g.moveTo(380, 0); g.lineTo(460, 0); g.lineTo(300, 400); g.lineTo(180, 400); g.fill();
+  } else if (kind === 'mer') {
+    sky([[0, '#0E2B2B'], [.55, '#1F4F4A'], [1, '#0A1E1E']]);
+    disc(160, 110, 46, '#CFE8C8', 40);
+    for (let y = 250; y < 400; y += 12) { g.strokeStyle = `rgba(160, 220, 200, ${.08 + (y - 250) / 1500})`; g.lineWidth = 2; g.beginPath(); for (let x = 0; x <= 600; x += 10) g.lineTo(x, y + Math.sin(x / 30 + y) * 3); g.stroke(); }
+    g.fillStyle = '#061212'; g.fillRect(470, 140, 22, 120); g.beginPath(); g.moveTo(462, 140); g.lineTo(481, 112); g.lineTo(500, 140); g.fill();
+    g.fillStyle = '#F3E9A0'; g.fillRect(474, 124, 14, 10);
+  } else if (kind === 'chateau') {
+    sky([[0, '#0A1030'], [.7, '#1B2A5A'], [1, '#0B0F22']]);
+    disc(450, 120, 52, '#C9473A', 50);
+    g.fillStyle = '#05070F';
+    g.fillRect(90, 220, 300, 180); [[100, 140], [180, 100], [290, 160], [360, 120]].forEach(([x, y]) => { g.fillRect(x, y, 34, 260); g.beginPath(); g.moveTo(x - 6, y); g.lineTo(x + 17, y - 40); g.lineTo(x + 40, y); g.fill(); });
+    g.fillStyle = '#E8B94A'; [[110, 200], [190, 160], [300, 230], [372, 190]].forEach(([x, y]) => g.fillRect(x, y, 8, 12));
+  } else if (kind === 'port') {
+    sky([[0, '#3A2A4A'], [.45, '#B05A4A'], [.7, '#E39A5A'], [1, '#2A2230']]);
+    g.fillStyle = 'rgba(40, 30, 50, .9)'; g.fillRect(0, 300, 600, 100);
+    g.strokeStyle = '#1A1420'; g.fillStyle = '#1A1420'; g.lineWidth = 4;
+    [[120, 300], [260, 310], [420, 296]].forEach(([x, y]) => { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - 170); g.stroke(); g.beginPath(); g.moveTo(x - 70, y); g.lineTo(x + 80, y); g.lineTo(x + 60, y + 24); g.lineTo(x - 54, y + 24); g.fill(); g.beginPath(); g.moveTo(x + 4, y - 160); g.lineTo(x + 60, y - 40); g.lineTo(x + 4, y - 40); g.fill(); });
+    g.fillStyle = 'rgba(230, 200, 190, .14)'; g.fillRect(0, 270, 600, 40);
+  } else if (kind === 'abysses') {
+    sky([[0, '#1C6E7A'], [.4, '#0E3A4E'], [1, '#03121C']]);
+    g.fillStyle = 'rgba(200, 255, 250, .10)'; [[120, 60], [300, 90], [460, 50]].forEach(([x, w]) => { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + w, 0); g.lineTo(x + w * 2.2, 400); g.lineTo(x + w * .6, 400); g.fill(); });
+    for (let i = 0; i < 40; i++) disc(rnd() * 600, rnd() * 400, 1 + rnd() * 4, 'rgba(220, 255, 255, .35)');
+    g.fillStyle = '#020A10'; g.beginPath(); g.moveTo(0, 400); g.quadraticCurveTo(200, 300, 340, 360); g.quadraticCurveTo(480, 410, 600, 330); g.lineTo(600, 400); g.fill();
+  }
+  return c.toDataURL('image/jpeg', .85);
+}
+const IMG = {};
+['desert', 'neon', 'foret', 'mer', 'chateau', 'port', 'abysses'].forEach((k) => (IMG[k] = paint(k)));
+
+/* ---------- Motif gravé et emblème (SVG calculés) ---------- */
+const pol = (r, a) => [r * Math.cos(a), r * Math.sin(a)];
+const f = (n) => n.toFixed(2);
+function motifSVG({ spiral = true, ticks = true, rings = [18, 34, 52, 70, 88] } = {}) {
+  let s = '';
+  rings.forEach((r, i) => {
+    const dash = i % 2 ? ` stroke-dasharray="${f(r / 6)} ${f(r / 14)}"` : '';
+    s += `<circle cx="0" cy="0" r="${r}" fill="none" stroke="currentColor" stroke-width="${i === rings.length - 1 ? 2.4 : 1.2}"${dash}/>`;
+  });
+  if (ticks) {
+    const r1 = 74, r2 = 84;
+    for (let i = 0; i < 72; i++) {
+      const a = (i / 72) * Math.PI * 2, len = i % 6 === 0 ? r2 + 2 : r2 - 4;
+      const [x1, y1] = pol(r1, a), [x2, y2] = pol(len, a);
+      s += `<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke="currentColor" stroke-width="1"/>`;
+    }
+  }
+  if (spiral) {
+    let d = '';
+    for (let t = 0; t <= Math.PI * 7; t += .08) { const r = 2 + t * 2.3; const [x, y] = pol(r, t); d += (d ? 'L' : 'M') + f(x) + ' ' + f(y); }
+    s += `<path d="${d}" fill="none" stroke="currentColor" stroke-width="1.4"/>`;
+  }
+  return s;
+}
+function webPaths(color, width, { spokes = 8, rings = [14, 26, 38, 50, 61], rOut = 66, center = true } = {}) {
+  let s = '';
+  const step = (Math.PI * 2) / spokes, off = -Math.PI / 2 + step / 2;
+  for (let i = 0; i < spokes; i++) { const [x, y] = pol(rOut, off + i * step); s += `<line x1="0" y1="0" x2="${f(x)}" y2="${f(y)}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>`; }
+  rings.forEach((r) => {
+    let d = '';
+    for (let i = 0; i < spokes; i++) {
+      const a0 = off + i * step, a1 = a0 + step;
+      const [x0, y0] = pol(r, a0), [x1, y1] = pol(r, a1), [cx, cy] = pol(r * .82, a0 + step / 2);
+      d += `${i ? '' : `M${f(x0)} ${f(y0)}`}Q${f(cx)} ${f(cy)} ${f(x1)} ${f(y1)}`;
+    }
+    s += `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linejoin="round"/>`;
+  });
+  if (center) {
+    let d = '';
+    for (let t = 0; t <= Math.PI * 3; t += .15) { const r = .8 + t * .9; const [x, y] = pol(r, t); d += (d ? 'L' : 'M') + f(x) + ' ' + f(y); }
+    s += `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width * .8}" stroke-linecap="round"/>`;
+  }
+  return s;
+}
+function sector(r0, r1, a0, a1) {
+  const [x0, y0] = pol(r1, a0), [x1, y1] = pol(r1, a1), [x2, y2] = pol(r0, a1), [x3, y3] = pol(r0, a0);
+  const large = a1 - a0 > Math.PI ? 1 : 0;
+  return `M${f(x0)} ${f(y0)}A${r1} ${r1} 0 ${large} 1 ${f(x1)} ${f(y1)}L${f(x2)} ${f(y2)}A${r0} ${r0} 0 ${large} 0 ${f(x3)} ${f(y3)}Z`;
+}
+const EMBLEMS = {
+  segments: {
+    name: '1 · Anneau en segments',
+    desc: 'Fidèle au médaillon : un anneau découpé en douze segments, en gris chauds de l\'affiche avec trois segments orange ; la toile orange au centre, sa spirale comprise.',
+    svg: (small) => {
+      const tones = ['#FC9203', '#8C837C', '#5E5852', '#A39A92', '#FC9203', '#6E6862', '#8C837C', '#4E4944', '#FC9203', '#A39A92', '#5E5852', '#7D766F'];
+      let s = '<circle r="96" fill="#161818"/>';
+      const n = 12, gap = small ? .07 : .04;
+      for (let i = 0; i < n; i++) { const a0 = (i / n) * Math.PI * 2 - Math.PI / 2 + gap, a1 = ((i + 1) / n) * Math.PI * 2 - Math.PI / 2 - gap; s += `<path d="${sector(72, 94, a0, a1)}" fill="${tones[i]}"/>`; }
+      s += `<circle r="68" fill="#1E2121"/>`;
+      s += webPaths('#FC9203', small ? 4 : 2.2, small ? { rings: [22, 42, 60], spokes: 6, center: false } : {});
+      return s;
+    },
+  },
+  grave: {
+    name: '2 · Anneau gravé',
+    desc: 'Plus proche du médaillon gris de l\'affiche : un anneau plein orange, gravé de graduations, la toile en gris clair. Lisible en petit, mais l\'orange domine.',
+    svg: (small) => {
+      let s = '<circle r="96" fill="#161818"/>';
+      s += `<path d="${sector(74, 94, 0, Math.PI * 2 - .0001)}" fill="#FC9203"/>`;
+      if (!small) for (let i = 0; i < 48; i++) { const a = (i / 48) * Math.PI * 2; const [x1, y1] = pol(77, a), [x2, y2] = pol(i % 4 ? 84 : 91, a); s += `<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke="#161818" stroke-width="1.6"/>`; }
+      s += webPaths('#C9C2BA', small ? 4.5 : 2, small ? { rings: [24, 46, 64], spokes: 6, center: false } : {});
+      return s;
+    },
+  },
+  trait: {
+    name: '3 · Trait seul',
+    desc: 'Version au trait, monochrome orange, sans disque : pour les petites tailles, l\'icône maskable et les fonds autres que le charbon.',
+    svg: (small) => {
+      let s = `<circle r="${small ? 86 : 88}" fill="none" stroke="#FC9203" stroke-width="${small ? 12 : 7}"/>`;
+      if (!small) s += '<circle r="76" fill="none" stroke="#FC9203" stroke-width="1.5" stroke-dasharray="3 5"/>';
+      s += webPaths('#FC9203', small ? 6 : 2.6, small ? { rings: [26, 50], spokes: 6, rOut: 70, center: false } : { rOut: 70 });
+      return s;
+    },
+  },
+};
+
+/* ---------- Variantes ---------- */
+const VARIANTS = {
+  A: { name: 'Grille verticale', note: "A « Grille verticale » : le temps descend, les tables en colonnes, comme dans la coquille. À droite, la réserve du créneau choisi (clic sur l'étiquette d'un créneau). Cliquer une partie remplace la réserve par sa fiche : places, « Déplacer vers… », « Déprogrammer ». Glisser une partie sur la réserve la déprogramme." },
+  B: { name: 'Frise horizontale', note: "B « Frise horizontale » : le temps court vers la droite, une ligne par table, largeur proportionnelle à la durée, pauses comprises. La réserve est un bac sous la frise, par créneau ou pour tous les scénarios (pastilles : disponible et en réserve, déjà programmé). Cliquer une partie ouvre une bulle. Déposer une partie sur une autre les échange, si les deux placements sont permis." },
+  C: { name: 'Créneau par créneau', note: "C « Créneau par créneau » : une bande de la journée en haut (créneaux, pauses, aperçu des tables). En dessous, les tables du créneau choisi en lignes denses, places modifiables sur la ligne, et la réserve de ce créneau à côté. Déposer une partie sur un créneau de la bande l'y déplace, à la même table si elle est libre." },
+};
+const KEYS = Object.keys(VARIANTS);
+const params = new URLSearchParams(location.search);
+const S = {
+  variant: KEYS.includes(params.get('variant')) ? params.get('variant') : 'A',
+  railCollapsed: false,
+  sel: null,          // A : partie dont la fiche remplace la réserve
+  pop: null,          // B : partie dont la bulle est ouverte
+  resSlot: 1,         // A et C : créneau de la réserve
+  resB: 'all',        // B : filtre du bac
+  pick: null,         // prise au clavier : { sc, gameId }
+  pickFocus: null,
+  drag: null,
+  undo: null,
+};
+
+/* ---------- Données de démonstration (en mémoire) ---------- */
+let DB;
+function load() {
+  DB = {
+    conv: { name: 'Convention 2026', date: '2026-03-21' },
+    slots: [{ start: '10:00', end: '12:30' }, { start: '14:00', end: '16:30' }, { start: '16:45', end: '19:15' }, { start: '20:30', end: '23:00' }],
+    tables: ['Table 1', 'Table 2', 'Table 3', 'Table 4', 'Bibliothèque'],
+    mjs: [
+      { id: 'ombrelune', pseudo: 'Ombrelune', dispo: [1, 2, 3] },
+      { id: 'kairos', pseudo: 'Kaïros', dispo: [1, 2, 4] },
+      { id: 'fougere', pseudo: 'Fougère', dispo: [1, 3] },
+      { id: 'tarasque', pseudo: 'Tarasque', dispo: [2, 3, 4] },
+      { id: 'lapinou', pseudo: 'Lapinou', dispo: [2] },
+      { id: 'sirocco', pseudo: 'Sirocco', dispo: [1, 2, 3, 4] },
+      { id: 'nocturne', pseudo: 'Nocturne', dispo: [3, 4] },
+      { id: 'brindille', pseudo: 'Brindille', dispo: [] },
+    ],
+    scs: [
+      { id: 'masques', title: 'Les Masques de Nyarlathotep : prologue', system: "L'Appel de Cthulhu", mj: 'ombrelune', img: 'mer', min: 3, max: 5 },
+      { id: 'surface', title: 'Sous la surface', system: "L'Appel de Cthulhu", mj: 'ombrelune', img: 'abysses', min: 3, max: 5 },
+      { id: 'neons', title: 'Néons sur Neo-Paris', system: 'Cyberpunk RED', mj: 'kairos', img: 'neon', min: 3, max: 4 },
+      { id: 'cartes', title: 'Cartes sur table', system: 'Fiasco', mj: 'kairos', img: null, min: 3, max: 4 },
+      { id: 'foret', title: 'La Forêt qui chuchote', system: 'Ryuutama', mj: 'fougere', img: 'foret', min: 2, max: 4 },
+      { id: 'siege', title: 'Le Siège de Port-Brume', system: 'Donjons & Dragons 5e', mj: 'tarasque', img: 'port', min: 4, max: 6, double: true },
+      { id: 'reine', title: 'Thé chez la Reine Rouge', system: 'Wonderland No More', mj: 'lapinou', img: null, min: 3, max: 5 },
+      { id: 'desert', title: 'Le Désert des Mille Soleils', system: 'Chroniques Oubliées', mj: 'sirocco', img: 'desert', min: 3, max: 5 },
+      { id: 'caravane', title: 'La Caravane perdue', system: 'Chroniques Oubliées', mj: 'sirocco', img: null, min: 4, max: 5, double: true },
+      { id: 'bal', title: 'Le Bal des Ombres', system: 'Vampire : la Mascarade', mj: 'nocturne', img: 'chateau', min: 4, max: 6 },
+      { id: 'velours', title: 'Velours et poignards', system: 'Vampire : la Mascarade', mj: 'nocturne', img: null, min: 3, max: 5 },
+      { id: 'lanternes', title: 'Les Lanternes de Brume', system: 'Brigandyne', mj: 'brindille', img: null, min: 3, max: 5 },
+    ],
+    games: [
+      { id: 'g1', sc: 'masques', slot: 1, table: 0 },
+      { id: 'g2', sc: 'neons', slot: 1, table: 1 },
+      { id: 'g3', sc: 'foret', slot: 1, table: 4, seats: { min: 2, max: 3 } },
+      { id: 'g4', sc: 'siege', slot: 2, table: 1 },
+      { id: 'g5', sc: 'reine', slot: 2, table: 4 },
+      { id: 'g6', sc: 'surface', slot: 3, table: 0 },
+      { id: 'g7', sc: 'bal', slot: 4, table: 2 },
+      { id: 'g8', sc: 'neons', slot: 4, table: 0, seats: { min: 3, max: 5 } },
+    ],
+  };
+}
+load();
+
+const mjOf = (id) => DB.mjs.find((m) => m.id === id);
+const scOf = (id) => DB.scs.find((s) => s.id === id);
+const gameOf = (id) => DB.games.find((g) => g.id === id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const mins = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const dur = (s) => mins(s.end) - mins(s.start);
+const gapAfter = (i) => (i < DB.slots.length - 1 ? mins(DB.slots[i + 1].start) - mins(DB.slots[i].end) : 0);
+const fmtGap = (m) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${String(m % 60).padStart(2, '0')}` : ''}` : `${m} min`);
+const covers = (g) => (scOf(g.sc).double ? [g.slot, g.slot + 1] : [g.slot]);
+const gameAt = (n, t, games = DB.games) => games.find((g) => g.table === t && covers(g).includes(n));
+const seatsOf = (g) => g.seats || { min: scOf(g.sc).min, max: scOf(g.sc).max };
+const slotsTxt = (g) => (scOf(g.sc).double ? `créneaux ${g.slot} et ${g.slot + 1}` : `créneau ${g.slot}`);
+const uniq = (a) => [...new Set(a)];
+
+/* Réserve d'un créneau (PR-6) : le MJ y est disponible et n'y mène aucune partie (et sur le suivant pour un double) */
+function inReserve(sc, n) {
+  const m = mjOf(sc.mj);
+  if (sc.double && n + 1 > DB.slots.length) return false;
+  const need = sc.double ? [n, n + 1] : [n];
+  return need.every((k) => m.dispo.includes(k) && !DB.games.some((g) => scOf(g.sc).mj === m.id && covers(g).includes(k)));
+}
+const reserve = (n) => DB.scs.filter((sc) => inReserve(sc, n));
+
+/* Contraintes de programmation (PR-5), vérifiées pour un scénario posé sur (créneau n, table t) */
+function check(games, sc, n, t) {
+  const out = [], m = mjOf(sc.mj);
+  if (sc.double && n + 1 > DB.slots.length) out.push({ short: 'Pas de créneau suivant', long: "Une partie double occupe deux créneaux consécutifs : il n'y a pas de créneau après celui-ci." });
+  (sc.double ? [n, n + 1] : [n]).filter((k) => k <= DB.slots.length).forEach((k) => {
+    const occ = gameAt(k, t, games);
+    if (occ) out.push({ short: 'Table prise', long: `${DB.tables[t]} est prise sur le créneau ${k} par « ${scOf(occ.sc).title} ».` });
+    if (!m.dispo.includes(k)) out.push({ short: 'MJ indisponible', long: `${m.pseudo} n'est pas disponible sur le créneau ${k}.` });
+    const busy = games.find((g) => scOf(g.sc).mj === m.id && covers(g).includes(k));
+    if (busy) out.push({ short: 'MJ déjà occupé', long: `${m.pseudo} mène déjà « ${scOf(busy.sc).title} » sur le créneau ${k}.` });
+  });
+  return out;
+}
+/* Verdict d'une cible pour l'élément tenu : { sc, gameId? } */
+function verdict(item, n, t) {
+  const sc = scOf(item.sc);
+  const self = item.gameId && gameOf(item.gameId);
+  if (self && self.slot === n && self.table === t) return { self: true, reasons: [] };
+  const others = DB.games.filter((g) => g.id !== item.gameId);
+  const reasons = check(others, sc, n, t);
+  if (!reasons.length) return { ok: true, reasons };
+  // B : déposer une partie sur une autre les échange, si les deux placements sont permis
+  if (S.variant === 'B' && self) {
+    const occ = gameAt(n, t, others);
+    if (occ && occ.slot === n) {
+      const rest = others.filter((g) => g.id !== occ.id);
+      const moved = { ...self, slot: n, table: t };
+      if (!check(rest, sc, n, t).length && !check([...rest, moved], scOf(occ.sc), self.slot, self.table).length) return { ok: true, swap: occ, reasons: [] };
+    }
+  }
+  return { ok: false, reasons };
+}
+function bestTable(item, n) {
+  const self = item.gameId && gameOf(item.gameId);
+  if (self && verdict(item, n, self.table).ok) return self.table;
+  const t = DB.tables.findIndex((_, i) => verdict(item, n, i).ok);
+  return t < 0 ? null : t;
+}
+
+/* ---------- Commandes (en mémoire) ---------- */
+function snapshot() { S.undo = JSON.stringify(DB.games); }
+function performAt(item, n, t) {
+  const v = verdict(item, n, t);
+  if (v.self) return;
+  if (!v.ok) { toast(v.reasons.map((r) => r.long).join(' ')); return; }
+  snapshot();
+  const sc = scOf(item.sc);
+  if (v.swap) {
+    const a = gameOf(item.gameId), b = v.swap, pos = { slot: a.slot, table: a.table };
+    Object.assign(a, { slot: b.slot, table: b.table }); Object.assign(b, pos);
+    toast(`« ${sc.title} » et « ${scOf(b.sc).title} » échangées.`, true);
+  } else if (item.gameId) {
+    Object.assign(gameOf(item.gameId), { slot: n, table: t });
+    toast(`« ${sc.title} » déplacée : ${slotsTxt(gameOf(item.gameId))}, ${DB.tables[t]}.`, true);
+  } else {
+    const g = { id: 'g' + Date.now(), sc: sc.id, slot: n, table: t };
+    DB.games.push(g);
+    toast(`« ${sc.title} » programmée : ${slotsTxt(g)}, ${DB.tables[t]}.`, true);
+  }
+  render();
+}
+function unschedule(id) {
+  const g = gameOf(id);
+  if (!g) return;
+  snapshot();
+  DB.games = DB.games.filter((x) => x.id !== id);
+  if (S.sel === id) S.sel = null;
+  if (S.pop === id) S.pop = null;
+  toast(`« ${scOf(g.sc).title} » déprogrammée : le scénario retourne à la réserve.`, true);
+  render();
+}
+
+/* ---------- Icônes (traits façon Lucide) ---------- */
+const IC = {
+  cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  book: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+  grid: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>',
+  activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  idcard: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M15 10h3M15 14h3M6 17c.5-1.5 1.7-2 3-2s2.5.5 3 2"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  panel: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/>',
+  move: '<path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>',
+  undo: '<path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/>',
+  pencil: '<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+  ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
+  hand: '<path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+};
+const ic = (k) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[k]}</svg>`;
+
+function initialOf(title) {
+  const t = title.replace(/^(le|la|les|un|une|des)\s+/i, '').replace(/^l['’]\s*/i, '');
+  return t.charAt(0).toLocaleUpperCase('fr');
+}
+function thumb(sc, wide = false) {
+  if (sc.img) return `<img src="${IMG[sc.img]}" alt="">`;
+  const vb = wide ? '-150 -100 300 200' : '-100 -100 200 200';
+  return `<svg viewBox="${vb}" preserveAspectRatio="xMidYMid slice" style="background: var(--s3); color: var(--engrave-up)" aria-hidden="true">${motifSVG({ spiral: false, ticks: false, rings: [30, 60, 90] })}<text x="0" y="4" text-anchor="middle" dominant-baseline="central" font-family="Uncial Antiqua" font-size="${wide ? 110 : 120}" fill="#8C837C">${esc(initialOf(sc.title))}</text></svg>`;
+}
+const emblem = () => `<svg class="emblem" viewBox="-100 -100 200 200" role="img" aria-label="Emblème des Tisseurs de Chimères">${EMBLEMS.segments.svg(true)}</svg>`;
+
+/* ---------- Morceaux communs ---------- */
+function seatsTxt(g) {
+  const s = seatsOf(g);
+  return `<span class="seats-txt num">${s.min} à ${s.max} places${g.seats ? ` <span class="mod" title="Places modifiées par un Organisateur (scénario : ${scOf(g.sc).min} à ${scOf(g.sc).max})">${ic('pencil')}<span class="sr-only">modifiées</span></span>` : ''}</span>`;
+}
+function seatsForm(g, compact = false) {
+  const sc = scOf(g.sc), s = seatsOf(g);
+  return `<form class="seats${compact ? ' compact' : ''}" data-action="seats" data-game="${g.id}">
+    ${compact ? '' : '<span class="muted">Places</span>'}
+    <input type="number" name="min" min="1" value="${s.min}" class="num" aria-label="Places minimum">
+    <span class="muted">à</span>
+    <input type="number" name="max" min="1" value="${s.max}" class="num" aria-label="Places maximum">
+    <button class="btn btn-secondary btn-sm" aria-label="Enregistrer les places" title="Enregistrer">${ic('check')}</button>
+    <span class="src">${g.seats
+      ? `Modifiées · scénario : ${sc.min} à ${sc.max} <button type="button" class="btn-ghost" data-action="reset-seats" data-game="${g.id}">Revenir à celles du scénario</button>`
+      : 'Celles du scénario : elles suivent ses changements'}</span></form>`;
+}
+function resItem(sc, n) {
+  const other = DB.games.filter((g) => g.sc === sc.id);
+  return `<div class="res-item" draggable="true" data-drag data-sc="${sc.id}" tabindex="0" aria-label="${esc(sc.title)}, en réserve. Espace pour prendre, Entrée pour Programmer sur…">
+    <div class="thumbbox">${thumb(sc)}</div>
+    <div style="min-width: 0"><p class="p-title">${esc(sc.title)}</p><p class="p-meta">${esc(mjOf(sc.mj).pseudo)} · ${sc.min} à ${sc.max} places${sc.double ? ' · <span class="double-tag">double</span>' : ''}${other.length ? ` · déjà programmé (${other.map((g) => `C${covers(g).join('–')}`).join(', ')})` : ''}</p></div>
+    <button class="btn-icon" data-action="place" data-sc="${sc.id}" title="Programmer sur…" aria-label="Programmer « ${esc(sc.title)} » sur…">${ic('plus')}</button></div>`;
+}
+const dropBack = () => `<div class="drop-back">${ic('undo')} Déposer ici pour déprogrammer</div>`;
+const hintIdle = () => `${ic('hand')}<span>Glisse un scénario de la réserve sur une case, ou une partie vers une autre case. Clavier : <kbd>Espace</kbd> prend, <kbd>↑↓←→</kbd> choisissent, <kbd>Entrée</kbd> pose, <kbd>Échap</kbd> annule.</span>`;
+
+/* ================= A : grille verticale ================= */
+function renderA() {
+  const T = DB.tables.length;
+  const rows = ['auto'];
+  DB.slots.forEach((s, i) => { rows.push(`${dur(s) * 0.72}px`); if (i < DB.slots.length - 1) rows.push(gapAfter(i) > 0 ? '26px' : '6px'); });
+  const rowOf = (n) => 2 * n;
+  let h = `<div class="cal-a" style="grid-template-columns: 92px repeat(${T}, minmax(150px, 1fr)); grid-template-rows: ${rows.join(' ')}; min-width: ${92 + T * 156}px">`;
+  DB.tables.forEach((t, i) => (h += `<div class="cal-head" style="grid-row: 1; grid-column: ${i + 2}"><span class="caps">${esc(t)}</span></div>`));
+  DB.slots.forEach((s, i) => {
+    const n = i + 1, r = rowOf(n);
+    h += `<button class="slot-label" data-action="res-slot" data-n="${n}" aria-pressed="${S.resSlot === n}" title="Voir la réserve du créneau ${n}" style="grid-row: ${r}; grid-column: 1"><span class="caps">Créneau ${n}</span><span class="t num">${s.start}</span><span class="t t-end num">${s.end}</span></button>`;
+    if (gapAfter(i) > 0) h += `<div class="pause-a" style="grid-row: ${r + 1}">Pause · ${s.end} – ${DB.slots[i + 1].start}</div>`;
+    DB.tables.forEach((_, t) => {
+      const g = DB.games.find((x) => x.slot === n && x.table === t);
+      if (!g && gameAt(n, t)) return; // second créneau d'une partie double
+      if (g) {
+        const sc = scOf(g.sc), m = mjOf(sc.mj);
+        h += `<div data-cell data-slot="${n}" data-table="${t}" style="grid-row: ${r} / span ${sc.double ? 3 : 1}; grid-column: ${t + 2}; min-width: 0; border-radius: 8px">
+          <article class="card card-a${S.sel === g.id ? ' selected' : ''}" draggable="true" data-drag data-game="${g.id}" data-sc="${sc.id}" tabindex="0" aria-label="${esc(sc.title)}, ${slotsTxt(g)}, ${esc(DB.tables[t])}. Entrée pour la fiche, Espace pour la prendre.">
+          <div class="thumbbox">${thumb(sc)}</div><p class="p-title">${esc(sc.title)}</p><p class="p-meta">${esc(sc.system)} · ${esc(m.pseudo)}</p>
+          <div class="foot">${seatsTxt(g)}${sc.double ? '<span class="chip double-tag">Partie double</span>' : ''}</div></article><span class="why over"></span></div>`;
+      } else {
+        h += `<button class="cell-empty" data-cell data-action="cell" data-slot="${n}" data-table="${t}" style="grid-row: ${r}; grid-column: ${t + 2}" aria-label="Créneau ${n}, ${esc(DB.tables[t])} : libre. Programmer ici…"><span class="plus">${ic('plus')} Programmer ici</span><span class="why"></span></button>`;
+      }
+    });
+  });
+  h += '</div>';
+  const side = S.sel && gameOf(S.sel) ? inspector(gameOf(S.sel)) : reserveA();
+  return `<p class="hint" id="hint" aria-live="polite">${hintIdle()}</p><div class="prog-a"><div class="panel cal-scroll">${h}</div><div class="side">${side}</div></div>`;
+}
+function reserveA() {
+  const n = S.resSlot, items = reserve(n);
+  return `<aside class="panel reserve" data-reserve-drop tabindex="-1" aria-label="Réserve du créneau ${n}">${dropBack()}
+    <div class="reserve-head"><h2 class="sec">Réserve</h2><span class="muted" style="font-size: 11.5px">${items.length} scénario${items.length > 1 ? 's' : ''}</span></div>
+    <div class="seg">${DB.slots.map((_, i) => `<button data-action="res-slot" data-n="${i + 1}" aria-pressed="${i + 1 === n}">Créneau ${i + 1}</button>`).join('')}</div>
+    ${items.map((sc) => resItem(sc, n)).join('') || '<p class="muted" style="margin: 0; font-size: 12px">Aucun scénario disponible sur ce créneau.</p>'}</aside>`;
+}
+function inspector(g) {
+  const sc = scOf(g.sc), m = mjOf(sc.mj);
+  return `<aside class="panel insp" data-reserve-drop tabindex="-1" aria-label="Partie « ${esc(sc.title)} »"><div class="media">${thumb(sc, true)}</div>
+    <div class="body">${dropBack()}<div style="display: flex; gap: 8px; align-items: start"><h3 style="flex: 1">${esc(sc.title)}</h3><button class="btn-icon" data-action="close-sel" aria-label="Fermer la fiche, revenir à la réserve" title="Revenir à la réserve">${ic('x')}</button></div>
+    <dl><dt>Jeu</dt><dd>${esc(sc.system)}</dd><dt>MJ</dt><dd>${esc(m.pseudo)}</dd><dt>Créneau</dt><dd>${slotsTxt(g).replace(/^c/, 'C')}${sc.double ? ' <span class="chip double-tag">Partie double</span>' : ''}</dd><dt>Table</dt><dd>${esc(DB.tables[g.table])}</dd></dl>
+    ${seatsForm(g)}
+    <div class="acts"><button class="btn btn-secondary btn-sm" data-action="move" data-game="${g.id}">${ic('move')} Déplacer vers…</button><button class="btn btn-secondary btn-sm" data-action="unschedule" data-game="${g.id}">${ic('undo')} Déprogrammer</button></div></div></aside>`;
+}
+
+/* ================= B : frise horizontale ================= */
+function renderB() {
+  const cols = ['112px'], colOf = {};
+  DB.slots.forEach((s, i) => {
+    cols.push(`minmax(${Math.round(dur(s) * 1.2)}px, ${dur(s)}fr)`); colOf[i + 1] = cols.length;
+    if (i < DB.slots.length - 1) cols.push(gapAfter(i) >= 60 ? '30px' : gapAfter(i) > 0 ? '16px' : '4px');
+  });
+  const T = DB.tables.length;
+  let h = `<div class="frise" style="grid-template-columns: ${cols.join(' ')}; grid-template-rows: auto repeat(${T}, 86px)">`;
+  DB.slots.forEach((s, i) => {
+    const n = i + 1;
+    h += `<div class="col-head" style="grid-row: 1; grid-column: ${colOf[n]}"><span class="caps">Créneau ${n}</span><span class="t num">${s.start} – ${s.end}</span></div>`;
+    if (i < DB.slots.length - 1 && gapAfter(i) > 0) {
+      h += `<div class="pause-b-head" style="grid-row: 1; grid-column: ${colOf[n] + 1}" title="Pause · ${s.end} – ${DB.slots[i + 1].start}">${gapAfter(i) >= 60 ? `Pause ${fmtGap(gapAfter(i))}` : ''}</div>`;
+      h += `<div class="pause-b" style="grid-row: 2 / span ${T}; grid-column: ${colOf[n] + 1}" aria-hidden="true"></div>`;
+    }
+  });
+  DB.tables.forEach((tn, t) => {
+    const r = t + 2;
+    h += `<div class="row-head" style="grid-row: ${r}; grid-column: 1"><span class="caps">${esc(tn)}</span></div>`;
+    DB.slots.forEach((_, i) => {
+      const n = i + 1, g = DB.games.find((x) => x.slot === n && x.table === t);
+      if (!g && gameAt(n, t)) return;
+      if (g) {
+        const sc = scOf(g.sc), m = mjOf(sc.mj), span = sc.double ? colOf[n + 1] - colOf[n] + 1 : 1;
+        h += `<div class="slot-cell" data-cell data-slot="${n}" data-table="${t}" style="grid-row: ${r}; grid-column: ${colOf[n]} / span ${span}; min-width: 0; border-radius: 8px">
+          <article class="card card-b${S.pop === g.id ? ' selected' : ''}" draggable="true" data-drag data-game="${g.id}" data-sc="${sc.id}" tabindex="0" aria-label="${esc(sc.title)}, ${slotsTxt(g)}, ${esc(tn)}. Entrée pour la bulle, Espace pour la prendre.">
+          <div class="thumbbox">${thumb(sc)}</div><p class="p-title">${esc(sc.title)}</p><p class="p-meta">${esc(sc.system)} · ${esc(m.pseudo)}</p>
+          <div class="foot">${seatsTxt(g)}${sc.double ? '<span class="chip double-tag">Partie double</span>' : ''}</div></article><span class="why over"></span></div>`;
+      } else {
+        h += `<button class="cell-empty slot-cell" data-cell data-action="cell" data-slot="${n}" data-table="${t}" style="grid-row: ${r}; grid-column: ${colOf[n]}" aria-label="Créneau ${n}, ${esc(tn)} : libre. Programmer ici…"><span class="plus">${ic('plus')} Programmer ici</span><span class="why"></span></button>`;
+      }
+    });
+  });
+  h += '</div>';
+  return `<p class="hint" id="hint" aria-live="polite">${hintIdle()}</p><div class="panel cal-scroll">${h}</div>${trayB()}${S.pop && gameOf(S.pop) ? popB(gameOf(S.pop)) : ''}`;
+}
+function trayB() {
+  const f = S.resB;
+  let items;
+  if (f === 'all') {
+    items = DB.scs.map((sc) => {
+      const pills = DB.slots.map((_, i) => {
+        const n = i + 1, prog = DB.games.some((g) => g.sc === sc.id && covers(g).includes(n)), res = inReserve(sc, n);
+        return `<span class="${prog ? 'p' : res ? 'r' : ''}" title="Créneau ${n} : ${prog ? 'programmé' : res ? 'en réserve' : 'impossible (MJ indisponible ou occupé)'}">${n}</span>`;
+      }).join('');
+      const any = DB.slots.some((_, i) => inReserve(sc, i + 1));
+      const nb = DB.games.filter((g) => g.sc === sc.id).length;
+      return `<div class="tray-card${any ? '' : ' out'}" ${any ? `draggable="true" data-drag data-sc="${sc.id}" tabindex="0"` : ''} aria-label="${esc(sc.title)}"><div class="thumbbox">${thumb(sc, true)}</div>
+        <div style="min-width: 0"><p class="p-title" style="font-size: 12.5px">${esc(sc.title)}</p><p class="p-meta">${esc(mjOf(sc.mj).pseudo)} · ${sc.min} à ${sc.max} places${sc.double ? ' · <span class="double-tag">double</span>' : ''}</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center"><span class="pills" aria-label="Créneaux">${pills}</span>${nb ? `<span class="chip">${nb} partie${nb > 1 ? 's' : ''}</span>` : ''}${any ? `<button class="btn-icon" data-action="place" data-sc="${sc.id}" title="Programmer sur…" aria-label="Programmer « ${esc(sc.title)} » sur…">${ic('plus')}</button>` : '<span class="p-meta">aucun créneau possible</span>'}</div></div></div>`;
+    }).join('');
+  } else {
+    const n = +f;
+    items = reserve(n).map((sc) => {
+      const other = DB.games.filter((g) => g.sc === sc.id);
+      return `<div class="tray-card" draggable="true" data-drag data-sc="${sc.id}" tabindex="0" aria-label="${esc(sc.title)}"><div class="thumbbox">${thumb(sc, true)}</div>
+        <div style="min-width: 0"><p class="p-title" style="font-size: 12.5px">${esc(sc.title)}</p><p class="p-meta">${esc(mjOf(sc.mj).pseudo)} · ${sc.min} à ${sc.max} places${sc.double ? ' · <span class="double-tag">double</span>' : ''}</p>
+        ${other.length ? `<p class="p-meta">déjà programmé (${other.map((g) => `C${covers(g).join('–')}`).join(', ')})</p>` : ''}</div></div>`;
+    }).join('') || '<p class="muted" style="margin: 0">Aucun scénario disponible sur ce créneau.</p>';
+  }
+  return `<section class="panel tray" data-reserve-drop tabindex="-1" aria-label="Réserve">${dropBack()}<div class="tray-head"><h2 class="sec">Réserve</h2>
+    <div class="seg">${DB.slots.map((_, i) => `<button data-action="res-b" data-f="${i + 1}" aria-pressed="${f === String(i + 1)}">Créneau ${i + 1} · ${reserve(i + 1).length}</button>`).join('')}<button data-action="res-b" data-f="all" aria-pressed="${f === 'all'}">Tous les scénarios</button></div>
+    ${f === 'all' ? '<span class="muted" style="font-size: 11.5px">Pastilles : <span class="pills"><span class="r">n</span></span> en réserve · <span class="pills"><span class="p">n</span></span> programmé</span>' : ''}</div>
+    <div class="tray-items">${items}</div></section>`;
+}
+function popB(g) {
+  const sc = scOf(g.sc);
+  return `<div class="pop" id="pop" role="dialog" aria-label="Partie « ${esc(sc.title)} »"><div style="display: flex; gap: 8px"><h3 style="flex: 1">${esc(sc.title)}</h3><button class="btn-icon" data-action="close-pop" aria-label="Fermer">${ic('x')}</button></div>
+    <p class="p-meta" style="margin: -6px 0 0">${esc(mjOf(sc.mj).pseudo)} · ${slotsTxt(g)} · ${esc(DB.tables[g.table])}</p>
+    ${seatsForm(g)}<div class="acts"><button class="btn btn-secondary btn-sm" data-action="move" data-game="${g.id}">${ic('move')} Déplacer vers…</button><button class="btn btn-secondary btn-sm" data-action="unschedule" data-game="${g.id}">${ic('undo')} Déprogrammer</button></div></div>`;
+}
+
+/* ================= C : créneau par créneau ================= */
+function renderC() {
+  const n = Math.min(S.resSlot, DB.slots.length);
+  let strip = '<div class="strip" role="tablist" aria-label="Créneaux de la journée">';
+  DB.slots.forEach((s, i) => {
+    const k = i + 1, used = DB.tables.filter((_, t) => gameAt(k, t)).length;
+    const mini = DB.tables.map((tn, t) => { const g = gameAt(k, t); return `<span class="${g ? 'on' : ''}" title="${esc(tn)}${g ? ` : ${esc(scOf(g.sc).title)}` : ' : libre'}">${g ? thumb(scOf(g.sc)) : ''}</span>`; }).join('');
+    strip += `<button class="tab-c" role="tab" aria-selected="${k === n}" data-action="res-slot" data-n="${k}" data-slot-tab="${k}"><span class="caps">Créneau ${k}</span><span class="t num">${s.start} – ${s.end}</span>
+      <span class="mini" aria-hidden="true">${mini}</span><span class="stat">${used} / ${DB.tables.length} tables · ${reserve(k).length} en réserve</span></button>`;
+    if (i < DB.slots.length - 1) strip += `<div class="pause-c" aria-hidden="true"><span class="bar"></span>${gapAfter(i) > 0 ? `<span>Pause ${fmtGap(gapAfter(i))}</span>` : '<span>bout à bout</span>'}<span class="bar"></span></div>`;
+  });
+  strip += '</div>';
+  const rows = DB.tables.map((tn, t) => {
+    const g = gameAt(n, t);
+    if (g) {
+      const sc = scOf(g.sc), m = mjOf(sc.mj), part = sc.double ? (g.slot === n ? ` · <span class="double-tag">partie double, 1/2 (suite au créneau ${n + 1})</span>` : ` · <span class="double-tag">partie double, 2/2 (commencée au créneau ${n - 1})</span>`) : '';
+      return `<div class="row-c" data-cell data-slot="${n}" data-table="${t}"><span class="tname">${esc(tn)}</span>
+        <article class="card" draggable="true" data-drag data-game="${g.id}" data-sc="${sc.id}" tabindex="0" aria-label="${esc(sc.title)}, ${slotsTxt(g)}, ${esc(tn)}. Espace pour la prendre."><div class="thumbbox">${thumb(sc)}</div>
+        <div style="min-width: 0"><p class="p-title">${esc(sc.title)}</p><p class="p-meta" style="white-space: normal">${esc(sc.system)} · ${esc(m.pseudo)}${part}</p></div></article>
+        ${seatsForm(g, true)}
+        <div class="acts"><button class="btn-icon" data-action="move" data-game="${g.id}" title="Déplacer vers…" aria-label="Déplacer « ${esc(sc.title)} » vers…">${ic('move')}</button><button class="btn-icon" data-action="unschedule" data-game="${g.id}" title="Déprogrammer" aria-label="Déprogrammer « ${esc(sc.title)} »">${ic('undo')}</button></div>
+        <span class="why"></span></div>`;
+    }
+    return `<div class="row-c" data-cell data-slot="${n}" data-table="${t}"><span class="tname">${esc(tn)}</span><span class="libre">Libre</span><span></span>
+      <div class="acts"><button class="btn btn-secondary btn-sm" data-action="cell" data-slot="${n}" data-table="${t}">${ic('plus')} Programmer ici…</button></div><span class="why"></span></div>`;
+  }).join('');
+  const items = reserve(n);
+  const res = `<aside class="panel reserve" data-reserve-drop tabindex="-1" aria-label="Réserve du créneau ${n}">${dropBack()}<div class="reserve-head"><h2 class="sec">Réserve · créneau ${n}</h2><span class="muted" style="font-size: 11.5px">${items.length}</span></div>
+    ${items.map((sc) => resItem(sc, n)).join('') || '<p class="muted" style="margin: 0; font-size: 12px">Aucun scénario disponible sur ce créneau.</p>'}</aside>`;
+  return `<p class="hint" id="hint" aria-live="polite">${hintIdle()}</p>${strip}<div class="prog-c"><div class="panel rows-c" role="tabpanel" aria-label="Tables du créneau ${n}">${rows}</div><div class="side">${res}</div></div>`;
+}
+
+/* ---------- Coquille ---------- */
+function render() {
+  const nav = [['Calendrier', 'cal', true], ['MJ', 'users'], ['Scénarios', 'book'], ['Créneaux et tables', 'grid']];
+  const later = [['Pilotage du jour J', 'activity'], ['Participants', 'idcard']];
+  const navItem = ([l, i, cur], soon) => `<a class="nav${soon ? ' later' : ''}" href="#" data-action="nav-soon" ${cur ? 'aria-current="page"' : ''} ${S.railCollapsed ? `title="${l}" aria-label="${l}"` : ''}>${ic(i)}<span class="lbl">${l}</span>${soon ? '<span class="badge-soon">à venir</span>' : ''}</a>`;
+  const body = S.variant === 'A' ? renderA() : S.variant === 'B' ? renderB() : renderC();
+  document.getElementById('app').innerHTML = `<div class="shell${S.railCollapsed ? ' collapsed' : ''}"><aside class="rail"><svg class="motif-bg" viewBox="-100 -100 200 200" aria-hidden="true">${motifSVG()}</svg>
+    <div class="rail-brand">${emblem()}<p class="brand-name">Histoires de Chimères</p><button class="btn-icon rail-fold" data-action="fold" aria-expanded="${!S.railCollapsed}" aria-label="${S.railCollapsed ? 'Déplier le menu' : 'Replier le menu'}">${ic('panel')}</button></div>
+    <div class="rail-conv"><strong>${esc(DB.conv.name)}</strong><span>samedi 21 mars 2026</span></div>
+    <nav aria-label="Back office"><span class="group caps">Préparation</span>${nav.map((x) => navItem(x)).join('')}<span class="group caps">Jour J</span>${later.map((x) => navItem(x, true)).join('')}</nav>
+    <div class="rail-user">${ic('user')}<span class="txt">Organisateur<br><span style="font-size: 11px">sans authentification</span></span></div></aside>
+    <main class="main"><p class="proto-note">${VARIANTS[S.variant].note}</p><div class="page-head"><div><p class="eyebrow caps">Accueil</p><h1 class="page-title">Calendrier</h1></div></div>${body}</main></div>`;
+  document.getElementById('sw-label').textContent = `${S.variant} · ${VARIANTS[S.variant].name}`;
+  if (S.variant === 'B' && S.pop) placePop();
+  if (S.pick) {
+    applyTargets(S.pick);
+    const app = document.getElementById('app');
+    const el = (S.pickFocus && app.querySelector(S.pickFocus)) || app.querySelector('.t-ok') || app.querySelector('.t-self') || targetsList()[0];
+    if (el) { el.tabIndex = el.tabIndex < 0 ? -1 : el.tabIndex; el.focus(); hintFor(el); }
+  }
+}
+function placePop() {
+  const card = document.querySelector(`[data-game="${S.pop}"]`), pop = document.getElementById('pop');
+  if (!card || !pop) return;
+  const r = card.getBoundingClientRect();
+  pop.style.top = `${r.bottom + window.scrollY + 6}px`;
+  pop.style.left = `${Math.min(r.left + window.scrollX, window.innerWidth - 320)}px`;
+}
+
+/* ---------- Cibles : glisser-déposer et prise au clavier ---------- */
+const targetsList = () => [...document.querySelectorAll('#app [data-cell], #app [data-reserve-drop], #app [data-slot-tab]')];
+function targetVerdict(item, el) {
+  if (el.hasAttribute('data-reserve-drop')) return item.gameId ? { ok: true, back: true, reasons: [] } : { ok: false, reasons: [{ short: '', long: 'Ce scénario est déjà dans la réserve.' }] };
+  if (el.hasAttribute('data-slot-tab')) {
+    const n = +el.dataset.slotTab, t = bestTable(item, n);
+    if (t != null) return { ok: true, n, t, reasons: [] };
+    return { ok: false, reasons: [{ short: '', long: `Aucune table ne convient sur le créneau ${n} : ${uniq(DB.tables.flatMap((_, i) => verdict(item, n, i).reasons.map((r) => r.short.toLowerCase()))).join(', ')}.` }] };
+  }
+  const n = +el.dataset.slot, t = +el.dataset.table;
+  return { ...verdict(item, n, t), n, t };
+}
+function applyTargets(item) {
+  document.getElementById('app').classList.add('targeting');
+  targetsList().forEach((el) => {
+    const v = targetVerdict(item, el);
+    el.classList.toggle('t-ok', !!v.ok);
+    el.classList.toggle('t-ko', !v.ok && !v.self);
+    el.classList.toggle('t-self', !!v.self);
+    el.classList.toggle('t-swap', !!v.swap);
+    const w = el.querySelector(':scope > .why');
+    if (w) w.textContent = v.ok || v.self ? '' : uniq(v.reasons.map((r) => r.short)).join(' · ');
+    if (!el.hasAttribute('tabindex') && el.tagName !== 'BUTTON') el.tabIndex = -1;
+  });
+  const src = item.gameId ? document.querySelector(`[data-game="${item.gameId}"]`) : document.querySelector(`[data-drag][data-sc="${item.sc}"]:not([data-game])`);
+  if (src) src.classList.add('dragging');
+}
+function clearTargets() {
+  document.getElementById('app').classList.remove('targeting');
+  document.querySelectorAll('.t-ok, .t-ko, .t-self, .t-swap, .t-over, .dragging').forEach((el) => el.classList.remove('t-ok', 't-ko', 't-self', 't-swap', 't-over', 'dragging'));
+  setHint();
+}
+function setHint(kind = '', html = '') {
+  const h = document.getElementById('hint');
+  if (!h) return;
+  h.className = `hint ${kind}`;
+  h.innerHTML = html || hintIdle();
+}
+function hintFor(el) {
+  const item = S.drag || S.pick;
+  if (!item || !el) return;
+  const v = targetVerdict(item, el), sc = scOf(item.sc);
+  if (el.hasAttribute('data-reserve-drop')) return setHint(v.ok ? 'ok' : 'ko', v.ok ? `${ic('undo')}<span>Déprogrammer « ${esc(sc.title)} » : le scénario retourne à la réserve.</span>` : `${ic('ban')}<span>${v.reasons[0].long}</span>`);
+  if (v.self) return setHint('', `${ic('hand')}<span>Place actuelle de « ${esc(sc.title)} ».</span>`);
+  const where = `créneau ${v.n}${sc.double ? ` et ${v.n + 1}` : ''}, ${esc(DB.tables[v.t] ?? '')}`;
+  if (v.swap) return setHint('ok', `${ic('check')}<span>Échanger « ${esc(sc.title)} » et « ${esc(scOf(v.swap.sc).title)} ».</span>`);
+  if (v.ok) return setHint('ok', `${ic('check')}<span>${item.gameId ? 'Déplacer' : 'Programmer'} « ${esc(sc.title)} » : ${where}.</span>`);
+  setHint('ko', `${ic('ban')}<span>${v.reasons.map((r) => esc(r.long)).join(' ')}</span>`);
+}
+function dropOn(item, el) {
+  const v = targetVerdict(item, el);
+  if (v.self) return;
+  if (!v.ok) { toast(v.reasons.map((r) => r.long).join(' ')); return; }
+  if (v.back) unschedule(item.gameId);
+  else performAt(item, v.n, v.t);
+}
+const itemFrom = (el) => ({ sc: el.dataset.sc, gameId: el.dataset.game || null });
+const selectorOf = (el) => (el.hasAttribute('data-reserve-drop') ? '[data-reserve-drop]' : el.hasAttribute('data-slot-tab') ? `[data-slot-tab="${el.dataset.slotTab}"]` : `[data-cell][data-slot="${el.dataset.slot}"][data-table="${el.dataset.table}"]`);
+
+document.addEventListener('dragstart', (e) => {
+  const src = e.target.closest('[data-drag]');
+  if (!src) return;
+  S.drag = itemFrom(src);
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', src.dataset.game || src.dataset.sc);
+  setTimeout(() => applyTargets(S.drag), 0);
+  setHint('', `${ic('hand')}<span>« ${esc(scOf(S.drag.sc).title)} » : les cases éclairées l'acceptent ; survole une case éteinte pour savoir pourquoi.</span>`);
+});
+let overEl = null;
+document.addEventListener('dragover', (e) => {
+  if (!S.drag) return;
+  const el = e.target.closest('[data-cell], [data-reserve-drop], [data-slot-tab]');
+  if (el !== overEl) {
+    overEl?.classList.remove('t-over');
+    overEl = el;
+    if (el) { el.classList.add('t-over'); hintFor(el); }
+  }
+  if (el && el.classList.contains('t-ok')) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+});
+document.addEventListener('drop', (e) => {
+  const el = e.target.closest('[data-cell], [data-reserve-drop], [data-slot-tab]');
+  if (!S.drag || !el) return;
+  e.preventDefault();
+  const item = S.drag;
+  S.drag = null; overEl = null;
+  dropOn(item, el);
+});
+document.addEventListener('dragend', () => { S.drag = null; overEl = null; clearTargets(); });
+
+/* ---------- Dialogues ---------- */
+const dlg = document.getElementById('dlg');
+function openPlaceDialog(item) {
+  const sc = scOf(item.sc), g = item.gameId && gameOf(item.gameId);
+  S.dlgItem = item;
+  const head = DB.tables.map((t) => `<th scope="col">${esc(t)}</th>`).join('');
+  const body = DB.slots.map((s, i) => {
+    const n = i + 1;
+    return `<tr><th scope="row">Créneau ${n}<br><span class="num" style="text-transform: none; letter-spacing: 0">${s.start} – ${s.end}</span></th>${DB.tables.map((tn, t) => {
+      const v = verdict(item, n, t);
+      if (v.self) return `<td><span class="here">Place actuelle</span></td>`;
+      if (v.ok) return `<td><button class="btn btn-secondary pick" data-action="do-place" data-n="${n}" data-t="${t}" aria-label="Créneau ${n}${sc.double ? ` et ${n + 1}` : ''}, ${esc(tn)}">${v.swap ? '⇄ Échanger' : 'Choisir'}</button></td>`;
+      return `<td><span class="no" title="${esc(v.reasons.map((r) => r.long).join(' '))}">${uniq(v.reasons.map((r) => r.short)).join('<br>')}</span></td>`;
+    }).join('')}</tr>`;
+  }).join('');
+  dlg.innerHTML = `<div class="dlg-head"><div class="thumbbox">${thumb(sc)}</div><h2>${g ? 'Déplacer' : 'Programmer'} « ${esc(sc.title)} » ${g ? 'vers' : 'sur'}…</h2><button class="btn-icon" data-action="close-dlg" aria-label="Fermer">${ic('x')}</button></div>
+    <div class="dlg-body"><p class="muted" style="margin: 0 0 10px">${esc(mjOf(sc.mj).pseudo)}${sc.double ? ' · partie double : on choisit le premier créneau, elle occupe aussi le suivant à la même table' : ''}. Une case éteinte dit pourquoi elle refuse (survol pour le détail).</p>
+    <table class="place"><thead><tr><td></td>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  dlg.showModal();
+}
+function openCellDialog(n, t) {
+  S.dlgCell = { n, t };
+  const rows = DB.scs.map((sc) => ({ sc, v: verdict({ sc: sc.id }, n, t) }));
+  const ok = rows.filter((r) => r.v.ok), ko = rows.filter((r) => !r.v.ok);
+  const line = ({ sc, v }) => `<button class="pick-sc" ${v.ok ? `data-action="do-cell" data-sc="${sc.id}"` : 'disabled'}><div class="thumbbox">${thumb(sc)}</div>
+    <div style="min-width: 0"><p class="p-title">${esc(sc.title)}</p><p class="p-meta">${esc(mjOf(sc.mj).pseudo)} · ${sc.min} à ${sc.max} places${sc.double ? ' · double' : ''}${DB.games.some((g) => g.sc === sc.id) ? ' · déjà programmé' : ''}</p>${v.ok ? '' : `<p class="reason">${v.reasons.map((r) => esc(r.long)).join(' ')}</p>`}</div>${v.ok ? `<span class="chip orange">${ic('plus')} Programmer</span>` : ''}</button>`;
+  dlg.innerHTML = `<div class="dlg-head"><h2>Créneau ${n} · ${esc(DB.tables[t])}</h2><button class="btn-icon" data-action="close-dlg" aria-label="Fermer">${ic('x')}</button></div>
+    <div class="dlg-body" style="width: min(620px, 90vw)"><h3 class="sec" style="margin: 0 0 6px">Programmables ici · ${ok.length}</h3><div class="pick-list">${ok.map(line).join('') || '<p class="muted">Aucun scénario.</p>'}</div>
+    <h3 class="sec dlg-sub">Non programmables ici · ${ko.length}</h3><div class="pick-list">${ko.map(line).join('')}</div></div>`;
+  dlg.showModal();
+}
+
+/* ---------- Événements ---------- */
+let toastTimer;
+function toast(msg, undo = false) {
+  document.querySelector('.toast')?.remove();
+  const t = document.createElement('div');
+  t.className = 'toast'; t.setAttribute('role', 'status');
+  t.innerHTML = `<span>${esc(msg)}</span>${undo ? `<button class="btn btn-secondary btn-sm" data-action="undo">${ic('undo')} Annuler</button>` : ''}`;
+  document.body.append(t);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), undo ? 6000 : 4000);
+}
+function setVariant(k) { S.variant = k; S.sel = null; S.pop = null; S.pick = null; const u = new URL(location.href); u.searchParams.set('variant', k); history.replaceState(null, '', u); render(); }
+const cycle = (d) => setVariant(KEYS[(KEYS.indexOf(S.variant) + d + KEYS.length) % KEYS.length]);
+document.getElementById('prev').onclick = () => cycle(-1);
+document.getElementById('next').onclick = () => cycle(1);
+document.getElementById('reset').onclick = () => { load(); S.sel = S.pop = S.pick = null; render(); toast('Programme de démonstration remis.'); };
+
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-action]');
+  const card = e.target.closest('article[data-game]');
+  if (S.variant === 'B' && S.pop && !e.target.closest('#pop') && !card && !e.target.closest('dialog')) { S.pop = null; render(); }
+  if (!a && card && !S.pick) {
+    if (S.variant === 'A') { S.sel = card.dataset.game; render(); }
+    if (S.variant === 'B') { S.pop = card.dataset.game; render(); }
+    return;
+  }
+  if (!a) return;
+  const act = a.dataset.action;
+  if (act === 'nav-soon') { e.preventDefault(); toast('Hors de ce prototype : seule la page Calendrier est simulée.'); }
+  if (act === 'fold') { S.railCollapsed = !S.railCollapsed; render(); }
+  if (act === 'res-slot') { S.resSlot = +a.dataset.n; render(); }
+  if (act === 'res-b') { S.resB = a.dataset.f; render(); }
+  if (act === 'close-sel') { S.sel = null; render(); }
+  if (act === 'close-pop') { S.pop = null; render(); }
+  if (act === 'place') { e.stopPropagation(); openPlaceDialog({ sc: a.dataset.sc }); }
+  if (act === 'move') { const g = gameOf(a.dataset.game); openPlaceDialog({ sc: g.sc, gameId: g.id }); }
+  if (act === 'unschedule') unschedule(a.dataset.game);
+  if (act === 'cell' && !S.pick) openCellDialog(+a.dataset.slot, +a.dataset.table);
+  if (act === 'close-dlg') dlg.close();
+  if (act === 'do-place') { dlg.close(); performAt(S.dlgItem, +a.dataset.n, +a.dataset.t); }
+  if (act === 'do-cell') { dlg.close(); performAt({ sc: a.dataset.sc }, S.dlgCell.n, S.dlgCell.t); }
+  if (act === 'undo') { if (S.undo) { DB.games = JSON.parse(S.undo); S.undo = null; S.sel = S.sel && gameOf(S.sel) ? S.sel : null; render(); toast('Annulé.'); } }
+  if (act === 'reset-seats') { const g = gameOf(a.dataset.game); snapshot(); delete g.seats; render(); toast(`Places de « ${scOf(g.sc).title} » : celles du scénario.`, true); }
+});
+document.addEventListener('submit', (e) => {
+  const f = e.target;
+  if (f.dataset.action !== 'seats') return;
+  e.preventDefault();
+  const g = gameOf(f.dataset.game), min = +f.min.value, max = +f.max.value, sc = scOf(g.sc);
+  if (!(min >= 1 && min <= max)) { toast('Places refusées : il faut 1 ≤ minimum ≤ maximum.'); return; }
+  snapshot();
+  if (min === sc.min && max === sc.max) delete g.seats; else g.seats = { min, max };
+  render();
+  toast(`Places de « ${sc.title} » : ${min} à ${max}${g.seats ? ', modifiées' : ', celles du scénario'}.`, true);
+});
+document.addEventListener('focusin', (e) => {
+  if (!S.pick) return;
+  const el = e.target.closest('[data-cell], [data-reserve-drop], [data-slot-tab]');
+  if (el) { S.pickFocus = selectorOf(el); hintFor(el); }
+});
+function moveFocus(dir) {
+  const cur = document.activeElement.closest('[data-cell], [data-reserve-drop], [data-slot-tab]');
+  const list = targetsList();
+  if (!cur) { list[0]?.focus(); return; }
+  const r0 = cur.getBoundingClientRect(), c0 = [r0.left + r0.width / 2, r0.top + r0.height / 2];
+  let best = null, score = Infinity;
+  list.forEach((el) => {
+    if (el === cur) return;
+    const r = el.getBoundingClientRect(), c = [r.left + r.width / 2, r.top + r.height / 2];
+    const dx = c[0] - c0[0], dy = c[1] - c0[1];
+    const [p, s] = dir === 'ArrowRight' ? [dx, dy] : dir === 'ArrowLeft' ? [-dx, dy] : dir === 'ArrowDown' ? [dy, dx] : [-dy, dx];
+    if (p <= 4) return;
+    const sc = p + Math.abs(s) * 2;
+    if (sc < score) { score = sc; best = el; }
+  });
+  best?.focus();
+}
+document.addEventListener('keydown', (e) => {
+  if (dlg.open) return;
+  const typing = e.target.closest('input, textarea, select, [contenteditable]');
+  if (S.pick) {
+    if (e.key === 'Escape') { e.preventDefault(); S.pick = null; S.pickFocus = null; render(); setHint(); return; }
+    if (e.key.startsWith('Arrow')) { e.preventDefault(); moveFocus(e.key); return; }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      const el = document.activeElement.closest('[data-cell], [data-reserve-drop], [data-slot-tab]');
+      if (!el) return;
+      const v = targetVerdict(S.pick, el);
+      if (!v.ok && !v.self) { toast(v.reasons.map((r) => r.long).join(' ')); return; }
+      const item = S.pick;
+      S.pick = null; S.pickFocus = null;
+      clearTargets();
+      if (v.self) render(); else dropOn(item, el);
+      return;
+    }
+    return;
+  }
+  if (typing) return;
+  const src = e.target.closest('[data-drag]');
+  if (src && e.key === ' ') { e.preventDefault(); S.pick = itemFrom(src); S.pickFocus = null; render(); return; }
+  if (src && e.key === 'Enter') {
+    e.preventDefault();
+    if (!src.dataset.game) openPlaceDialog(itemFrom(src));
+    else if (S.variant === 'A') { S.sel = src.dataset.game; render(); }
+    else if (S.variant === 'B') { S.pop = src.dataset.game; render(); }
+    else openPlaceDialog(itemFrom(src));
+    return;
+  }
+  if (e.key === 'Escape' && (S.pop || S.sel)) { S.pop = null; S.sel = null; render(); return; }
+  const free = document.activeElement === document.body || e.target.closest('.switcher');
+  if (free && e.key === 'ArrowLeft') cycle(-1);
+  if (free && e.key === 'ArrowRight') cycle(1);
+});
+window.addEventListener('resize', () => S.pop && placePop());
+
+render();
+</script>
+</body>
+</html>
