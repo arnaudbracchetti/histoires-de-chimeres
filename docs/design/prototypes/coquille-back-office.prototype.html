@@ -1,0 +1,888 @@
+<!doctype html>
+<html lang="fr" data-variant="A">
+<!--
+  PROTOTYPE JETABLE : ne pas reprendre ce code en production.
+  Question : comment s'organise le back office ? Sections, navigation, coquille
+  (en-tête, convention en cours, utilisateur), place du jour J et des participants,
+  écrans d'un MJ restreignables à lui seul. Ticket « Coquille du back office :
+  architecture de l'information et navigation » (#11).
+  Trois variantes de coquille, déclinaison A « Atelier », basculables par ?variant=A|B|C
+  et par les flèches du clavier. ?donnees=vide montre la convention telle que la crée
+  la migration. Rien n'est enregistré : tout vit en mémoire.
+    A « Rail »             : rail latéral permanent, une page par concept, l'espace d'un MJ est une page.
+    B « Onglets et vue »   : onglets en haut, et un sélecteur « Vue » qui restreint tout le back office à un MJ.
+    C « Tout au calendrier » : pas de pages, le calendrier occupe l'écran, le reste s'ouvre en panneaux latéraux.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coquille du back office · prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Aldrich&display=swap">
+<style>
+:root {
+  color-scheme: dark;
+  --orange: #FC9203;
+  --on-orange: #161818;
+  --focus: #7CC4E4;
+  --ok: #6CC08B;
+  --warn: #E8D25C;
+  --danger: #F07F63;
+  --danger-fill: #B23A26;
+  --bg: #151717;
+  --s1: #1B1E1E;
+  --s2: #222525;
+  --s3: #2A2D2D;
+  --line: #313535;
+  --cell-line: #2E3232;
+  --text: #ECEAE6;
+  --text-2: #A9A49E;
+  --engrave: #3A3E3E;
+  --engrave-up: #4A4F4F;
+  --caps-grey: #8C837C;
+  --font-title: "Uncial Antiqua", Georgia, serif;
+  --font-caps: "Aldrich", "Arial Narrow", system-ui, sans-serif;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --r-card: 12px;
+  --r-ctl: 8px;
+  --r-thumb: 6px;
+  --halo: 0 0 0 1px var(--orange), 0 0 10px rgba(252, 146, 3, .20);
+  --halo-soft: 0 0 0 1px rgba(252, 146, 3, .45);
+  --min-px: .8px;
+  --pad: 8px;
+  --fs: 13px;
+  --thumb: 32px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: var(--fs)/1.45 var(--font-ui); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+a { color: var(--orange); }
+button { font: inherit; color: inherit; }
+.caps { font-family: var(--font-caps); text-transform: uppercase; letter-spacing: .12em; font-size: .78em; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-2); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- Éléments communs ---------- */
+.emblem { width: 32px; height: 32px; flex: none; }
+.brand-name { font-family: var(--font-title); font-size: 19px; line-height: 1.1; margin: 0; white-space: nowrap; }
+.btn { font: 600 13px/1 var(--font-ui); border-radius: var(--r-ctl); padding: 9px 12px; min-height: 34px; border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; text-decoration: none; }
+.btn-primary { background: var(--orange); color: var(--on-orange); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-secondary { background: var(--s3); color: var(--text); border-color: var(--line); }
+.btn-secondary:hover { background: #313535; }
+.btn-ghost { background: transparent; color: var(--orange); padding-inline: 6px; }
+.btn-icon { background: transparent; border: 0; color: var(--text-2); padding: 6px; border-radius: var(--r-ctl); cursor: pointer; display: inline-grid; place-items: center; }
+.btn-icon:hover { background: var(--s3); color: var(--text); }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--text-2); background: var(--s3); border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
+.chip.on { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, var(--s2)); }
+.chip.orange { color: var(--orange); }
+.badge-soon { font-size: 10.5px; color: var(--text-2); border: 1px solid var(--line); border-radius: 999px; padding: 1px 6px; margin-left: auto; white-space: nowrap; }
+.user-chip { display: inline-flex; align-items: center; gap: 8px; color: var(--text-2); font-size: 12px; }
+.user-chip .av { width: 26px; height: 26px; border-radius: 50%; background: var(--s3); display: grid; place-items: center; color: var(--text); }
+.panel { background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-card); min-width: 0; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 12px; color: var(--text-2); }
+input[type=text], input[type=time], input[type=date] { font: inherit; color: var(--text); background: var(--s3); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 7px 9px; min-height: 34px; }
+input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+
+/* En-tête de page */
+.page-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 24px; margin-bottom: 16px; }
+.eyebrow { color: var(--text-2); margin: 0 0 4px; }
+.page-title { font-family: var(--font-title); font-weight: 400; font-size: 26px; line-height: 1.15; margin: 0; }
+.crumbs { display: flex; gap: 6px; align-items: center; color: var(--text-2); margin: 0 0 4px; font-size: 12px; }
+.crumbs a { color: var(--text-2); text-decoration: none; }
+.crumbs a:hover { color: var(--orange); }
+h2.sec { font-family: var(--font-caps); font-weight: 400; text-transform: uppercase; letter-spacing: .12em; font-size: 12px; color: var(--text-2); margin: 0 0 10px; }
+section.block + section.block { margin-top: 24px; }
+
+/* Tableaux denses */
+table.list { width: 100%; border-collapse: collapse; }
+table.list th { text-align: left; font: 400 11px var(--font-caps); text-transform: uppercase; letter-spacing: .12em; color: var(--text-2); padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.list td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.list tr:last-child td { border-bottom: 0; }
+table.list tbody tr[data-href] { cursor: pointer; }
+table.list tbody tr[data-href]:hover { background: var(--s2); }
+.cell-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.cell-title strong { font-weight: 650; }
+.mini-thumb { width: 32px; height: 32px; border-radius: var(--r-thumb); overflow: hidden; flex: none; background: var(--s3); }
+.mini-thumb img, .mini-thumb svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* État vide : un seuil, le motif gravé y a sa place */
+.empty-state { position: relative; overflow: hidden; background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-card); padding: 40px 32px; min-height: 260px; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+.empty-state .motif { position: absolute; right: -90px; top: 50%; translate: 0 -50%; width: 380px; height: 380px; color: var(--engrave); pointer-events: none; }
+.empty-state > :not(.motif) { position: relative; max-width: 52ch; }
+.empty-state h2 { font-family: var(--font-title); font-weight: 400; font-size: 22px; margin: 0; }
+.empty-state p { margin: 0; color: var(--text-2); }
+
+/* Placeholder des sections à venir */
+.soon { border: 1px dashed var(--line); border-radius: var(--r-card); padding: 24px; color: var(--text-2); }
+.soon h2 { font-family: var(--font-title); font-weight: 400; font-size: 20px; margin: 0 0 8px; color: var(--text); }
+.soon ul { margin: 8px 0 0; padding-left: 18px; }
+
+/* ---------- Calendrier ---------- */
+.prog { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; align-items: start; }
+.prog.no-reserve { grid-template-columns: minmax(0, 1fr); }
+.cal-scroll { overflow-x: auto; padding: var(--pad); }
+.cal { display: grid; gap: 6px; }
+.cal-head { padding: 4px 6px 6px; display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.cal-head .caps { color: var(--text); }
+.slot-label { padding: 6px 4px; display: flex; flex-direction: column; gap: 2px; border-radius: 8px; }
+.slot-label .caps { color: var(--text); font-size: 11px; white-space: nowrap; }
+.slot-label .t { color: var(--text-2); font-size: 12px; }
+.slot-label .t-end { margin-top: auto; }
+.slot-label .dispo { font-size: 10.5px; }
+.pause { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; color: var(--text-2); font-size: 12px; padding-inline: 4px; }
+.pause::before, .pause::after { content: ""; height: 1px; flex: 1; background: repeating-linear-gradient(90deg, var(--s3) 0 6px, transparent 6px 10px); }
+.pause::before { flex: 0 0 76px; }
+.cell { border-radius: 8px; min-width: 0; }
+.cell.empty { border: 1px dashed var(--cell-line); }
+.cell.empty.unavailable { background: repeating-linear-gradient(135deg, transparent 0 6px, rgba(255,255,255,.025) 6px 12px); }
+.partie { height: 100%; background: var(--s2); border: 1px solid var(--line); border-radius: 8px; padding: var(--pad); display: grid; grid-template-columns: var(--thumb) minmax(0, 1fr); grid-template-rows: auto 1fr auto; column-gap: 8px; row-gap: 2px; overflow: hidden; cursor: grab; }
+.partie:hover { box-shadow: var(--halo-soft); }
+.partie.dim { opacity: .32; }
+.partie.mine { box-shadow: var(--halo); }
+.partie .thumb { grid-row: 1 / span 2; width: var(--thumb); height: var(--thumb); border-radius: var(--r-thumb); overflow: hidden; background: var(--s3); }
+.partie .thumb img, .partie .thumb svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.p-title { margin: 0; font-weight: 650; font-size: 1em; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.p-meta { margin: 0; color: var(--text-2); font-size: .88em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p-foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin-top: 4px; color: var(--text-2); font-size: 12px; }
+.double-tag { color: var(--orange); }
+.add-col, .add-row { border: 1px dashed var(--line); border-radius: 8px; background: transparent; color: var(--text-2); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12px; }
+.add-col:hover, .add-row:hover { color: var(--orange); border-color: rgba(252,146,3,.5); }
+.reserve { padding: 10px; }
+.reserve-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+.reserve-tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+.reserve-tabs button { border: 1px solid var(--line); background: transparent; color: var(--text-2); border-radius: 999px; padding: 3px 9px; font-size: 11.5px; cursor: pointer; }
+.reserve-tabs button[aria-pressed=true] { color: var(--on-orange); background: var(--orange); border-color: var(--orange); }
+.reserve-item { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px; border-radius: 8px; background: var(--s2); border: 1px solid var(--line); margin-bottom: 6px; cursor: grab; }
+.reserve-item .p-meta { font-size: 11.5px; }
+
+/* Cartes de scénario (espace MJ) */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.sc-card { background: var(--s2); border: 1px solid var(--line); border-radius: var(--r-card); overflow: hidden; }
+.sc-card .media { aspect-ratio: 3 / 2; background: var(--s3); }
+.sc-card .media img, .sc-card .media svg { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sc-card .body { padding: 10px; display: flex; flex-direction: column; gap: 4px; }
+.sc-card h3 { margin: 0; font-size: 14px; font-weight: 650; line-height: 1.25; }
+.sc-card.new { border-style: dashed; background: transparent; display: grid; place-items: center; min-height: 160px; color: var(--text-2); cursor: pointer; }
+.sc-card.new:hover { color: var(--orange); }
+.dispo-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+.dispo-toggle { display: flex; flex-direction: column; gap: 2px; min-width: 150px; text-align: left; padding: 10px 12px; border-radius: var(--r-ctl); border: 1px solid var(--line); background: var(--s2); cursor: pointer; }
+.dispo-toggle[aria-pressed=true] { border-color: color-mix(in srgb, var(--ok) 60%, transparent); background: color-mix(in srgb, var(--ok) 10%, var(--s2)); }
+.dispo-toggle .st { font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 4px; }
+.dispo-toggle[aria-pressed=true] .st { color: var(--ok); }
+.dispo-toggle[disabled] { cursor: not-allowed; }
+.mj-pill { display: inline-flex; gap: 3px; }
+.mj-pill span { width: 22px; height: 18px; border-radius: 4px; background: var(--s3); color: var(--text-2); font-size: 10.5px; display: grid; place-items: center; }
+.mj-pill span.on { background: color-mix(in srgb, var(--ok) 22%, var(--s2)); color: var(--ok); }
+.toast { position: fixed; left: 50%; top: 16px; translate: -50% 0; background: var(--s3); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 8px 14px; z-index: 50; box-shadow: 0 6px 24px rgba(0,0,0,.4); }
+.proto-note { font: 12px/1.5 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; color: var(--text-2); border-left: 2px solid var(--s3); padding: 2px 0 2px 10px; margin: 0 0 16px; max-width: 110ch; }
+
+/* ================= Variante A : rail latéral ================= */
+.shell-a { display: grid; grid-template-columns: 244px minmax(0, 1fr); min-height: 100vh; }
+.rail { position: sticky; top: 0; height: 100vh; background: var(--s1); border-right: 1px solid var(--line); display: flex; flex-direction: column; overflow: hidden; }
+.rail .motif-bg { position: absolute; left: -150px; bottom: -150px; width: 360px; height: 360px; color: var(--engrave); opacity: .7; pointer-events: none; }
+.rail-brand { display: flex; align-items: center; gap: 10px; padding: 16px 14px 12px; }
+.rail-brand .brand-name { font-size: 16px; white-space: normal; }
+.rail-conv { margin: 0 10px 8px; padding: 10px; border-radius: var(--r-ctl); background: var(--s2); border: 1px solid var(--line); text-decoration: none; color: inherit; display: block; }
+.rail-conv:hover { border-color: rgba(252,146,3,.45); }
+.rail-conv strong { display: block; font-weight: 650; }
+.rail-conv span { font-size: 12px; color: var(--text-2); }
+.rail nav { flex: 1; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; position: relative; }
+.rail .group { margin: 14px 8px 4px; color: var(--text-2); font-size: 10.5px; }
+.rail a.nav { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--r-ctl); color: var(--text); text-decoration: none; position: relative; }
+.rail a.nav:hover { background: var(--s2); }
+.rail a.nav[aria-current=page] { background: var(--s3); color: var(--orange); }
+.rail a.nav[aria-current=page]::before { content: ""; position: absolute; left: -8px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--orange); }
+.rail a.nav.later { color: var(--text-2); }
+.rail a.nav .count { margin-left: auto; font-size: 11.5px; color: var(--text-2); }
+.rail-user { padding: 12px 14px; border-top: 1px solid var(--line); position: relative; }
+.main-a { padding: 20px 28px 96px; min-width: 0; }
+
+/* ================= Variante B : onglets et vue ================= */
+.top-b { position: sticky; top: 0; z-index: 10; background: var(--s1); border-bottom: 1px solid var(--line); }
+.top-b .bar { display: flex; align-items: center; gap: 16px; padding: 10px 20px; position: relative; overflow: hidden; }
+.top-b .motif-bg { position: absolute; right: 260px; top: -170px; width: 360px; height: 360px; color: var(--engrave); pointer-events: none; opacity: .8; }
+.top-b .brand { display: flex; align-items: center; gap: 10px; position: relative; }
+.top-b .conv { position: relative; padding-left: 16px; border-left: 1px solid var(--line); display: flex; flex-direction: column; line-height: 1.25; }
+.top-b .conv strong { font-weight: 650; }
+.top-b .conv span { font-size: 12px; color: var(--text-2); }
+.top-b .right { margin-left: auto; display: flex; align-items: center; gap: 14px; position: relative; }
+.lens { display: inline-flex; align-items: center; gap: 8px; }
+.lens label { font-size: 12px; color: var(--text-2); }
+.lens select { font: inherit; color: var(--text); background: var(--s3); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 6px 8px; min-height: 32px; }
+.tabs-b { display: flex; gap: 2px; padding: 0 14px; align-items: end; }
+.tabs-b a { display: inline-flex; align-items: center; gap: 8px; padding: 10px 12px 9px; color: var(--text-2); text-decoration: none; border-bottom: 2px solid transparent; }
+.tabs-b a:hover { color: var(--text); }
+.tabs-b a[aria-current=page] { color: var(--orange); border-bottom-color: var(--orange); }
+.tabs-b .sep { width: 1px; height: 18px; background: var(--line); margin: 0 10px 10px; }
+.tabs-b a.later { opacity: .75; }
+.lens-band { display: flex; align-items: center; gap: 10px; padding: 8px 20px; background: color-mix(in srgb, var(--orange) 12%, var(--s1)); border-bottom: 1px solid rgba(252,146,3,.4); color: var(--text); font-size: 12.5px; }
+.lens-band strong { color: var(--orange); }
+.lens-band button { margin-left: auto; }
+.main-b { padding: 20px 20px 96px; max-width: 1400px; margin: 0 auto; }
+
+/* ================= Variante C : tout au calendrier ================= */
+.top-c { display: flex; align-items: center; gap: 14px; padding: 10px 16px; background: var(--s1); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10; }
+.top-c .conv-btn { display: flex; align-items: center; gap: 10px; background: transparent; border: 1px solid transparent; border-radius: var(--r-ctl); padding: 4px 8px; cursor: pointer; text-align: left; }
+.top-c .conv-btn:hover { border-color: var(--line); background: var(--s2); }
+.top-c .conv-btn .title { font-family: var(--font-title); font-size: 20px; line-height: 1.1; }
+.top-c .conv-btn .date { font-size: 12px; color: var(--text-2); }
+.top-c .tools { display: flex; gap: 6px; margin-left: 12px; }
+.top-c .tools .btn[aria-expanded=true] { color: var(--orange); border-color: rgba(252,146,3,.5); }
+.top-c .mode { margin-left: auto; display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 2px; }
+.top-c .mode button { border: 0; background: transparent; color: var(--text-2); border-radius: 999px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+.top-c .mode button[aria-pressed=true] { background: var(--s3); color: var(--text); }
+.top-c .mode button[disabled] { cursor: not-allowed; opacity: .7; }
+.main-c { padding: 16px 16px 96px; transition: margin-right .2s ease; }
+.has-drawer .main-c { margin-right: 540px; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 540px; background: var(--s1); border-left: 1px solid var(--line); box-shadow: -12px 0 32px rgba(0,0,0,.35); z-index: 20; display: flex; flex-direction: column; }
+.drawer-head { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.drawer-head h2 { font-family: var(--font-title); font-weight: 400; font-size: 20px; margin: 0; }
+.drawer-head .btn-icon:last-child { margin-left: auto; }
+.drawer-body { padding: 16px; overflow: auto; flex: 1; }
+.drawer-body .page-title { font-size: 22px; }
+.inline-slot { display: flex; gap: 8px; align-items: end; padding: 10px; border: 1px dashed var(--line); border-radius: 8px; }
+
+/* ---------- Barre de bascule du prototype (hors identité évaluée) ---------- */
+.switcher { position: fixed; left: 50%; bottom: 16px; translate: -50% 0; z-index: 100; display: flex; align-items: center; gap: 6px; padding: 6px; background: #F4F4F4; color: #111; border-radius: 999px; box-shadow: 0 8px 28px rgba(0,0,0,.5); font: 600 13px/1 system-ui, sans-serif; }
+.switcher button, .switcher select { font: inherit; color: #111; background: #E2E2E2; border: 0; border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+.switcher .label { padding: 0 6px; min-width: 190px; text-align: center; }
+.switcher :focus-visible { outline: 2px solid #1A6BB0; outline-offset: 2px; }
+</style>
+<body>
+<div id="app"></div>
+<div class="switcher" role="group" aria-label="Variantes du prototype">
+  <button type="button" id="prev" aria-label="Variante précédente">←</button>
+  <span class="label" id="sw-label" aria-live="polite"></span>
+  <button type="button" id="next" aria-label="Variante suivante">→</button>
+  <select id="sw-data" aria-label="Données">
+    <option value="rempli">Convention remplie</option>
+    <option value="vide">Convention vide (migration)</option>
+  </select>
+</div>
+<script>
+function paint(kind) {
+  const c = document.createElement('canvas');
+  c.width = 600; c.height = 400;
+  const g = c.getContext('2d');
+  const sky = (stops) => { const l = g.createLinearGradient(0, 0, 0, 400); stops.forEach(([o, col]) => l.addColorStop(o, col)); g.fillStyle = l; g.fillRect(0, 0, 600, 400); };
+  const disc = (x, y, r, col, blur = 0) => { g.save(); g.shadowColor = col; g.shadowBlur = blur; g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.restore(); };
+  let seed = kind.length * 97;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  if (kind === 'desert') {
+    sky([[0, '#F7E7B4'], [.55, '#F6C46A'], [1, '#E08A3A']]);
+    disc(420, 150, 70, '#FFF6D8', 60);
+    [['#D9893C', 270, 60], ['#C26E2B', 310, 80], ['#A5551F', 350, 70]].forEach(([col, y, a]) => {
+      g.fillStyle = col; g.beginPath(); g.moveTo(0, 400); g.lineTo(0, y);
+      for (let x = 0; x <= 600; x += 20) g.lineTo(x, y - Math.sin(x / 110 + y) * a * .4);
+      g.lineTo(600, 400); g.fill();
+    });
+    g.fillStyle = '#3B2414'; g.fillRect(150, 268, 4, 22); g.fillRect(160, 270, 4, 20);
+  } else if (kind === 'neon') {
+    sky([[0, '#0B0420'], [.6, '#2A0B4A'], [1, '#55127A']]);
+    for (let i = 0; i < 14; i++) {
+      const w = 30 + rnd() * 50, h = 120 + rnd() * 230, x = i * 44 - 10;
+      g.fillStyle = '#0D0A1C'; g.fillRect(x, 400 - h, w, h);
+      for (let y = 400 - h + 10; y < 390; y += 14) for (let xx = x + 6; xx < x + w - 6; xx += 10) if (rnd() > .55) { g.fillStyle = rnd() > .5 ? '#FF3EB5' : '#3EE6FF'; g.fillRect(xx, y, 4, 6); }
+    }
+    g.fillStyle = 'rgba(255, 62, 181, .25)'; g.fillRect(0, 360, 600, 40);
+  } else if (kind === 'foret') {
+    sky([[0, '#C9DDB5'], [.5, '#7FA36B'], [1, '#2C4A2A']]);
+    [['#5E8552', 230, .9], ['#3E6338', 280, 1.1], ['#24402A', 330, 1.4]].forEach(([col, base, s]) => {
+      g.fillStyle = col;
+      for (let x = -20; x < 640; x += 34 * s) { const h = (90 + rnd() * 60) * s; g.beginPath(); g.moveTo(x, base); g.lineTo(x + 18 * s, base - h); g.lineTo(x + 36 * s, base); g.fill(); }
+      g.fillRect(0, base, 600, 400 - base);
+    });
+    g.fillStyle = 'rgba(255, 255, 230, .18)'; g.beginPath(); g.moveTo(380, 0); g.lineTo(460, 0); g.lineTo(300, 400); g.lineTo(180, 400); g.fill();
+  } else if (kind === 'mer') {
+    sky([[0, '#0E2B2B'], [.55, '#1F4F4A'], [1, '#0A1E1E']]);
+    disc(160, 110, 46, '#CFE8C8', 40);
+    for (let y = 250; y < 400; y += 12) { g.strokeStyle = `rgba(160, 220, 200, ${.08 + (y - 250) / 1500})`; g.lineWidth = 2; g.beginPath(); for (let x = 0; x <= 600; x += 10) g.lineTo(x, y + Math.sin(x / 30 + y) * 3); g.stroke(); }
+    g.fillStyle = '#061212'; g.fillRect(470, 140, 22, 120); g.beginPath(); g.moveTo(462, 140); g.lineTo(481, 112); g.lineTo(500, 140); g.fill();
+    g.fillStyle = '#F3E9A0'; g.fillRect(474, 124, 14, 10);
+  } else if (kind === 'chateau') {
+    sky([[0, '#0A1030'], [.7, '#1B2A5A'], [1, '#0B0F22']]);
+    disc(450, 120, 52, '#C9473A', 50);
+    g.fillStyle = '#05070F';
+    g.fillRect(90, 220, 300, 180); [[100, 140], [180, 100], [290, 160], [360, 120]].forEach(([x, y]) => { g.fillRect(x, y, 34, 260); g.beginPath(); g.moveTo(x - 6, y); g.lineTo(x + 17, y - 40); g.lineTo(x + 40, y); g.fill(); });
+    g.fillStyle = '#E8B94A'; [[110, 200], [190, 160], [300, 230], [372, 190]].forEach(([x, y]) => g.fillRect(x, y, 8, 12));
+  } else if (kind === 'port') {
+    sky([[0, '#3A2A4A'], [.45, '#B05A4A'], [.7, '#E39A5A'], [1, '#2A2230']]);
+    g.fillStyle = 'rgba(40, 30, 50, .9)'; g.fillRect(0, 300, 600, 100);
+    g.strokeStyle = '#1A1420'; g.fillStyle = '#1A1420'; g.lineWidth = 4;
+    [[120, 300], [260, 310], [420, 296]].forEach(([x, y]) => { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - 170); g.stroke(); g.beginPath(); g.moveTo(x - 70, y); g.lineTo(x + 80, y); g.lineTo(x + 60, y + 24); g.lineTo(x - 54, y + 24); g.fill(); g.beginPath(); g.moveTo(x + 4, y - 160); g.lineTo(x + 60, y - 40); g.lineTo(x + 4, y - 40); g.fill(); });
+    g.fillStyle = 'rgba(230, 200, 190, .14)'; g.fillRect(0, 270, 600, 40);
+  } else if (kind === 'abysses') {
+    sky([[0, '#1C6E7A'], [.4, '#0E3A4E'], [1, '#03121C']]);
+    g.fillStyle = 'rgba(200, 255, 250, .10)'; [[120, 60], [300, 90], [460, 50]].forEach(([x, w]) => { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + w, 0); g.lineTo(x + w * 2.2, 400); g.lineTo(x + w * .6, 400); g.fill(); });
+    for (let i = 0; i < 40; i++) disc(rnd() * 600, rnd() * 400, 1 + rnd() * 4, 'rgba(220, 255, 255, .35)');
+    g.fillStyle = '#020A10'; g.beginPath(); g.moveTo(0, 400); g.quadraticCurveTo(200, 300, 340, 360); g.quadraticCurveTo(480, 410, 600, 330); g.lineTo(600, 400); g.fill();
+  }
+  return c.toDataURL('image/jpeg', .85);
+}
+const IMG = {};
+['desert', 'neon', 'foret', 'mer', 'chateau', 'port', 'abysses'].forEach((k) => (IMG[k] = paint(k)));
+
+/* ---------- Motif gravé et emblème (SVG calculés) ---------- */
+const pol = (r, a) => [r * Math.cos(a), r * Math.sin(a)];
+const f = (n) => n.toFixed(2);
+function motifSVG({ spiral = true, ticks = true, rings = [18, 34, 52, 70, 88] } = {}) {
+  let s = '';
+  rings.forEach((r, i) => {
+    const dash = i % 2 ? ` stroke-dasharray="${f(r / 6)} ${f(r / 14)}"` : '';
+    s += `<circle cx="0" cy="0" r="${r}" fill="none" stroke="currentColor" stroke-width="${i === rings.length - 1 ? 2.4 : 1.2}"${dash}/>`;
+  });
+  if (ticks) {
+    const r1 = 74, r2 = 84;
+    for (let i = 0; i < 72; i++) {
+      const a = (i / 72) * Math.PI * 2, len = i % 6 === 0 ? r2 + 2 : r2 - 4;
+      const [x1, y1] = pol(r1, a), [x2, y2] = pol(len, a);
+      s += `<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke="currentColor" stroke-width="1"/>`;
+    }
+  }
+  if (spiral) {
+    let d = '';
+    for (let t = 0; t <= Math.PI * 7; t += .08) { const r = 2 + t * 2.3; const [x, y] = pol(r, t); d += (d ? 'L' : 'M') + f(x) + ' ' + f(y); }
+    s += `<path d="${d}" fill="none" stroke="currentColor" stroke-width="1.4"/>`;
+  }
+  return s;
+}
+function webPaths(color, width, { spokes = 8, rings = [14, 26, 38, 50, 61], rOut = 66, center = true } = {}) {
+  let s = '';
+  const step = (Math.PI * 2) / spokes, off = -Math.PI / 2 + step / 2;
+  for (let i = 0; i < spokes; i++) { const [x, y] = pol(rOut, off + i * step); s += `<line x1="0" y1="0" x2="${f(x)}" y2="${f(y)}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>`; }
+  rings.forEach((r) => {
+    let d = '';
+    for (let i = 0; i < spokes; i++) {
+      const a0 = off + i * step, a1 = a0 + step;
+      const [x0, y0] = pol(r, a0), [x1, y1] = pol(r, a1), [cx, cy] = pol(r * .82, a0 + step / 2);
+      d += `${i ? '' : `M${f(x0)} ${f(y0)}`}Q${f(cx)} ${f(cy)} ${f(x1)} ${f(y1)}`;
+    }
+    s += `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linejoin="round"/>`;
+  });
+  if (center) {
+    let d = '';
+    for (let t = 0; t <= Math.PI * 3; t += .15) { const r = .8 + t * .9; const [x, y] = pol(r, t); d += (d ? 'L' : 'M') + f(x) + ' ' + f(y); }
+    s += `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width * .8}" stroke-linecap="round"/>`;
+  }
+  return s;
+}
+function sector(r0, r1, a0, a1) {
+  const [x0, y0] = pol(r1, a0), [x1, y1] = pol(r1, a1), [x2, y2] = pol(r0, a1), [x3, y3] = pol(r0, a0);
+  const large = a1 - a0 > Math.PI ? 1 : 0;
+  return `M${f(x0)} ${f(y0)}A${r1} ${r1} 0 ${large} 1 ${f(x1)} ${f(y1)}L${f(x2)} ${f(y2)}A${r0} ${r0} 0 ${large} 0 ${f(x3)} ${f(y3)}Z`;
+}
+const EMBLEMS = {
+  segments: {
+    name: '1 · Anneau en segments',
+    desc: 'Fidèle au médaillon : un anneau découpé en douze segments, en gris chauds de l\'affiche avec trois segments orange ; la toile orange au centre, sa spirale comprise.',
+    svg: (small) => {
+      const tones = ['#FC9203', '#8C837C', '#5E5852', '#A39A92', '#FC9203', '#6E6862', '#8C837C', '#4E4944', '#FC9203', '#A39A92', '#5E5852', '#7D766F'];
+      let s = '<circle r="96" fill="#161818"/>';
+      const n = 12, gap = small ? .07 : .04;
+      for (let i = 0; i < n; i++) { const a0 = (i / n) * Math.PI * 2 - Math.PI / 2 + gap, a1 = ((i + 1) / n) * Math.PI * 2 - Math.PI / 2 - gap; s += `<path d="${sector(72, 94, a0, a1)}" fill="${tones[i]}"/>`; }
+      s += `<circle r="68" fill="#1E2121"/>`;
+      s += webPaths('#FC9203', small ? 4 : 2.2, small ? { rings: [22, 42, 60], spokes: 6, center: false } : {});
+      return s;
+    },
+  },
+  grave: {
+    name: '2 · Anneau gravé',
+    desc: 'Plus proche du médaillon gris de l\'affiche : un anneau plein orange, gravé de graduations, la toile en gris clair. Lisible en petit, mais l\'orange domine.',
+    svg: (small) => {
+      let s = '<circle r="96" fill="#161818"/>';
+      s += `<path d="${sector(74, 94, 0, Math.PI * 2 - .0001)}" fill="#FC9203"/>`;
+      if (!small) for (let i = 0; i < 48; i++) { const a = (i / 48) * Math.PI * 2; const [x1, y1] = pol(77, a), [x2, y2] = pol(i % 4 ? 84 : 91, a); s += `<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke="#161818" stroke-width="1.6"/>`; }
+      s += webPaths('#C9C2BA', small ? 4.5 : 2, small ? { rings: [24, 46, 64], spokes: 6, center: false } : {});
+      return s;
+    },
+  },
+  trait: {
+    name: '3 · Trait seul',
+    desc: 'Version au trait, monochrome orange, sans disque : pour les petites tailles, l\'icône maskable et les fonds autres que le charbon.',
+    svg: (small) => {
+      let s = `<circle r="${small ? 86 : 88}" fill="none" stroke="#FC9203" stroke-width="${small ? 12 : 7}"/>`;
+      if (!small) s += '<circle r="76" fill="none" stroke="#FC9203" stroke-width="1.5" stroke-dasharray="3 5"/>';
+      s += webPaths('#FC9203', small ? 6 : 2.6, small ? { rings: [26, 50], spokes: 6, rOut: 70, center: false } : { rOut: 70 });
+      return s;
+    },
+  },
+};
+
+
+/* ---------- Variantes ---------- */
+const VARIANTS = {
+  A: { name: 'Rail', note: "A « Rail » : un rail latéral permanent, une page par concept. Le jour J et les participants y ont déjà leur entrée, grisée. L'espace d'un MJ est une page (MJ › pseudo) qui ne montre que lui : elle deviendra son espace, sans le rail des Organisateurs." },
+  B: { name: 'Onglets et vue', note: "B « Onglets et vue » : des onglets en haut, et un sélecteur « Vue » qui restreint tout le back office à un MJ. Il n'y a pas de page MJ : choisir un MJ, c'est passer dans sa vue, celle qu'il aura une fois connecté (vue verrouillée sur lui)." },
+  C: { name: 'Tout au calendrier', note: "C « Tout au calendrier » : pas de pages. Le calendrier occupe l'écran ; créneaux et tables s'ajoutent dans la grille ; MJ, scénarios et convention s'ouvrent en panneau latéral. Le jour J sera un mode du même calendrier." },
+};
+const KEYS = Object.keys(VARIANTS);
+const root = document.documentElement;
+const params = new URLSearchParams(location.search);
+const S = {
+  variant: KEYS.includes(params.get('variant')) ? params.get('variant') : 'A',
+  data: params.get('donnees') === 'vide' ? 'vide' : 'rempli',
+  route: parseHash(),
+  lens: '',
+  drawer: null,
+  reserveSlot: 1,
+  adding: null,
+};
+
+/* ---------- Données de démonstration (en mémoire) ---------- */
+let DB;
+function load(mode) {
+  if (mode === 'vide') {
+    // La migration crée la convention, avec un nom provisoire et rien d'autre
+    DB = { conv: { name: 'Convention', date: null }, slots: [], tables: [], mjs: [], scs: [], games: [] };
+    return;
+  }
+  DB = {
+    conv: { name: 'Convention 2026', date: '2026-03-21' },
+    slots: [{ start: '10:00', end: '12:30' }, { start: '14:00', end: '16:30' }, { start: '16:45', end: '19:15' }],
+    tables: ['Table 1', 'Table 2', 'Table 3', 'Bibliothèque'],
+    mjs: [
+      { id: 'ombrelune', pseudo: 'Ombrelune', dispo: [1, 2, 3] },
+      { id: 'kairos', pseudo: 'Kaïros', dispo: [1, 2] },
+      { id: 'fougere', pseudo: 'Fougère', dispo: [1, 3] },
+      { id: 'tarasque', pseudo: 'Tarasque', dispo: [2, 3] },
+      { id: 'lapinou', pseudo: 'Lapinou', dispo: [2] },
+      { id: 'sirocco', pseudo: 'Sirocco', dispo: [1, 2, 3] },
+      { id: 'nocturne', pseudo: 'Nocturne', dispo: [3] },
+      { id: 'brindille', pseudo: 'Brindille', dispo: [] },
+    ],
+    scs: [
+      { id: 'masques', title: 'Les Masques de Nyarlathotep : prologue', system: "L'Appel de Cthulhu", mj: 'ombrelune', img: 'mer', min: 3, max: 5 },
+      { id: 'surface', title: 'Sous la surface', system: "L'Appel de Cthulhu", mj: 'ombrelune', img: 'abysses', min: 3, max: 5 },
+      { id: 'neons', title: 'Néons sur Neo-Paris', system: 'Cyberpunk RED', mj: 'kairos', img: 'neon', min: 3, max: 4 },
+      { id: 'cartes', title: 'Cartes sur table', system: 'Fiasco', mj: 'kairos', img: null, min: 3, max: 4 },
+      { id: 'foret', title: 'La Forêt qui chuchote', system: 'Ryuutama', mj: 'fougere', img: 'foret', min: 2, max: 4 },
+      { id: 'siege', title: 'Le Siège de Port-Brume', system: 'Donjons & Dragons 5e', mj: 'tarasque', img: 'port', min: 4, max: 6, double: true },
+      { id: 'reine', title: 'Thé chez la Reine Rouge', system: 'Wonderland No More', mj: 'lapinou', img: null, min: 3, max: 5 },
+      { id: 'desert', title: 'Le Désert des Mille Soleils', system: 'Chroniques Oubliées', mj: 'sirocco', img: 'desert', min: 3, max: 5 },
+      { id: 'bal', title: 'Le Bal des Ombres', system: 'Vampire : la Mascarade', mj: 'nocturne', img: 'chateau', min: 4, max: 6 },
+    ],
+    games: [
+      { sc: 'masques', slot: 1, table: 0 },
+      { sc: 'neons', slot: 1, table: 1 },
+      { sc: 'foret', slot: 1, table: 3 },
+      { sc: 'siege', slot: 2, table: 1 },
+      { sc: 'reine', slot: 2, table: 3 },
+      { sc: 'surface', slot: 3, table: 0 },
+    ],
+  };
+}
+load(S.data);
+
+const mjOf = (id) => DB.mjs.find((m) => m.id === id);
+const scOf = (id) => DB.scs.find((s) => s.id === id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const mins = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const covers = (g) => (scOf(g.sc).double ? [g.slot, g.slot + 1] : [g.slot]);
+const gamesOfMj = (id) => DB.games.filter((g) => scOf(g.sc).mj === id);
+const leadsOn = (id, n) => gamesOfMj(id).some((g) => covers(g).includes(n));
+const fmtDate = (d) => (d ? new Date(d + 'T12:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'date à fixer');
+function reserve(n) {
+  return DB.scs.filter((sc) => {
+    const m = mjOf(sc.mj);
+    const need = sc.double ? [n, n + 1] : [n];
+    if (sc.double && n + 1 > DB.slots.length) return false;
+    return need.every((k) => m.dispo.includes(k) && !leadsOn(m.id, k));
+  });
+}
+function initialOf(title) {
+  const t = title.replace(/^(le|la|les|un|une|des)\s+/i, '').replace(/^l['’]\s*/i, '');
+  return t.charAt(0).toLocaleUpperCase('fr');
+}
+function thumb(sc, wide = false) {
+  if (sc.img) return `<img src="${IMG[sc.img]}" alt="">`;
+  const vb = wide ? '-150 -100 300 200' : '-100 -100 200 200';
+  return `<svg viewBox="${vb}" preserveAspectRatio="xMidYMid slice" style="background: var(--s3); color: var(--engrave-up)" aria-hidden="true">${motifSVG({ spiral: false, ticks: false, rings: [30, 60, 90] })}<text x="0" y="4" text-anchor="middle" dominant-baseline="central" font-family="Uncial Antiqua" font-size="${wide ? 110 : 120}" fill="#8C837C">${esc(initialOf(sc.title))}</text></svg>`;
+}
+
+/* ---------- Icônes (traits façon Lucide) ---------- */
+const IC = {
+  cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+  book: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+  grid: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>',
+  activity: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+  idcard: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M15 10h3M15 14h3M6 17c.5-1.5 1.7-2 3-2s2.5.5 3 2"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  back: '<path d="m15 18-6-6 6-6"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+};
+const ic = (k) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${IC[k]}</svg>`;
+const emblem = () => `<svg class="emblem" viewBox="-100 -100 200 200" role="img" aria-label="Emblème des Tisseurs de Chimères">${EMBLEMS.segments.svg(true)}</svg>`;
+const userChip = () => `<span class="user-chip" title="Sans authentification, quiconque ouvre le back office est Organisateur"><span class="av">${ic('user')}</span><span>Organisateur<br><span class="muted" style="font-size: 11px">sans authentification</span></span></span>`;
+
+/* ---------- Routage ---------- */
+function parseHash() {
+  const [page = 'calendrier', id = null] = location.hash.replace(/^#\/?/, '').split('/');
+  return { page: page || 'calendrier', id };
+}
+const SECTIONS = [
+  { key: 'calendrier', label: 'Calendrier', icon: 'cal' },
+  { key: 'mj', label: 'MJ', icon: 'users', count: () => DB.mjs.length },
+  { key: 'scenarios', label: 'Scénarios', icon: 'book', count: () => DB.scs.length },
+  { key: 'convention', label: 'Créneaux et tables', icon: 'grid' },
+];
+const LATER = [
+  { key: 'jour-j', label: 'Pilotage du jour J', icon: 'activity' },
+  { key: 'participants', label: 'Participants', icon: 'idcard' },
+];
+
+/* ================= Écrans (contenu commun aux trois coquilles) ================= */
+function emptyState(title, text, action) {
+  return `<div class="empty-state"><svg class="motif" viewBox="-100 -100 200 200" aria-hidden="true">${motifSVG()}</svg>
+    <h2>${title}</h2><p>${text}</p><div class="row" style="margin-top: 8px">${action}</div></div>`;
+}
+
+function calendarHTML({ lens = '', inline = false } = {}) {
+  const T = DB.tables.length;
+  const cols = `96px repeat(${T}, minmax(160px, 1fr))${inline ? ' 112px' : ''}`;
+  const rows = ['auto'];
+  DB.slots.forEach((s, i) => {
+    rows.push(`${(mins(s.end) - mins(s.start)) * 0.8}px`);
+    if (i < DB.slots.length - 1) rows.push(mins(DB.slots[i + 1].start) > mins(s.end) ? '26px' : '6px');
+  });
+  if (inline) rows.push('auto');
+  const rowOf = (n) => 2 * n; // créneau n (1..) → ligne de grille
+  let h = `<div class="cal" style="grid-template-columns: ${cols}; grid-template-rows: ${rows.join(' ')}; min-width: ${96 + T * 166 + (inline ? 118 : 0)}px">`;
+  DB.tables.forEach((t, i) => (h += `<div class="cal-head" style="grid-row: 1; grid-column: ${i + 2}"><span class="caps">${esc(t)}</span></div>`));
+  if (inline) h += `<div style="grid-row: 1 / ${rows.length + (inline ? 0 : 1)}; grid-column: ${T + 2}; display: grid">${S.adding === 'table'
+    ? `<form data-action="add-table" class="add-col" style="flex-direction: column; padding: 8px; cursor: default; align-self: start"><input type="text" name="name" placeholder="Nom" aria-label="Nom de la table" style="width: 100%" autofocus><button class="btn btn-primary" style="width: 100%; justify-content: center">Ajouter</button></form>`
+    : `<button class="add-col" data-action="adding" data-what="table">${ic('plus')} Table</button>`}</div>`;
+  DB.slots.forEach((s, i) => {
+    const n = i + 1, r = rowOf(n);
+    const m = lens && mjOf(lens);
+    const dispo = m ? (m.dispo.includes(n) ? '<span class="dispo chip on">disponible</span>' : '<span class="dispo chip">indisponible</span>') : '';
+    h += `<div class="slot-label" style="grid-row: ${r}; grid-column: 1"><span class="caps">Créneau ${n}</span><span class="t num">${s.start}</span>${dispo}<span class="t t-end num">${s.end}</span></div>`;
+    if (i < DB.slots.length - 1 && mins(DB.slots[i + 1].start) > mins(s.end)) h += `<div class="pause" style="grid-row: ${r + 1}">Pause · ${s.end} – ${DB.slots[i + 1].start}</div>`;
+    DB.tables.forEach((t, ti) => {
+      const g = DB.games.find((x) => x.slot === n && x.table === ti);
+      const coveredByDouble = DB.games.some((x) => x.table === ti && x.slot === n - 1 && scOf(x.sc).double);
+      if (coveredByDouble) return;
+      if (g) {
+        const sc = scOf(g.sc), m2 = mjOf(sc.mj);
+        const cls = lens ? (sc.mj === lens ? ' mine' : ' dim') : '';
+        h += `<div style="grid-row: ${r} / span ${sc.double ? 3 : 1}; grid-column: ${ti + 2}; min-width: 0"><article class="partie${cls}" tabindex="0" aria-label="${esc(sc.title)}">
+          <div class="thumb">${thumb(sc)}</div><h3 class="p-title">${esc(sc.title)}</h3><p class="p-meta">${esc(sc.system)} · ${esc(m2.pseudo)}</p>
+          <div class="p-foot"><span class="num">${sc.min} à ${sc.max} places</span>${sc.double ? '<span class="chip double-tag">Partie double</span>' : ''}</div></article></div>`;
+      } else {
+        const un = lens && !mjOf(lens).dispo.includes(n) ? ' unavailable' : '';
+        h += `<div class="cell empty${un}" style="grid-row: ${r}; grid-column: ${ti + 2}"></div>`;
+      }
+    });
+  });
+  if (inline) {
+    const last = rows.length;
+    h += `<div style="grid-row: ${last}; grid-column: 1 / ${T + 2}">${S.adding === 'slot' ? slotForm() : `<button class="add-row" style="width: 100%; height: 36px" data-action="adding" data-what="slot">${ic('plus')} Créneau</button>`}</div>`;
+  }
+  return h + '</div>';
+}
+
+function slotForm(first = false) {
+  const last = DB.slots[DB.slots.length - 1];
+  const start = last ? last.end : '10:00';
+  const end = last ? `${String(Math.min(23, +start.slice(0, 2) + 2)).padStart(2, '0')}:${start.slice(3)}` : '12:30';
+  return `<form class="inline-slot" data-action="add-slot">
+    <div class="field"><label for="ns-start">${first ? 'Premier créneau : début' : 'Début'}</label><input id="ns-start" type="time" name="start" value="${start}"></div>
+    <div class="field"><label for="ns-end">Fin</label><input id="ns-end" type="time" name="end" value="${end}"></div>
+    <button class="btn btn-primary">${ic('plus')} Ajouter le créneau</button></form>`;
+}
+
+function reserveHTML(lens) {
+  if (!DB.slots.length) return '';
+  const n = Math.min(S.reserveSlot, DB.slots.length);
+  let items = reserve(n);
+  if (lens) items = items.filter((sc) => sc.mj === lens);
+  return `<aside class="panel reserve" aria-label="Réserve">
+    <div class="reserve-head"><h2 class="sec" style="margin: 0">Réserve</h2><span class="muted" style="font-size: 11.5px">${items.length} scénario${items.length > 1 ? 's' : ''}</span></div>
+    <div class="reserve-tabs">${DB.slots.map((_, i) => `<button data-action="reserve-slot" data-n="${i + 1}" aria-pressed="${i + 1 === n}">Créneau ${i + 1}</button>`).join('')}</div>
+    ${items.map((sc) => `<div class="reserve-item" tabindex="0"><div class="mini-thumb">${thumb(sc)}</div><div style="min-width: 0"><p class="p-title" style="font-size: 12.5px">${esc(sc.title)}</p><p class="p-meta">${esc(mjOf(sc.mj).pseudo)} · ${sc.double ? 'double' : `${sc.min} à ${sc.max} places`}${DB.games.some((g) => g.sc === sc.id) ? ' · déjà programmé' : ''}</p></div></div>`).join('') || '<p class="muted" style="margin: 0; font-size: 12px">Aucun scénario disponible sur ce créneau.</p>'}
+    <p class="muted" style="font-size: 11px; margin: 8px 0 0">Gestes de programmation : ticket « Écran de programmation ».</p></aside>`;
+}
+
+function pageCalendar({ lens = '', inline = false } = {}) {
+  const head = { eyebrow: lens ? `Vue de ${mjOf(lens).pseudo}` : 'Accueil', title: 'Calendrier' };
+  if (!DB.slots.length) {
+    return { ...head, body: emptyState('La journée n\'a pas encore de créneau',
+      inline ? 'Pose les créneaux de la journée ici même, puis ajoute les tables en colonnes. Le calendrier deviendra le lieu de la programmation.'
+             : 'Commence par les créneaux de la journée et les tables. Le calendrier deviendra le lieu de la programmation.',
+      inline ? slotForm(true) : `<a class="btn btn-primary" href="#/convention">${ic('plus')} Créer les créneaux</a><a class="btn btn-secondary" href="#/mj">Ou commencer par les MJ</a>`) };
+  }
+  if (!DB.tables.length && !inline) {
+    return { ...head, body: emptyState('Il manque les tables', `${DB.slots.length} créneau${DB.slots.length > 1 ? 'x' : ''} posé${DB.slots.length > 1 ? 's' : ''}. Ajoute les tables pour faire apparaître la grille.`, `<a class="btn btn-primary" href="#/convention">${ic('plus')} Ajouter les tables</a>`) };
+  }
+  const showRes = DB.tables.length > 0;
+  return { ...head, body: `<div class="prog${showRes ? '' : ' no-reserve'}"><div class="panel cal-scroll">${calendarHTML({ lens, inline })}</div>${showRes ? reserveHTML(lens) : ''}</div>` };
+}
+
+function pageConvention() {
+  const c = DB.conv;
+  const slotRows = DB.slots.map((s, i) => {
+    const nx = DB.slots[i + 1];
+    const pause = nx ? (mins(nx.start) > mins(s.end) ? `pause de ${mins(nx.start) - mins(s.end)} min` : 'bout à bout') : '';
+    const locked = DB.games.some((g) => covers(g).includes(i + 1)) || DB.mjs.some((m) => m.dispo.includes(i + 1));
+    return `<tr><td class="caps" style="color: var(--text)">Créneau ${i + 1}</td><td class="num">${s.start} – ${s.end}</td><td class="muted">${pause}</td><td class="muted">${locked ? `<span class="chip">${ic('lock')} heures figées</span>` : ''}</td></tr>`;
+  }).join('');
+  return {
+    eyebrow: 'Structure', title: 'Créneaux et tables',
+    body: `<section class="block panel" style="padding: 14px"><h2 class="sec">Convention</h2>
+      <div class="row"><div class="field"><label for="c-name">Nom</label><input id="c-name" type="text" value="${esc(c.name)}" size="28"></div>
+      <div class="field"><label for="c-date">Date</label><input id="c-date" type="date" value="${c.date || ''}"></div>
+      <button class="btn btn-secondary" data-action="soon">Enregistrer</button></div>
+      ${c.date ? '' : '<p class="muted" style="margin: 8px 0 0; font-size: 12px">Nom provisoire posé par la migration : à remplacer.</p>'}</section>
+    <section class="block panel" style="padding: 14px"><h2 class="sec">Créneaux</h2>
+      ${DB.slots.length ? `<table class="list"><tbody>${slotRows}</tbody></table>` : '<p class="muted" style="margin: 0 0 8px">Aucun créneau.</p>'}
+      <div style="margin-top: 10px">${slotForm(!DB.slots.length)}</div></section>
+    <section class="block panel" style="padding: 14px"><h2 class="sec">Tables</h2>
+      <div class="row" style="margin-bottom: 10px">${DB.tables.map((t) => `<span class="chip" style="font-size: 12.5px; padding: 5px 10px">${esc(t)}</span>`).join('') || '<span class="muted">Aucune table.</span>'}</div>
+      <form class="row" data-action="add-table"><div class="field"><label for="t-name">Nouvelle table</label><input id="t-name" type="text" name="name" placeholder="Table 5"></div><button class="btn btn-secondary">${ic('plus')} Ajouter</button></form></section>`,
+  };
+}
+
+function dispoPills(m) {
+  return `<span class="mj-pill">${DB.slots.map((_, i) => `<span class="${m.dispo.includes(i + 1) ? 'on' : ''}" title="Créneau ${i + 1} : ${m.dispo.includes(i + 1) ? 'disponible' : 'indisponible'}">${i + 1}</span>`).join('')}</span>`;
+}
+const mjForm = () => `<form class="row" data-action="add-mj"><div class="field"><label for="mj-new">Nouveau MJ</label><input id="mj-new" type="text" name="pseudo" placeholder="Pseudo"></div><button class="btn btn-primary">${ic('plus')} Créer</button></form>`;
+
+function pageMjList(linkAttr) {
+  if (!DB.mjs.length) return { eyebrow: 'Préparation', title: 'MJ', body: emptyState('Aucun MJ pour l\'instant', 'Crée chaque MJ avec son pseudo. Tu saisiras ensuite ses scénarios et ses disponibilités à sa place, en attendant qu\'il puisse se connecter.', mjForm()) };
+  const rows = DB.mjs.map((m) => {
+    const n = DB.scs.filter((s) => s.mj === m.id).length, g = gamesOfMj(m.id).length;
+    return `<tr ${linkAttr(m.id)} tabindex="0"><td><div class="cell-title"><span class="user-chip"><span class="av">${esc(m.pseudo.charAt(0))}</span></span><strong>${esc(m.pseudo)}</strong></div></td>
+      <td class="num">${n || '<span class="muted">aucun</span>'}</td><td>${DB.slots.length ? dispoPills(m) : '<span class="muted">pas de créneau</span>'}</td><td class="num">${g || '<span class="muted">—</span>'}</td></tr>`;
+  }).join('');
+  return { eyebrow: 'Préparation', title: 'MJ', actions: mjForm(),
+    body: `<div class="panel"><table class="list"><thead><tr><th>Pseudo</th><th>Scénarios</th><th>Disponibilités</th><th>Parties menées</th></tr></thead><tbody>${rows}</tbody></table></div>` };
+}
+
+function mjScenarios(m) {
+  const scs = DB.scs.filter((s) => s.mj === m.id);
+  return `<div class="cards">${scs.map((sc) => {
+    const g = DB.games.filter((x) => x.sc === sc.id);
+    return `<article class="sc-card" tabindex="0"><div class="media">${thumb(sc, true)}</div><div class="body"><h3>${esc(sc.title)}</h3><p class="p-meta">${esc(sc.system)}</p>
+      <div class="p-foot" style="margin: 0"><span class="num">${sc.min} à ${sc.max} places</span>${sc.double ? '<span class="chip double-tag">Double</span>' : ''}${g.length ? `<span class="chip">${g.length} partie${g.length > 1 ? 's' : ''}</span>` : '<span class="chip">en réserve</span>'}</div></div></article>`;
+  }).join('')}<button class="sc-card new" data-action="soon">${ic('plus')} Nouveau scénario</button></div>`;
+}
+function mjDispos(m) {
+  if (!DB.slots.length) return '<p class="muted">Aucun créneau : les disponibilités se déclarent par créneau.</p>';
+  return `<div class="dispo-grid">${DB.slots.map((s, i) => {
+    const n = i + 1, on = m.dispo.includes(n), lead = leadsOn(m.id, n);
+    return `<button class="dispo-toggle" data-action="toggle-dispo" data-mj="${m.id}" data-n="${n}" aria-pressed="${on}" ${lead ? 'disabled title="Mène une partie sur ce créneau (PR-15)"' : ''}>
+      <span class="caps" style="color: var(--text)">Créneau ${n}</span><span class="num muted">${s.start} – ${s.end}</span>
+      <span class="st">${on ? ic('check') : ''}${on ? 'Disponible' : 'Indisponible'}${lead ? ` · ${ic('lock')} mène une partie` : ''}</span></button>`;
+  }).join('')}</div>`;
+}
+function mjGames(m) {
+  const gs = gamesOfMj(m.id);
+  if (!gs.length) return '<p class="muted" style="margin: 0">Aucune partie programmée.</p>';
+  return `<div class="panel"><table class="list"><tbody>${gs.map((g) => {
+    const sc = scOf(g.sc);
+    return `<tr><td class="caps" style="color: var(--text)">Créneau ${covers(g).join(' et ')}</td><td>${esc(DB.tables[g.table])}</td><td><div class="cell-title"><div class="mini-thumb">${thumb(sc)}</div>${esc(sc.title)}</div></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+function pageMj(id, part = 'all', { crumbs = true } = {}) {
+  const m = mjOf(id);
+  if (!m) return { title: 'MJ introuvable', body: '' };
+  const sec = {
+    scenarios: `<section class="block"><h2 class="sec">Scénarios</h2>${mjScenarios(m)}</section>`,
+    dispos: `<section class="block"><h2 class="sec">Disponibilités</h2>${mjDispos(m)}</section>`,
+    games: `<section class="block"><h2 class="sec">Parties</h2>${mjGames(m)}</section>`,
+  };
+  const body = part === 'all' ? sec.scenarios + sec.dispos + sec.games : sec[part] + (part === 'scenarios' ? sec.games : '');
+  return {
+    crumbs: crumbs ? `<a href="#/mj">MJ</a> › ${esc(m.pseudo)}` : '',
+    eyebrow: crumbs ? '' : 'Espace du MJ', title: esc(m.pseudo),
+    actions: `<button class="btn btn-secondary" data-action="soon">Renommer</button>`,
+    body: `<p class="proto-note">Cet écran ne montre que ${esc(m.pseudo)} : filtré sur lui, il deviendra son espace quand l'authentification arrivera.</p>${body}`,
+  };
+}
+
+function pageScenarios(linkAttr) {
+  if (!DB.scs.length) {
+    return { eyebrow: 'Préparation', title: 'Scénarios', body: emptyState('Aucun scénario', 'Un scénario se crée depuis la fiche de son MJ, qui lui est fixé dès la création (PR-16).', DB.mjs.length ? `<a class="btn btn-primary" ${linkAttr(DB.mjs[0].id)}>Ouvrir un MJ</a>` : `<a class="btn btn-primary" href="#/mj">Créer d'abord un MJ</a>`) };
+  }
+  const rows = DB.scs.map((sc) => {
+    const g = DB.games.filter((x) => x.sc === sc.id);
+    return `<tr ${linkAttr(sc.mj)} tabindex="0"><td><div class="cell-title"><div class="mini-thumb">${thumb(sc)}</div><strong>${esc(sc.title)}</strong></div></td><td class="muted">${esc(sc.system)}</td><td>${esc(mjOf(sc.mj).pseudo)}</td>
+      <td class="num">${sc.min} à ${sc.max}</td><td>${sc.double ? '<span class="chip double-tag">2 créneaux</span>' : '1 créneau'}</td><td>${g.length ? g.map((x) => `<span class="chip">C${covers(x).join('–')} · ${esc(DB.tables[x.table])}</span>`).join(' ') : '<span class="muted">en réserve</span>'}</td></tr>`;
+  }).join('');
+  return { eyebrow: 'Préparation', title: 'Scénarios', body: `<div class="panel"><table class="list"><thead><tr><th>Scénario</th><th>Jeu</th><th>MJ</th><th>Places</th><th>Durée</th><th>Parties</th></tr></thead><tbody>${rows}</tbody></table></div>` };
+}
+
+function pageSoon(key) {
+  const txt = {
+    'jour-j': ['Pilotage du jour J', 'Effort ultérieur. Cette entrée réserve la place de :', ['l\'ouverture des inscriptions', 'la surcharge par créneau, demande / capacité (§4.4)', 'le tirage, les ajustements et la publication', 'la programmation depuis la réserve le jour J (TI-6)']],
+    participants: ['Participants', 'Effort ultérieur (ID-5). Cette entrée réserve la place de :', ['retrouver un participant par son pseudo et lui redonner son code de récupération', 'relier ou délier un pseudo et un compte MJ', 'supprimer un pseudo']],
+  }[key];
+  return { eyebrow: 'À venir', title: txt[0], body: `<div class="soon"><h2>${txt[0]}</h2><p style="margin: 0">${txt[1]}</p><ul>${txt[2].map((l) => `<li>${l}</li>`).join('')}</ul></div>` };
+}
+
+function pageHead(p, { compact = false } = {}) {
+  return `<div class="page-head"><div>${p.crumbs ? `<p class="crumbs">${p.crumbs}</p>` : p.eyebrow ? `<p class="eyebrow caps">${p.eyebrow}</p>` : ''}<h1 class="page-title"${compact ? ' style="font-size: 22px"' : ''}>${p.title}</h1></div>${p.actions ? `<div class="row">${p.actions}</div>` : ''}</div>`;
+}
+const note = () => `<p class="proto-note">${VARIANTS[S.variant].note}</p>`;
+
+/* ================= Variante A : rail ================= */
+function renderA() {
+  const { page, id } = S.route;
+  const href = (mid) => `data-href="#/mj/${mid}"`;
+  const p = page === 'mj' && id ? pageMj(id) : page === 'mj' ? pageMjList(href) : page === 'scenarios' ? pageScenarios(href)
+    : page === 'convention' ? pageConvention() : LATER.some((l) => l.key === page) ? pageSoon(page) : pageCalendar();
+  const navItem = (s, later) => `<a class="nav${later ? ' later' : ''}" href="#/${s.key}" ${page === s.key ? 'aria-current="page"' : ''}>${ic(s.icon)}<span>${s.label}</span>${later ? '<span class="badge-soon">à venir</span>' : s.count ? `<span class="count num">${s.count()}</span>` : ''}</a>`;
+  return `<div class="shell-a"><aside class="rail"><svg class="motif-bg" viewBox="-100 -100 200 200" aria-hidden="true">${motifSVG()}</svg>
+    <div class="rail-brand">${emblem()}<p class="brand-name">Histoires de Chimères</p></div>
+    <a class="rail-conv" href="#/convention"><strong>${esc(DB.conv.name)}</strong><span>${fmtDate(DB.conv.date)}</span></a>
+    <nav aria-label="Back office"><span class="group caps">Préparation</span>${SECTIONS.map((s) => navItem(s)).join('')}
+      <span class="group caps">Jour J</span>${LATER.map((s) => navItem(s, true)).join('')}</nav>
+    <div class="rail-user">${userChip()}</div></aside>
+    <main class="main-a">${note()}${pageHead(p)}${p.body}</main></div>`;
+}
+
+/* ================= Variante B : onglets et vue ================= */
+function renderB() {
+  const { page } = S.route;
+  const lens = S.lens && mjOf(S.lens) ? S.lens : '';
+  const setLens = (mid) => `data-action="set-lens" data-mj="${mid}"`;
+  let tabs, p;
+  if (lens) {
+    tabs = [{ key: 'calendrier', label: 'Calendrier', icon: 'cal' }, { key: 'scenarios', label: 'Ses scénarios', icon: 'book' }, { key: 'disponibilites', label: 'Ses disponibilités', icon: 'check' }];
+    p = page === 'scenarios' ? pageMj(lens, 'scenarios', { crumbs: false }) : page === 'disponibilites' ? pageMj(lens, 'dispos', { crumbs: false }) : pageCalendar({ lens });
+  } else {
+    tabs = SECTIONS;
+    p = page === 'mj' ? pageMjList(setLens) : page === 'scenarios' ? pageScenarios(setLens) : page === 'convention' ? pageConvention()
+      : LATER.some((l) => l.key === page) ? pageSoon(page) : pageCalendar();
+  }
+  const cur = tabs.some((t) => t.key === page) || LATER.some((t) => t.key === page) ? page : 'calendrier';
+  const tab = (t, later) => `<a href="#/${t.key}" class="${later ? 'later' : ''}" ${cur === t.key ? 'aria-current="page"' : ''}>${ic(t.icon)}${t.label}${later ? '<span class="badge-soon">à venir</span>' : t.count ? ` <span class="muted num">${t.count()}</span>` : ''}</a>`;
+  return `<header class="top-b"><div class="bar"><svg class="motif-bg" viewBox="-100 -100 200 200" aria-hidden="true">${motifSVG()}</svg>
+      <div class="brand">${emblem()}<p class="brand-name">Histoires de Chimères</p></div>
+      <div class="conv"><strong>${esc(DB.conv.name)}</strong><span>${fmtDate(DB.conv.date)}</span></div>
+      <div class="right"><div class="lens"><label for="lens">${ic('eye')} Vue</label><select id="lens" data-action="lens">
+        <option value="">Toute la convention</option>${DB.mjs.length ? `<optgroup label="Restreindre à un MJ">${DB.mjs.map((m) => `<option value="${m.id}" ${lens === m.id ? 'selected' : ''}>${esc(m.pseudo)}</option>`).join('')}</optgroup>` : ''}</select></div>${userChip()}</div></div>
+    ${lens ? `<div class="lens-band">${ic('eye')}<span>Vue restreinte à <strong>${esc(mjOf(lens).pseudo)}</strong> : ce qu'il verra une fois connecté (sans sélecteur). Tu y saisis ses scénarios et ses disponibilités à sa place.</span><button class="btn btn-secondary" data-action="clear-lens">${ic('x')} Toute la convention</button></div>` : ''}
+    <nav class="tabs-b" aria-label="Back office">${tabs.map((t) => tab(t)).join('')}${lens ? '' : `<span class="sep"></span>${LATER.map((t) => tab(t, true)).join('')}`}</nav></header>
+    <main class="main-b">${note()}${pageHead(p)}${p.body}</main>`;
+}
+
+/* ================= Variante C : tout au calendrier ================= */
+function renderC() {
+  const d = S.drawer;
+  const open = (k) => `data-action="drawer" data-k="${k}"`;
+  const tool = (k, label, icon, count) => `<button class="btn btn-secondary" ${open(k)} aria-expanded="${d && d.split(':')[0] === k}">${ic(icon)}${label}${count != null ? ` <span class="muted num">${count}</span>` : ''}</button>`;
+  const p = pageCalendar({ inline: true });
+  let drawer = '';
+  if (d) {
+    const [k, id] = d.split(':');
+    const linkMj = (mid) => `data-action="drawer" data-k="mj:${mid}"`;
+    const dp = k === 'convention' ? pageConvention() : k === 'mj' && id ? pageMj(id, 'all', { crumbs: false }) : k === 'mj' ? pageMjList(linkMj) : k === 'scenarios' ? pageScenarios(linkMj) : pageSoon('participants');
+    drawer = `<aside class="drawer" aria-label="${dp.title}"><div class="drawer-head">${id ? `<button class="btn-icon" ${open('mj')} aria-label="Retour aux MJ">${ic('back')}</button>` : ''}<h2>${dp.title}</h2><button class="btn-icon" data-action="drawer" data-k="" aria-label="Fermer">${ic('x')}</button></div>
+      <div class="drawer-body">${dp.actions ? `<div class="row" style="margin-bottom: 14px">${dp.actions}</div>` : ''}${dp.body}</div></aside>`;
+  }
+  return `<header class="top-c">${emblem()}
+    <button class="conv-btn" ${open('convention')} title="Nom, date, créneaux et tables"><span><span class="title">${esc(DB.conv.name)}</span><br><span class="date">${fmtDate(DB.conv.date)}</span></span></button>
+    <div class="tools">${tool('mj', 'MJ', 'users', DB.mjs.length)}${tool('scenarios', 'Scénarios', 'book', DB.scs.length)}${tool('participants', 'Participants', 'idcard')}</div>
+    <div class="mode" role="group" aria-label="Mode du calendrier"><button aria-pressed="true">Préparation</button><button disabled title="À venir : surcharge, tirage, publication sur le même calendrier">Jour J · à venir</button></div>
+    ${userChip()}</header>
+    <main class="main-c">${note()}${p.body}</main>${drawer}`;
+}
+
+/* ---------- Rendu et événements ---------- */
+const app = document.getElementById('app');
+function render() {
+  root.dataset.variant = S.variant;
+  document.body.classList.toggle('has-drawer', S.variant === 'C' && !!S.drawer);
+  app.innerHTML = S.variant === 'A' ? renderA() : S.variant === 'B' ? renderB() : renderC();
+  document.getElementById('sw-label').textContent = `${S.variant} · ${VARIANTS[S.variant].name}`;
+  document.getElementById('sw-data').value = S.data;
+  const auto = app.querySelector('[autofocus]');
+  if (auto) auto.focus();
+}
+function syncUrl() {
+  const u = new URL(location.href);
+  u.searchParams.set('variant', S.variant);
+  if (S.data === 'vide') u.searchParams.set('donnees', 'vide'); else u.searchParams.delete('donnees');
+  history.replaceState(null, '', u);
+}
+function setVariant(k) { S.variant = k; S.drawer = null; S.adding = null; syncUrl(); render(); }
+const cycle = (dir) => setVariant(KEYS[(KEYS.indexOf(S.variant) + dir + KEYS.length) % KEYS.length]);
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg; t.setAttribute('role', 'status');
+  document.body.append(t); setTimeout(() => t.remove(), 1800);
+}
+
+window.addEventListener('hashchange', () => { S.route = parseHash(); render(); window.scrollTo(0, 0); });
+document.getElementById('prev').onclick = () => cycle(-1);
+document.getElementById('next').onclick = () => cycle(1);
+document.getElementById('sw-data').onchange = (e) => { S.data = e.target.value; load(S.data); S.lens = ''; S.drawer = null; syncUrl(); render(); };
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') cycle(-1);
+  if (e.key === 'ArrowRight') cycle(1);
+  if (e.key === 'Escape' && S.drawer) { S.drawer = null; render(); }
+  if (e.key === 'Enter' && e.target.dataset.href) location.hash = e.target.dataset.href;
+});
+document.addEventListener('change', (e) => {
+  if (e.target.dataset.action === 'lens') { S.lens = e.target.value; location.hash = '#/calendrier'; render(); }
+});
+document.addEventListener('click', (e) => {
+  const row = e.target.closest('[data-href]');
+  if (row) { location.hash = row.dataset.href; return; }
+  const el = e.target.closest('button[data-action], a[data-action], tr[data-action]');
+  if (!el) return;
+  const a = el.dataset.action;
+  if (a === 'soon') { e.preventDefault(); toast('Hors de ce prototype'); }
+  if (a === 'set-lens') { e.preventDefault(); S.lens = el.dataset.mj; location.hash = '#/scenarios'; render(); }
+  if (a === 'clear-lens') { S.lens = ''; render(); }
+  if (a === 'drawer') { S.drawer = el.dataset.k || null; render(); }
+  if (a === 'reserve-slot') { S.reserveSlot = +el.dataset.n; render(); }
+  if (a === 'adding') { S.adding = el.dataset.what; render(); }
+  if (a === 'toggle-dispo') {
+    const m = mjOf(el.dataset.mj), n = +el.dataset.n;
+    m.dispo = m.dispo.includes(n) ? m.dispo.filter((x) => x !== n) : [...m.dispo, n].sort();
+    render();
+  }
+});
+document.addEventListener('submit', (e) => {
+  const f = e.target, a = f.dataset.action, v = Object.fromEntries(new FormData(f));
+  e.preventDefault();
+  if (a === 'add-slot') {
+    const last = DB.slots[DB.slots.length - 1];
+    if (!v.start || !v.end || mins(v.end) <= mins(v.start) || (last && mins(v.start) < mins(last.end))) { toast('Créneau refusé : il chevauche le précédent ou finit avant de commencer (PR-8)'); return; }
+    DB.slots.push({ start: v.start, end: v.end });
+  }
+  if (a === 'add-table') {
+    const name = (v.name || '').trim();
+    if (!name) return;
+    const norm = (s) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
+    if (DB.tables.some((t) => norm(t) === norm(name))) { toast('Une table porte déjà ce nom (PR-9)'); return; }
+    DB.tables.push(name);
+  }
+  if (a === 'add-mj') {
+    const pseudo = (v.pseudo || '').trim();
+    if (!pseudo) return;
+    DB.mjs.push({ id: pseudo.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '').replace(/\W+/g, '-') + '-' + Date.now() % 1000, pseudo, dispo: [] });
+  }
+  S.adding = null;
+  render();
+});
+
+syncUrl();
+render();
+</script>
+</body>
+</html>
