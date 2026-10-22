@@ -1,0 +1,669 @@
+<title>Illustration par défaut</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!--
+  PROTOTYPE JETABLE (ticket « Illustration par défaut d'un scénario », #18). Ne pas intégrer tel quel.
+  Question : à quoi ressemble un scénario sans image (PR-7), partout où son image apparaîtrait ?
+  Quatre variantes de distinction, sur la déclinaison A « Atelier » retenue dans « Pistes visuelles » (#8) :
+    A « Sceau commun »          : la même illustration pour tous les scénarios sans image ;
+    B « Cadrage »               : le motif gravé est cadré, tourné et retourné selon l'identifiant du scénario ;
+    C « Lettrine »              : l'initiale du titre, en Uncial Antiqua, au centre du motif ;
+    D « Lettrine et cadrage »   : C et B réunis.
+  Passer de l'une à l'autre : barre du bas, flèches ← →, ou #A … #D.
+  Les images « fournies » sont peintes au canevas ; les polices viennent ici de Google Fonts.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Aldrich&display=swap">
+<style>
+/* Mise en page : en-tête de l'application, puis un écran type par section (calendrier et réserve,
+   bandeau, front office), une planche de comparaison, un essai libre et la question de production. */
+:root {
+  color-scheme: dark;
+  /* Jetons de la déclinaison A « Atelier » (#8) */
+  --orange: #FC9203;
+  --on-orange: #161818;
+  --focus: #7CC4E4;
+  --ok: #6CC08B;
+  --warn: #E8D25C;
+  --danger: #F07F63;
+  --bg: #151717;
+  --s1: #1B1E1E;
+  --s2: #222525;
+  --s3: #2A2D2D;
+  --line: #313535;
+  --cell-line: #2E3232;
+  --text: #ECEAE6;
+  --text-2: #A9A49E;
+  --engrave: #3A3E3E;
+  /* Propre à ce prototype : la lettrine, dans le gris des capitales de l'affiche */
+  --letter: #8C837C;
+
+  --font-title: "Uncial Antiqua", Georgia, "Times New Roman", serif;
+  --font-caps: "Aldrich", "Arial Narrow", system-ui, sans-serif;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --r-card: 12px;
+  --r-ctl: 8px;
+  --r-thumb: 6px;
+  --halo-soft: 0 0 0 1px rgba(252, 146, 3, .45);
+  --pad: 8px;
+  --fs: 13px;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs);
+  line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 104px;
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.caps { font-family: var(--font-caps); font-weight: 400; text-transform: uppercase; letter-spacing: .12em; font-size: .78em; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-2); }
+.wrap { max-width: 1280px; margin: 0 auto; }
+
+.app-header {
+  position: relative; overflow: hidden;
+  margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
+  padding-block: 18px;
+  padding-inline: max(16px, env(safe-area-inset-left, 0px));
+  background: var(--s1); border-bottom: 1px solid var(--line);
+}
+.app-header .motif-bg { position: absolute; right: -120px; top: -190px; width: 520px; height: 520px; color: var(--engrave); pointer-events: none; }
+.brand { position: relative; display: flex; align-items: center; gap: 12px; max-width: 1280px; margin: 0 auto; }
+.brand svg { width: 40px; height: 40px; flex: none; }
+.brand-name { font-family: var(--font-title); font-size: 22px; line-height: 1.1; margin: 0; }
+.brand-by { margin: 2px 0 0; color: var(--text-2); font-size: 12px; }
+
+/* Annotations du prototype : neutres, hors de l'identité évaluée */
+.note {
+  font: 12px/1.5 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color: var(--text-2); border-left: 2px solid var(--s3);
+  padding: 2px 0 2px 10px; max-width: 86ch; margin: 8px 0 0;
+}
+section.block { margin-top: 40px; }
+.block-head { margin-bottom: 14px; }
+h1.page-title { font-family: var(--font-title); font-weight: 400; font-size: 30px; line-height: 1.15; margin: 0; text-wrap: balance; }
+h2.sec { font-family: var(--font-caps); font-weight: 400; text-transform: uppercase; letter-spacing: .12em; font-size: 13px; color: var(--text-2); margin: 0; }
+.eyebrow { color: var(--text-2); margin: 0 0 4px; }
+
+.btn { font: 600 13px/1 var(--font-ui); border-radius: var(--r-ctl); padding: 10px 14px; min-height: 36px; border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: var(--orange); color: var(--on-orange); }
+.btn-secondary { background: var(--s3); color: var(--text); border-color: var(--line); }
+.btn-ghost { background: transparent; color: var(--orange); padding-inline: 6px; }
+.badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600; line-height: 1; padding: 4px 7px 4px 5px; border-radius: 999px; white-space: nowrap; }
+.badge svg { width: 12px; height: 12px; flex: none; }
+.badge.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, var(--s2)); }
+.badge.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, var(--s2)); }
+.badge.danger { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, var(--s2)); }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--text-2); background: var(--s3); border-radius: 999px; padding: 3px 8px; white-space: nowrap; }
+
+/* Illustration : un SVG qui remplit toujours son cadre */
+.art { display: block; width: 100%; height: 100%; }
+
+/* Calendrier et réserve */
+.prog { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 1040px) { .prog { grid-template-columns: minmax(0, 1fr) 300px; } }
+.panel { background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-card); min-width: 0; }
+.cal-scroll { overflow-x: auto; padding: var(--pad); }
+.cal { display: grid; grid-template-columns: 84px repeat(3, minmax(176px, 1fr)); grid-template-rows: auto 120px 26px 120px; gap: 6px; min-width: 640px; }
+.cal-head { padding: 4px 6px 8px; }
+.cal-head .caps { color: var(--text); }
+.slot-label { padding: 6px 4px; display: flex; flex-direction: column; gap: 2px; }
+.slot-label .caps { color: var(--text); font-size: 11px; }
+.slot-label .t { color: var(--text-2); font-size: 12px; }
+.slot-label .t-end { margin-top: auto; }
+.pause { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; color: var(--text-2); font-size: 12px; padding-inline: 4px; }
+.pause::before, .pause::after { content: ""; height: 1px; flex: 1; background: repeating-linear-gradient(90deg, var(--s3) 0 6px, transparent 6px 10px); }
+.pause::before { flex: 0 0 76px; }
+.partie {
+  height: 100%; background: var(--s2); border: 1px solid var(--line); border-radius: calc(var(--r-card) - 4px);
+  padding: var(--pad); display: grid; grid-template-columns: 32px minmax(0, 1fr); grid-template-rows: auto 1fr auto;
+  column-gap: 8px; row-gap: 2px; overflow: hidden; cursor: grab;
+}
+.partie:hover { box-shadow: var(--halo-soft); }
+.thumb { overflow: hidden; border-radius: var(--r-thumb); background: var(--s3); flex: none; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.partie .thumb { grid-row: 1 / span 2; width: 32px; height: 32px; }
+.p-title { margin: 0; font-weight: 650; font-size: 1em; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.p-meta { margin: 0; color: var(--text-2); font-size: .88em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p-foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin-top: 6px; }
+.p-foot .places { color: var(--text-2); font-size: 12px; }
+.reserve { padding: var(--pad); display: flex; flex-direction: column; gap: 8px; }
+.reserve-head { padding: 4px 4px 6px; }
+.reserve-head .caps { color: var(--text); }
+.reserve-item { background: var(--s2); border: 1px solid var(--line); border-radius: calc(var(--r-card) - 4px); padding: var(--pad); display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px 10px; cursor: grab; }
+.reserve-item .thumb { width: 44px; height: 44px; grid-row: 1 / span 2; }
+.reserve-item .r-foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: space-between; }
+
+/* Bandeau : fiche du scénario */
+.fiches { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; }
+.fiche { overflow: hidden; }
+.banner { aspect-ratio: 4 / 1; max-width: 100%; background: var(--s2); border-bottom: 1px solid var(--line); }
+.banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fiche-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; }
+.fiche-title { margin: 0; font-size: 19px; font-weight: 700; line-height: 1.25; text-wrap: balance; }
+.fiche-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+
+/* Front office : cartes dans un cadre de téléphone */
+.phones { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.phone { width: 360px; max-width: 100%; background: var(--bg); border: 1px solid var(--s3); border-radius: 30px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.phone-bar { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 6px 0; }
+.phone-bar .caps { color: var(--text); }
+.fo-card { position: relative; border-radius: var(--r-card); overflow: hidden; background: var(--s1); isolation: isolate; }
+.fo-media { position: relative; aspect-ratio: 3 / 2; max-width: 100%; background: var(--s2); }
+.fo-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fo-media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, color-mix(in srgb, var(--s1) 70%, transparent) 72%, var(--s1) 100%); }
+.fo-body { position: relative; margin-top: -64px; padding: 0 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+.fo-body .caps { color: var(--orange); font-size: 11px; margin: 0; }
+.fo-title { margin: 0; font-size: 21px; line-height: 1.2; font-weight: 750; text-wrap: balance; }
+.fo-by { margin: 0; color: var(--text-2); }
+.fo-pitch { margin: 0; }
+.fo-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fo-card .btn-primary { min-height: 44px; justify-content: center; font-size: 15px; margin-top: 4px; }
+
+/* Planche de comparaison */
+.board { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 10px; }
+.board-item { background: var(--s1); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.board-row { display: flex; align-items: flex-end; gap: 10px; }
+.board-row .t32 { width: 32px; height: 32px; }
+.board-row .t44 { width: 44px; height: 44px; }
+.board-row .c32 { width: 108px; aspect-ratio: 3 / 2; border-radius: var(--r-thumb); overflow: hidden; background: var(--s2); }
+.board-title { margin: 0; font-weight: 600; line-height: 1.3; }
+.board-title .muted { font-weight: 400; }
+
+/* Essai libre */
+.play { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 900px) { .play { grid-template-columns: 300px minmax(0, 1fr); } }
+.play-form { display: flex; flex-direction: column; gap: 10px; padding: 14px; }
+.play-form label { color: var(--text-2); font-size: 12px; }
+.play-form input { font: inherit; color: var(--text); background: var(--s3); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 9px 10px; min-height: 36px; width: 100%; }
+.play-form code { font-size: 11.5px; color: var(--text-2); overflow-wrap: anywhere; }
+.play-out { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; padding: 14px; }
+.play-out figure { margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: var(--text-2); }
+.play-out .p-banner { width: 320px; max-width: 100%; aspect-ratio: 4 / 1; border-radius: var(--r-thumb); overflow: hidden; background: var(--s2); }
+.play-out .p-card { width: 240px; max-width: 100%; aspect-ratio: 3 / 2; border-radius: var(--r-thumb); overflow: hidden; background: var(--s2); }
+
+/* Production */
+.prod { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; }
+.prod .panel { padding: 16px; }
+.prod h3 { margin: 0 0 8px; font-size: 15px; }
+.prod ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; max-width: 70ch; }
+.prod code { font-size: 12px; color: var(--text-2); }
+
+/* Barre de bascule du prototype : volontairement hors identité */
+.switcher {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 20;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
+  background: #F5F5F5; color: #111111; border-radius: 999px; padding: 6px 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .5); font: 600 13px/1 system-ui, sans-serif;
+  max-width: calc(100vw - 24px);
+}
+.switcher button { font: inherit; color: #111111; background: #E2E2E2; border: 0; border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+.switcher .label { padding: 0 6px; min-width: 190px; text-align: center; }
+.switcher label { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; font-weight: 500; }
+.switcher :focus-visible { outline: 2px solid #1A6BB0; outline-offset: 2px; }
+</style>
+
+<header class="app-header">
+  <svg class="motif-bg" id="header-motif" viewBox="-100 -100 200 200" aria-hidden="true"></svg>
+  <div class="brand">
+    <svg id="header-emblem" viewBox="-100 -100 200 200" role="img" aria-label="Emblème"></svg>
+    <div>
+      <p class="brand-name">Histoires de Chimères</p>
+      <p class="brand-by">par les Tisseurs de Chimères</p>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <p class="note" id="variant-note"></p>
+
+  <section class="block" aria-labelledby="t-prog">
+    <div class="block-head">
+      <p class="eyebrow caps">Convention 2026 · samedi 26 septembre</p>
+      <h1 class="page-title" id="t-prog">Programme</h1>
+    </div>
+    <div class="prog">
+      <div class="panel"><div class="cal-scroll"><div class="cal" id="cal"></div></div></div>
+      <aside class="panel reserve" id="reserve" aria-label="Réserve"></aside>
+    </div>
+    <p class="note">Vignettes de 32 px (calendrier) et de 44 px (réserve). Cas difficiles : deux scénarios sans image côte à côte sur le créneau 1 (« Thé chez la Reine Rouge » et « La Tour d'ébène », même initiale T une fois l'article ôté), et sur le créneau 2 (« Cartes sur table » et « Les Chiens de la Vigne », même initiale C).</p>
+  </section>
+
+  <section class="block" aria-labelledby="t-fiche">
+    <div class="block-head"><h2 class="sec" id="t-fiche">Bandeau · fiche du scénario (back office)</h2></div>
+    <div class="fiches" id="fiches"></div>
+    <p class="note">Le bandeau est un recadrage 4:1 de l'image 3:2. Sa place dans le back office relève de la « Coquille du back office » (#11) ; il sert ici à juger l'illustration en très large.</p>
+  </section>
+
+  <section class="block" aria-labelledby="t-fo">
+    <div class="block-head"><h2 class="sec" id="t-fo">Front office · cartes de scénario (3:2)</h2></div>
+    <div class="phones" id="phones"></div>
+  </section>
+
+  <section class="block" aria-labelledby="t-board">
+    <div class="block-head"><h2 class="sec" id="t-board">Planche · douze scénarios sans image</h2></div>
+    <div class="board" id="board"></div>
+    <p class="note">À chaque taille : 32 px, 44 px, et la carte 3:2 en réduction. Les collisions d'initiale sont voulues (T, C, S) : c'est le cas courant dans une convention de soixante scénarios.</p>
+  </section>
+
+  <section class="block" aria-labelledby="t-play">
+    <div class="block-head"><h2 class="sec" id="t-play">Essai libre</h2></div>
+    <div class="play">
+      <form class="panel play-form" id="play-form">
+        <label for="play-title">Titre du scénario</label>
+        <input id="play-title" type="text" value="Le Masque d'Argile" autocomplete="off">
+        <button class="btn btn-secondary" type="button" id="play-id">Autre identifiant</button>
+        <code id="play-id-val"></code>
+      </form>
+      <div class="panel play-out" id="play-out"></div>
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="t-prod">
+    <div class="block-head"><h2 class="sec" id="t-prod">Production · dessinée côté client, ou générée et stockée ?</h2></div>
+    <div class="prod">
+      <div class="panel">
+        <h3>Dessinée côté client, en SVG</h3>
+        <ul>
+          <li>Le DTO porte une image nulle ; chaque front dessine l'illustration à partir de l'identifiant et du titre, comme ce prototype.</li>
+          <li>Rien à générer ni à stocker. Un changement de jeton (Gravure, gris de la lettrine) s'applique partout, sans régénérer.</li>
+          <li>Hors ligne : le dessin fait partie du code, déjà mis en cache par le service worker. Aucune image de plus dans le cache.</li>
+          <li>La lettrine utilise Uncial Antiqua, déjà hébergée pour les titres.</li>
+          <li>Le code de dessin sert aux deux fronts, qui ne dépendent que de <code>contract</code> : il faut le dupliquer (une centaine de lignes) ou créer un package partagé, ce qui touche la frontière décrite dans CLAUDE.md.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>Générée une fois, stockée comme une image de scénario</h3>
+        <ul>
+          <li>Un seul chemin d'affichage : toujours une <code>&lt;img&gt;</code>, la même URL que pour une image fournie.</li>
+          <li>L'API génère l'image (sharp convertit un SVG). La lettrine demande la police dans l'image Docker, pour librsvg.</li>
+          <li>À régénérer quand le titre change (lettrine) ou quand la charte change. Il faut distinguer l'image par défaut d'une image fournie, pour savoir laquelle remplacer.</li>
+          <li>Hors ligne : chaque illustration par défaut est une image de plus dans le cache des images de l'API.</li>
+          <li>Touche « Images de scénario : choix du traitement et du stockage » (#15) : une image par scénario, fournie ou non.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">Avec A « Sceau commun », la question disparaît presque : une seule illustration, livrée comme un fichier statique avec chaque front, sans génération ni stockage par scénario.</p>
+  </section>
+</main>
+
+<nav class="switcher" aria-label="Variantes du prototype">
+  <button type="button" id="prev" aria-label="Variante précédente">←</button>
+  <span class="label" id="vlabel" aria-live="polite"></span>
+  <button type="button" id="next" aria-label="Variante suivante">→</button>
+  <label for="skip-article"><input type="checkbox" id="skip-article" checked> Ignorer l'article</label>
+</nav>
+
+<script>
+/* ---------- Images fournies (peintes au canevas, format 3:2), motif gravé et emblème : repris de « Pistes visuelles » ---------- */
+function paint(kind) {
+  const c = document.createElement('canvas');
+  c.width = 600; c.height = 400;
+  const g = c.getContext('2d');
+  const sky = (stops) => { const l = g.createLinearGradient(0, 0, 0, 400); stops.forEach(([o, col]) => l.addColorStop(o, col)); g.fillStyle = l; g.fillRect(0, 0, 600, 400); };
+  const disc = (x, y, r, col, blur = 0) => { g.save(); g.shadowColor = col; g.shadowBlur = blur; g.fillStyle = col; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); g.restore(); };
+  let seed = kind.length * 97;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  if (kind === 'desert') {
+    sky([[0, '#F7E7B4'], [.55, '#F6C46A'], [1, '#E08A3A']]);
+    disc(420, 150, 70, '#FFF6D8', 60);
+    [['#D9893C', 270, 60], ['#C26E2B', 310, 80], ['#A5551F', 350, 70]].forEach(([col, y, a]) => {
+      g.fillStyle = col; g.beginPath(); g.moveTo(0, 400); g.lineTo(0, y);
+      for (let x = 0; x <= 600; x += 20) g.lineTo(x, y - Math.sin(x / 110 + y) * a * .4);
+      g.lineTo(600, 400); g.fill();
+    });
+    g.fillStyle = '#3B2414'; g.fillRect(150, 268, 4, 22); g.fillRect(160, 270, 4, 20);
+  } else if (kind === 'neon') {
+    sky([[0, '#0B0420'], [.6, '#2A0B4A'], [1, '#55127A']]);
+    for (let i = 0; i < 14; i++) {
+      const w = 30 + rnd() * 50, h = 120 + rnd() * 230, x = i * 44 - 10;
+      g.fillStyle = '#0D0A1C'; g.fillRect(x, 400 - h, w, h);
+      for (let y = 400 - h + 10; y < 390; y += 14) for (let xx = x + 6; xx < x + w - 6; xx += 10) if (rnd() > .55) { g.fillStyle = rnd() > .5 ? '#FF3EB5' : '#3EE6FF'; g.fillRect(xx, y, 4, 6); }
+    }
+    g.fillStyle = 'rgba(255, 62, 181, .25)'; g.fillRect(0, 360, 600, 40);
+  } else if (kind === 'foret') {
+    sky([[0, '#C9DDB5'], [.5, '#7FA36B'], [1, '#2C4A2A']]);
+    [['#5E8552', 230, .9], ['#3E6338', 280, 1.1], ['#24402A', 330, 1.4]].forEach(([col, base, s]) => {
+      g.fillStyle = col;
+      for (let x = -20; x < 640; x += 34 * s) { const h = (90 + rnd() * 60) * s; g.beginPath(); g.moveTo(x, base); g.lineTo(x + 18 * s, base - h); g.lineTo(x + 36 * s, base); g.fill(); }
+      g.fillRect(0, base, 600, 400 - base);
+    });
+    g.fillStyle = 'rgba(255, 255, 230, .18)'; g.beginPath(); g.moveTo(380, 0); g.lineTo(460, 0); g.lineTo(300, 400); g.lineTo(180, 400); g.fill();
+  } else if (kind === 'mer') {
+    sky([[0, '#0E2B2B'], [.55, '#1F4F4A'], [1, '#0A1E1E']]);
+    disc(160, 110, 46, '#CFE8C8', 40);
+    for (let y = 250; y < 400; y += 12) { g.strokeStyle = `rgba(160, 220, 200, ${.08 + (y - 250) / 1500})`; g.lineWidth = 2; g.beginPath(); for (let x = 0; x <= 600; x += 10) g.lineTo(x, y + Math.sin(x / 30 + y) * 3); g.stroke(); }
+    g.fillStyle = '#061212'; g.fillRect(470, 140, 22, 120); g.beginPath(); g.moveTo(462, 140); g.lineTo(481, 112); g.lineTo(500, 140); g.fill();
+    g.fillStyle = '#F3E9A0'; g.fillRect(474, 124, 14, 10);
+  } else if (kind === 'chateau') {
+    sky([[0, '#0A1030'], [.7, '#1B2A5A'], [1, '#0B0F22']]);
+    disc(450, 120, 52, '#C9473A', 50);
+    g.fillStyle = '#05070F';
+    g.fillRect(90, 220, 300, 180); [[100, 140], [180, 100], [290, 160], [360, 120]].forEach(([x, y]) => { g.fillRect(x, y, 34, 260); g.beginPath(); g.moveTo(x - 6, y); g.lineTo(x + 17, y - 40); g.lineTo(x + 40, y); g.fill(); });
+    g.fillStyle = '#E8B94A'; [[110, 200], [190, 160], [300, 230], [372, 190]].forEach(([x, y]) => g.fillRect(x, y, 8, 12));
+  } else if (kind === 'port') {
+    sky([[0, '#3A2A4A'], [.45, '#B05A4A'], [.7, '#E39A5A'], [1, '#2A2230']]);
+    g.fillStyle = 'rgba(40, 30, 50, .9)'; g.fillRect(0, 300, 600, 100);
+    g.strokeStyle = '#1A1420'; g.fillStyle = '#1A1420'; g.lineWidth = 4;
+    [[120, 300], [260, 310], [420, 296]].forEach(([x, y]) => { g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - 170); g.stroke(); g.beginPath(); g.moveTo(x - 70, y); g.lineTo(x + 80, y); g.lineTo(x + 60, y + 24); g.lineTo(x - 54, y + 24); g.fill(); g.beginPath(); g.moveTo(x + 4, y - 160); g.lineTo(x + 60, y - 40); g.lineTo(x + 4, y - 40); g.fill(); });
+    g.fillStyle = 'rgba(230, 200, 190, .14)'; g.fillRect(0, 270, 600, 40);
+  } else if (kind === 'abysses') {
+    sky([[0, '#1C6E7A'], [.4, '#0E3A4E'], [1, '#03121C']]);
+    g.fillStyle = 'rgba(200, 255, 250, .10)'; [[120, 60], [300, 90], [460, 50]].forEach(([x, w]) => { g.beginPath(); g.moveTo(x, 0); g.lineTo(x + w, 0); g.lineTo(x + w * 2.2, 400); g.lineTo(x + w * .6, 400); g.fill(); });
+    for (let i = 0; i < 40; i++) disc(rnd() * 600, rnd() * 400, 1 + rnd() * 4, 'rgba(220, 255, 255, .35)');
+    g.fillStyle = '#020A10'; g.beginPath(); g.moveTo(0, 400); g.quadraticCurveTo(200, 300, 340, 360); g.quadraticCurveTo(480, 410, 600, 330); g.lineTo(600, 400); g.fill();
+  }
+  return c.toDataURL('image/jpeg', .85);
+}
+const IMG = {};
+['desert', 'neon', 'foret', 'mer', 'chateau', 'port', 'abysses'].forEach((k) => (IMG[k] = paint(k)));
+
+/* ---------- Motif gravé et emblème (SVG calculés) ---------- */
+const pol = (r, a) => [r * Math.cos(a), r * Math.sin(a)];
+const f = (n) => n.toFixed(2);
+function motifSVG({ spiral = true, ticks = true, rings = [18, 34, 52, 70, 88] } = {}) {
+  let s = '';
+  rings.forEach((r, i) => {
+    const dash = i % 2 ? ` stroke-dasharray="${f(r / 6)} ${f(r / 14)}"` : '';
+    s += `<circle cx="0" cy="0" r="${r}" fill="none" stroke="currentColor" stroke-width="${i === rings.length - 1 ? 2.4 : 1.2}"${dash}/>`;
+  });
+  if (ticks) {
+    const r1 = 74, r2 = 84;
+    for (let i = 0; i < 72; i++) {
+      const a = (i / 72) * Math.PI * 2, len = i % 6 === 0 ? r2 + 2 : r2 - 4;
+      const [x1, y1] = pol(r1, a), [x2, y2] = pol(len, a);
+      s += `<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke="currentColor" stroke-width="1"/>`;
+    }
+  }
+  if (spiral) {
+    let d = '';
+    for (let t = 0; t <= Math.PI * 7; t += .08) { const r = 2 + t * 2.3; const [x, y] = pol(r, t); d += (d ? 'L' : 'M') + f(x) + ' ' + f(y); }
+    s += `<path d="${d}" fill="none" stroke="currentColor" stroke-width="1.4"/>`;
+  }
+  return s;
+}
+function webPaths(color, width, { spokes = 8, rings = [14, 26, 38, 50, 61], rOut = 66, center = true } = {}) {
+  let s = '';
+  const step = (Math.PI * 2) / spokes, off = -Math.PI / 2 + step / 2;
+  for (let i = 0; i < spokes; i++) { const [x, y] = pol(rOut, off + i * step); s += `<line x1="0" y1="0" x2="${f(x)}" y2="${f(y)}" stroke="${color}" stroke-width="${width}" stroke-linecap="round"/>`; }
+  rings.forEach((r) => {
+    let d = '';
+    for (let i = 0; i < spokes; i++) {
+      const a0 = off + i * step, a1 = a0 + step;
+      const [x0, y0] = pol(r, a0), [x1, y1] = pol(r, a1), [cx, cy] = pol(r * .82, a0 + step / 2);
+      d += `${i ? '' : `M${f(x0)} ${f(y0)}`}Q${f(cx)} ${f(cy)} ${f(x1)} ${f(y1)}`;
+    }
+    s += `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linejoin="round"/>`;
+  });
+  if (center) {
+    let d = '';
+    for (let t = 0; t <= Math.PI * 3; t += .15) { const r = .8 + t * .9; const [x, y] = pol(r, t); d += (d ? 'L' : 'M') + f(x) + ' ' + f(y); }
+    s += `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width * .8}" stroke-linecap="round"/>`;
+  }
+  return s;
+}
+function sector(r0, r1, a0, a1) {
+  const [x0, y0] = pol(r1, a0), [x1, y1] = pol(r1, a1), [x2, y2] = pol(r0, a1), [x3, y3] = pol(r0, a0);
+  const large = a1 - a0 > Math.PI ? 1 : 0;
+  return `M${f(x0)} ${f(y0)}A${r1} ${r1} 0 ${large} 1 ${f(x1)} ${f(y1)}L${f(x2)} ${f(y2)}A${r0} ${r0} 0 ${large} 0 ${f(x3)} ${f(y3)}Z`;
+}
+const EMBLEMS = {
+  segments: {
+    name: '1 · Anneau en segments',
+    desc: 'Fidèle au médaillon : un anneau découpé en douze segments, en gris chauds de l\'affiche avec trois segments orange ; la toile orange au centre, sa spirale comprise.',
+    svg: (small) => {
+      const tones = ['#FC9203', '#8C837C', '#5E5852', '#A39A92', '#FC9203', '#6E6862', '#8C837C', '#4E4944', '#FC9203', '#A39A92', '#5E5852', '#7D766F'];
+      let s = '<circle r="96" fill="#161818"/>';
+      const n = 12, gap = small ? .07 : .04;
+      for (let i = 0; i < n; i++) { const a0 = (i / n) * Math.PI * 2 - Math.PI / 2 + gap, a1 = ((i + 1) / n) * Math.PI * 2 - Math.PI / 2 - gap; s += `<path d="${sector(72, 94, a0, a1)}" fill="${tones[i]}"/>`; }
+      s += `<circle r="68" fill="#1E2121"/>`;
+      s += webPaths('#FC9203', small ? 4 : 2.2, small ? { rings: [22, 42, 60], spokes: 6, center: false } : {});
+      return s;
+    },
+  },
+  grave: {
+    name: '2 · Anneau gravé',
+    desc: 'Plus proche du médaillon gris de l\'affiche : un anneau plein orange, gravé de graduations, la toile en gris clair. Lisible en petit, mais l\'orange domine.',
+    svg: (small) => {
+      let s = '<circle r="96" fill="#161818"/>';
+      s += `<path d="${sector(74, 94, 0, Math.PI * 2 - .0001)}" fill="#FC9203"/>`;
+      if (!small) for (let i = 0; i < 48; i++) { const a = (i / 48) * Math.PI * 2; const [x1, y1] = pol(77, a), [x2, y2] = pol(i % 4 ? 84 : 91, a); s += `<line x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}" stroke="#161818" stroke-width="1.6"/>`; }
+      s += webPaths('#C9C2BA', small ? 4.5 : 2, small ? { rings: [24, 46, 64], spokes: 6, center: false } : {});
+      return s;
+    },
+  },
+  trait: {
+    name: '3 · Trait seul',
+    desc: 'Version au trait, monochrome orange, sans disque : pour les petites tailles, l\'icône maskable et les fonds autres que le charbon.',
+    svg: (small) => {
+      let s = `<circle r="${small ? 86 : 88}" fill="none" stroke="#FC9203" stroke-width="${small ? 12 : 7}"/>`;
+      if (!small) s += '<circle r="76" fill="none" stroke="#FC9203" stroke-width="1.5" stroke-dasharray="3 5"/>';
+      s += webPaths('#FC9203', small ? 6 : 2.6, small ? { rings: [26, 50], spokes: 6, rOut: 70, center: false } : { rOut: 70 });
+      return s;
+    },
+  },
+};
+
+
+/* ---------- Variantes ---------- */
+const VARIANTS = {
+  A: { name: 'Sceau commun', note: 'A « Sceau commun » : la même illustration pour tous les scénarios sans image. Motif gravé (anneaux, graduations, spirale), et l\'emblème au trait en filigrane sur la carte et le bandeau. On reconnaît « pas d\'image », pas le scénario.' },
+  B: { name: 'Cadrage', note: 'B « Cadrage » : le motif est décentré, tourné, retourné et agrandi selon l\'identifiant du scénario ; le jeu d\'anneaux varie aussi. Stable : un scénario garde son illustration, même si son titre change.' },
+  C: { name: 'Lettrine', note: 'C « Lettrine » : l\'initiale du titre, en Uncial Antiqua et dans le gris des capitales de l\'affiche, au centre des anneaux (sans spirale). Le motif est le même pour tous. L\'initiale suit le titre.' },
+  D: { name: 'Lettrine et cadrage', note: 'D « Lettrine et cadrage » : la lettrine reste centrée, les anneaux sont cadrés selon l\'identifiant. Deux scénarios de même initiale se distinguent encore par leurs anneaux.' },
+};
+const KEYS = Object.keys(VARIANTS);
+const root = document.documentElement;
+const state = { variant: 'A', skipArticle: true };
+
+/* ---------- Illustration par défaut ---------- */
+// Hachage FNV-1a de l'identifiant, puis une suite pseudo-aléatoire stable (mulberry32)
+function rng(id) {
+  let h = 0x811c9dc5;
+  for (const ch of id) { h ^= ch.codePointAt(0); h = Math.imul(h, 0x01000193); }
+  let a = h >>> 0;
+  return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+const ARTICLE = /^(?:(?:le|la|les|un|une|des|the|an?)\s+|l['’]\s*)/i;
+function initial(title) {
+  const t = (state.skipArticle ? title.replace(ARTICLE, '') : title).trim();
+  return ([...t][0] || '?').toLocaleUpperCase('fr');
+}
+const RING_SETS = [[18, 34, 52, 70, 88], [24, 48, 72, 88], [14, 30, 46, 62, 78, 94], [40, 58, 88]];
+// Chaque format : cadre (viewBox), fond, position du motif, amplitude du cadrage, place de la lettrine
+const FMT = {
+  thumb: { vb: '-100 -100 200 200', bg: 'var(--s3)', mx: 0, my: 0, ms: 1, ticks: false, rings: [30, 60, 90], lRings: [72, 90], dx: 55, dy: 55, letter: 150, emblem: null },
+  card: { vb: '-150 -100 300 200', bg: 'var(--s2)', mx: 70, my: -25, ms: 1.3, ticks: true, rings: [18, 34, 52, 70, 88], lRings: [60, 70, 88], dx: 70, dy: 30, letter: 120, emblem: { x: -95, y: -45, s: .5 } },
+  banner: { vb: '-200 -50 400 100', bg: 'var(--s2)', mx: 130, my: 0, ms: 1, ticks: true, rings: [18, 34, 52, 70, 88], lRings: [60, 70, 88], dx: 90, dy: 20, letter: 112, emblem: { x: -160, y: 0, s: .3 } },
+};
+function art(sc, fmt) {
+  const F = FMT[fmt], v = state.variant;
+  const lettrine = v === 'C' || v === 'D', cadrage = v === 'B' || v === 'D';
+  const r = rng(sc.id);
+  let x = F.mx, y = F.my, s = F.ms, rot = 0, mir = 1, rings = lettrine ? F.lRings : F.rings;
+  if (cadrage) {
+    x += (r() * 2 - 1) * F.dx; y += (r() * 2 - 1) * F.dy;
+    s *= .9 + r() * .7; rot = Math.floor(r() * 360); mir = r() < .5 ? -1 : 1;
+    const set = RING_SETS[Math.floor(r() * RING_SETS.length)];
+    if (!lettrine) rings = set;
+  }
+  let g = `<g transform="translate(${f(x)} ${f(y)}) rotate(${rot}) scale(${f(s * mir)} ${f(s)})">${motifSVG({ spiral: !lettrine, ticks: F.ticks, rings })}</g>`;
+  if (!lettrine && F.emblem) g += `<g transform="translate(${F.emblem.x} ${F.emblem.y}) scale(${F.emblem.s})" opacity=".22">${EMBLEMS.trait.svg(false)}</g>`;
+  if (lettrine) g += `<text x="${F.mx}" y="${F.my}" text-anchor="middle" dominant-baseline="central" style="font-family: var(--font-title); font-size: ${F.letter}px; fill: var(--letter)">${initial(sc.title)}</text>`;
+  return `<svg class="art" viewBox="${F.vb}" preserveAspectRatio="xMidYMid slice" style="background: ${F.bg}; color: var(--engrave)" aria-hidden="true">${g}</svg>`;
+}
+// Image fournie si elle existe, sinon l'illustration par défaut
+const media = (sc, fmt) => sc.img ? `<img src="${IMG[sc.img]}" alt="">` : art(sc, fmt);
+
+/* ---------- Données de démonstration ---------- */
+const ICON = {
+  ok: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.3l2.2 2.2 4.8-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  warn: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.5l4.8 8.6H1.2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M6 5v2.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="6" cy="8.7" r=".8" fill="currentColor"/></svg>',
+  danger: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 3.4v3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="6" cy="8.4" r=".85" fill="currentColor"/></svg>',
+};
+const STATUS = { ok: 'Complète', warn: 'Presque pleine', danger: 'Très demandée' };
+const badge = (st) => `<span class="badge ${st}">${ICON[st]}${STATUS[st]}</span>`;
+const SC = {
+  masques: { id: '7f3c2a10-4b1e-4c8a-9d21-0a5e6f7b8c91', title: 'Les Masques de Nyarlathotep : prologue', system: 'L\'Appel de Cthulhu', gm: 'Ombrelune', img: 'mer', min: 3, max: 5 },
+  neons: { id: 'b2e4f6a8-1c3d-4e5f-8a9b-c0d1e2f3a4b5', title: 'Néons sur Neo-Paris', system: 'Cyberpunk RED', gm: 'Kaïros', img: 'neon', min: 3, max: 4 },
+  desert: { id: 'c3d5e7f9-2a4b-4c6d-8e0f-1a2b3c4d5e6f', title: 'Le Désert des Mille Soleils', system: 'Chroniques Oubliées', gm: 'Sirocco', img: 'desert', min: 3, max: 5 },
+  bal: { id: 'd4e6f8a0-3b5c-4d7e-9f1a-2b3c4d5e6f70', title: 'Le Bal des Ombres', system: 'Vampire : la Mascarade', gm: 'Nocturne', img: 'chateau', min: 4, max: 6 },
+  reine: { id: '0e1f2a3b-4c5d-4e6f-8a7b-9c0d1e2f3a4b', title: 'Thé chez la Reine Rouge', system: 'Wonderland No More', gm: 'Lapinou', img: null, min: 3, max: 5 },
+  tour: { id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', title: 'La Tour d\'ébène', system: 'Dungeon World', gm: 'Corbeau', img: null, min: 3, max: 5 },
+  cartes: { id: '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e', title: 'Cartes sur table', system: 'Fiasco', gm: 'Kaïros', img: null, min: 3, max: 4 },
+  chiens: { id: '3c4d5e6f-7a8b-4c9d-8e1f-2a3b4c5d6e7f', title: 'Les Chiens de la Vigne', system: 'Dogs in the Vineyard', gm: 'Tarasque', img: null, min: 3, max: 5 },
+  train: { id: '4d5e6f7a-8b9c-4d0e-9f2a-3b4c5d6e7f80', title: 'Le Dernier Train pour Ys', system: 'Brigandyne', gm: 'Fougère', img: null, min: 4, max: 6 },
+  heritage: { id: '5e6f7a8b-9c0d-4e1f-8a3b-4c5d6e7f8091', title: 'L\'Héritage des Hautes-Combes', system: 'Les Lames du Cardinal', gm: 'Sirocco', img: null, min: 3, max: 5 },
+  melodie: { id: '6f7a8b9c-0d1e-4f2a-9b4c-5d6e7f8091a2', title: 'Mélodie pour un fantôme', system: 'Kult', gm: 'Nocturne', img: null, min: 2, max: 4 },
+  nuit: { id: '7a8b9c0d-1e2f-4a3b-8c5d-6e7f8091a2b3', title: 'Une nuit à l\'abbaye', system: 'Ars Magica', gm: 'Corbeau', img: null, min: 3, max: 5 },
+  paves: { id: '8b9c0d1e-2f3a-4b4c-9d6e-7f8091a2b3c4', title: 'Sous les pavés', system: 'Paris Mille', gm: 'Ombrelune', img: null, min: 3, max: 5 },
+  sables: { id: '9c0d1e2f-3a4b-4c5d-8e7f-8091a2b3c4d5', title: 'Sables et serments', system: 'Tales from the Loop', gm: 'Fougère', img: null, min: 3, max: 5 },
+  operation: { id: 'a0d1e2f3-4b5c-4d6e-9f80-91a2b3c4d5e6', title: 'Opération Chimère', system: 'Delta Green', gm: 'Tarasque', img: null, min: 4, max: 5 },
+  zone: { id: 'b1e2f3a4-5c6d-4e7f-8091-a2b3c4d5e6f7', title: 'Zone grise', system: 'Mutant : Année Zéro', gm: 'Lapinou', img: null, min: 3, max: 5 },
+};
+const SLOTS = [{ n: 1, start: '10:00', end: '12:30' }, { n: 2, start: '14:00', end: '16:30' }];
+const TABLES = ['Table 1', 'Table 2', 'Bibliothèque'];
+const GAMES = [
+  { sc: 'masques', slot: 1, table: 0, st: 'warn', seats: '4/5' },
+  { sc: 'reine', slot: 1, table: 1, st: 'ok', seats: '5/5' },
+  { sc: 'tour', slot: 1, table: 2, st: 'danger', seats: '8/5' },
+  { sc: 'cartes', slot: 2, table: 0, st: 'warn', seats: '3/4' },
+  { sc: 'neons', slot: 2, table: 1, st: 'ok', seats: '4/4' },
+  { sc: 'chiens', slot: 2, table: 2, st: 'warn', seats: '4/5' },
+];
+
+/* ---------- Rendu ---------- */
+function renderCalendar() {
+  let h = '<div></div>';
+  TABLES.forEach((t, i) => (h += `<div class="cal-head" style="grid-column:${i + 2};grid-row:1"><span class="caps">${t}</span></div>`));
+  SLOTS.forEach((s, i) => (h += `<div class="slot-label" style="grid-column:1;grid-row:${2 + i * 2}"><span class="caps">Créneau ${s.n}</span><span class="t num">${s.start}</span><span class="t t-end num">${s.end}</span></div>`));
+  h += '<div class="pause" style="grid-row:3"><span class="num">Pause déjeuner · 12:30 – 14:00</span></div>';
+  GAMES.forEach((g) => {
+    const sc = SC[g.sc];
+    h += `<div style="grid-column:${g.table + 2};grid-row:${2 + (g.slot - 1) * 2};min-width:0"><article class="partie" tabindex="0" aria-label="${sc.title}">
+      <div class="thumb">${media(sc, 'thumb')}</div>
+      <h3 class="p-title">${sc.title}</h3>
+      <p class="p-meta">${sc.system} · ${sc.gm}</p>
+      <div class="p-foot">${badge(g.st)}<span class="places num">${g.seats}</span></div>
+    </article></div>`;
+  });
+  document.getElementById('cal').innerHTML = h;
+}
+function renderReserve() {
+  const items = ['desert', 'train', 'heritage', 'bal', 'melodie'];
+  let h = `<div class="reserve-head"><p class="caps" style="margin:0">Réserve</p><p class="muted num" style="margin:2px 0 0;font-size:12px">Créneau 2 · 14:00 – 16:30 · ${items.length} scénarios</p></div>`;
+  items.forEach((k) => {
+    const sc = SC[k];
+    h += `<article class="reserve-item" tabindex="0" aria-label="${sc.title}">
+      <div class="thumb">${media(sc, 'thumb')}</div>
+      <h3 class="p-title" style="font-size:13.5px">${sc.title}</h3>
+      <p class="p-meta">${sc.system} · ${sc.gm}</p>
+      <div class="r-foot"><span class="muted num" style="font-size:12px">${sc.min} à ${sc.max} places</span><button class="btn btn-ghost" type="button" style="min-height:28px;padding-block:4px;font-size:12px">Programmer sur…</button></div>
+    </article>`;
+  });
+  document.getElementById('reserve').innerHTML = h;
+}
+function renderFiches() {
+  const fiche = (sc, pitch) => `<article class="panel fiche">
+    <div class="banner">${media(sc, 'banner')}</div>
+    <div class="fiche-body">
+      <p class="caps muted" style="margin:0">Scénario · ${sc.gm}</p>
+      <h3 class="fiche-title">${sc.title}</h3>
+      <p class="p-meta">${sc.system}</p>
+      <p style="margin:4px 0 0">${pitch}</p>
+      <div class="fiche-chips"><span class="chip num">${sc.min} à ${sc.max} places</span><span class="chip">1 créneau</span></div>
+    </div>
+  </article>`;
+  document.getElementById('fiches').innerHTML =
+    fiche(SC.tour, 'Au sommet de la tour, une mage attend depuis cent ans qu\'on vienne lui rendre sa clé.') +
+    fiche(SC.bal, 'Une invitation sans signature, un château qui n\'apparaît que la nuit.');
+}
+function foCard(sc, slotTxt, pitch) {
+  return `<article class="fo-card">
+    <div class="fo-media">${media(sc, 'card')}</div>
+    <div class="fo-body">
+      <p class="caps num">${slotTxt}</p>
+      <h3 class="fo-title">${sc.title}</h3>
+      <p class="fo-by">${sc.system} · mené par ${sc.gm}</p>
+      <p class="fo-pitch">${pitch}</p>
+      <div class="fo-chips"><span class="chip num">${sc.min} à ${sc.max} places</span><span class="chip">1 créneau</span></div>
+      <button class="btn btn-primary" type="button">M'inscrire</button>
+    </div>
+  </article>`;
+}
+function renderPhones() {
+  document.getElementById('phones').innerHTML = `
+    <div class="phone"><div class="phone-bar"><span class="caps">Créneau 1</span><span class="muted num">10:00 – 12:30</span></div>
+      ${foCard(SC.masques, 'Table 1 · 10:00 – 12:30', 'Un paquebot, une malle scellée, et un passager qui n\'est pas sur la liste.')}
+      ${foCard(SC.reine, 'Table 2 · 10:00 – 12:30', 'La Reine Rouge t\'invite pour le thé. Refuser serait impoli. Accepter serait pire.')}
+    </div>
+    <div class="phone"><div class="phone-bar"><span class="caps">Créneau 1</span><span class="muted num">10:00 – 12:30</span></div>
+      ${foCard(SC.tour, 'Bibliothèque · 10:00 – 12:30', 'Au sommet de la tour, une mage attend depuis cent ans qu\'on vienne lui rendre sa clé.')}
+      <p class="note">Défilement de la liste du créneau 1 : deux cartes sans image se suivent, après une carte avec image.</p>
+    </div>`;
+}
+function renderBoard() {
+  const keys = ['reine', 'tour', 'cartes', 'chiens', 'train', 'heritage', 'melodie', 'nuit', 'paves', 'sables', 'operation', 'zone'];
+  document.getElementById('board').innerHTML = keys.map((k) => {
+    const sc = SC[k];
+    return `<div class="board-item">
+      <div class="board-row"><div class="thumb t32">${art(sc, 'thumb')}</div><div class="thumb t44">${art(sc, 'thumb')}</div><div class="c32">${art(sc, 'card')}</div></div>
+      <p class="board-title">${sc.title} <span class="muted">· ${sc.gm}</span></p>
+    </div>`;
+  }).join('');
+}
+let playId = SC.paves.id.replace(/^8b/, 'f0');
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
+function renderPlay() {
+  const sc = { id: playId, title: document.getElementById('play-title').value || '?' };
+  document.getElementById('play-id-val').textContent = `Identifiant : ${playId}`;
+  document.getElementById('play-out').innerHTML = `
+    <figure><div class="thumb" style="width:32px;height:32px">${art(sc, 'thumb')}</div><figcaption class="num">32 px</figcaption></figure>
+    <figure><div class="thumb" style="width:44px;height:44px">${art(sc, 'thumb')}</div><figcaption class="num">44 px</figcaption></figure>
+    <figure><div class="thumb" style="width:96px;height:96px">${art(sc, 'thumb')}</div><figcaption class="num">96 px</figcaption></figure>
+    <figure><div class="p-card">${art(sc, 'card')}</div><figcaption>carte 3:2</figcaption></figure>
+    <figure><div class="p-banner">${art(sc, 'banner')}</div><figcaption>bandeau 4:1</figcaption></figure>`;
+}
+
+function renderAll() {
+  renderCalendar(); renderReserve(); renderFiches(); renderPhones(); renderBoard(); renderPlay();
+}
+
+/* ---------- Barre de bascule ---------- */
+function setVariant(k, push = true) {
+  if (!VARIANTS[k]) k = 'A';
+  state.variant = k;
+  root.dataset.variant = k;
+  document.getElementById('vlabel').textContent = `${k} · ${VARIANTS[k].name}`;
+  document.getElementById('variant-note').textContent = VARIANTS[k].note;
+  document.getElementById('skip-article').disabled = !(k === 'C' || k === 'D');
+  if (push) try { history.replaceState(null, '', '#' + k); } catch (e) { /* cadre sans historique */ }
+  renderAll();
+}
+const step = (d) => setVariant(KEYS[(KEYS.indexOf(state.variant) + d + KEYS.length) % KEYS.length]);
+document.getElementById('prev').addEventListener('click', () => step(-1));
+document.getElementById('next').addEventListener('click', () => step(1));
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') step(-1);
+  if (e.key === 'ArrowRight') step(1);
+});
+window.addEventListener('hashchange', () => setVariant(location.hash.slice(1), false));
+document.getElementById('skip-article').addEventListener('change', (e) => { state.skipArticle = e.target.checked; renderAll(); });
+document.getElementById('play-title').addEventListener('input', renderPlay);
+document.getElementById('play-id').addEventListener('click', () => { playId = uuid(); renderPlay(); });
+document.getElementById('play-form').addEventListener('submit', (e) => e.preventDefault());
+
+document.getElementById('header-emblem').innerHTML = EMBLEMS.segments.svg(true);
+document.getElementById('header-motif').innerHTML = motifSVG();
+setVariant(location.hash.slice(1).toUpperCase(), false);
+</script>
