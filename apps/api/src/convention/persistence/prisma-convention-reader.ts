@@ -7,7 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 export class PrismaConventionReader implements ConventionReader {
   constructor(private readonly prisma: PrismaService) {}
 
-  read(): Promise<ConventionDto | null> {
-    return this.prisma.convention.findFirst({ select: { id: true, name: true } });
+  read(): Promise<ConventionDto> {
+    return this.prisma.convention.findFirstOrThrow({ select: { id: true, name: true } });
   }
 }

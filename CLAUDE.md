@@ -11,16 +11,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Monorepo pnpm (Node 22, pnpm 12). Depuis la racine :
 
-- `pnpm dev:db` : PostgreSQL de dev dans Docker (port 5435). Avant le premier lancement : `cp apps/api/.env.example apps/api/.env`, puis `pnpm prisma:migrate` et `pnpm prisma:seed`.
+- `pnpm dev:db` : PostgreSQL de dev dans Docker (port 5435). Avant le premier lancement : `cp apps/api/.env.example apps/api/.env`, puis `pnpm prisma:migrate`. La migration `default_convention` crée la convention, avec son nom provisoire, dans toute base qui n'en a pas. Le seed (`pnpm prisma:seed`) ne fait rien en attendant le seed de démonstration.
 - `pnpm dev` : compile les packages puis lance en parallèle leur watch, l'API (:3000), le front office (:4200) et le back office (:4201/gestion/). Les fronts passent par un proxy `/api` → :3000. L'API ne redémarre pas quand un package change : relancer `pnpm dev`.
 - `pnpm build`, `pnpm test`, `pnpm lint` : tous les paquets, dans l'ordre des dépendances.
 - Un seul fichier de test :
-  - packages et API (Vitest) : `pnpm --filter api test -- src/convention/http/convention.controller.spec.ts` ;
+  - packages et API (Vitest) : `pnpm --filter design test -- src/initial-of.spec.ts` ;
+  - suite HTTP de l'API : `pnpm --filter api test:e2e -- src/convention/http/convention.controller.e2e-spec.ts` ;
   - fronts (`ng test`) : `pnpm --filter front-office test --include src/app/app.spec.ts`, sans `--`.
-- `pnpm --filter api test:e2e` : application complète contre la base de dev.
+- `pnpm --filter api test:e2e` : application complète, par HTTP, contre la base de test `chimeres_test` (même serveur PostgreSQL que la dev, `TEST_DATABASE_URL` pour en changer). La suite la crée et la migre au démarrage (`test/global-setup.ts`), la remet à zéro avant chaque test (`test/database.ts`) et exécute ses fichiers en série. Les controllers s'y testent sans port bouchonné (`*.e2e-spec.ts`, à côté du controller).
 - `pnpm --filter api exec prisma migrate dev --name <nom>` : nouvelle migration.
 - `docker compose up --build app` : image de production en local sur :8080.
-- `pnpm test:e2e` : tests Playwright (`e2e/`) contre l'image sur :8080, démarrée par Playwright si elle ne tourne pas. Ils couvrent les deux fronts, le service worker et le mode hors ligne. La base doit contenir la convention (`pnpm prisma:seed`). Si le navigateur manque : `pnpm --filter e2e exec playwright install chromium`.
+- `pnpm test:e2e` : tests Playwright (`e2e/`) contre l'image du service `app-e2e` sur :8081, démarrée par Playwright si elle ne tourne pas. Elle pointe vers la base `chimeres_e2e`, créée et migrée au démarrage du conteneur : aucun seed n'est nécessaire. Projet `mobile` (Pixel 7) pour `tests/front-office/`, projet `bureau` (1280 × 800) pour `tests/back-office/`. Les tests du bureau importent `test` de `e2e/fixtures.ts`, qui remet la base e2e à zéro avant chacun, et s'exécutent en série. Les données se préparent par l'API, à travers les descripteurs de `contract` : aucune route en dur. Si le navigateur manque : `pnpm --filter e2e exec playwright install chromium`.
 
 Pièges :
 
@@ -28,6 +29,7 @@ Pièges :
 - Le client Prisma est généré dans `apps/api/src/generated/` (ignoré par git). Les scripts `pre*` de l'API lancent `prisma generate`. `prisma migrate dev` ne le régénère pas : après un changement de schéma, lancer `pnpm --filter api exec prisma generate` avant le seed.
 - Un jeton d'injection (`Symbol`) vit dans son propre fichier (`<module>/<port>.token.ts`). S'il est défini dans `<module>.module.ts`, l'import circulaire module ↔ controller le rend `undefined` au moment du décorateur.
 - pnpm bloque les scripts d'installation non listés dans `allowBuilds` (`pnpm-workspace.yaml`).
+- Les deux suites de bout en bout ne touchent jamais la base de dev. Leur remise à zéro vide toutes les tables (`apps/api/test/reset-database.sql`), puis rejoue la migration `default_convention`. Si la convention reçoit de nouvelles colonnes, cette migration reste la source de son état initial.
 
 ## Organisation du code (DDD)
 
@@ -41,7 +43,7 @@ Pièges :
 | `apps/front-office`, `apps/back-office` | Angular, CDK et Aria, CSS natif, sans bibliothèque de composants | `contract`, `design` |
 
 - La frontière est physique : un package ne voit que les dépendances de son `package.json`. `domain` et `application` restent sans framework, donc sans décorateur Nest. L'API injecte chaque port par un jeton `Symbol`, et construit les commandes par `useFactory`.
-- **Lecture** : le controller appelle directement un port `<Concept>Reader` (dans `application`), qui renvoie un DTO du `contract` ou `null` (→ 404 dans le controller). Exemple : `ConventionReader`. Une classe de requête n'existe que pour une vraie logique de lecture : combiner plusieurs ports, ou demander un verdict à un agrégat.
+- **Lecture** : le controller appelle directement un port `<Concept>Reader` (dans `application`), qui renvoie un DTO du `contract`, ou `null` si l'élément peut manquer (→ 404 dans le controller). Exemple : `ConventionReader`, dont la convention existe toujours. Une classe de requête n'existe que pour une vraie logique de lecture : combiner plusieurs ports, ou demander un verdict à un agrégat.
 - **Endpoint** : déclaré une fois dans `contract` par `endpoint<Dto>(méthode, chemin)`, regroupé par concept (`conventionEndpoints.read`) ; la clé reprend le verbe du glossaire. Le controller en tire son chemin (`@Controller()` vide, `@Get(conventionEndpoints.read.path)`) et son type de retour (`ResponseOf<…>`), les fronts le lisent par `apiResource()` (`src/app/api-resource.ts`) et y écrivent par `apiCall()`. Les paramètres de chemin s'écrivent `:param`. Aucune route ni `/api` en dur dans le code TypeScript ([ADR 0004](docs/adr/0004-descripteurs-d-endpoints-dans-contract.md)).
 - **Commande** : une classe dans `application` charge l'agrégat par un `<Aggregate>Repository`, lui délègue la règle, le sauvegarde. Le domaine refuse par une exception typée (un code de `contract` et des paramètres, sans texte). Un filtre global de l'API la traduit en Problem Details, avec le message français de son catalogue, et le controller ne fait aucun `try/catch` ([ADR 0008](docs/adr/0008-le-domaine-donne-un-code-l-api-ecrit-le-message.md)).
 - **Règle** : elle vit en entier sur l'objet qui détient l'état. Une méthode ne reçoit jamais la condition de son propre refus (un booléen calculé par l'appelant) ; si une donnée est hors de l'agrégat, elle reçoit le collaborateur entier et l'interroge elle-même ([ADR 0005](docs/adr/0005-une-regle-vit-sur-l-objet-qui-recoit-ses-collaborateurs.md)).

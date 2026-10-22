@@ -1,5 +1,6 @@
 # Développement. `pnpm dev:db` ne lance que postgres ;
 # `docker compose up --build app` construit et lance l'image de production en local.
+# `app-e2e` est la même image, sur la base chimeres_e2e : Playwright la démarre (`pnpm test:e2e`).
 services:
   postgres:
     image: postgres:17-alpine
@@ -30,6 +31,20 @@ services:
       DATABASE_URL: postgresql://chimeres:chimeres@postgres:5432/chimeres?schema=public
     ports:
       - '8080:3000'
+
+  app-e2e:
+    profiles: [e2e]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Créée par `prisma migrate deploy` au démarrage du conteneur si elle manque.
+      DATABASE_URL: postgresql://chimeres:chimeres@postgres:5432/chimeres_e2e?schema=public
+    ports:
+      - '8081:3000'
 
 volumes:
   postgres-data:

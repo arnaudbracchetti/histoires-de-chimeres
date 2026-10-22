@@ -20,7 +20,7 @@
     "format": "prettier --write .",
     "prisma:migrate": "pnpm --filter api exec prisma migrate dev",
     "prisma:seed": "pnpm --filter api exec prisma db seed",
-    "test:e2e": "pnpm --filter e2e test:e2e"
+    "test:e2e": "pnpm build:packages && pnpm --filter e2e test:e2e"
   },
   "devDependencies": {
     "prettier": "^3.8.1",

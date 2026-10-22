@@ -1,9 +1,19 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { loadFont } from '../fonts.js';
 
-/** Charge une police de la charte dans la page et dit si elle a été trouvée. */
-function loadFont(page: Page, family: string) {
-  return page.evaluate(async (f) => (await document.fonts.load(`1em "${f}"`)).length > 0, family);
-}
+test('le front office souhaite la bienvenue', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    'Bienvenue à Histoires de Chimères',
+  );
+});
+
+test('un lien profond retombe sur le front office', async ({ page }) => {
+  await page.goto('/une/route');
+
+  await expect(page).toHaveTitle('Histoires de Chimères');
+});
 
 test("le front office sert ses polices et l'icône de PWA", async ({ page, baseURL }) => {
   const fonts: string[] = [];
@@ -25,11 +35,4 @@ test("le front office sert ses polices et l'icône de PWA", async ({ page, baseU
   const response = await page.request.get(`/${icon.src}`);
   expect(response.ok()).toBe(true);
   expect(response.headers()['content-type']).toBe('image/png');
-});
-
-test('le back office sert ses polices sous /gestion/', async ({ page }) => {
-  await page.goto('/gestion/');
-
-  expect(await loadFont(page, 'Uncial Antiqua')).toBe(true);
-  expect(await loadFont(page, 'Aldrich')).toBe(true);
 });
