@@ -1,0 +1,185 @@
+@layer components {
+  :host {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-l);
+    width: 16rem;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    padding: var(--space-m) var(--space-s);
+    border-right: 1px solid var(--border);
+    background: var(--surface-1);
+  }
+
+  :host(.collapsed) {
+    width: calc(2rem + 2 * var(--space-s) + 1px);
+  }
+
+  .brand {
+    display: flex;
+    gap: var(--space-s);
+    align-items: center;
+    padding: 0 var(--space-xs);
+  }
+
+  .emblem {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex: none;
+  }
+
+  .name {
+    font-family: var(--font-display);
+    font-size: var(--font-size-block);
+  }
+
+  .convention {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-s);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    background: var(--surface-2);
+    color: var(--text);
+    text-decoration: none;
+
+    &:hover {
+      background: var(--surface-3);
+    }
+  }
+
+  .convention-date {
+    color: var(--text-muted);
+    font-size: var(--font-size-meta);
+  }
+
+  /* Sans défilement : il couperait les infobulles du rail replié. */
+  nav {
+    flex: 1;
+  }
+
+  .section {
+    margin: var(--space-m) var(--space-xs) var(--space-xs);
+    color: var(--text-muted);
+    font-family: var(--font-caps);
+    font-size: var(--font-size-overline);
+    font-weight: normal;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xxs);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .entry {
+    position: relative;
+    display: flex;
+    gap: var(--space-s);
+    align-items: center;
+    padding: var(--space-s);
+    border-radius: var(--radius-control);
+    color: var(--text);
+    text-decoration: none;
+  }
+
+  a.entry:hover {
+    background: var(--surface-3);
+  }
+
+  a.entry.active {
+    background: var(--surface-3);
+    color: var(--accent);
+  }
+
+  .upcoming {
+    color: var(--text-muted);
+    cursor: default;
+  }
+
+  .soon {
+    display: inline-flex;
+    gap: var(--space-xxs);
+    align-items: center;
+    vertical-align: middle;
+    white-space: nowrap;
+    margin-left: var(--space-xs);
+    padding: 0 var(--space-xs);
+    border-radius: 999px;
+    background: var(--surface-3);
+    font-size: var(--font-size-meta);
+  }
+
+  .footer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-s);
+    color: var(--text-muted);
+    font-size: var(--font-size-meta);
+  }
+
+  .user {
+    position: relative;
+    display: flex;
+    gap: var(--space-s);
+    align-items: center;
+    padding: 0 var(--space-s);
+  }
+
+  .toggle {
+    align-self: flex-start;
+    display: grid;
+    place-items: center;
+    padding: var(--space-s);
+    border: none;
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--surface-3);
+      color: var(--text);
+    }
+  }
+
+  /* Replié : le libellé reste dans le DOM (nom accessible), masqué, et revient en infobulle. */
+  :host(.collapsed) {
+    .name,
+    .section {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .label {
+      position: absolute;
+      left: calc(100% + var(--space-s));
+      z-index: 10;
+      padding: var(--space-xs) var(--space-s);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-control);
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: var(--font-size-meta);
+      white-space: nowrap;
+      clip-path: inset(50%);
+      pointer-events: none;
+    }
+
+    .entry:hover .label,
+    .entry:focus-visible .label,
+    .user:hover .label {
+      clip-path: none;
+    }
+  }
+}

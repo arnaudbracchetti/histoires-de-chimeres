@@ -12,12 +12,10 @@ test('le service worker du front office laisse passer le back office', async ({ 
   await installServiceWorker(page);
 
   await page.goto('/gestion/');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Gestion — Histoires de Chimères',
-  );
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Calendrier');
 
   await page.reload();
-  await expect(page).toHaveTitle('Gestion — Histoires de Chimères');
+  await expect(page).toHaveTitle('Calendrier — Histoires de Chimères');
 });
 
 test('le front office se charge hors ligne', async ({ page, context }) => {

@@ -1,0 +1,62 @@
+<div class="brand">
+  <svg class="emblem" aria-hidden="true" focusable="false"><use href="emblem.svg#emblem-small" /></svg>
+  <span class="name">Histoires de Chimères</span>
+</div>
+
+@if (!collapsed()) {
+  <app-loadable [resource]="convention" failure="Impossible de charger la convention.">
+    @if (convention.hasValue()) {
+      <a class="convention" routerLink="/creneaux-et-tables">
+        <span class="convention-name">{{ convention.value().name }}</span>
+        <span class="convention-date">date à fixer</span>
+      </a>
+    }
+  </app-loadable>
+}
+
+<nav aria-label="Navigation principale">
+  <h2 class="section">Préparation</h2>
+  <ul>
+    @for (entry of preparation; track entry.link) {
+      <li>
+        <a
+          class="entry"
+          [routerLink]="entry.link"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          [routerLinkActiveOptions]="{ exact: entry.link === '/' }"
+        >
+          <app-icon [name]="entry.icon" />
+          <span class="label">{{ entry.label }}</span>
+        </a>
+      </li>
+    }
+  </ul>
+
+  <h2 class="section">Jour J</h2>
+  <ul>
+    @for (entry of dayOf; track entry.label) {
+      <li class="entry upcoming">
+        <app-icon [name]="entry.icon" />
+        <span class="label">{{ entry.label }} <span class="soon"><app-icon name="clock" />à venir</span></span>
+      </li>
+    }
+  </ul>
+</nav>
+
+<div class="footer">
+  <p class="user">
+    <app-icon name="user-round" />
+    <span class="label">Organisateur, sans authentification</span>
+  </p>
+  <button
+    type="button"
+    class="toggle"
+    [attr.aria-expanded]="!collapsed()"
+    [attr.aria-label]="collapsed() ? 'Déplier le rail' : 'Replier le rail'"
+    [title]="collapsed() ? 'Déplier le rail' : 'Replier le rail'"
+    (click)="toggle()"
+  >
+    <app-icon [name]="collapsed() ? 'panel-left-open' : 'panel-left-close'" />
+  </button>
+</div>

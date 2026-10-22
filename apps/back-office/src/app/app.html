@@ -1,9 +1,6 @@
+<app-rail />
 <main>
-  @if (convention.hasValue()) {
-    <h1>Gestion — {{ convention.value().name }}</h1>
-  } @else if (convention.error()) {
-    <p>Impossible de charger la convention.</p>
-  } @else {
-    <p>Chargement…</p>
-  }
+  <router-outlet />
 </main>
+<app-notification-stack />
+<div class="visually-hidden" aria-live="polite">{{ announcer.message() }}</div>
