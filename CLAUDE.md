@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Règles de travail
+
+- Ne rien commiter sans l'accord explicite de l'utilisateur, même si un skill le demande.
+- Répondre court et concis, avec des mots simples et clairs. Pas de tournures de style.
+
 ## Commandes
 
 Monorepo pnpm (Node 22, pnpm 12). Depuis la racine :
