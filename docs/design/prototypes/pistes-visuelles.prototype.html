@@ -6,10 +6,11 @@
   sur les mêmes écrans types : extrait du calendrier du back office, carte de scénario
   du front office. Passer de l'une à l'autre : barre du bas, flèches ← →, ou #A / #B / #C.
   Les polices viennent ici de Google Fonts ; en production elles seront hébergées avec l'application.
+  Retenu : déclinaison A, Uncial Antiqua (titres), Aldrich (capitales), emblème 1, motif « Anneaux, graduations et spirale ».
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martel:wght@800;900&family=Saira:wdth,wght@50..125,500..800&family=Chakra+Petch:wght@600;700&family=Exo+2:wght@600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Aldrich&family=Saira:wdth,wght@50..125,500..800&family=Chakra+Petch:wght@600;700&family=Exo+2:wght@600;700;800&display=swap">
 <style>
 /* Mise en page : en-tête de l'application, puis une section par question du ticket ;
    le calendrier et la réserve côte à côte sur grand écran, empilés sur téléphone. */
@@ -21,13 +22,14 @@
   --focus: #7CC4E4;           /* bleu clair de l'anneau du logo */
   --ok: #6CC08B;
   --warn: #E8D25C;
-  --danger: #EC7357;
+  --danger: #F07F63;
   --danger-fill: #B23A26;
   --white: #FFFFFF;
 
-  --font-title: "Martel", Georgia, "Times New Roman", serif;
-  --font-caps: "Saira", "Arial Narrow", system-ui, sans-serif;
-  --caps-stretch: 125%;
+  --font-title: "Uncial Antiqua", Georgia, "Times New Roman", serif;
+  --font-caps: "Aldrich", "Arial Narrow", system-ui, sans-serif;
+  --caps-stretch: 100%;
+  --caps-weight: 400;
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   /* Déclinaison A « Atelier » par défaut */
@@ -97,6 +99,7 @@
   --img-filter: none;
   --img-filter-hover: none;
 }
+:root[data-caps="aldrich"] { --font-caps: "Aldrich", "Arial Narrow", system-ui, sans-serif; --caps-stretch: 100%; --caps-weight: 400; }
 :root[data-caps="saira"]  { --font-caps: "Saira", "Arial Narrow", system-ui, sans-serif; --caps-stretch: 100%; }
 :root[data-caps="saira-e"] { --font-caps: "Saira", "Arial Narrow", system-ui, sans-serif; --caps-stretch: 125%; }
 :root[data-caps="chakra"] { --font-caps: "Chakra Petch", "Arial Narrow", system-ui, sans-serif; --caps-stretch: 100%; }
@@ -120,7 +123,7 @@ a { color: var(--orange); }
 .caps {
   font-family: var(--font-caps);
   font-stretch: var(--caps-stretch);
-  font-weight: 700;
+  font-weight: var(--caps-weight, 700);
   text-transform: uppercase;
   letter-spacing: .12em;
   font-size: .78em;
@@ -142,7 +145,7 @@ a { color: var(--orange); }
 .app-header .motif-bg { position: absolute; right: -120px; top: -190px; width: 520px; height: 520px; color: var(--engrave); pointer-events: none; }
 .brand { position: relative; display: flex; align-items: center; gap: 12px; max-width: 1280px; margin: 0 auto; }
 .brand svg { width: 40px; height: 40px; flex: none; }
-.brand-name { font-family: var(--font-title); font-weight: 900; font-size: 22px; line-height: 1.1; margin: 0; }
+.brand-name { font-family: var(--font-title); font-weight: 400; font-size: 22px; line-height: 1.1; margin: 0; }
 .brand-by { margin: 2px 0 0; color: var(--text-2); font-size: 12px; }
 
 /* Annotations du prototype : volontairement neutres, hors de l'identité évaluée */
@@ -157,8 +160,8 @@ a { color: var(--orange); }
 section.block { margin-top: 40px; }
 .block-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; margin-bottom: 14px; }
 .eyebrow { color: var(--text-2); margin: 0 0 4px; }
-h1.page-title { font-family: var(--font-title); font-weight: 800; font-size: 30px; line-height: 1.15; margin: 0; text-wrap: balance; }
-h2.sec { font-family: var(--font-caps); font-stretch: var(--caps-stretch); font-weight: 700; text-transform: uppercase; letter-spacing: .12em; font-size: 13px; color: var(--text-2); margin: 0; }
+h1.page-title { font-family: var(--font-title); font-weight: 400; font-size: 30px; line-height: 1.15; margin: 0; text-wrap: balance; }
+h2.sec { font-family: var(--font-caps); font-stretch: var(--caps-stretch); font-weight: var(--caps-weight, 700); text-transform: uppercase; letter-spacing: .12em; font-size: 13px; color: var(--text-2); margin: 0; }
 
 /* Boutons */
 .btn {
@@ -439,6 +442,7 @@ table.contrast td.r { font-variant-numeric: tabular-nums; text-align: right; }
   <button type="button" id="next" aria-label="Déclinaison suivante">→</button>
   <label for="caps-select" style="padding-left: 6px">Capitales</label>
   <select id="caps-select">
+    <option value="aldrich">Aldrich</option>
     <option value="saira-e">Saira étendue</option>
     <option value="saira">Saira</option>
     <option value="chakra">Chakra Petch</option>
@@ -788,14 +792,15 @@ function renderTokens() {
 
 function renderSpecimens() {
   const fonts = [
-    ['saira-e', 'Saira étendue (largeur 125 %)', '"Saira"', '125%'],
-    ['saira', 'Saira (largeur normale)', '"Saira"', '100%'],
-    ['chakra', 'Chakra Petch', '"Chakra Petch"', '100%'],
-    ['exo', 'Exo 2', '"Exo 2"', '100%'],
+    ['aldrich', 'Aldrich (retenue)', "'Aldrich'", '100%'],
+    ['saira-e', 'Saira étendue (largeur 125 %)', "'Saira'", '125%'],
+    ['saira', 'Saira (largeur normale)', "'Saira'", '100%'],
+    ['chakra', 'Chakra Petch', "'Chakra Petch'", '100%'],
+    ['exo', 'Exo 2', "'Exo 2'", '100%'],
   ];
   const cur = root.dataset.caps;
   document.getElementById('specimens').innerHTML = fonts.map(([k, name, fam, st]) => {
-    const style = `font-family:${fam}, system-ui, sans-serif;font-stretch:${st}`;
+    const style = `font-family:${fam}, system-ui, sans-serif;font-stretch:${st};font-weight:${k === 'aldrich' ? 400 : 700}`;
     return `<button type="button" class="spec" data-caps="${k}" aria-pressed="${k === cur}" style="text-align:left;color:inherit;font:inherit;cursor:pointer">
       <p class="s-name">${name}</p>
       <p class="s-big" style="${style}">Convention <span class="y">2026</span></p>
@@ -852,7 +857,7 @@ document.addEventListener('keydown', (e) => {
 document.getElementById('bdg-ok').innerHTML = ICON.ok + 'Complète';
 document.getElementById('bdg-warn').innerHTML = ICON.warn + 'Presque pleine';
 document.getElementById('bdg-danger').innerHTML = ICON.danger + 'Très demandée';
-root.dataset.caps = 'saira-e';
+root.dataset.caps = 'aldrich';
 renderCalendar();
 renderReserve();
 renderPhones();
