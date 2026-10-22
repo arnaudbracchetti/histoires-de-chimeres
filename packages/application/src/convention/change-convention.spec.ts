@@ -12,7 +12,13 @@ class FakeConventionRepository implements ConventionRepository {
 
   async get(): Promise<Convention> {
     this.loads++;
-    return Convention.restore({ id: 'c1', name: 'Histoires de Chimères', date: null, version: 0 });
+    return Convention.restore({
+      id: 'c1',
+      name: 'Histoires de Chimères',
+      date: null,
+      timeSlots: [],
+      version: 0,
+    });
   }
 
   async save(convention: Convention): Promise<void> {

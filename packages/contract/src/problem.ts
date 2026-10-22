@@ -5,6 +5,11 @@
 export type RefusalParams = {
   'convention-name-required': Record<string, never>;
   'convention-name-too-long': { max: number };
+  'time-slot-not-found': Record<string, never>;
+  'time-slot-end-not-after-start': Record<string, never>;
+  /** `rank` : le rang du créneau chevauché. */
+  'time-slot-start-overlaps': { rank: number };
+  'time-slot-end-overlaps': { rank: number };
 };
 
 export type RefusalCode = keyof RefusalParams;

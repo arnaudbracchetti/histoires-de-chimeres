@@ -39,6 +39,7 @@ Seuls les termes de [GLOSSARY.md](../../GLOSSARY.md) apparaissent à l'écran, e
 | Date de la convention | jour, quantième, mois, année | « samedi 14 mars 2027 » |
 | Date pas encore fixée | | « date à fixer » |
 | Heure | `H h MM`, espaces insécables | « 14 h 00 », « 9 h 30 » |
+| Heure saisie | `hh:mm`, sur 24 heures | « 14:00 », « 09:30 » |
 | Créneau | rang, puis plage | « Créneau 2 · 14 h 00 – 18 h 30 » |
 | Durée | heures et minutes | « 4 h 30 », « 2 h », « 45 min » |
 | Ratio | `N / M`, chiffres à chasse fixe | « 42 / 36 » |

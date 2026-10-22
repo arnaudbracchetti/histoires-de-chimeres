@@ -3,7 +3,13 @@ import { Refusal } from '../refusal.js';
 import { Convention } from './convention.js';
 
 function aConvention(): Convention {
-  return Convention.restore({ id: 'c1', name: 'Histoires de Chimères', date: null, version: 0 });
+  return Convention.restore({
+    id: 'c1',
+    name: 'Histoires de Chimères',
+    date: null,
+    timeSlots: [],
+    version: 0,
+  });
 }
 
 function refusalOf(action: () => void): Refusal {

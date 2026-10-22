@@ -38,10 +38,14 @@ test('un nom vide est signalé sous le champ, sans rien envoyer', async ({ page 
   await page.goto('/gestion/creneaux-et-tables');
   const name = page.getByLabel('Nom');
 
+  const save = page.getByRole('button', { name: 'Enregistrer' });
+  const before = await save.boundingBox();
   await name.fill('');
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await save.click();
 
   await expect(name).toBeFocused();
   await expect(name).toHaveAccessibleDescription('Donne un nom à la convention.');
+  // L'erreur s'écrit sur une ligne réservée : elle ne décale rien.
+  expect(await save.boundingBox()).toEqual(before);
   await expect(page.locator('a.convention')).toContainText('Histoires de Chimères');
 });

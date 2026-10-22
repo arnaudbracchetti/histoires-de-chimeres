@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { apiUrl, conventionEndpoints, type ProblemDto } from '@chimeres/contract';
 import { ConventionForm } from './convention-form';
 import { ConventionStore } from './convention-store';
+import { Notifications } from '../shell/notifications';
 
 describe('ConventionForm', () => {
   beforeEach(() => {
@@ -101,6 +102,16 @@ describe('ConventionForm', () => {
     expect(request.body).toEqual({ name: 'Histoires de Chimères', date: null });
   });
 
+  it('réserve la ligne de l’erreur sous le champ : l’erreur ne décale rien', async () => {
+    const { type, host } = await render();
+    const errorLine = () => host.querySelector('app-field .error');
+
+    expect(errorLine()).not.toBeNull();
+    expect(errorLine()?.textContent?.trim()).toBe('');
+    await type('Nom', '');
+    expect(errorLine()?.textContent?.trim()).toBe('Donne un nom à la convention.');
+  });
+
   it('affiche une erreur locale sous le champ quand on le quitte', async () => {
     const { type, errorOf } = await render();
 
@@ -146,7 +157,16 @@ describe('ConventionForm', () => {
     expect(document.activeElement).toBe(input('Nom'));
   });
 
-  it('affiche une erreur interne dans un bandeau, sans perdre la saisie', async () => {
+  it('n’affiche aucune erreur dans le formulaire lui-même, pour ne rien décaler', async () => {
+    const { save, flush, host } = await render();
+
+    await save();
+    await flush(null, 0);
+
+    expect(host.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('affiche une erreur interne en notification, sans perdre la saisie', async () => {
     const { type, save, flush, host, input } = await render();
     const problem: ProblemDto = {
       type: 'urn:histoires-de-chimeres:problem:internal-error',
@@ -159,13 +179,13 @@ describe('ConventionForm', () => {
     await save();
     await flush(problem, 500);
 
-    expect(host.querySelector('[role="alert"]')?.textContent?.trim()).toBe(
-      'Une erreur est survenue, réessaie.',
-    );
+    expect(TestBed.inject(Notifications).notices()).toEqual([
+      expect.objectContaining({ title: 'Une erreur est survenue, réessaie.' }),
+    ]);
     expect(input('Nom').value).toBe('Chimères 2027');
   });
 
-  it('affiche le détail d’un conflit dans le bandeau', async () => {
+  it('affiche un conflit en notification, avec son titre et son détail', async () => {
     const { save, flush, host } = await render();
     const problem: ProblemDto = {
       type: 'urn:histoires-de-chimeres:problem:concurrent-modification',
@@ -178,19 +198,22 @@ describe('ConventionForm', () => {
     await save();
     await flush(problem, 409);
 
-    expect(host.querySelector('[role="alert"]')?.textContent).toContain(
-      'La convention a changé entre-temps',
-    );
+    expect(TestBed.inject(Notifications).notices()).toEqual([
+      expect.objectContaining({
+        title: 'Modification simultanée',
+        detail: 'La convention a changé entre-temps\u00a0: recharge la page, puis recommence.',
+      }),
+    ]);
   });
 
-  it('signale une coupure réseau dans le bandeau', async () => {
+  it('signale une coupure réseau en notification', async () => {
     const { save, flush, host } = await render();
 
     await save();
     await flush(null, 0);
 
-    expect(host.querySelector('[role="alert"]')?.textContent?.trim()).toBe(
-      "Pas de connexion\u00a0: rien n'a été enregistré.",
-    );
+    expect(TestBed.inject(Notifications).notices()).toEqual([
+      expect.objectContaining({ title: "Pas de connexion\u00a0: rien n'a été enregistré." }),
+    ]);
   });
 });

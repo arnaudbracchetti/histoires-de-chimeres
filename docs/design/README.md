@@ -7,7 +7,7 @@ La charte fixe l'identité commune aux deux applications : le front office, PWA 
 | [identite.md](identite.md) | Registre, emblème, motif gravé, illustration par défaut, images, accessibilité | tout écran, toute image |
 | [jetons.md](jetons.md) | Couleurs, contrastes, polices, échelles typographique et d'espacement, rayons, halo, mouvement | tout CSS |
 | [ton.md](ton.md) | Voix, micro-rédaction, typographie, formats de date et d'heure | tout texte visible |
-| [patterns.md](patterns.md) | Coquille, formulaires, tableaux, états, actions destructrices, retours d'action, statuts, focus, programmation | tout écran du back office |
+| [patterns.md](patterns.md) | Coquille, formulaires, erreurs sans décalage, tableaux, états, actions destructrices, retours d'action, statuts, focus, programmation | tout écran du back office |
 | [ecriture-css.md](ecriture-css.md) | Couches, encapsulation, unités, icônes, composants partagés | tout composant |
 
 ## Ce qui fait foi

@@ -3,6 +3,8 @@
 
 @import '@chimeres/design/tokens.css';
 @import '@chimeres/design/fonts.css';
+/* Conteneur et fond des dialogues du CDK. */
+@import '@angular/cdk/overlay-prebuilt.css' layer(base);
 
 @layer reset {
   *,
@@ -71,6 +73,40 @@
     &[aria-invalid='true'] {
       border-color: var(--danger);
     }
+  }
+
+  /* Tableaux (docs/design/patterns.md) : toutes les lignes ont la même hauteur, ligne en édition
+     comprise, pour qu'une erreur sous un champ ne décale rien. */
+  table {
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+
+  th,
+  td {
+    padding: 0 var(--space-l);
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    height: 36px;
+    background: var(--surface-0);
+    color: var(--text-muted);
+    font-size: var(--font-size-meta);
+    font-weight: normal;
+  }
+
+  tbody tr {
+    height: 48px;
+  }
+
+  tbody th {
+    font-weight: 600;
   }
 
   :focus-visible {

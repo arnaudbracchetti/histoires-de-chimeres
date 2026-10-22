@@ -10,9 +10,21 @@ datasource db {
 }
 
 model Convention {
-  id      String    @id @default(uuid()) @db.Uuid
-  name    String
-  date    DateTime? @db.Date
+  id        String     @id @default(uuid()) @db.Uuid
+  name      String
+  date      DateTime?  @db.Date
   /// Verrou optimiste : chaque sauvegarde de l'agrégat l'incrémente.
-  version Int       @default(0)
+  version   Int        @default(0)
+  timeSlots TimeSlot[]
+}
+
+/// Créneau de la convention. Ses heures sont en minutes depuis minuit, de 0 à 1439.
+model TimeSlot {
+  id           String     @id @db.Uuid
+  conventionId String     @db.Uuid
+  convention   Convention @relation(fields: [conventionId], references: [id], onDelete: Cascade)
+  startMinute  Int
+  endMinute    Int
+
+  @@index([conventionId])
 }

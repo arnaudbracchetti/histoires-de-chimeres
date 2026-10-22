@@ -6,7 +6,8 @@ let nextId = 0;
 /**
  * Champ de formulaire (docs/design/patterns.md, Champs) : libellé au-dessus, aide puis erreur
  * dessous, reliées au contrôle projeté par `aria-describedby`. Le contrôle est natif et porte
- * `[formField]`, dessiné par `styles.css`. L'erreur s'affiche une fois le champ quitté, ou après un envoi.
+ * `[formField]`, dessiné par `styles.css`. L'erreur s'affiche une fois le champ quitté, ou après un
+ * envoi, sur une ligne réservée : elle ne décale rien.
  */
 @Component({
   selector: 'app-field',
@@ -21,9 +22,8 @@ let nextId = 0;
     @if (help()) {
       <p class="help" [id]="helpId">{{ help() }}</p>
     }
-    @if (error(); as message) {
-      <p class="error" [id]="errorId">{{ message }}</p>
-    }
+    <!-- Ligne réservée, vide sans erreur : l'erreur qui apparaît ne décale rien. -->
+    <p class="error" [id]="errorId">{{ error() }}</p>
   `,
   styles: `
     @layer components {
@@ -50,6 +50,7 @@ let nextId = 0;
       }
 
       .error {
+        min-height: 1lh;
         color: var(--danger);
         font-size: var(--font-size-meta);
       }

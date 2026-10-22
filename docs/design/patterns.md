@@ -37,17 +37,31 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 
 ### Où se fait la saisie
 
-- **Objet court** (créneau, table, MJ : un à trois champs) : il s'édite **dans sa ligne**.
-  - « Ajouter une table » insère en bas du tableau une ligne en édition. Entrée enregistre, Échap annule.
-  - **Saisie à la chaîne** : après Entrée sur une ligne ajoutée, une nouvelle ligne vide s'ouvre aussitôt, focus sur son premier champ. Échap ferme la ligne vide.
-  - **Créneau, table** : un clic sur la ligne, ou « Modifier » dans son menu « ⋯ », la passe en édition.
+- **Créneau** : une **carte par créneau**, dans l'ordre de la journée, et la pause entre deux cartes (voir [Créneaux](#créneaux)).
+- **Objet court** (table, MJ : un à trois champs) : il s'édite **dans sa ligne**.
+  - « Passer en édition », sous le tableau, insère en bas une ligne en édition. Tant qu'une ligne est en édition, ce bouton devient « Enregistrer », suivi d'« Annuler » (discret). Entrée enregistre, Échap annule.
+  - **Saisie à la chaîne** : après l'enregistrement d'une ligne ajoutée, une nouvelle ligne vide s'ouvre aussitôt, focus sur son premier champ. Échap, ou « Annuler », ferme la ligne vide.
+  - **Table** : un clic sur la ligne, ou « Modifier » dans son menu « ⋯ », la passe en édition.
   - **MJ** : sa ligne mène à sa fiche. Son pseudo se modifie dans l'en-tête de la fiche (crayon, puis champ en place, Entrée ou Échap), jamais dans la liste.
 - **Scénario** : il a **sa propre page**, en lecture puis en édition. Il se crée depuis la fiche de son MJ, qui lui est fixé dès la création (PR-16), et s'ouvre aussi depuis la liste des scénarios.
 - **Dialogues** (`@angular/cdk/dialog`) : réservés aux confirmations et aux dialogues de placement de la programmation. Jamais de formulaire de saisie dans un dialogue.
 
+### Créneaux
+
+Forme retenue sur prototype, face au tableau, au formulaire fixe, à la frise de la journée et au tableur : c'est celle où l'on voit le mieux ce qu'on fait et où l'on en est.
+
+- **Une carte par créneau** : « Créneau 2 », sa plage (« 14 h 00 – 16 h 30 ») et sa durée, avec deux boutons visibles, « Modifier » (secondaire) et « Supprimer » (discret, rouge brique). Leur nom accessible nomme le créneau : « Modifier le créneau 2 ».
+- **Entre deux cartes**, la pause : « pause de 30 min », ou « bout à bout ».
+- **« Modifier »** retourne la carte en saisie, marquée « Saisie en cours », bordée d'orange : titre « Modifier le créneau 2 », champs Début et Fin, durée, « Enregistrer » (principal) et « Annuler » (discret). Les autres cartes s'estompent le temps de la saisie. Une seule carte en saisie à la fois.
+- **« Ajouter un créneau »**, une carte en pointillés en bas de la liste, ouvre une carte « Nouveau créneau ». Le début proposé est la fin du dernier créneau, la fin 2 h 30 après le début, tant qu'on ne l'a pas saisie. Le bouton principal dit « Ajouter le créneau ».
+- **Saisie à la chaîne** : après un ajout, une nouvelle carte de saisie s'ouvre aussitôt, focus sur son début. « Annuler », ou Échap, la ferme.
+- Entrée dans un champ enregistre, Échap ferme la saisie.
+- **Focus** : à l'ouverture, sur le début ; après un enregistrement, sur la carte ; après « Annuler », sur ce qui a ouvert la saisie ; après une suppression, sur la carte suivante, à défaut la précédente, à défaut « Ajouter un créneau ».
+
 ### Champs
 
-- Un composant « champ » commun : libellé au-dessus, aide sous le champ, erreur sous l'aide, reliées par `aria-describedby`.
+- Un composant « champ » commun : libellé au-dessus, aide sous le champ, erreur sous l'aide sur une ligne réservée (voir [Une erreur ne décale rien](#une-erreur-ne-décale-rien)), reliées par `aria-describedby`.
+- **Heure** : un champ texte `hh:mm`, sur 24 heures, qui accepte aussi « 9:30 », « 14h » et « 14h30 » et les remet en « 14:30 ». Jamais `<input type="time">` : son format suit la langue du navigateur, et passe en AM/PM dans un navigateur anglais.
 - Les champs **facultatifs** portent la mention « facultatif » ; il n'y a pas d'astérisque.
 - Un **compteur** (« 42 / 80 ») accompagne les champs limités : titre, jeu, présentation, avertissements de contenu. Leurs bornes sont les constantes de `contract`.
 
@@ -56,13 +70,26 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 - **Une erreur locale** (obligatoire, longueur, 1 ≤ minimum ≤ maximum) s'affiche quand on **quitte le champ**, puis se met à jour à chaque frappe. Ses messages sont écrits côté front.
 - Le bouton « Enregistrer » n'est **jamais désactivé**. S'il reste des erreurs, l'envoi est bloqué et le focus va au premier champ en erreur.
 - **Une erreur de l'API rattachée à un champ** s'affiche sous ce champ (le `field` du Problem Details, avec des points pour l'imbrication : `seats.min`).
-- **Une erreur de l'API sans champ** (422 hors champ, 409, 500) s'affiche dans un bandeau `role="alert"` en haut du formulaire, avec son `detail`. Pour un 500 : « Une erreur est survenue, réessaie. » La saisie est conservée.
-- Dans une ligne en édition, l'erreur s'affiche sous la cellule concernée.
+- **Une erreur de l'API sans champ** (422 hors champ, 409, 500, coupure réseau) s'affiche en notification (voir [Erreur hors formulaire](#erreur-hors-formulaire)), avec son `title` et son `detail`. Pour un 500 : « Une erreur est survenue, réessaie. » La saisie est conservée.
+- Dans une ligne en édition, l'erreur s'affiche sous la cellule concernée. Une valeur manquante n'y est signalée qu'à la tentative d'enregistrement : quitter un champ vide pour cliquer « Annuler », « Enregistrer » ou « ⋯ » n'affiche rien. Une valeur mal écrite (« 25:00 ») l'est dès qu'on quitte le champ.
+
+### Une erreur ne décale rien
+
+L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton ou ligne ne bouge. Sinon, quitter un champ pour cliquer un bouton fait apparaître une erreur qui déplace le bouton, et le clic tombe à côté.
+
+- **Sous un champ**, la ligne de l'erreur est réservée : elle reste vide tant qu'il n'y a pas d'erreur.
+- **Dans une carte en saisie**, la ligne de l'erreur est réservée sous chaque champ, et les boutons ne bougent pas.
+- **Dans un tableau** :
+  - toutes les lignes ont la même hauteur, ligne en édition comprise ;
+  - les colonnes ont une largeur fixe, assez large pour les champs de la ligne en édition et pour « Nouveau … » ;
+  - l'erreur s'écrit dans le bas de sa ligne, par-dessus. Elle peut déborder sur les cellules voisines de sa ligne, jamais sur la ligne suivante.
+- **Pas de bandeau** en haut d'un formulaire : une erreur sans place réservée passe en notification, par-dessus la page.
+- Un test Playwright vérifie, pour chaque écran à formulaire, que les boutons et les colonnes restent en place quand une erreur apparaît.
 
 ### Enregistrement
 
-- **Jamais d'enregistrement automatique** dans un formulaire : un bouton « Enregistrer », ou Entrée dans une ligne.
-- Pendant l'envoi, le bouton passe en « Enregistrement… » et refuse un second envoi.
+- **Jamais d'enregistrement automatique** dans un formulaire : un bouton « Enregistrer » (sous le tableau pour une ligne), ou Entrée dans une ligne.
+- Pendant l'envoi, le bouton passe en « Enregistrement… » et refuse un second envoi. Dans une ligne, Échap et « Annuler » sont alors sans effet : l'enregistrement en cours n'est pas perdu.
 - Après succès, un formulaire de page affiche « Enregistré » à côté du bouton pendant quelques secondes.
 - **Quitter la page d'un scénario avec des modifications non enregistrées** ouvre « Quitter sans enregistrer ? ». Quitter la page pendant l'édition d'une ligne abandonne la saisie sans rien demander.
 - **Exception : les cases à cocher de geste** (disponibilités) s'enregistrent dès qu'on les coche. Voir [Disponibilités](#disponibilités).
@@ -84,7 +111,7 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 
 ## Tableaux
 
-- `<table>` natif, lignes d'environ 32 px (40 px avec une vignette), en-tête collant.
+- `<table>` natif, lignes de 48 px, ligne en édition comprise (vignette de 32 px), colonnes de largeur fixe, en-tête collant.
 - **Tri** au clic sur l'en-tête, indiqué par `aria-sort`. Tri et filtres sont des signaux, côté front.
 - **Filtre texte** au-dessus des listes longues (scénarios, MJ).
 - **Pas de pagination** : quelques dizaines de MJ, une ou deux centaines de scénarios au plus.
@@ -135,7 +162,7 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 
 ### Erreur hors formulaire
 
-Un geste de programmation refusé après une course, une déprogrammation qui échoue, un 500, une coupure réseau.
+Un geste de programmation refusé après une course, une déprogrammation qui échoue, un 500, une coupure réseau, et toute erreur d'un formulaire qui n'est rattachée à aucun champ.
 
 - Une **notification** en bas à droite, `role="alert"` : le `title` en gras, le `detail` dessous, un bouton ✕.
 - Une erreur **reste affichée jusqu'à ce qu'on la ferme**. Les notifications s'empilent, trois au plus : au-delà, la plus ancienne se ferme.
@@ -166,7 +193,7 @@ Pensés dès maintenant pour le pilotage du jour J (demande / capacité, PRD §4
 
 - Anneau de focus bleu (`--focus`), de 2 px, décalé de 2 px, toujours visible au clavier (`:focus-visible`).
 - **Dialogue fermé** : le focus revient à l'élément qui l'a ouvert.
-- **Après une suppression** : le focus va à la ligne suivante, à défaut à la précédente, à défaut à l'en-tête du tableau.
+- **Après une suppression** : le focus va à la ligne (ou la carte) suivante, à défaut à la précédente, à défaut à l'en-tête du tableau (ou au bouton d'ajout).
 - **Après une navigation** : le focus va au h1 de la nouvelle page.
 - **Après un geste de programmation** : le focus va à la partie, à sa nouvelle place.
 

@@ -5,8 +5,8 @@ import { injectApiCall } from '../api-call';
 import { focusFirstError, readProblem, toSubmissionErrors } from '../problem';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
+import { Notifications } from '../shell/notifications';
 import { Field } from '../ui/field';
-import { FormAlert } from '../ui/form-alert';
 import { SaveButton } from '../ui/save-button';
 import { formatConventionDate } from './convention-date';
 import { ConventionStore } from './convention-store';
@@ -17,14 +17,13 @@ type ConventionModel = { name: string; date: string };
 /** Renseigner la convention : son nom et sa date. Le rail suit dès l'enregistrement. */
 @Component({
   selector: 'app-convention-form',
-  imports: [Field, FormAlert, FormField, FormRoot, Loadable, SaveButton],
+  imports: [Field, FormField, FormRoot, Loadable, SaveButton],
   template: `
     <app-loadable [resource]="store.convention" failure="Impossible de charger la convention.">
       @if (store.convention.hasValue()) {
         <p class="date">{{ formatDate(store.convention.value().date) }}</p>
       }
       <form [formRoot]="form">
-        <app-form-alert [message]="alert()" />
         <app-field label="Nom">
           <input [formField]="form.name" autocomplete="off" />
         </app-field>
@@ -50,8 +49,7 @@ type ConventionModel = { name: string; date: string };
         max-width: 32rem;
       }
 
-      app-field,
-      app-form-alert {
+      app-field {
         align-self: stretch;
       }
     }
@@ -62,6 +60,7 @@ export class ConventionForm {
   protected readonly formatDate = formatConventionDate;
   private readonly apiCall = injectApiCall();
   private readonly announcer = inject(Announcer);
+  private readonly notifications = inject(Notifications);
   private readonly injector = inject(Injector);
 
   /** Repart de la convention lue, et de celle que renvoie chaque enregistrement. */
@@ -70,7 +69,6 @@ export class ConventionForm {
     return { name: convention?.name ?? '', date: convention?.date ?? '' };
   });
 
-  protected readonly alert = signal<string | undefined>(undefined);
   protected readonly savedAt = signal<number | undefined>(undefined);
 
   protected readonly form = form(
@@ -90,7 +88,6 @@ export class ConventionForm {
   );
 
   private async save() {
-    this.alert.set(undefined);
     const { name, date } = this.model();
     try {
       const convention = await this.apiCall(conventionEndpoints.update, {
@@ -102,7 +99,7 @@ export class ConventionForm {
       return undefined;
     } catch (error) {
       const { errors, alert } = toSubmissionErrors(readProblem(error), this.form);
-      this.alert.set(alert);
+      if (alert) this.notifications.error(alert);
       afterNextRender(() => focusFirstError(this.form), { injector: this.injector });
       return errors;
     }

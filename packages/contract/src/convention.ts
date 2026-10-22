@@ -1,4 +1,5 @@
 import { endpoint } from './endpoint.js';
+import type { TimeSlotDto } from './time-slot.js';
 
 /** Longueur maximale du nom de la convention. Le domaine reprend cette borne. */
 export const CONVENTION_NAME_MAX_LENGTH = 80;
@@ -8,6 +9,8 @@ export type ConventionDto = {
   name: string;
   /** Date de la convention, `AAAA-MM-JJ`, ou `null` tant qu'elle n'est pas fixée. */
   date: string | null;
+  /** Dans l'ordre de la journée. */
+  timeSlots: TimeSlotDto[];
 };
 
 export type UpdateConventionBody = {

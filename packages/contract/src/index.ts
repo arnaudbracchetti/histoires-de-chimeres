@@ -10,6 +10,8 @@ export {
   endpoint,
   type BodyOf,
   type Endpoint,
+  type ParamsArgs,
+  type ParamsOf,
   type ResponseOf,
 } from './endpoint.js';
 export { healthEndpoints, type HealthDto } from './health.js';
@@ -21,3 +23,9 @@ export type {
   RefusalCode,
   RefusalParams,
 } from './problem.js';
+export {
+  timeSlotEndpoints,
+  type TimeSlotDto,
+  type TimeSlotHoursBody,
+  type TimeSlotParams,
+} from './time-slot.js';

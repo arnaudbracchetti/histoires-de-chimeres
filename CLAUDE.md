@@ -29,6 +29,7 @@ Pièges :
 - Le client Prisma est généré dans `apps/api/src/generated/` (ignoré par git). Les scripts `pre*` de l'API lancent `prisma generate`. `prisma migrate dev` ne le régénère pas : après un changement de schéma, lancer `pnpm --filter api exec prisma generate` avant le seed.
 - Un jeton d'injection (`Symbol`) vit dans son propre fichier (`<module>/<port>.token.ts`). S'il est défini dans `<module>.module.ts`, l'import circulaire module ↔ controller le rend `undefined` au moment du décorateur.
 - pnpm bloque les scripts d'installation non listés dans `allowBuilds` (`pnpm-workspace.yaml`).
+- `ng serve` ne pré-bundle pas `@chimeres/contract` ni `@chimeres/design` (`prebundle.exclude` de chaque `angular.json`). Sinon Vite en garde une copie périmée dans `.angular/cache` : un descripteur renommé dans `contract` y reste `undefined`, et l'appel échoue sans requête.
 - Les deux suites de bout en bout ne touchent jamais la base de dev. Leur remise à zéro vide toutes les tables (`apps/api/test/reset-database.sql`), puis rejoue la migration `default_convention`. Si la convention reçoit de nouvelles colonnes, cette migration reste la source de son état initial.
 
 ## Organisation du code (DDD)

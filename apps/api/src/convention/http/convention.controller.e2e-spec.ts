@@ -29,6 +29,7 @@ describe('Convention', () => {
       id: expect.any(String),
       name: 'Histoires de Chimères',
       date: null,
+      timeSlots: [],
     });
   });
 

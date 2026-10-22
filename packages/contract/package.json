@@ -12,10 +12,12 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "lint": "oxlint src"
+    "lint": "oxlint src",
+    "test": "vitest run"
   },
   "devDependencies": {
     "oxlint": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

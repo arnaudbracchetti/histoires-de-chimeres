@@ -28,7 +28,9 @@ export class ProblemFilter extends BaseExceptionFilter {
 
   private problemOf(error: unknown): ProblemDto | undefined {
     if (error instanceof Refusal) {
-      return problem(HttpStatus.UNPROCESSABLE_ENTITY, error.code, error.params);
+      const code: RefusalCode = error.code;
+      const status = problemCatalogue[code].status ?? HttpStatus.UNPROCESSABLE_ENTITY;
+      return problem(status, error.code, error.params);
     }
     if (error instanceof MalformedRequestError || isUnreadableBody(error)) {
       return problem(HttpStatus.BAD_REQUEST, 'malformed-request', {});
