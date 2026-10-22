@@ -1,11 +1,12 @@
 import { Component } from '@angular/core';
 import { ConventionForm } from '../convention/convention-form';
 import { PageHeader } from '../shell/page-header';
+import { TableList } from '../tables/table-list';
 import { TimeSlotList } from '../time-slots/time-slot-list';
 
 @Component({
   selector: 'app-time-slots-and-tables-page',
-  imports: [ConventionForm, PageHeader, TimeSlotList],
+  imports: [ConventionForm, PageHeader, TableList, TimeSlotList],
   template: `
     <app-page-header title="Créneaux et tables" />
     <section aria-labelledby="convention-title">
@@ -15,6 +16,10 @@ import { TimeSlotList } from '../time-slots/time-slot-list';
     <section aria-labelledby="time-slots-title">
       <h2 id="time-slots-title">Créneaux</h2>
       <app-time-slot-list />
+    </section>
+    <section aria-labelledby="tables-title">
+      <h2 id="tables-title">Tables</h2>
+      <app-table-list />
     </section>
   `,
   styles: `

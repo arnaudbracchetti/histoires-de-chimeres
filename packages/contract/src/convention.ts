@@ -1,4 +1,5 @@
 import { endpoint } from './endpoint.js';
+import type { TableDto } from './table.js';
 import type { TimeSlotDto } from './time-slot.js';
 
 /** Longueur maximale du nom de la convention. Le domaine reprend cette borne. */
@@ -11,6 +12,8 @@ export type ConventionDto = {
   date: string | null;
   /** Dans l'ordre de la journée. */
   timeSlots: TimeSlotDto[];
+  /** Dans l'ordre naturel : « Table 2 » avant « Table 10 ». */
+  tables: TableDto[];
 };
 
 export type UpdateConventionBody = {

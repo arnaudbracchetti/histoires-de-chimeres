@@ -1,4 +1,6 @@
+import { ComparableName } from '../comparable-name.js';
 import { Refusal } from '../refusal.js';
+import { Table } from './table.js';
 import type { TimeOfDay } from './time-of-day.js';
 import { TimeSlot } from './time-slot.js';
 
@@ -9,6 +11,8 @@ export type ConventionState = {
   date: string | null;
   /** Dans n'importe quel ordre : `timeSlots` les rend dans l'ordre de la journée. */
   timeSlots: TimeSlot[];
+  /** Dans n'importe quel ordre : `tables` les rend dans l'ordre naturel. */
+  tables: Table[];
   /** Numéro de version, pour le verrou optimiste : seul le repository le fait avancer. */
   version: number;
 };
@@ -17,11 +21,17 @@ export type ConventionState = {
 export class Convention {
   /** Reprise par `contract` (`CONVENTION_NAME_MAX_LENGTH`) ; un test d'`application` vérifie qu'elles concordent. */
   static readonly NAME_MAX_LENGTH = 80;
+  /** Reprise par `contract` (`TABLE_NAME_MAX_LENGTH`) ; le même test d'`application` le vérifie. */
+  static readonly TABLE_NAME_MAX_LENGTH = 30;
 
   private constructor(private state: ConventionState) {}
 
   static restore(state: ConventionState): Convention {
-    return new Convention({ ...state, timeSlots: [...state.timeSlots] });
+    return new Convention({
+      ...state,
+      timeSlots: [...state.timeSlots],
+      tables: [...state.tables],
+    });
   }
 
   get id(): string {
@@ -75,6 +85,45 @@ export class Convention {
 
   removeTimeSlot(id: string): void {
     this.state.timeSlots.splice(this.indexOf(id), 1);
+  }
+
+  /** Les tables, dans l'ordre naturel : « Table 2 » avant « Table 10 ». */
+  get tables(): readonly Table[] {
+    return [...this.state.tables].sort((a, b) => a.name.compareTo(b.name));
+  }
+
+  addTable(id: string, name: string): void {
+    this.state.tables.push(this.verifyTableName(new Table(id, ComparableName.of(name))));
+  }
+
+  /** Renomme une table, même si elle porte des parties. */
+  renameTable(id: string, name: string): void {
+    const index = this.indexOfTable(id);
+    this.state.tables[index] = this.verifyTableName(new Table(id, ComparableName.of(name)));
+  }
+
+  removeTable(id: string): void {
+    this.state.tables.splice(this.indexOfTable(id), 1);
+  }
+
+  private indexOfTable(tableId: string): number {
+    const index = this.state.tables.findIndex((table) => table.id === tableId);
+    if (index < 0) throw new Refusal('table-not-found', {});
+    return index;
+  }
+
+  /** Vérifie le nom d'une table : obligatoire, borné, unique dans la convention (PR-9). */
+  private verifyTableName(candidate: Table): Table {
+    const { text } = candidate.name;
+    if (!text) throw new Refusal('table-name-required', {});
+    if (text.length > Convention.TABLE_NAME_MAX_LENGTH) {
+      throw new Refusal('table-name-too-long', { max: Convention.TABLE_NAME_MAX_LENGTH });
+    }
+    const namesake = this.state.tables.find(
+      (table) => table.id !== candidate.id && table.name.equals(candidate.name),
+    );
+    if (namesake) throw new Refusal('table-name-taken', { name: namesake.name.text });
+    return candidate;
   }
 
   private indexOf(timeSlotId: string): number {

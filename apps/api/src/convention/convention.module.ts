@@ -17,7 +17,7 @@ import { PrismaConventionRepository } from './persistence/prisma-convention-repo
       inject: [CONVENTION_REPOSITORY],
     },
   ],
-  // Les créneaux sont des entités de l'agrégat : leur module lit et écrit la convention.
+  // Créneaux et tables sont des entités de l'agrégat : leurs modules lisent et écrivent la convention.
   exports: [CONVENTION_READER, CONVENTION_REPOSITORY],
 })
 export class ConventionModule {}

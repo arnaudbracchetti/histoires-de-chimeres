@@ -10,6 +10,11 @@ export type RefusalParams = {
   /** `rank` : le rang du créneau chevauché. */
   'time-slot-start-overlaps': { rank: number };
   'time-slot-end-overlaps': { rank: number };
+  'table-not-found': Record<string, never>;
+  'table-name-required': Record<string, never>;
+  'table-name-too-long': { max: number };
+  /** `name` : le nom de la table qui le porte déjà, tel qu'il s'affiche. */
+  'table-name-taken': { name: string };
 };
 
 export type RefusalCode = keyof RefusalParams;

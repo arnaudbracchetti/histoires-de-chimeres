@@ -38,11 +38,8 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 ### Où se fait la saisie
 
 - **Créneau** : une **carte par créneau**, dans l'ordre de la journée, et la pause entre deux cartes (voir [Créneaux](#créneaux)).
-- **Objet court** (table, MJ : un à trois champs) : il s'édite **dans sa ligne**.
-  - « Passer en édition », sous le tableau, insère en bas une ligne en édition. Tant qu'une ligne est en édition, ce bouton devient « Enregistrer », suivi d'« Annuler » (discret). Entrée enregistre, Échap annule.
-  - **Saisie à la chaîne** : après l'enregistrement d'une ligne ajoutée, une nouvelle ligne vide s'ouvre aussitôt, focus sur son premier champ. Échap, ou « Annuler », ferme la ligne vide.
-  - **Table** : un clic sur la ligne, ou « Modifier » dans son menu « ⋯ », la passe en édition.
-  - **MJ** : sa ligne mène à sa fiche. Son pseudo se modifie dans l'en-tête de la fiche (crayon, puis champ en place, Entrée ou Échap), jamais dans la liste.
+- **Table** : une **petite carte par table**, sur une grille, dans l'ordre naturel (voir [Tables](#tables)).
+- **MJ** : sa ligne mène à sa fiche. Son pseudo se modifie dans l'en-tête de la fiche (crayon, puis champ en place, Entrée ou Échap), jamais dans la liste.
 - **Scénario** : il a **sa propre page**, en lecture puis en édition. Il se crée depuis la fiche de son MJ, qui lui est fixé dès la création (PR-16), et s'ouvre aussi depuis la liste des scénarios.
 - **Dialogues** (`@angular/cdk/dialog`) : réservés aux confirmations et aux dialogues de placement de la programmation. Jamais de formulaire de saisie dans un dialogue.
 
@@ -50,13 +47,28 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 
 Forme retenue sur prototype, face au tableau, au formulaire fixe, à la frise de la journée et au tableur : c'est celle où l'on voit le mieux ce qu'on fait et où l'on en est.
 
-- **Une carte par créneau** : « Créneau 2 », sa plage (« 14 h 00 – 16 h 30 ») et sa durée, avec deux boutons visibles, « Modifier » (secondaire) et « Supprimer » (discret, rouge brique). Leur nom accessible nomme le créneau : « Modifier le créneau 2 ».
+- **Une carte par créneau** : l'icône du sablier, « Créneau 2 », sa plage (« 14 h 00 – 16 h 30 ») et sa durée, avec deux boutons visibles, « Modifier » (secondaire) et « Supprimer » (discret, rouge brique). Leur nom accessible nomme le créneau : « Modifier le créneau 2 ».
 - **Entre deux cartes**, la pause : « pause de 30 min », ou « bout à bout ».
 - **« Modifier »** retourne la carte en saisie, marquée « Saisie en cours », bordée d'orange : titre « Modifier le créneau 2 », champs Début et Fin, durée, « Enregistrer » (principal) et « Annuler » (discret). Les autres cartes s'estompent le temps de la saisie. Une seule carte en saisie à la fois.
 - **« Ajouter un créneau »**, une carte en pointillés en bas de la liste, ouvre une carte « Nouveau créneau ». Le début proposé est la fin du dernier créneau, la fin 2 h 30 après le début, tant qu'on ne l'a pas saisie. Le bouton principal dit « Ajouter le créneau ».
 - **Saisie à la chaîne** : après un ajout, une nouvelle carte de saisie s'ouvre aussitôt, focus sur son début. « Annuler », ou Échap, la ferme.
 - Entrée dans un champ enregistre, Échap ferme la saisie.
 - **Focus** : à l'ouverture, sur le début ; après un enregistrement, sur la carte ; après « Annuler », sur ce qui a ouvert la saisie ; après une suppression, sur la carte suivante, à défaut la précédente, à défaut « Ajouter un créneau ».
+
+### Tables
+
+Forme retenue sur prototype, face au tableau à ligne en édition, aux étiquettes et au champ d'ajout permanent : le geste des créneaux, en plus compact. Ce qu'on saisit et ses boutons restent au même endroit.
+
+- **Une petite carte par table**, sur une grille de colonnes fixes, dans l'ordre naturel (« Table 2 » avant « Table 10 ») : l'icône des dés, le nom, « Modifier » (secondaire) et « Supprimer » (discret, rouge brique). Leur nom accessible nomme la table : « Modifier la table Dragon ».
+- **« Modifier »** retourne la carte en saisie, bordée d'orange, **à la même taille** : le champ du nom, « Enregistrer » (principal) et « Annuler » (discret). Les autres cartes s'estompent. Une seule carte en saisie à la fois.
+- **« Ajouter une table »**, une carte en pointillés en dernier, ouvre une carte de saisie vide. Le bouton principal dit « Ajouter la table ».
+- **Saisie à la chaîne** : après un ajout, une nouvelle carte vide s'ouvre aussitôt, focus sur le nom. « Annuler », ou Échap, la ferme.
+- **L'erreur** s'affiche dans une bulle sous la carte, par-dessus la rangée suivante : aucune carte ne bouge.
+- **Focus** : comme pour les créneaux.
+
+### Icône de carte
+
+Une carte de créneau ou de table s'ouvre sur son icône : une icône Lucide orange (`--accent`) sur un carré arrondi de 32 px (`--surface-3`), décorative. Sablier (`hourglass`) pour un créneau, dés (`dices`) pour une table.
 
 ### Champs
 
@@ -78,7 +90,7 @@ Forme retenue sur prototype, face au tableau, au formulaire fixe, à la frise de
 L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton ou ligne ne bouge. Sinon, quitter un champ pour cliquer un bouton fait apparaître une erreur qui déplace le bouton, et le clic tombe à côté.
 
 - **Sous un champ**, la ligne de l'erreur est réservée : elle reste vide tant qu'il n'y a pas d'erreur.
-- **Dans une carte en saisie**, la ligne de l'erreur est réservée sous chaque champ, et les boutons ne bougent pas.
+- **Dans une carte en saisie**, la ligne de l'erreur est réservée sous chaque champ (créneau), ou l'erreur s'affiche dans une bulle sous la carte (table) ; les boutons ne bougent pas.
 - **Dans un tableau** :
   - toutes les lignes ont la même hauteur, ligne en édition comprise ;
   - les colonnes ont une largeur fixe, assez large pour les champs de la ligne en édition et pour « Nouveau … » ;

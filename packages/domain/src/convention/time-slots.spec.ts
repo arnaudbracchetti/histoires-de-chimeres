@@ -9,6 +9,7 @@ function aConvention(): Convention {
     name: 'Histoires de Chimères',
     date: null,
     timeSlots: [],
+    tables: [],
     version: 0,
   });
 }

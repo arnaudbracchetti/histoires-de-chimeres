@@ -14,6 +14,7 @@ import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { Button } from '../ui/button';
 import { Confirmation } from '../ui/confirmation';
+import { IconTile } from '../ui/icon-tile';
 import { formatDuration, formatTimeRange } from './time-format';
 import { TimeSlotEditor } from './time-slot-editor';
 
@@ -25,7 +26,7 @@ import { TimeSlotEditor } from './time-slot-editor';
  */
 @Component({
   selector: 'app-time-slot-list',
-  imports: [Button, Loadable, TimeSlotEditor],
+  imports: [Button, IconTile, Loadable, TimeSlotEditor],
   template: `
     <app-loadable [resource]="store.convention" failure="Impossible de charger les créneaux.">
       <ol class="day" [class.busy]="editing()" aria-label="Créneaux de la journée">
@@ -46,9 +47,12 @@ import { TimeSlotEditor } from './time-slot-editor';
                 [attr.data-time-slot]="row.slot.id"
                 [attr.aria-labelledby]="'time-slot-' + row.slot.id"
               >
-                <div>
-                  <h3 [id]="'time-slot-' + row.slot.id">Créneau {{ row.slot.rank }}</h3>
-                  <p class="range">{{ row.range }}</p>
+                <div class="heading">
+                  <app-icon-tile name="hourglass" />
+                  <div>
+                    <h3 [id]="'time-slot-' + row.slot.id">Créneau {{ row.slot.rank }}</h3>
+                    <p class="range">{{ row.range }}</p>
+                  </div>
                 </div>
                 <p class="duration">{{ row.duration }}</p>
                 <div class="buttons">
@@ -131,6 +135,12 @@ import { TimeSlotEditor } from './time-slot-editor';
       .busy .card:not(.editing),
       .busy .add {
         opacity: 0.45;
+      }
+
+      .heading {
+        display: flex;
+        gap: var(--space-m);
+        align-items: center;
       }
 
       h3 {

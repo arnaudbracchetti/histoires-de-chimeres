@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { ConventionReader } from '@chimeres/application';
 import type { ConventionDto } from '@chimeres/contract';
-import { TimeOfDay } from '@chimeres/domain';
+import { ComparableName, TimeOfDay } from '@chimeres/domain';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { fromDatabaseDate } from './calendar-date.js';
 
@@ -10,12 +10,13 @@ export class PrismaConventionReader implements ConventionReader {
   constructor(private readonly prisma: PrismaService) {}
 
   async read(): Promise<ConventionDto> {
-    const { id, name, date, timeSlots } = await this.prisma.convention.findFirstOrThrow({
+    const { id, name, date, timeSlots, tables } = await this.prisma.convention.findFirstOrThrow({
       select: {
         id: true,
         name: true,
         date: true,
         timeSlots: { orderBy: { startMinute: 'asc' } },
+        tables: { select: { id: true, name: true } },
       },
     });
     return {
@@ -28,6 +29,8 @@ export class PrismaConventionReader implements ConventionReader {
         start: TimeOfDay.fromMinutes(slot.startMinute).toString(),
         end: TimeOfDay.fromMinutes(slot.endMinute).toString(),
       })),
+      // L'ordre naturel est celui du domaine, que PostgreSQL ne sait pas reproduire.
+      tables: tables.sort((a, b) => ComparableName.of(a.name).compareTo(ComparableName.of(b.name))),
     };
   }
 }

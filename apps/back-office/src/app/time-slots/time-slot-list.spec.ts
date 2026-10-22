@@ -22,7 +22,7 @@ function conventionWith(...hours: [string, string][]): ConventionDto {
   const timeSlots: TimeSlotDto[] = [...hours]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([start, end], index) => ({ id: `s-${start}`, rank: index + 1, start, end }));
-  return { id: 'c1', name: 'Histoires de Chimères', date: null, timeSlots };
+  return { id: 'c1', name: 'Histoires de Chimères', date: null, timeSlots, tables: [] };
 }
 
 describe('TimeSlotList', () => {

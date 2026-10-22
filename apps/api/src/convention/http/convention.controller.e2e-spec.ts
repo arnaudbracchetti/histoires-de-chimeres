@@ -30,6 +30,7 @@ describe('Convention', () => {
       name: 'Histoires de Chimères',
       date: null,
       timeSlots: [],
+      tables: [],
     });
   });
 

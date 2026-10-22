@@ -57,6 +57,26 @@ export const problemCatalogue: Catalogue = {
     detail: ({ rank }) => `Ce créneau empiète sur le créneau ${rank} : avance sa fin.`,
     field: 'end',
   },
+  'table-not-found': {
+    title: 'Table introuvable',
+    detail: () => "Cette table n'existe plus : recharge la page.",
+    status: 404,
+  },
+  'table-name-required': {
+    title: 'Nom obligatoire',
+    detail: () => 'Donne un nom à la table.',
+    field: 'name',
+  },
+  'table-name-too-long': {
+    title: 'Nom trop long',
+    detail: ({ max }) => `Le nom d'une table fait ${max} caractères au plus : raccourcis-le.`,
+    field: 'name',
+  },
+  'table-name-taken': {
+    title: 'Nom déjà pris',
+    detail: ({ name }) => `La table « ${name} » porte déjà ce nom : choisis-en un autre.`,
+    field: 'name',
+  },
   'malformed-request': {
     title: 'Requête illisible',
     detail: () => 'Le serveur ne comprend pas cette requête : recharge la page, puis recommence.',

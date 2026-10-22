@@ -16,6 +16,7 @@ model Convention {
   /// Verrou optimiste : chaque sauvegarde de l'agrégat l'incrémente.
   version   Int        @default(0)
   timeSlots TimeSlot[]
+  tables    Table[]
 }
 
 /// Créneau de la convention. Ses heures sont en minutes depuis minuit, de 0 à 1439.
@@ -25,6 +26,17 @@ model TimeSlot {
   convention   Convention @relation(fields: [conventionId], references: [id], onDelete: Cascade)
   startMinute  Int
   endMinute    Int
+
+  @@index([conventionId])
+}
+
+/// Table de la convention. Son nom est unique dans la convention, à la casse, aux accents et aux
+/// espaces près : le domaine le vérifie (PR-9).
+model Table {
+  id           String     @id @db.Uuid
+  conventionId String     @db.Uuid
+  convention   Convention @relation(fields: [conventionId], references: [id], onDelete: Cascade)
+  name         String
 
   @@index([conventionId])
 }

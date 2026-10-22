@@ -24,6 +24,13 @@ export type {
   RefusalParams,
 } from './problem.js';
 export {
+  TABLE_NAME_MAX_LENGTH,
+  tableEndpoints,
+  type TableDto,
+  type TableNameBody,
+  type TableParams,
+} from './table.js';
+export {
   timeSlotEndpoints,
   type TimeSlotDto,
   type TimeSlotHoursBody,
