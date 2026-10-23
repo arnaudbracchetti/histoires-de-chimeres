@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import type { GameDto, TableDto, TimeSlotDto } from '@chimeres/contract';
 import { formatSeats } from '../scenarios/scenario-format';
 import { formatDuration, formatTimeRange, minutesOf } from '../time-slots/time-format';
@@ -25,7 +25,8 @@ type Column =
 /**
  * La frise du programme : le temps court vers la droite, une colonne par créneau, de largeur
  * proportionnelle à sa durée, et une colonne étroite par pause, avec sa durée. Une ligne par table.
- * Chaque partie est une carte, que la page peut focaliser par son id (`game-<id>`).
+ * Chaque partie est une carte : un clic dessus ouvre sa fiche. La page focalise son bouton par son
+ * id (`game-<id>`).
  */
 @Component({
   selector: 'app-schedule-timeline',
@@ -61,13 +62,24 @@ type Column =
               @if (column.kind === 'slot') {
                 <div role="cell" class="cell">
                   @if (gameAt(column.slot.id, table.id); as game) {
-                    <article class="game" tabindex="-1" [id]="'game-' + game.id">
+                    <article class="game" [class.selected]="game.id === selectedGameId()">
                       <app-scenario-illustration
                         [title]="game.scenario.title"
                         [imageUrl]="game.scenario.imageUrl"
                       />
                       <div class="text">
-                        <h3 class="title">{{ game.scenario.title }}</h3>
+                        <h3 class="title">
+                          <button
+                            type="button"
+                            class="open"
+                            [id]="'game-' + game.id"
+                            [attr.aria-expanded]="game.id === selectedGameId()"
+                            aria-controls="game-sheet"
+                            (click)="opened.emit(game)"
+                          >
+                            {{ game.scenario.title }}
+                          </button>
+                        </h3>
                         <p>{{ game.scenario.system }}</p>
                         <p>{{ game.scenario.gameMaster.nickname }}</p>
                         <p>{{ formatSeats(game.seats) }}</p>
@@ -146,6 +158,7 @@ type Column =
       }
 
       .game {
+        position: relative;
         display: flex;
         gap: var(--space-xs);
         height: 100%;
@@ -155,8 +168,38 @@ type Column =
         border-radius: var(--radius-control);
         background: var(--surface-2);
 
-        &:focus-visible {
+        &:hover {
+          background: var(--surface-3);
+        }
+
+        &.selected {
+          border-color: var(--accent);
+        }
+
+        &:has(.open:focus-visible) {
           outline: 2px solid var(--focus);
+          outline-offset: 2px;
+        }
+      }
+
+      /* Le bouton du titre couvre toute la carte : un clic n'importe où l'ouvre. */
+      .open {
+        padding: 0;
+        border: 0;
+        background: none;
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+
+        &::after {
+          content: '';
+          position: absolute;
+          inset: 0;
+        }
+
+        &:focus-visible {
+          outline: none;
         }
       }
 
@@ -191,6 +234,9 @@ export class ScheduleTimeline {
   readonly timeSlots = input.required<readonly TimeSlotDto[]>();
   readonly tables = input.required<readonly TableDto[]>();
   readonly games = input.required<readonly GameDto[]>();
+  /** La partie dont la fiche est ouverte. */
+  readonly selectedGameId = input<string | null>(null);
+  readonly opened = output<GameDto>();
 
   protected readonly formatSeats = formatSeats;
 

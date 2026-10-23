@@ -211,9 +211,30 @@ export class Convention {
    * scénarios d'un créneau se programment ici ; les parties doubles viendront à part.
    */
   schedule(id: string, scenario: Scenario, timeSlotId: string, tableId: string): void {
-    const refusal = this.placementRefusalOf(scenario, timeSlotId, tableId);
+    const refusal = this.schedulingRefusalOf(scenario, timeSlotId, tableId);
     if (refusal) throw refusal;
     this.state.games.push(new Game(id, scenario.id, scenario.gameMasterId, tableId, [timeSlotId]));
+  }
+
+  /**
+   * Déplace la partie sur un créneau et une table (PR-17), dans le respect de PR-5, sans compter la
+   * partie elle-même. Une partie double se déplace par son premier créneau, et prend le suivant.
+   * Elle reste la même partie, avec ses places, à son rang dans le programme.
+   */
+  moveGame(gameId: string, timeSlotId: string, tableId: string): void {
+    const index = this.indexOfGame(gameId);
+    const game = this.state.games[index]!;
+    const refusal = this.moveRefusalOf(game, timeSlotId, tableId);
+    if (refusal) throw refusal;
+    this.state.games[index] = game.movedTo(
+      tableId,
+      this.consecutiveFrom(timeSlotId, game.timeSlotIds.length)!,
+    );
+  }
+
+  /** Déprogramme la partie (PR-17) : son scénario reste proposé, et revient dans la réserve. */
+  unschedule(gameId: string): void {
+    this.state.games.splice(this.indexOfGame(gameId), 1);
   }
 
   /**
@@ -225,7 +246,22 @@ export class Convention {
       this.tables.map((table) => ({
         timeSlotId: slot.id,
         tableId: table.id,
-        refusal: this.placementRefusalOf(scenario, slot.id, table.id),
+        refusal: this.schedulingRefusalOf(scenario, slot.id, table.id),
+      })),
+    );
+  }
+
+  /**
+   * Le verdict de chaque case créneaux × tables pour déplacer la partie : le refus que `moveGame()`
+   * y lèverait, ou `null`. Sa propre case est permise. Dans l'ordre des créneaux, puis des tables.
+   */
+  movePlacementsOf(gameId: string): Placement[] {
+    const game = this.state.games[this.indexOfGame(gameId)]!;
+    return this.timeSlots.flatMap((slot) =>
+      this.tables.map((table) => ({
+        timeSlotId: slot.id,
+        tableId: table.id,
+        refusal: this.moveRefusalOf(game, slot.id, table.id),
       })),
     );
   }
@@ -259,11 +295,8 @@ export class Convention {
       });
   }
 
-  /**
-   * La règle PR-5 d'une case, la même pour l'écriture et pour le verdict. Les motifs s'excluent dans
-   * cet ordre : MJ indisponible, MJ déjà occupé, table prise.
-   */
-  private placementRefusalOf(
+  /** La règle PR-5 d'une case pour programmer un scénario. */
+  private schedulingRefusalOf(
     scenario: Scenario,
     timeSlotId: string,
     tableId: string,
@@ -272,21 +305,61 @@ export class Convention {
     if (scenario.duration !== 1) {
       throw new RangeError(`Scénario de ${scenario.duration} créneaux : partie double à venir.`);
     }
+    return this.placementRefusalOf(scenario.gameMasterId, 1, timeSlotId, tableId, null);
+  }
+
+  /** La règle PR-5 d'une case pour déplacer la partie, sans la compter elle-même. */
+  private moveRefusalOf(game: Game, timeSlotId: string, tableId: string): Refusal | null {
+    return this.placementRefusalOf(
+      game.gameMasterId,
+      game.timeSlotIds.length,
+      timeSlotId,
+      tableId,
+      game,
+    );
+  }
+
+  /**
+   * La règle PR-5 d'une case, la même pour l'écriture et pour le verdict : une partie de `length`
+   * créneaux du MJ, à partir de `timeSlotId`, sans compter `moving`, la partie qu'on déplace. Il
+   * faut assez de créneaux consécutifs, puis, sur chacun, les motifs s'excluent dans cet ordre : MJ
+   * indisponible, MJ déjà occupé, table prise.
+   */
+  private placementRefusalOf(
+    gameMasterId: string,
+    length: number,
+    timeSlotId: string,
+    tableId: string,
+    moving: Game | null,
+  ): Refusal | null {
     this.verifyTimeSlotExists(timeSlotId);
     const table = this.state.tables[this.indexOfTable(tableId)]!;
-    const gameMaster = this.gameMasterOf(scenario.gameMasterId);
-    const rank = this.rankOf(timeSlotId);
+    const gameMaster = this.gameMasterOf(gameMasterId);
+    const timeSlotIds = this.consecutiveFrom(timeSlotId, length);
+    if (!timeSlotIds) return new Refusal('no-next-time-slot', { rank: this.rankOf(timeSlotId) });
+    const others = this.state.games.filter((game) => game !== moving);
     const nickname = gameMaster.nickname.text;
-    if (!gameMaster.isAvailableOn(timeSlotId)) {
-      return new Refusal('game-master-unavailable', { nickname, rank });
-    }
-    if (this.runsGameOn(gameMaster.id, timeSlotId)) {
-      return new Refusal('game-master-busy', { nickname, rank });
-    }
-    if (this.state.games.some((game) => game.tableId === tableId && game.isOn(timeSlotId))) {
-      return new Refusal('table-taken', { table: table.name.text, rank });
+    for (const slotId of timeSlotIds) {
+      const rank = this.rankOf(slotId);
+      if (!gameMaster.isAvailableOn(slotId)) {
+        return new Refusal('game-master-unavailable', { nickname, rank });
+      }
+      if (others.some((game) => game.gameMasterId === gameMasterId && game.isOn(slotId))) {
+        return new Refusal('game-master-busy', { nickname, rank });
+      }
+      if (others.some((game) => game.tableId === tableId && game.isOn(slotId))) {
+        return new Refusal('table-taken', { table: table.name.text, rank });
+      }
     }
     return null;
+  }
+
+  /** Les `length` créneaux consécutifs à partir de `timeSlotId` (PR-8), ou `null` s'ils manquent. */
+  private consecutiveFrom(timeSlotId: string, length: number): string[] | null {
+    const slots = this.timeSlots;
+    const start = slots.findIndex((slot) => slot.id === timeSlotId);
+    const following = slots.slice(start, start + length);
+    return following.length === length ? following.map(({ id }) => id) : null;
   }
 
   /** Pourquoi un scénario du MJ n'est ni en réserve ni programmé nulle part. */
@@ -305,6 +378,12 @@ export class Convention {
     return this.state.games.some(
       (game) => game.gameMasterId === gameMasterId && game.isOn(timeSlotId),
     );
+  }
+
+  private indexOfGame(gameId: string): number {
+    const index = this.state.games.findIndex((game) => game.id === gameId);
+    if (index < 0) throw new Refusal('game-not-found', {});
+    return index;
   }
 
   private gameMasterOf(gameMasterId: string): GameMaster {

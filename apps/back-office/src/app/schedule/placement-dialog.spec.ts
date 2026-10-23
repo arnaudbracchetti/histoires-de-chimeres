@@ -5,6 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import {
   apiUrl,
   scheduleEndpoints,
+  type GameDto,
   type PlacementDto,
   type ProblemDto,
   type ScheduleDto,
@@ -171,5 +172,55 @@ describe('PlacementDialog', () => {
       ),
     );
     expect(grid()[1]).toEqual(['Table 2', 'Table prise', 'MJ déjà occupé']);
+  });
+
+  describe('« Déplacer vers… »', () => {
+    const GAME: GameDto = {
+      id: 'p1',
+      tableId: 't2',
+      timeSlotIds: ['s1'],
+      seats: { min: 3, max: 5 },
+      scenario: SCENARIO,
+    };
+
+    async function openMove(placements = PLACEMENTS) {
+      const http = TestBed.inject(HttpTestingController);
+      const closed = TestBed.inject(Placements).moveTo({
+        game: GAME,
+        timeSlots: TIME_SLOTS,
+        tables: TABLES,
+      });
+      await settle();
+      http.expectOne(apiUrl(scheduleEndpoints.movePlacements, { gameId: 'p1' })).flush(placements);
+      await settle();
+      return { http, closed, dialog: () => document.querySelector('app-placement-dialog')! };
+    }
+
+    it('lit les verdicts de la partie, et marque sa place', async () => {
+      const { dialog } = await openMove();
+
+      expect(dialog().querySelector('h2')?.textContent).toBe('Déplacer « Brumes » vers…');
+      const cell = dialog().querySelectorAll('tbody tr')[1]!.querySelectorAll('td')[0]!;
+      expect(cell.textContent?.trim()).toBe('Sa place');
+      expect(dialog().querySelectorAll('button[aria-label^="Choisir"]')).toHaveLength(0);
+    });
+
+    it('déplace la partie sur la case choisie, et se ferme sur le programme relu', async () => {
+      const { http, closed, dialog } = await openMove(
+        PLACEMENTS.map((verdict) =>
+          verdict.timeSlotId === 's2' && verdict.tableId === 't1'
+            ? { ...verdict, refusal: null }
+            : verdict,
+        ),
+      );
+
+      dialog().querySelector<HTMLButtonElement>('button[aria-label^="Choisir"]')!.click();
+      const request = http.expectOne(apiUrl(scheduleEndpoints.move, { gameId: 'p1' }));
+      expect(request.request.method).toBe('PUT');
+      expect(request.request.body).toEqual({ timeSlotId: 's2', tableId: 't1' });
+      request.flush(SCHEDULE);
+
+      expect(await closed).toEqual(SCHEDULE);
+    });
   });
 });

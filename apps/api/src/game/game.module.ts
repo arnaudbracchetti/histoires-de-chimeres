@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import {
+  MoveGame,
+  ReadMovePlacements,
   ReadPlacements,
   ReadSchedule,
   ScheduleGame,
+  UnscheduleGame,
   type ConventionRepository,
   type ScenarioRepository,
   type ScheduleReader,
@@ -41,6 +44,21 @@ import { SCHEDULE_READER } from './schedule-reader.token.js';
       useFactory: (conventions: ConventionRepository, scenarios: ScenarioRepository) =>
         new ScheduleGame(conventions, scenarios, randomUUID),
       inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY],
+    },
+    {
+      provide: ReadMovePlacements,
+      useFactory: (conventions: ConventionRepository) => new ReadMovePlacements(conventions),
+      inject: [CONVENTION_REPOSITORY],
+    },
+    {
+      provide: MoveGame,
+      useFactory: (conventions: ConventionRepository) => new MoveGame(conventions),
+      inject: [CONVENTION_REPOSITORY],
+    },
+    {
+      provide: UnscheduleGame,
+      useFactory: (conventions: ConventionRepository) => new UnscheduleGame(conventions),
+      inject: [CONVENTION_REPOSITORY],
     },
   ],
 })

@@ -14,6 +14,7 @@ import {
   type PlacementDto,
   type ScenarioDto,
   type ScheduleDto,
+  type MoveGameBody,
   type ScheduleGameBody,
   type ScenarioListItemDto,
 } from '@chimeres/contract';
@@ -293,5 +294,133 @@ describe('Programme', () => {
       },
     ]);
     await placements(UNKNOWN_ID).expect(404);
+  });
+
+  describe('Déplacer et déprogrammer une partie (PR-17)', () => {
+    /** Programme le scénario, et renvoie l'id de sa partie. */
+    const scheduled = async (scenarioId: string, rank: number, tableName: string) => {
+      const dto = (
+        await schedule({ scenarioId, timeSlotId: slot(rank), tableId: table(tableName) }).expect(
+          201,
+        )
+      ).body as ScheduleDto;
+      return dto.games.find(({ scenario }) => scenario.id === scenarioId)!.id;
+    };
+    const move = (gameId: string, body: MoveGameBody | object) =>
+      server().put(apiUrl(scheduleEndpoints.move, { gameId })).send(body);
+    const unschedule = (gameId: string) =>
+      server().delete(apiUrl(scheduleEndpoints.unschedule, { gameId }));
+
+    it('déplace une partie vers un autre créneau, puis vers une autre table, et renvoie le programme relu', async () => {
+      const gameId = await scheduled(neons.id, 1, 'Table 1');
+
+      await move(gameId, { timeSlotId: slot(2), tableId: table('Table 1') }).expect(200);
+      const response = await move(gameId, {
+        timeSlotId: slot(2),
+        tableId: table('Table 2'),
+      }).expect(200);
+
+      const dto = response.body as ScheduleDto;
+      expect(dto).toEqual(await read());
+      expect(dto.games).toEqual([
+        expect.objectContaining({
+          id: gameId,
+          tableId: table('Table 2'),
+          timeSlotIds: [slot(2)],
+          seats: { min: 3, max: 5 },
+        }),
+      ]);
+      expect(placeOf(dto, 'Néons')).toEqual(['réserve', 'programmé']);
+    });
+
+    it.each([
+      [
+        'MJ indisponible',
+        () => ({ timeSlotId: slot(2), tableId: table('Table 1') }),
+        'game-master-unavailable',
+        "Kaïros n'est pas disponible sur le créneau 2 : coche d'abord sa disponibilité sur sa fiche.",
+      ],
+      [
+        'Table prise',
+        () => ({ timeSlotId: slot(1), tableId: table('Table 1') }),
+        'table-taken',
+        'La table « Table 1 » accueille déjà une partie sur le créneau 1 : choisis une autre table.',
+      ],
+    ])(
+      'refuse « %s » : 422, avec le motif et la phrase (PR-5)',
+      async (title, body, code, detail) => {
+        await scheduled(neons.id, 1, 'Table 1');
+        const gameId = await scheduled(brumes.id, 1, 'Table 2');
+
+        const response = await move(gameId, body())
+          .expect(422)
+          .expect('Content-Type', /application\/problem\+json/);
+
+        expect(response.body).toMatchObject({ code, title, detail });
+        expect((await read()).games.find(({ id }) => id === gameId)!.tableId).toBe(
+          table('Table 2'),
+        );
+      },
+    );
+
+    it('refuse « MJ déjà occupé » : 422', async () => {
+      const gameId = await scheduled(neons.id, 1, 'Table 1');
+      await scheduled(ruines.id, 2, 'Table 1');
+
+      const response = await move(gameId, {
+        timeSlotId: slot(2),
+        tableId: table('Table 2'),
+      }).expect(422);
+
+      expect(response.body).toMatchObject({
+        code: 'game-master-busy',
+        title: 'MJ déjà occupé',
+        detail: 'Élodie mène déjà une partie sur le créneau 2 : choisis un autre créneau.',
+      });
+    });
+
+    it('donne la grille des verdicts de déplacement, sa propre case permise', async () => {
+      await scheduled(neons.id, 1, 'Table 1');
+      const gameId = await scheduled(brumes.id, 1, 'Table 2');
+
+      const response = await server()
+        .get(apiUrl(scheduleEndpoints.movePlacements, { gameId }))
+        .expect(200);
+
+      expect(
+        (response.body as PlacementDto[]).map(({ refusal }) => refusal?.title ?? null),
+      ).toEqual(['Table prise', null, 'MJ indisponible', 'MJ indisponible']);
+    });
+
+    it('déprogramme une partie : son scénario revient dans la réserve', async () => {
+      const gameId = await scheduled(neons.id, 1, 'Table 1');
+
+      const response = await unschedule(gameId).expect(200);
+
+      const dto = response.body as ScheduleDto;
+      expect(dto).toEqual(await read());
+      expect(dto.games).toEqual([]);
+      expect(placeOf(dto, 'Néons')).toEqual(['réserve', 'réserve']);
+    });
+
+    it('répond 404 à une partie inconnue, et 400 à un corps mal formé', async () => {
+      const gameId = await scheduled(neons.id, 1, 'Table 1');
+      const body = { timeSlotId: slot(2), tableId: table('Table 1') };
+
+      for (const response of [
+        await move(UNKNOWN_ID, body),
+        await unschedule(UNKNOWN_ID),
+        await server().get(apiUrl(scheduleEndpoints.movePlacements, { gameId: UNKNOWN_ID })),
+      ]) {
+        expect(response.status).toBe(404);
+        expect(response.body).toMatchObject({
+          code: 'game-not-found',
+          title: 'Partie introuvable',
+        });
+      }
+      await move(gameId, { ...body, timeSlotId: UNKNOWN_ID }).expect(404);
+      await move(gameId, { ...body, tableId: UNKNOWN_ID }).expect(404);
+      await move(gameId, { timeSlotId: slot(2) }).expect(400);
+    });
   });
 });

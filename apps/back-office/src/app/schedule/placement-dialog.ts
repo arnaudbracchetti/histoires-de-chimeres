@@ -12,6 +12,7 @@ import {
 import { firstValueFrom } from 'rxjs';
 import {
   scheduleEndpoints,
+  type GameDto,
   type PlacementDto,
   type ScheduleDto,
   type ScheduleScenarioDto,
@@ -25,28 +26,34 @@ import { Loadable } from '../shell/loadable';
 import { formatTimeRange, timeSlotLabel } from '../time-slots/time-format';
 import { Button } from '../ui/button';
 
-export type PlacementRequest = {
-  scenario: ScheduleScenarioDto;
-  /** Dans l'ordre de la journée. */
+/** La grille du programme : ses créneaux, dans l'ordre de la journée, et ses tables, dans l'ordre naturel. */
+type Grid = {
   timeSlots: readonly TimeSlotDto[];
-  /** Dans l'ordre naturel. */
   tables: readonly TableDto[];
 };
+
+/** Programmer un scénario de la réserve. */
+export type PlacementRequest = Grid & { scenario: ScheduleScenarioDto };
+
+/** Déplacer une partie : sa case, celle de son premier créneau, n'offre pas « Choisir ». */
+export type MoveRequest = Grid & { game: GameDto };
+
+type DialogData = (PlacementRequest | MoveRequest) & { titleId: string };
 
 let nextId = 0;
 
 /**
- * Dialogue de placement de « Programmer sur… » (docs/design/patterns.md, Programmation) : une
- * grille créneaux × tables, lue dans l'API à l'ouverture. Chaque case est « Choisir », ou éteinte
- * avec le motif de son verdict ; le front ne recalcule jamais PR-5. Choisir programme la partie et
- * ferme le dialogue sur le programme relu.
+ * Dialogue de placement de « Programmer sur… » et de « Déplacer vers… » (docs/design/patterns.md,
+ * Programmation) : une grille créneaux × tables, lue dans l'API à l'ouverture. Chaque case est
+ * « Choisir », ou éteinte avec le motif de son verdict ; le front ne recalcule jamais PR-5. Choisir
+ * programme ou déplace la partie, et ferme le dialogue sur le programme relu.
  */
 @Component({
   selector: 'app-placement-dialog',
   imports: [Button, Loadable],
   host: { '[attr.aria-busy]': 'running()' },
   template: `
-    <h2 [id]="request.titleId">Programmer « {{ request.scenario.title }} » sur…</h2>
+    <h2 [id]="request.titleId">{{ title }}</h2>
     <app-loadable [resource]="placements" failure="Impossible de lire les cases possibles.">
       @if (placements.hasValue()) {
         <table>
@@ -72,7 +79,9 @@ let nextId = 0;
                 @for (slot of request.timeSlots; track slot.id) {
                   <td>
                     @if (verdictOf(slot.id, table.id); as verdict) {
-                      @if (verdict.refusal; as refusal) {
+                      @if (isCurrent(slot, table)) {
+                        <span class="off">Sa place</span>
+                      } @else if (verdict.refusal; as refusal) {
                         <span class="off" [title]="refusal.detail">
                           {{ refusal.title }}
                           <span class="visually-hidden">{{ refusal.detail }}</span>
@@ -171,13 +180,15 @@ let nextId = 0;
   `,
 })
 export class PlacementDialog {
-  protected readonly request = inject<PlacementRequest & { titleId: string }>(DIALOG_DATA);
+  protected readonly request = inject<DialogData>(DIALOG_DATA);
   protected readonly ref = inject<DialogRef<ScheduleDto>>(DialogRef);
   private readonly apiCall = injectApiCall();
 
-  protected readonly placements = apiResource(scheduleEndpoints.placements, () => ({
-    scenarioId: this.request.scenario.id,
-  }));
+  protected readonly title =
+    'game' in this.request
+      ? `Déplacer « ${this.request.game.scenario.title} » vers…`
+      : `Programmer « ${this.request.scenario.title} » sur…`;
+  protected readonly placements = placementsOf(this.request);
   protected readonly running = signal(false);
   protected readonly refusal = signal<string | undefined>(undefined);
 
@@ -210,14 +221,27 @@ export class PlacementDialog {
     return `${timeSlotLabel(slot)}, ${table.name}`;
   }
 
+  protected isCurrent(slot: TimeSlotDto, table: TableDto): boolean {
+    if (!('game' in this.request)) return false;
+    const { game } = this.request;
+    return game.timeSlotIds[0] === slot.id && game.tableId === table.id;
+  }
+
   /** Un refus (le programme a changé entre-temps) s'affiche dans le dialogue, et la grille se relit. */
   protected async choose(slot: TimeSlotDto, table: TableDto) {
     if (this.running()) return;
     this.running.set(true);
     try {
-      const schedule = await this.apiCall(scheduleEndpoints.schedule, {
-        body: { scenarioId: this.request.scenario.id, timeSlotId: slot.id, tableId: table.id },
-      });
+      const place = { timeSlotId: slot.id, tableId: table.id };
+      const schedule =
+        'game' in this.request
+          ? await this.apiCall(scheduleEndpoints.move, {
+              params: { gameId: this.request.game.id },
+              body: place,
+            })
+          : await this.apiCall(scheduleEndpoints.schedule, {
+              body: { scenarioId: this.request.scenario.id, ...place },
+            });
       this.ref.close(schedule);
     } catch (error) {
       const { alert, fieldErrors } = readProblem(error);
@@ -231,13 +255,32 @@ export class PlacementDialog {
   }
 }
 
+/** Les verdicts de programmation du scénario, ou de déplacement de la partie. */
+function placementsOf(request: PlacementRequest | MoveRequest) {
+  if ('game' in request) {
+    const gameId = request.game.id;
+    return apiResource(scheduleEndpoints.movePlacements, () => ({ gameId }));
+  }
+  const scenarioId = request.scenario.id;
+  return apiResource(scheduleEndpoints.placements, () => ({ scenarioId }));
+}
+
 /** Ouvre le dialogue de placement. À sa fermeture, le focus revient à l'élément qui l'a ouvert. */
 @Injectable({ providedIn: 'root' })
 export class Placements {
   private readonly dialog = inject(Dialog);
 
   /** Résout le programme relu après la programmation, ou `undefined` si le dialogue se ferme sans elle. */
-  async scheduleOn(request: PlacementRequest): Promise<ScheduleDto | undefined> {
+  scheduleOn(request: PlacementRequest): Promise<ScheduleDto | undefined> {
+    return this.open(request);
+  }
+
+  /** Résout le programme relu après le déplacement, ou `undefined` si le dialogue se ferme sans lui. */
+  moveTo(request: MoveRequest): Promise<ScheduleDto | undefined> {
+    return this.open(request);
+  }
+
+  private async open(request: PlacementRequest | MoveRequest): Promise<ScheduleDto | undefined> {
     const titleId = `placement-${nextId++}`;
     const ref = this.dialog.open<ScheduleDto, unknown, PlacementDialog>(PlacementDialog, {
       data: { ...request, titleId },

@@ -44,7 +44,7 @@ Action d'un Organisateur qui retire une partie du programme ; son scénario rest
 _Avoid_: Annuler (réservé à la partie sous son minimum, après le tirage)
 
 **Déplacer une partie** · `moveGame`:
-Action d'un Organisateur qui change le créneau ou la table d'une partie ; elle reste la même partie, avec ses places.
+Action d'un Organisateur qui change le créneau ou la table d'une partie ; elle reste la même partie, avec ses places. Une partie double se déplace par son premier créneau, et prend le créneau consécutif avec elle.
 
 **Échanger deux parties** · `swapGames`:
 Action d'un Organisateur qui met chacune de deux parties à la place de l'autre, en un seul geste ; chacune reste la même partie, avec ses places.
@@ -59,6 +59,9 @@ _Avoid_: DoubleGame
 
 **Réserve** · `Reserve`:
 Les scénarios qui pourraient être programmés sur un créneau : leur MJ y est disponible et n'y mène aucune partie (sur ce créneau et le suivant pour un scénario double). Un scénario déjà programmé sur un autre créneau en fait partie. L'Organisateur y puise pour soulager un créneau surchargé.
+
+**Verdict de placement** · `Placement`:
+Pour une case du programme (un créneau et une table), ce que donnerait le geste de programmer un scénario ou de déplacer une partie : permis, ou refusé avec son motif. Il obéit à la même règle que le geste lui-même.
 
 **Table** · `Table`:
 L'emplacement physique où se joue une partie.
@@ -115,7 +118,7 @@ _Avoid_: Validation
 
 **Affectation** · `Assignment`:
 Résultat publié du tirage pour un participant : la partie (et donc la table) où il joue sur un créneau.
-_Avoid_: Placement, assignation
+_Avoid_: Placement (réservé au verdict de placement), assignation
 
 **Non placé** · `Unassigned`:
 Participant inscrit sur un créneau qui n'a obtenu aucune affectation au tirage.

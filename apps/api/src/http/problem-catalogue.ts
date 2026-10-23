@@ -144,6 +144,16 @@ export const problemCatalogue: Catalogue = {
     detail: ({ table, rank }) =>
       `La table « ${table} » accueille déjà une partie sur le créneau ${rank} : choisis une autre table.`,
   },
+  'no-next-time-slot': {
+    title: 'Pas de créneau suivant',
+    detail: ({ rank }) =>
+      `Le créneau ${rank} est le dernier de la journée : une partie double commence au plus tard sur le créneau ${rank - 1}.`,
+  },
+  'game-not-found': {
+    title: 'Partie introuvable',
+    detail: () => "Cette partie n'existe plus : recharge la page.",
+    status: 404,
+  },
   'scenario-not-found': {
     title: 'Scénario introuvable',
     detail: () => "Ce scénario n'existe plus : recharge la page.",

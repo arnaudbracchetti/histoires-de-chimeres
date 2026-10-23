@@ -35,6 +35,8 @@ const GAME: GameDto = {
 describe('ScheduleTimeline', () => {
   async function render(games: GameDto[] = [GAME]) {
     const fixture = TestBed.createComponent(ScheduleTimeline);
+    const opened: GameDto[] = [];
+    fixture.componentInstance.opened.subscribe((game) => opened.push(game));
     fixture.componentRef.setInput('timeSlots', TIME_SLOTS);
     fixture.componentRef.setInput('tables', TABLES);
     fixture.componentRef.setInput('games', games);
@@ -42,7 +44,7 @@ describe('ScheduleTimeline', () => {
     const host = fixture.nativeElement as HTMLElement;
     const text = (element: Element | null | undefined) =>
       element?.textContent?.replace(/[ \n\t]+/g, ' ').trim();
-    return { host, text };
+    return { fixture, host, text, opened };
   }
 
   it('donne à chaque créneau une largeur proportionnelle à sa durée, et une colonne étroite à chaque pause', async () => {
@@ -70,13 +72,13 @@ describe('ScheduleTimeline', () => {
       'Dragon',
     ]);
     const cells = [...rows[1]!.querySelectorAll('[role="cell"]')];
-    expect(cells.map((cell) => cell.querySelector('.game')?.id ?? '')).toEqual([
+    expect(cells.map((cell) => cell.querySelector('.game button')?.id ?? '')).toEqual([
       '',
       '',
       'game-p1',
       '',
     ]);
-    const card = host.querySelector('#game-p1')!;
+    const card = host.querySelector('#game-p1')!.closest('.game')!;
     expect([...card.querySelectorAll('.text > *')].map(text)).toEqual([
       'Néons sur Neo-Paris',
       'Cyberpunk',
@@ -84,5 +86,19 @@ describe('ScheduleTimeline', () => {
       '3 à 5 places',
     ]);
     expect(card.querySelector('app-scenario-illustration')).not.toBeNull();
+  });
+
+  it('ouvre la fiche d’une partie au clic, et marque la partie ouverte', async () => {
+    const { fixture, host, opened } = await render();
+    const button = host.querySelector<HTMLButtonElement>('#game-p1')!;
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+
+    button.click();
+    fixture.componentRef.setInput('selectedGameId', 'p1');
+    await fixture.whenStable();
+
+    expect(opened).toEqual([GAME]);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(button.getAttribute('aria-controls')).toBe('game-sheet');
   });
 });

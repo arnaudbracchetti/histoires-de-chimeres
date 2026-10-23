@@ -80,6 +80,12 @@ async function prepare(page: Page) {
 
 const reserve = (page: Page) => page.getByRole('region', { name: 'Réserve' });
 const placementDialog = (page: Page) => page.getByRole('dialog');
+const timeline = (page: Page) =>
+  page.getByRole('table', { name: 'Programme, par table et par créneau' });
+/** Le bouton d'une carte de partie, qui ouvre sa fiche. */
+const gameButton = (page: Page, title: string) =>
+  timeline(page).getByRole('button', { name: title, exact: true });
+const sheet = (page: Page) => page.getByRole('complementary');
 
 test('sans créneau, le Calendrier invite à les créer, ou à commencer par les MJ', async ({
   page,
@@ -242,7 +248,7 @@ test('programmer par « Programmer sur… » : la partie entre dans la frise (PR
   const game = page.getByRole('article').filter({ hasText: 'Brumes' });
   await expect(game).toContainText('Kaïros');
   await expect(game).toContainText('3 à 5 places');
-  await expect(game).toBeFocused();
+  await expect(gameButton(page, 'Brumes')).toBeFocused();
   await expect(page.locator('[aria-live="polite"]')).toHaveText(
     `Partie « Brumes » programmée${NBSP}: créneau 1, Table 2.`,
   );
@@ -316,7 +322,7 @@ test('programmer au clavier seul', async ({ page }) => {
   await page.keyboard.press('Enter');
 
   await expect(placementDialog(page)).toHaveCount(0);
-  await expect(page.getByRole('article').filter({ hasText: 'Brumes' })).toBeFocused();
+  await expect(gameButton(page, 'Brumes')).toBeFocused();
 });
 
 test('un créneau ou une table qui porte une partie ne se supprime pas : le dialogue dit pourquoi (PR-10)', async ({
@@ -349,4 +355,173 @@ test('un créneau ou une table qui porte une partie ne se supprime pas : le dial
   await page.reload();
   await expect(page.getByRole('button', { name: 'Supprimer le créneau 1' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Supprimer la table Table 1' })).toBeVisible();
+});
+
+/** Programme le scénario par l'API, sur le créneau et la table donnés. */
+async function scheduleByApi(
+  page: Page,
+  scenarioId: string,
+  timeSlotId: string,
+  tableId: string,
+): Promise<void> {
+  await post(page, apiUrl(scheduleEndpoints.schedule), { scenarioId, timeSlotId, tableId });
+}
+
+/** La ligne d'une table dans la frise. */
+const timelineRow = (page: Page, table: string) =>
+  timeline(page).getByRole('row', { name: new RegExp(`^${table}`) });
+
+test('un clic sur une partie ouvre sa fiche, à droite de la frise qui se rétrécit', async ({
+  page,
+}) => {
+  const { neons, slot1, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
+  await page.goto('/gestion/');
+  const width = () => timeline(page).evaluate((element) => element.getBoundingClientRect().width);
+  const before = await width();
+
+  await page.getByRole('article').filter({ hasText: 'Néons' }).click();
+
+  await expect(sheet(page)).toHaveAccessibleName('Néons');
+  await expect(sheet(page)).toContainText('Cthulhu');
+  await expect(sheet(page)).toContainText('Élodie');
+  await expect(sheet(page)).toContainText(
+    `Créneau 1 · 9${NBSP}h${NBSP}00${THIN}–${THIN}11${NBSP}h${NBSP}30`,
+  );
+  await expect(sheet(page)).toContainText('Table 1');
+  await expect(sheet(page)).toContainText('3 à 5 places');
+  expect(await width()).toBeLessThan(before);
+  const [timelineBox, sheetBox] = [
+    await timeline(page).boundingBox(),
+    await sheet(page).boundingBox(),
+  ];
+  expect(sheetBox!.x).toBeGreaterThan(timelineBox!.x + timelineBox!.width - 1);
+  await expect(gameButton(page, 'Néons')).toHaveAttribute('aria-expanded', 'true');
+});
+
+test('« Déplacer vers… » vers un autre créneau, puis vers une autre table (PR-17)', async ({
+  page,
+}) => {
+  const { neons, slot1, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
+  await page.goto('/gestion/');
+  await gameButton(page, 'Néons').click();
+
+  await sheet(page).getByRole('button', { name: 'Déplacer vers…' }).click();
+  await expect(placementDialog(page).getByRole('heading')).toHaveText('Déplacer « Néons » vers…');
+  await placementDialog(page)
+    .getByRole('button', { name: cell(2, 14, 'Table 1') })
+    .click();
+
+  await expect(placementDialog(page)).toHaveCount(0);
+  await expect(gameButton(page, 'Néons')).toBeFocused();
+  await expect(page.locator('[aria-live="polite"]')).toHaveText(
+    `Partie déplacée${NBSP}: créneau 2, table Table 1.`,
+  );
+  await expect(sheet(page)).toContainText(`Créneau 2 · 14${NBSP}h${NBSP}00`);
+
+  await sheet(page).getByRole('button', { name: 'Déplacer vers…' }).click();
+  await placementDialog(page)
+    .getByRole('button', { name: cell(2, 14, 'Table 2') })
+    .click();
+
+  await expect(page.locator('[aria-live="polite"]')).toHaveText(
+    `Partie déplacée${NBSP}: créneau 2, table Table 2.`,
+  );
+  await expect(timelineRow(page, 'Table 2')).toContainText('Néons');
+  await page.reload();
+  await expect(timelineRow(page, 'Table 2')).toContainText('Néons');
+  await expect(timelineRow(page, 'Table 1')).not.toContainText('Néons');
+});
+
+test('le dialogue « Déplacer vers… » éteint les cases refusées, avec leur motif (PR-5)', async ({
+  page,
+}) => {
+  const { neons, brumes, slot1, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
+  await scheduleByApi(page, brumes.id, slot1, tableId('Table 2'));
+  await page.goto('/gestion/');
+
+  await gameButton(page, 'Brumes').click();
+  await sheet(page).getByRole('button', { name: 'Déplacer vers…' }).click();
+
+  const dialog = placementDialog(page);
+  const rowOf = (table: string) => dialog.getByRole('row', { name: new RegExp(`^${table}`) });
+  await expect(rowOf('Table 1')).toContainText('Table prise');
+  await expect(rowOf('Table 2')).toContainText('Sa place');
+  await expect(dialog.getByText('MJ indisponible')).toHaveCount(2);
+  await expect(dialog.getByRole('button', { name: /^Choisir/ })).toHaveCount(0);
+});
+
+test('« Déprogrammer » dans la fiche : le scénario revient dans la réserve (PR-17)', async ({
+  page,
+}) => {
+  const { neons, slot1, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
+  await page.goto('/gestion/');
+  await expect(reserve(page).getByRole('heading', { level: 3 })).toHaveText(['Brumes']);
+
+  await gameButton(page, 'Néons').click();
+  await sheet(page).getByRole('button', { name: 'Déprogrammer' }).click();
+
+  await expect(sheet(page)).toHaveCount(0);
+  await expect(page.getByRole('article').filter({ hasText: 'Néons' })).toHaveCount(0);
+  await expect(reserve(page).getByRole('heading', { level: 3 })).toHaveText([
+    'Brumes',
+    'Néons',
+    'Ruines',
+  ]);
+  await expect(page.locator('[aria-live="polite"]')).toHaveText(`Partie « Néons » déprogrammée.`);
+  await expect(reserve(page).getByRole('heading', { level: 2 })).toBeFocused();
+  await page.reload();
+  await expect(page.getByRole('article')).toHaveCount(0);
+});
+
+test('Échap ou ✕ ferme la fiche, et le focus revient à la partie', async ({ page }) => {
+  const { neons, slot1, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
+  await page.goto('/gestion/');
+
+  await gameButton(page, 'Néons').click();
+  await expect(sheet(page).getByRole('heading', { name: 'Néons' })).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(sheet(page)).toHaveCount(0);
+  await expect(gameButton(page, 'Néons')).toBeFocused();
+  await expect(gameButton(page, 'Néons')).toHaveAttribute('aria-expanded', 'false');
+
+  await gameButton(page, 'Néons').click();
+  await sheet(page).getByRole('button', { name: 'Fermer la fiche' }).click();
+  await expect(sheet(page)).toHaveCount(0);
+  await expect(gameButton(page, 'Néons')).toBeFocused();
+});
+
+test('déplacer puis déprogrammer au clavier seul', async ({ page }) => {
+  const { neons, slot1, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
+  await page.goto('/gestion/');
+  await gameButton(page, 'Néons').focus();
+
+  await page.keyboard.press('Enter');
+  await expect(sheet(page).getByRole('heading', { name: 'Néons' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(sheet(page).getByRole('button', { name: 'Fermer la fiche' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(sheet(page).getByRole('button', { name: 'Déplacer vers…' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  // La case de la partie est « Sa place » : la première case libre est au créneau 2, table 1.
+  await expect(
+    placementDialog(page).getByRole('button', { name: cell(2, 14, 'Table 1') }),
+  ).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(placementDialog(page)).toHaveCount(0);
+  await expect(gameButton(page, 'Néons')).toBeFocused();
+  await expect(sheet(page)).toContainText(`Créneau 2 · 14${NBSP}h${NBSP}00`);
+
+  await page.keyboard.press('Enter');
+  await expect(sheet(page).getByRole('heading', { name: 'Néons' })).toBeFocused();
+  for (let i = 0; i < 3; i++) await page.keyboard.press('Tab');
+  await expect(sheet(page).getByRole('button', { name: 'Déprogrammer' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('article').filter({ hasText: 'Néons' })).toHaveCount(0);
+  await expect(reserve(page).getByRole('heading', { level: 2 })).toBeFocused();
 });

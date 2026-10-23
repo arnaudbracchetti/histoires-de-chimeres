@@ -51,6 +51,8 @@ export {
 export {
   scheduleEndpoints,
   type GameDto,
+  type GameParams,
+  type MoveGameBody,
   type PlacementDto,
   type ReserveScenarioDto,
   type ScheduleDto,

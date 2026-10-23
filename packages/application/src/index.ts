@@ -5,10 +5,13 @@ export {
   type ConventionRepository,
 } from './convention/convention-repository.js';
 export { UpdateConvention } from './convention/update-convention.js';
+export { MoveGame } from './game/move-game.js';
+export { ReadMovePlacements } from './game/read-move-placements.js';
 export { ReadPlacements } from './game/read-placements.js';
 export { ReadSchedule, type ReserveScenario, type Schedule } from './game/read-schedule.js';
 export { ScheduleGame } from './game/schedule-game.js';
 export type { ScheduleReader } from './game/schedule-reader.js';
+export { UnscheduleGame } from './game/unschedule-game.js';
 export { AddGameMaster } from './game-master/add-game-master.js';
 export { DeclareAvailability } from './game-master/declare-availability.js';
 export type { GameMasterReader } from './game-master/game-master-reader.js';

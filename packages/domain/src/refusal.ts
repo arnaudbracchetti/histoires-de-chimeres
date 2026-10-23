@@ -36,6 +36,9 @@ export type RefusalParams = {
   'game-master-busy-everywhere': { nickname: string };
   /** `table` : le nom de la table ; `rank` : le rang du créneau. */
   'table-taken': { table: string; rank: number };
+  /** `rank` : le rang du dernier créneau, où une partie double ne commence pas. */
+  'no-next-time-slot': { rank: number };
+  'game-not-found': Record<string, never>;
   'scenario-not-found': Record<string, never>;
   'scenario-title-required': Record<string, never>;
   'scenario-title-too-long': { max: number };

@@ -21,4 +21,9 @@ export class Game {
   isOn(timeSlotId: string): boolean {
     return this.timeSlotIds.includes(timeSlotId);
   }
+
+  /** La même partie, avec ses places, sur une autre table et d'autres créneaux (PR-17). */
+  movedTo(tableId: string, timeSlotIds: readonly string[]): Game {
+    return new Game(this.id, this.scenarioId, this.gameMasterId, tableId, timeSlotIds, this.seats);
+  }
 }
