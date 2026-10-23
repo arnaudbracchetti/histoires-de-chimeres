@@ -8,7 +8,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && r
 RUN corepack enable
 WORKDIR /repo
 
-FROM base AS deps
+FROM base AS manifests
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/contract/package.json packages/contract/package.json
 COPY packages/domain/package.json packages/domain/package.json
@@ -18,7 +18,14 @@ COPY apps/api/package.json apps/api/package.json
 COPY apps/front-office/package.json apps/front-office/package.json
 COPY apps/back-office/package.json apps/back-office/package.json
 COPY e2e/package.json e2e/package.json
+
+FROM manifests AS deps
 RUN pnpm install --frozen-lockfile
+
+# Dépendances de prod de l'API seules (dont le CLI Prisma, pour les migrations).
+# Ne dépend que des manifestes : reste en cache tant que le lockfile ne change pas.
+FROM manifests AS prod-deps
+RUN pnpm install --frozen-lockfile --prod --filter api...
 
 FROM deps AS build
 COPY . .
@@ -29,19 +36,19 @@ FROM base AS runtime
 ENV NODE_ENV=production
 WORKDIR /repo
 
-# On reprend node_modules du stage de build (liens du workspace pnpm, CLI Prisma pour les
-# migrations) plutôt qu'un `pnpm install --prod` séparé, comme pour Agilometre.
-COPY --from=build /repo/pnpm-workspace.yaml /repo/package.json ./
-COPY --from=build /repo/node_modules node_modules
+# node_modules vient de prod-deps : sans les outils de build, l'image est plus légère, et
+# ses couches restent les mêmes d'un build à l'autre tant que le lockfile ne change pas.
+COPY --from=prod-deps /repo/pnpm-workspace.yaml /repo/package.json ./
+COPY --from=prod-deps /repo/node_modules node_modules
+COPY --from=prod-deps /repo/packages/application/node_modules packages/application/node_modules
+COPY --from=prod-deps /repo/apps/api/node_modules apps/api/node_modules
 COPY --from=build /repo/packages/contract/package.json packages/contract/package.json
 COPY --from=build /repo/packages/contract/dist packages/contract/dist
 COPY --from=build /repo/packages/domain/package.json packages/domain/package.json
 COPY --from=build /repo/packages/domain/dist packages/domain/dist
 COPY --from=build /repo/packages/application/package.json packages/application/package.json
-COPY --from=build /repo/packages/application/node_modules packages/application/node_modules
 COPY --from=build /repo/packages/application/dist packages/application/dist
 COPY --from=build /repo/apps/api/package.json apps/api/package.json
-COPY --from=build /repo/apps/api/node_modules apps/api/node_modules
 COPY --from=build /repo/apps/api/dist apps/api/dist
 COPY --from=build /repo/apps/api/prisma apps/api/prisma
 COPY --from=build /repo/apps/api/prisma.config.ts apps/api/prisma.config.ts

@@ -7,3 +7,15 @@
 **/.env.*
 apps/api/src/generated
 apps/api/public
+
+# Sans effet sur l'image : les modifier ne doit pas relancer `pnpm build`.
+# De e2e, seul package.json compte (`pnpm install --frozen-lockfile` voit tout le workspace).
+e2e/*
+!e2e/package.json
+docs
+.claude
+**/*.md
+Dockerfile
+.dockerignore
+docker-compose*.yml
+*.caddy
