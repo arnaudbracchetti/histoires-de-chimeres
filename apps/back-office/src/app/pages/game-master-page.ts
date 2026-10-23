@@ -9,7 +9,7 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { gameMasterEndpoints, type GameMasterDto } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { apiResource } from '../api-resource';
@@ -17,6 +17,7 @@ import { ConventionStore } from '../convention/convention-store';
 import { availabilitiesConsequence } from '../game-masters/availabilities-consequence';
 import { AvailabilityTimeline } from '../game-masters/availability-timeline';
 import { NicknameEditor } from '../game-masters/nickname-editor';
+import { formatDuration, formatSeats } from '../scenarios/scenario-format';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
@@ -24,18 +25,30 @@ import { Button } from '../ui/button';
 import { Confirmation } from '../ui/confirmation';
 import { Icon } from '../ui/icon';
 import { MoreMenu, type MoreMenuItem } from '../ui/more-menu';
+import { ScenarioIllustration } from '../ui/scenario-illustration';
 
 const MENU: readonly MoreMenuItem[] = [{ value: 'remove', label: 'Supprimer le MJ', danger: true }];
 
 /**
- * Fiche d'un MJ (docs/design/patterns.md, Coquille) : « MJ › pseudo ». Le pseudo se modifie dans
+ * Fiche d'un MJ (docs/design/patterns.md, Coquille) : « MJ › pseudo », ses disponibilités et ses
+ * scénarios. « Proposer un scénario » est l'action principale. Le pseudo se modifie dans
  * l'en-tête, la suppression passe par « ⋯ », et les disponibilités se déclarent sur la frise de la
  * journée. Elle ne lit que le MJ et les créneaux, rien de réservé aux Organisateurs : elle deviendra
  * l'espace du MJ lui-même.
  */
 @Component({
   selector: 'app-game-master-page',
-  imports: [AvailabilityTimeline, Button, Icon, Loadable, MoreMenu, NicknameEditor, PageHeader],
+  imports: [
+    AvailabilityTimeline,
+    Button,
+    Icon,
+    Loadable,
+    MoreMenu,
+    NicknameEditor,
+    PageHeader,
+    RouterLink,
+    ScenarioIllustration,
+  ],
   template: `
     <app-page-header
       [title]="gameMaster()?.nickname ?? 'Fiche du MJ'"
@@ -65,11 +78,16 @@ const MENU: readonly MoreMenuItem[] = [{ value: 'remove', label: 'Supprimer le M
         }
       </ng-container>
       @if (gameMaster(); as gameMaster) {
-        <app-more-menu
-          label="Autres actions sur le MJ"
-          [items]="menu"
-          (selected)="onMenu($event, gameMaster)"
-        />
+        <div class="actions">
+          <a appButton="primary" [routerLink]="['/mj', gameMaster.id, 'nouveau-scenario']">
+            Proposer un scénario
+          </a>
+          <app-more-menu
+            label="Autres actions sur le MJ"
+            [items]="menu"
+            (selected)="onMenu($event, gameMaster)"
+          />
+        </div>
       }
     </app-page-header>
     <app-loadable [resource]="resource" [failure]="failure()">
@@ -89,13 +107,43 @@ const MENU: readonly MoreMenuItem[] = [{ value: 'remove', label: 'Supprimer le M
             </p>
           }
         </section>
+        <section aria-labelledby="scenarios-title">
+          <h2 id="scenarios-title">Scénarios</h2>
+          @if (gameMaster.scenarios.length) {
+            <ul class="scenarios">
+              @for (scenario of gameMaster.scenarios; track scenario.id) {
+                <li>
+                  <app-scenario-illustration
+                    [title]="scenario.title"
+                    [imageUrl]="scenario.imageUrl"
+                  />
+                  <a [routerLink]="['/scenarios', scenario.id]">{{ scenario.title }}</a>
+                  <span class="meta">{{ scenario.system }}</span>
+                  <span class="meta">{{ formatSeats(scenario.seats) }}</span>
+                  <span class="meta">{{ formatDuration(scenario.duration) }}</span>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="none">Aucun scénario pour l'instant.</p>
+          }
+        </section>
       }
     </app-loadable>
   `,
   styles: `
     @layer components {
       app-loadable {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xl);
         padding: var(--space-l) var(--space-xl);
+      }
+
+      .actions {
+        display: flex;
+        gap: var(--space-s);
+        align-items: center;
       }
 
       section {
@@ -109,6 +157,36 @@ const MENU: readonly MoreMenuItem[] = [{ value: 'remove', label: 'Supprimer le M
       }
 
       .none {
+        color: var(--text-muted);
+      }
+
+      .scenarios {
+        display: grid;
+        grid-template-columns: 32px minmax(12rem, max-content) repeat(3, max-content);
+        column-gap: var(--space-l);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+
+        li {
+          display: grid;
+          grid-column: 1 / -1;
+          grid-template-columns: subgrid;
+          align-items: center;
+          height: 48px;
+          border-bottom: 1px solid var(--border);
+        }
+
+        a {
+          font-weight: 600;
+        }
+      }
+
+      app-scenario-illustration {
+        width: 32px;
+      }
+
+      .meta {
         color: var(--text-muted);
       }
     }
@@ -126,6 +204,8 @@ export class GameMasterPage {
   );
   protected readonly editing = signal(false);
   protected readonly menu = MENU;
+  protected readonly formatSeats = formatSeats;
+  protected readonly formatDuration = formatDuration;
 
   protected readonly failure = computed(() => {
     const error = this.resource.error();

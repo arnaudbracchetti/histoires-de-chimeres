@@ -28,7 +28,12 @@ describe('AvailabilityTimeline', () => {
 
   async function render(availabilities: string[]) {
     const fixture = TestBed.createComponent(AvailabilityTimeline);
-    const gameMaster: GameMasterDto = { id: 'g1', nickname: 'Élodie', availabilities };
+    const gameMaster: GameMasterDto = {
+      id: 'g1',
+      nickname: 'Élodie',
+      availabilities,
+      scenarios: [],
+    };
     fixture.componentRef.setInput('gameMaster', gameMaster);
     fixture.componentRef.setInput('timeSlots', TIME_SLOTS);
     const changed: GameMasterDto[] = [];

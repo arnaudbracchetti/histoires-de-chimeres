@@ -1,5 +1,6 @@
 import { ComparableName } from '../comparable-name.js';
 import { Refusal } from '../refusal.js';
+import { Scenario, type ScenarioDetails } from '../scenario/scenario.js';
 import { GameMaster } from './game-master.js';
 import { Table } from './table.js';
 import type { TimeOfDay } from './time-of-day.js';
@@ -169,6 +170,15 @@ export class Convention {
     this.verifyTimeSlotExists(timeSlotId);
     this.state.gameMasters[index] =
       this.state.gameMasters[index]!.withoutAvailabilityOn(timeSlotId);
+  }
+
+  /**
+   * Fabrique le scénario d'un MJ existant, qui lui reste fixé (PR-16). La convention n'en garde
+   * rien : le scénario est un agrégat à part (ADR 0005).
+   */
+  proposeScenario(id: string, gameMasterId: string, details: ScenarioDetails): Scenario {
+    this.indexOfGameMaster(gameMasterId);
+    return Scenario.propose(id, gameMasterId, details);
   }
 
   private indexOfGameMaster(gameMasterId: string): number {

@@ -1,5 +1,6 @@
 import { booleanAttribute, Component, computed, contentChild, effect, input } from '@angular/core';
 import { FormField } from '@angular/forms/signals';
+import { formatCount } from '../format-count';
 
 let nextId = 0;
 
@@ -23,8 +24,17 @@ let nextId = 0;
       }
     </label>
     <ng-content />
-    @if (help()) {
-      <p class="help" [id]="helpId">{{ help() }}</p>
+    @if (help() || counter()) {
+      <div class="notes">
+        @if (help()) {
+          <p class="help" [id]="helpId">{{ help() }}</p>
+        }
+        @if (counter(); as max) {
+          <p class="counter" [id]="counterId">
+            {{ formatCount(length()) }} / {{ formatCount(max) }}
+          </p>
+        }
+      </div>
     }
     @if (!compact() || error()) {
       <!-- Ligne réservée, vide sans erreur ; en compact, bulle sous la carte. -->
@@ -54,9 +64,22 @@ let nextId = 0;
         font-size: var(--font-size-meta);
       }
 
-      .help {
+      .notes {
+        display: flex;
+        gap: var(--space-s);
+        justify-content: space-between;
+      }
+
+      .help,
+      .counter {
         color: var(--text-muted);
         font-size: var(--font-size-meta);
+      }
+
+      .counter {
+        margin-left: auto;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
       }
 
       /* Dans la place réservée, à la largeur du champ : l'erreur qui apparaît ne décale rien. */
@@ -99,6 +122,8 @@ export class Field {
   readonly compact = input(false, { transform: booleanAttribute });
   /** Libellé masqué à l'écran, gardé comme nom accessible. */
   readonly labelHidden = input(false, { transform: booleanAttribute });
+  /** Longueur maximale : un compteur « 42 / 80 » suit la saisie. */
+  readonly counter = input<number>();
   /** Faux tant qu'aucun enregistrement n'a été tenté : une valeur manquante attend jusque-là. */
   readonly attempted = input(true);
 
@@ -107,6 +132,13 @@ export class Field {
   protected readonly controlId = `field-${this.id}`;
   protected readonly helpId = `field-${this.id}-help`;
   protected readonly errorId = `field-${this.id}-error`;
+  protected readonly counterId = `field-${this.id}-counter`;
+  protected readonly formatCount = formatCount;
+
+  /** Compté comme les validateurs et le domaine : sans les espaces du début et de la fin. */
+  protected readonly length = computed(
+    () => String(this.control().state().value() ?? '').trim().length,
+  );
 
   protected readonly error = computed(() => {
     const state = this.control().state();
@@ -117,9 +149,11 @@ export class Field {
   constructor() {
     effect(() => {
       const element = this.control().element;
-      const describedBy = [this.help() && this.helpId, this.error() && this.errorId].filter(
-        Boolean,
-      );
+      const describedBy = [
+        this.help() && this.helpId,
+        this.counter() && this.counterId,
+        this.error() && this.errorId,
+      ].filter(Boolean);
       element.id = this.controlId;
       element.setAttribute('aria-invalid', String(!!this.error()));
       if (describedBy.length) element.setAttribute('aria-describedby', describedBy.join(' '));

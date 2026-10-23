@@ -102,6 +102,58 @@ export const problemCatalogue: Catalogue = {
     detail: ({ nickname }) => `Le MJ « ${nickname} » porte déjà ce pseudo : choisis-en un autre.`,
     field: 'nickname',
   },
+  'scenario-not-found': {
+    title: 'Scénario introuvable',
+    detail: () => "Ce scénario n'existe plus : recharge la page.",
+    status: 404,
+  },
+  'scenario-title-required': {
+    title: 'Titre obligatoire',
+    detail: () => 'Donne un titre au scénario.',
+    field: 'title',
+  },
+  'scenario-title-too-long': {
+    title: 'Titre trop long',
+    detail: ({ max }) => `Le titre fait ${max} caractères au plus : raccourcis-le.`,
+    field: 'title',
+  },
+  'system-required': {
+    title: 'Jeu obligatoire',
+    detail: () => 'Indique le jeu du scénario.',
+    field: 'system',
+  },
+  'system-too-long': {
+    title: 'Jeu trop long',
+    detail: ({ max }) => `Le jeu fait ${max} caractères au plus : raccourcis-le.`,
+    field: 'system',
+  },
+  'presentation-required': {
+    title: 'Présentation obligatoire',
+    detail: () => 'Présente le scénario en quelques lignes.',
+    field: 'presentation',
+  },
+  'presentation-too-long': {
+    title: 'Présentation trop longue',
+    detail: ({ max }) =>
+      `La présentation fait ${formatCount(max)} caractères au plus : raccourcis-la.`,
+    field: 'presentation',
+  },
+  'content-warnings-too-long': {
+    title: 'Avertissements trop longs',
+    detail: ({ max }) =>
+      `Les avertissements de contenu font ${max} caractères au plus : raccourcis-les.`,
+    field: 'contentWarnings',
+  },
+  'seats-min-below-one': {
+    title: 'Minimum trop bas',
+    detail: () => 'Une partie accueille au moins un joueur : mets 1 place minimum ou plus.',
+    field: 'seats.min',
+  },
+  'seats-out-of-order': {
+    title: 'Places dans le désordre',
+    detail: () => 'Le maximum est sous le minimum : augmente-le, ou baisse le minimum.',
+    field: 'seats.max',
+  },
   'malformed-request': {
     title: 'Requête illisible',
     detail: () => 'Le serveur ne comprend pas cette requête : recharge la page, puis recommence.',
@@ -114,3 +166,8 @@ export const problemCatalogue: Catalogue = {
     title: 'Erreur interne',
   },
 };
+
+/** « 1 500 » : espace fine insécable pour les milliers (docs/design/ton.md). */
+function formatCount(count: number): string {
+  return count.toLocaleString('fr-FR').replace(/\s/g, '\u202f');
+}

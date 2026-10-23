@@ -17,7 +17,12 @@ const NBSP = ' ';
 
 /** Les MJ, dans l'ordre donné : celui que renvoie l'API. */
 const gameMasters = (...nicknames: string[]): GameMasterDto[] =>
-  nicknames.map((nickname) => ({ id: `g-${nickname}`, nickname, availabilities: [] }));
+  nicknames.map((nickname) => ({
+    id: `g-${nickname}`,
+    nickname,
+    availabilities: [],
+    scenarios: [],
+  }));
 
 describe('GameMasterList', () => {
   beforeEach(() => {
@@ -93,8 +98,8 @@ describe('GameMasterList', () => {
   it('montre les disponibilités en pastilles, une par créneau, et les dit aux lecteurs d’écran', async () => {
     const { host, text } = await render(
       [
-        { id: 'g1', nickname: 'Élodie', availabilities: ['s1', 's3'] },
-        { id: 'g2', nickname: 'Kaïros', availabilities: [] },
+        { id: 'g1', nickname: 'Élodie', availabilities: ['s1', 's3'], scenarios: [] },
+        { id: 'g2', nickname: 'Kaïros', availabilities: [], scenarios: [] },
       ],
       [
         { id: 's1', rank: 1, start: '09:00', end: '11:30', availabilityCount: 1 },

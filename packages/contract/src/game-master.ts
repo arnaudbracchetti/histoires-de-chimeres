@@ -1,4 +1,5 @@
 import { endpoint } from './endpoint.js';
+import type { ScenarioSummaryDto } from './scenario.js';
 
 /** Longueur maximale d'un pseudo. Le domaine reprend cette borne. */
 export const NICKNAME_MAX_LENGTH = 30;
@@ -10,6 +11,8 @@ export type GameMasterDto = {
   nickname: string;
   /** Les identifiants des créneaux où le MJ est disponible, dans l'ordre de la journée (PR-2). */
   availabilities: string[];
+  /** Ses scénarios, dans l'ordre naturel de leur titre. */
+  scenarios: ScenarioSummaryDto[];
 };
 
 /** Pseudo d'un MJ. Corps de la création et du changement de pseudo. */

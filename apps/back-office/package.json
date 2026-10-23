@@ -19,6 +19,7 @@
     "@angular/router": "^22.2.0",
     "@chimeres/contract": "workspace:*",
     "@chimeres/design": "workspace:*",
+    "marked": "18.0.14",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

@@ -32,6 +32,19 @@ export type {
   RefusalParams,
 } from './problem.js';
 export {
+  CONTENT_WARNINGS_MAX_LENGTH,
+  PRESENTATION_MAX_LENGTH,
+  SCENARIO_TITLE_MAX_LENGTH,
+  SYSTEM_MAX_LENGTH,
+  scenarioEndpoints,
+  type DurationDto,
+  type ScenarioBody,
+  type ScenarioDto,
+  type ScenarioParams,
+  type ScenarioSummaryDto,
+  type SeatsDto,
+} from './scenario.js';
+export {
   TABLE_NAME_MAX_LENGTH,
   tableEndpoints,
   type TableDto,

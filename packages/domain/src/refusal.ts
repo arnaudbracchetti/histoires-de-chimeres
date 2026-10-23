@@ -22,6 +22,17 @@ export type RefusalParams = {
   'nickname-too-long': { max: number };
   /** `nickname` : le pseudo du MJ qui le porte déjà, tel qu'il s'affiche. */
   'nickname-taken': { nickname: string };
+  'scenario-not-found': Record<string, never>;
+  'scenario-title-required': Record<string, never>;
+  'scenario-title-too-long': { max: number };
+  'system-required': Record<string, never>;
+  'system-too-long': { max: number };
+  'presentation-required': Record<string, never>;
+  'presentation-too-long': { max: number };
+  'content-warnings-too-long': { max: number };
+  'seats-min-below-one': Record<string, never>;
+  /** Le maximum est sous le minimum. */
+  'seats-out-of-order': Record<string, never>;
 };
 
 export type RefusalCode = keyof RefusalParams;

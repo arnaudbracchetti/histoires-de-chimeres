@@ -31,7 +31,10 @@ describe('GameMasterPage', () => {
   });
 
   async function render(
-    response: Omit<GameMasterDto, 'id'> | 'not-found' = { nickname: 'Élodie', availabilities: [] },
+    response: (Omit<GameMasterDto, 'id' | 'scenarios'> & Partial<GameMasterDto>) | 'not-found' = {
+      nickname: 'Élodie',
+      availabilities: [],
+    },
   ) {
     const fixture = TestBed.createComponent(GameMasterPage);
     fixture.componentRef.setInput('id', 'g1');
@@ -39,7 +42,7 @@ describe('GameMasterPage', () => {
     fixture.detectChanges();
     const read = http.expectOne(apiUrl(gameMasterEndpoints.read, { gameMasterId: 'g1' }));
     if (response === 'not-found') read.flush(null, { status: 404, statusText: 'Introuvable' });
-    else read.flush({ id: 'g1', ...response });
+    else read.flush({ id: 'g1', scenarios: [], ...response });
     http
       .expectOne(apiUrl(conventionEndpoints.read))
       .flush({ id: 'c1', name: 'Histoires de Chimères', date: null, tables: [], timeSlots: [] });
@@ -81,6 +84,50 @@ describe('GameMasterPage', () => {
     expect(crumbs).toEqual(['MJ', 'Élodie']);
   });
 
+  it('« Proposer un scénario » mène à la création d’un scénario de ce MJ', async () => {
+    const { host, text } = await render();
+
+    const link = [...host.querySelectorAll('a')].find((a) => text(a) === 'Proposer un scénario');
+    expect(link?.getAttribute('href')).toBe('/mj/g1/nouveau-scenario');
+  });
+
+  it('liste ses scénarios, chacun avec son illustration par défaut', async () => {
+    const { host, text } = await render({
+      nickname: 'Élodie',
+      availabilities: [],
+      scenarios: [
+        {
+          id: 's1',
+          title: "La Tour d'ébène",
+          system: "L'Appel de Cthulhu",
+          seats: { min: 3, max: 5 },
+          duration: 2,
+          imageUrl: null,
+        },
+      ],
+    });
+
+    const item = host.querySelector('.scenarios li')!;
+    expect(item.querySelector('a')?.getAttribute('href')).toBe('/scenarios/s1');
+    expect([...item.querySelectorAll('a, .meta')].map(text)).toEqual([
+      "La Tour d'ébène",
+      "L'Appel de Cthulhu",
+      '3 à 5 places',
+      '2 créneaux',
+    ]);
+    const illustration = item.querySelector('app-scenario-illustration svg')!;
+    expect(illustration.getAttribute('aria-hidden')).toBe('true');
+    expect(text(illustration.querySelector('text'))).toBe('T');
+  });
+
+  it('dit qu’il n’a aucun scénario', async () => {
+    const { host, text } = await render();
+
+    expect(text(host.querySelector('[aria-labelledby="scenarios-title"] .none'))).toBe(
+      "Aucun scénario pour l'instant.",
+    );
+  });
+
   it('le crayon ouvre le champ en place ; Entrée enregistre le pseudo', async () => {
     const { host, http, settle, text, button, input, type, press } = await render();
 
@@ -93,7 +140,7 @@ describe('GameMasterPage', () => {
     await press('Enter');
     const request = http.expectOne(apiUrl(gameMasterEndpoints.rename, { gameMasterId: 'g1' }));
     expect(request.request.body).toEqual({ nickname: 'Élodie la Rouge' });
-    request.flush({ id: 'g1', nickname: 'Élodie la Rouge', availabilities: [] });
+    request.flush({ id: 'g1', nickname: 'Élodie la Rouge', availabilities: [], scenarios: [] });
     await settle();
 
     expect(input()).toBeNull();

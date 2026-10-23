@@ -7,6 +7,7 @@ import { API_PREFIX } from '@chimeres/contract';
 import { ConventionModule } from './convention/convention.module.js';
 import { GameMasterModule } from './game-master/game-master.module.js';
 import { HealthModule } from './health/health.module.js';
+import { ScenarioModule } from './scenario/scenario.module.js';
 import { TableModule } from './table/table.module.js';
 import { TimeSlotModule } from './time-slot/time-slot.module.js';
 import { ProblemFilter } from './http/problem.filter.js';
@@ -44,6 +45,7 @@ const fronts = existsSync(publicDir)
     TimeSlotModule,
     TableModule,
     GameMasterModule,
+    ScenarioModule,
   ],
   // Filtre global, déclaré ici pour valoir aussi dans les tests qui démarrent AppModule.
   providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],

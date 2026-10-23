@@ -4,11 +4,14 @@ import type { GameMasterDto } from '@chimeres/contract';
 import { ComparableName } from '@chimeres/domain';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { UUID } from '../../prisma/uuid.js';
+import {
+  byTitle,
+  SCENARIO_SUMMARY_SELECT,
+  toScenarioSummary,
+} from '../../scenario/persistence/scenario-summary.js';
 
-/** Un identifiant que la colonne `UUID` accepte : PostgreSQL refuse tout autre texte. */
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Le pseudo, et les disponibilités dans l'ordre de la journée. */
+/** Le pseudo, les disponibilités dans l'ordre de la journée, et les scénarios. */
 const SELECT = {
   id: true,
   nickname: true,
@@ -16,6 +19,7 @@ const SELECT = {
     select: { timeSlotId: true },
     orderBy: { timeSlot: { startMinute: 'asc' } },
   },
+  scenarios: { select: SCENARIO_SUMMARY_SELECT },
 } satisfies Prisma.GameMasterSelect;
 
 type GameMasterRow = Prisma.GameMasterGetPayload<{ select: typeof SELECT }>;
@@ -42,6 +46,11 @@ export class PrismaGameMasterReader implements GameMasterReader {
   }
 }
 
-function toDto({ id, nickname, availabilities }: GameMasterRow): GameMasterDto {
-  return { id, nickname, availabilities: availabilities.map(({ timeSlotId }) => timeSlotId) };
+function toDto({ id, nickname, availabilities, scenarios }: GameMasterRow): GameMasterDto {
+  return {
+    id,
+    nickname,
+    availabilities: availabilities.map(({ timeSlotId }) => timeSlotId),
+    scenarios: scenarios.map(toScenarioSummary).sort(byTitle),
+  };
 }

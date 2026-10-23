@@ -4,12 +4,13 @@ export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'quiet-danger' |
 
 /**
  * Bouton natif dessiné selon la charte (docs/design/patterns.md, Boutons) :
- * `<button appButton="primary">`. Le destructeur plein ne sert que dans un dialogue de
- * confirmation ; hors dialogue, « Supprimer » est discret, en rouge brique (`quiet-danger`). Un
- * bouton à icône seule (`icon`) porte son nom accessible et son infobulle.
+ * `<button appButton="primary">`, ou un lien qui en a l'allure (`<a appButton>`). Le destructeur
+ * plein ne sert que dans un dialogue de confirmation ; hors dialogue, « Supprimer » est discret,
+ * en rouge brique (`quiet-danger`). Un bouton à icône seule (`icon`) porte son nom accessible et
+ * son infobulle.
  */
 @Component({
-  selector: 'button[appButton]',
+  selector: 'button[appButton], a[appButton]',
   host: { '[class]': 'appButton()' },
   template: `<ng-content />`,
   styles: `
@@ -23,6 +24,7 @@ export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'quiet-danger' |
         border-radius: var(--radius-control);
         background: none;
         color: var(--text);
+        text-decoration: none;
         cursor: pointer;
         transition: background-color 150ms;
       }

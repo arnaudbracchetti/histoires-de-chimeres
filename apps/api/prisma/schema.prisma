@@ -51,6 +51,7 @@ model GameMaster {
   convention     Convention     @relation(fields: [conventionId], references: [id], onDelete: Cascade)
   nickname       String
   availabilities Availability[]
+  scenarios      Scenario[]
 
   @@index([conventionId])
 }
@@ -64,4 +65,23 @@ model Availability {
 
   @@id([gameMasterId, timeSlotId])
   @@index([timeSlotId])
+}
+
+/// Scénario d'un MJ, fixé à sa création (PR-16). Agrégat à part de la convention (ADR 0005). Un MJ
+/// qui a des scénarios ne se supprime pas : la clé étrangère le refuse (RESTRICT).
+model Scenario {
+  id              String     @id @db.Uuid
+  gameMasterId    String     @db.Uuid
+  gameMaster      GameMaster @relation(fields: [gameMasterId], references: [id], onDelete: Restrict)
+  title           String
+  system          String
+  presentation    String
+  /// Vide sans avertissement.
+  contentWarnings String
+  seatsMin        Int
+  seatsMax        Int
+  /// En créneaux : 1 ou 2.
+  duration        Int
+
+  @@index([gameMasterId])
 }
