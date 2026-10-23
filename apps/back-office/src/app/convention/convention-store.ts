@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { computed, Injectable } from '@angular/core';
 import { conventionEndpoints, type ConventionDto, type Endpoint } from '@chimeres/contract';
 import { apiResource } from '../api-resource';
 import { injectApiCall, type CallOptions } from '../api-call';
@@ -7,6 +7,10 @@ import { injectApiCall, type CallOptions } from '../api-call';
 @Injectable({ providedIn: 'root' })
 export class ConventionStore {
   readonly convention = apiResource(conventionEndpoints.read);
+  /** Les créneaux, dans l'ordre de la journée ; aucun tant que la convention n'est pas lue. */
+  readonly timeSlots = computed(() =>
+    this.convention.hasValue() ? this.convention.value().timeSlots : [],
+  );
   private readonly apiCall = injectApiCall();
 
   /**

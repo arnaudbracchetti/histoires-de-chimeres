@@ -21,7 +21,13 @@ const range = (start: string, end: string) => `${start}${THIN}–${THIN}${end}`;
 function conventionWith(...hours: [string, string][]): ConventionDto {
   const timeSlots: TimeSlotDto[] = [...hours]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([start, end], index) => ({ id: `s-${start}`, rank: index + 1, start, end }));
+    .map(([start, end], index) => ({
+      id: `s-${start}`,
+      rank: index + 1,
+      start,
+      end,
+      availabilityCount: 0,
+    }));
   return { id: 'c1', name: 'Histoires de Chimères', date: null, timeSlots, tables: [] };
 }
 

@@ -19,6 +19,10 @@ export class TimeOfDay {
     return new TimeOfDay(minutes);
   }
 
+  equals(other: TimeOfDay): boolean {
+    return this.minutes === other.minutes;
+  }
+
   isBefore(other: TimeOfDay): boolean {
     return this.minutes < other.minutes;
   }

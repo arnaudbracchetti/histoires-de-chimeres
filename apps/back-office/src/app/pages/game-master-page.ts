@@ -13,6 +13,9 @@ import { Router } from '@angular/router';
 import { gameMasterEndpoints, type GameMasterDto } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { apiResource } from '../api-resource';
+import { ConventionStore } from '../convention/convention-store';
+import { availabilitiesConsequence } from '../game-masters/availabilities-consequence';
+import { AvailabilityTimeline } from '../game-masters/availability-timeline';
 import { NicknameEditor } from '../game-masters/nickname-editor';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
@@ -26,12 +29,13 @@ const MENU: readonly MoreMenuItem[] = [{ value: 'remove', label: 'Supprimer le M
 
 /**
  * Fiche d'un MJ (docs/design/patterns.md, Coquille) : « MJ › pseudo ». Le pseudo se modifie dans
- * l'en-tête, la suppression passe par « ⋯ ». Elle ne lit que le MJ, rien de réservé aux
- * Organisateurs : elle deviendra l'espace du MJ lui-même.
+ * l'en-tête, la suppression passe par « ⋯ », et les disponibilités se déclarent sur la frise de la
+ * journée. Elle ne lit que le MJ et les créneaux, rien de réservé aux Organisateurs : elle deviendra
+ * l'espace du MJ lui-même.
  */
 @Component({
   selector: 'app-game-master-page',
-  imports: [Button, Icon, Loadable, MoreMenu, NicknameEditor, PageHeader],
+  imports: [AvailabilityTimeline, Button, Icon, Loadable, MoreMenu, NicknameEditor, PageHeader],
   template: `
     <app-page-header
       [title]="gameMaster()?.nickname ?? 'Fiche du MJ'"
@@ -68,12 +72,44 @@ const MENU: readonly MoreMenuItem[] = [{ value: 'remove', label: 'Supprimer le M
         />
       }
     </app-page-header>
-    <app-loadable [resource]="resource" [failure]="failure()" />
+    <app-loadable [resource]="resource" [failure]="failure()">
+      @if (gameMaster(); as gameMaster) {
+        <section aria-labelledby="availabilities-title">
+          <h2 id="availabilities-title">Disponibilités</h2>
+          @if (timeSlots().length) {
+            <app-availability-timeline
+              [gameMaster]="gameMaster"
+              [timeSlots]="timeSlots()"
+              (changed)="onAvailabilitiesChanged($event)"
+              (refused)="reloadAfterRefusal()"
+            />
+          } @else {
+            <p class="none">
+              Aucun créneau pour l'instant : les disponibilités attendent la journée.
+            </p>
+          }
+        </section>
+      }
+    </app-loadable>
   `,
   styles: `
     @layer components {
       app-loadable {
         padding: var(--space-l) var(--space-xl);
+      }
+
+      section {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-m);
+      }
+
+      h2 {
+        font-size: var(--font-size-section);
+      }
+
+      .none {
+        color: var(--text-muted);
       }
     }
   `,
@@ -98,6 +134,9 @@ export class GameMasterPage {
       : 'Impossible de charger le MJ.';
   });
 
+  private readonly store = inject(ConventionStore);
+  protected readonly timeSlots = this.store.timeSlots;
+
   private readonly apiCall = injectApiCall();
   private readonly announcer = inject(Announcer);
   private readonly confirmation = inject(Confirmation);
@@ -118,18 +157,32 @@ export class GameMasterPage {
     });
   }
 
+  /** Le nombre de disponibilités de chaque créneau a changé : la convention partagée est relue. */
+  protected onAvailabilitiesChanged(gameMaster: GameMasterDto): void {
+    this.resource.set(gameMaster);
+    this.store.convention.reload();
+  }
+
+  /** Un geste refusé : le MJ ou un créneau a pu changer ailleurs, l'écran est relu. */
+  protected reloadAfterRefusal(): void {
+    this.resource.reload();
+    this.store.convention.reload();
+  }
+
   protected onMenu(value: string, gameMaster: GameMasterDto): void {
     if (value === 'remove') void this.remove(gameMaster);
   }
 
-  private async remove({ id, nickname }: GameMasterDto) {
+  private async remove({ id, nickname, availabilities }: GameMasterDto) {
     const removed = await this.confirmation.ask({
       question: `Supprimer le MJ « ${nickname} » ?`,
+      consequence: availabilitiesConsequence(availabilities.length),
       confirmLabel: 'Supprimer le MJ',
       action: () => this.apiCall(gameMasterEndpoints.remove, { params: { gameMasterId: id } }),
     });
     if (!removed) return;
     this.announcer.announce(`MJ « ${nickname} » supprimé.`);
+    if (availabilities.length) this.store.convention.reload();
     await this.router.navigate(['/mj']);
   }
 }

@@ -4,6 +4,7 @@ export {
   type ConventionDto,
   type UpdateConventionBody,
 } from './convention.js';
+export { availabilityEndpoints, type AvailabilityParams } from './availability.js';
 export {
   API_PREFIX,
   apiUrl,

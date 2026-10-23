@@ -6,9 +6,11 @@ export {
 } from './convention/convention-repository.js';
 export { UpdateConvention } from './convention/update-convention.js';
 export { AddGameMaster } from './game-master/add-game-master.js';
+export { DeclareAvailability } from './game-master/declare-availability.js';
 export type { GameMasterReader } from './game-master/game-master-reader.js';
 export { RemoveGameMaster } from './game-master/remove-game-master.js';
 export { RenameGameMaster } from './game-master/rename-game-master.js';
+export { WithdrawAvailability } from './game-master/withdraw-availability.js';
 export { AddTable } from './table/add-table.js';
 export { RemoveTable } from './table/remove-table.js';
 export { RenameTable } from './table/rename-table.js';

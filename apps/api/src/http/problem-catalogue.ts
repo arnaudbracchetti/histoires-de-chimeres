@@ -57,6 +57,11 @@ export const problemCatalogue: Catalogue = {
     detail: ({ rank }) => `Ce créneau empiète sur le créneau ${rank} : avance sa fin.`,
     field: 'end',
   },
+  'time-slot-hours-locked': {
+    title: 'Heures figées',
+    detail: ({ rank, availabilities }) =>
+      `${availabilities > 1 ? `${availabilities} MJ sont disponibles` : 'Un MJ est disponible'} sur le créneau ${rank} : ses heures ne changent plus. Pour les changer, supprime le créneau, puis recrée-le.`,
+  },
   'table-not-found': {
     title: 'Table introuvable',
     detail: () => "Cette table n'existe plus : recharge la page.",

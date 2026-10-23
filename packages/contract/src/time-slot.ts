@@ -10,6 +10,8 @@ export type TimeSlotDto = {
   start: string;
   /** `HH:MM`, après le début, le même jour. */
   end: string;
+  /** Nombre de MJ disponibles sur le créneau : supprimer le créneau supprime ces disponibilités. */
+  availabilityCount: number;
 };
 
 /** Heures d'un créneau, `HH:MM`. Corps de l'ajout et du changement d'heures. */

@@ -84,13 +84,30 @@ export class Convention {
     this.state.timeSlots.push(this.verifyFits(new TimeSlot(id, start, end)));
   }
 
+  /** Les heures d'un créneau qui porte une disponibilité ne se modifient plus (PR-11). */
   changeTimeSlotHours(id: string, start: TimeOfDay, end: TimeOfDay): void {
     const index = this.indexOf(id);
+    const current = this.state.timeSlots[index]!;
+    if (current.start.equals(start) && current.end.equals(end)) return;
+    const availabilities = this.availabilityCountOf(id);
+    if (availabilities > 0) {
+      throw new Refusal('time-slot-hours-locked', { rank: this.rankOf(id), availabilities });
+    }
     this.state.timeSlots[index] = this.verifyFits(new TimeSlot(id, start, end));
   }
 
+  /** Supprime un créneau, et les disponibilités qui s'y rattachent (PR-10). */
   removeTimeSlot(id: string): void {
     this.state.timeSlots.splice(this.indexOf(id), 1);
+    this.state.gameMasters = this.state.gameMasters.map((gameMaster) =>
+      gameMaster.withoutAvailabilityOn(id),
+    );
+  }
+
+  /** Nombre de MJ disponibles sur le créneau. */
+  availabilityCountOf(timeSlotId: string): number {
+    return this.state.gameMasters.filter((gameMaster) => gameMaster.isAvailableOn(timeSlotId))
+      .length;
   }
 
   /** Les tables, dans l'ordre naturel : « Table 2 » avant « Table 10 ». */
@@ -127,13 +144,31 @@ export class Convention {
   renameGameMaster(id: string, nickname: string): void {
     const index = this.indexOfGameMaster(id);
     this.state.gameMasters[index] = this.verifyNickname(
-      new GameMaster(id, ComparableName.of(nickname)),
+      this.state.gameMasters[index]!.renamed(ComparableName.of(nickname)),
     );
   }
 
-  /** Supprime un MJ. Le refus d'un MJ qui a des scénarios (PR-12) arrivera avec eux. */
+  /**
+   * Supprime un MJ, et ses disponibilités avec lui (PR-12). Le refus d'un MJ qui a des scénarios
+   * arrivera avec eux.
+   */
   removeGameMaster(id: string): void {
     this.state.gameMasters.splice(this.indexOfGameMaster(id), 1);
+  }
+
+  /** Le MJ se déclare disponible sur un créneau existant (PR-2). Déclarer deux fois ne change rien. */
+  declareAvailability(gameMasterId: string, timeSlotId: string): void {
+    const index = this.indexOfGameMaster(gameMasterId);
+    this.verifyTimeSlotExists(timeSlotId);
+    this.state.gameMasters[index] = this.state.gameMasters[index]!.withAvailabilityOn(timeSlotId);
+  }
+
+  /** Retire la disponibilité du MJ sur un créneau existant. Retirer une absente ne change rien. */
+  withdrawAvailability(gameMasterId: string, timeSlotId: string): void {
+    const index = this.indexOfGameMaster(gameMasterId);
+    this.verifyTimeSlotExists(timeSlotId);
+    this.state.gameMasters[index] =
+      this.state.gameMasters[index]!.withoutAvailabilityOn(timeSlotId);
   }
 
   private indexOfGameMaster(gameMasterId: string): number {
@@ -175,6 +210,11 @@ export class Convention {
     );
     if (namesake) throw new Refusal('table-name-taken', { name: namesake.name.text });
     return candidate;
+  }
+
+  /** Une disponibilité porte sur un créneau existant. */
+  private verifyTimeSlotExists(timeSlotId: string): void {
+    this.indexOf(timeSlotId);
   }
 
   private indexOf(timeSlotId: string): number {

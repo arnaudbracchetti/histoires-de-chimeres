@@ -55,7 +55,7 @@ describe('MJ', () => {
 
     const response = await read(id).expect(200);
 
-    expect(response.body).toEqual({ id, nickname: 'Élodie' });
+    expect(response.body).toEqual({ id, nickname: 'Élodie', availabilities: [] });
   });
 
   it('refuse « elodie » quand « Élodie » existe : 422, rattaché au pseudo (ID-7)', async () => {
@@ -109,7 +109,7 @@ describe('MJ', () => {
 
     const response = await rename(id, { nickname: 'Élodie la Rouge' }).expect(200);
 
-    expect(response.body).toEqual({ id, nickname: 'Élodie la Rouge' });
+    expect(response.body).toEqual({ id, nickname: 'Élodie la Rouge', availabilities: [] });
     expect((await read(id).expect(200)).body).toEqual(response.body);
   });
 

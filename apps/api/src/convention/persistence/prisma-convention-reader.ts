@@ -15,7 +15,10 @@ export class PrismaConventionReader implements ConventionReader {
         id: true,
         name: true,
         date: true,
-        timeSlots: { orderBy: { startMinute: 'asc' } },
+        timeSlots: {
+          orderBy: { startMinute: 'asc' },
+          include: { _count: { select: { availabilities: true } } },
+        },
         tables: { select: { id: true, name: true } },
       },
     });
@@ -28,6 +31,7 @@ export class PrismaConventionReader implements ConventionReader {
         rank: index + 1,
         start: TimeOfDay.fromMinutes(slot.startMinute).toString(),
         end: TimeOfDay.fromMinutes(slot.endMinute).toString(),
+        availabilityCount: slot._count.availabilities,
       })),
       // L'ordre naturel est celui du domaine, que PostgreSQL ne sait pas reproduire.
       tables: tables.sort((a, b) => ComparableName.of(a.name).compareTo(ComparableName.of(b.name))),

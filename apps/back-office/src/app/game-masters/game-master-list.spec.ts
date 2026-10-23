@@ -4,9 +4,11 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import {
   apiUrl,
+  conventionEndpoints,
   gameMasterEndpoints,
   type GameMasterDto,
   type ProblemDto,
+  type TimeSlotDto,
 } from '@chimeres/contract';
 import { GameMasterList } from './game-master-list';
 
@@ -15,7 +17,7 @@ const NBSP = ' ';
 
 /** Les MJ, dans l'ordre donné : celui que renvoie l'API. */
 const gameMasters = (...nicknames: string[]): GameMasterDto[] =>
-  nicknames.map((nickname) => ({ id: `g-${nickname}`, nickname }));
+  nicknames.map((nickname) => ({ id: `g-${nickname}`, nickname, availabilities: [] }));
 
 describe('GameMasterList', () => {
   beforeEach(() => {
@@ -24,11 +26,14 @@ describe('GameMasterList', () => {
     });
   });
 
-  async function render(list = gameMasters()) {
+  async function render(list = gameMasters(), timeSlots: TimeSlotDto[] = []) {
     const fixture = TestBed.createComponent(GameMasterList);
     const http = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
     http.expectOne(apiUrl(gameMasterEndpoints.list)).flush(list);
+    http
+      .expectOne(apiUrl(conventionEndpoints.read))
+      .flush({ id: 'c1', name: 'Histoires de Chimères', date: null, tables: [], timeSlots });
     await fixture.whenStable();
     const host = fixture.nativeElement as HTMLElement;
     const settle = async () => {
@@ -62,7 +67,20 @@ describe('GameMasterList', () => {
       const ids = input().getAttribute('aria-describedby')?.split(' ') ?? [];
       return ids.map((id) => text(host.querySelector(`#${id}`))).find(Boolean);
     };
-    return { host, http, settle, text, nicknames, newRow, input, filter, type, press, button, errorText };
+    return {
+      host,
+      http,
+      settle,
+      text,
+      nicknames,
+      newRow,
+      input,
+      filter,
+      type,
+      press,
+      button,
+      errorText,
+    };
   }
 
   it('montre une ligne par MJ, dans l’ordre de l’API, chacune liée à sa fiche', async () => {
@@ -70,6 +88,34 @@ describe('GameMasterList', () => {
 
     expect(nicknames()).toEqual(['Élodie', 'Kaïros']);
     expect(host.querySelector('tbody th a')?.getAttribute('href')).toBe('/mj/g-%C3%89lodie');
+  });
+
+  it('montre les disponibilités en pastilles, une par créneau, et les dit aux lecteurs d’écran', async () => {
+    const { host, text } = await render(
+      [
+        { id: 'g1', nickname: 'Élodie', availabilities: ['s1', 's3'] },
+        { id: 'g2', nickname: 'Kaïros', availabilities: [] },
+      ],
+      [
+        { id: 's1', rank: 1, start: '09:00', end: '11:30', availabilityCount: 1 },
+        { id: 's2', rank: 2, start: '14:00', end: '16:30', availabilityCount: 0 },
+        { id: 's3', rank: 3, start: '17:00', end: '19:30', availabilityCount: 1 },
+      ],
+    );
+
+    const cells = [...host.querySelectorAll('tbody td')];
+    const pips = (cell: Element) =>
+      [...cell.querySelectorAll('.pip')].map(
+        (pip) => `${text(pip)}${pip.classList.contains('available') ? '✓' : ''}`,
+      );
+    expect(cells.map(pips)).toEqual([
+      ['1✓', '2', '3✓'],
+      ['1', '2', '3'],
+    ]);
+    expect(cells.map((cell) => text(cell.querySelector('.visually-hidden')))).toEqual([
+      'Créneaux 1 et 3',
+      'Aucune',
+    ]);
   });
 
   it('trie par pseudo, dans un sens puis dans l’autre, et l’indique par aria-sort', async () => {

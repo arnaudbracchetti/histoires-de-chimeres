@@ -10,6 +10,8 @@ export type RefusalParams = {
   /** `rank` : le rang du créneau chevauché. */
   'time-slot-start-overlaps': { rank: number };
   'time-slot-end-overlaps': { rank: number };
+  /** `rank` : le rang du créneau ; `availabilities` : le nombre de MJ disponibles dessus. */
+  'time-slot-hours-locked': { rank: number; availabilities: number };
   'table-not-found': Record<string, never>;
   'table-name-required': Record<string, never>;
   'table-name-too-long': { max: number };

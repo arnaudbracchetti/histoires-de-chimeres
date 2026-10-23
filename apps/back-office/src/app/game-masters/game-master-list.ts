@@ -10,6 +10,8 @@ import {
 import { RouterLink } from '@angular/router';
 import { gameMasterEndpoints, type GameMasterDto } from '@chimeres/contract';
 import { apiResource } from '../api-resource';
+import { ConventionStore } from '../convention/convention-store';
+import { formatTimeRange } from '../time-slots/time-format';
 import { Loadable } from '../shell/loadable';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
@@ -17,7 +19,9 @@ import { NewGameMaster } from './new-game-master';
 import { searchKey } from './nickname';
 
 /**
- * Les MJ, en tableau (docs/design/patterns.md, Tableaux et MJ) : chaque pseudo mène à la fiche.
+ * Les MJ, en tableau (docs/design/patterns.md, Tableaux et MJ) : chaque pseudo mène à la fiche, et
+ * ses disponibilités s'affichent en ronds numérotés, un par créneau, de même taille : plein si le
+ * MJ peut y mener une partie, cerclé sinon.
  * Tri et filtre sont des signaux, sur la liste que l'API renvoie dans l'ordre naturel. « Ajouter
  * un MJ », sous le tableau, ouvre une ligne « Nouveau MJ » en dernier ; après chaque ajout, une
  * ligne vide s'ouvre aussitôt. Quitter la page pendant une saisie l'abandonne sans rien demander.
@@ -59,19 +63,30 @@ import { searchKey } from './nickname';
                     <app-icon [name]="descending() ? 'arrow-down' : 'arrow-up'" />
                   </button>
                 </th>
+                <th scope="col">Disponibilités</th>
               </tr>
             </thead>
             <tbody>
-              @for (gameMaster of rows(); track gameMaster.id) {
+              @for (row of rows(); track row.gameMaster.id) {
                 <tr>
                   <th scope="row">
-                    <a [routerLink]="['/mj', gameMaster.id]">{{ gameMaster.nickname }}</a>
+                    <a [routerLink]="['/mj', row.gameMaster.id]">{{ row.gameMaster.nickname }}</a>
                   </th>
+                  <td>
+                    <span class="visually-hidden">{{ row.summary }}</span>
+                    <span class="pips" aria-hidden="true">
+                      @for (pip of row.pips; track pip.rank) {
+                        <span class="pip" [class.available]="pip.available" [title]="pip.title">{{
+                          pip.rank
+                        }}</span>
+                      }
+                    </span>
+                  </td>
                 </tr>
               } @empty {
                 @if (filter()) {
                   <tr>
-                    <td class="none">
+                    <td class="none" colspan="2">
                       Aucun MJ ne correspond
                       <button type="button" appButton="quiet" (click)="clearFilter()">
                         Effacer le filtre
@@ -82,11 +97,8 @@ import { searchKey } from './nickname';
               }
               @for (key of newKeys(); track key) {
                 <tr class="new">
-                  <td>
-                    <app-new-game-master
-                      (added)="onAdded($event)"
-                      (cancelled)="closeNew()"
-                    />
+                  <td colspan="2">
+                    <app-new-game-master (added)="onAdded($event)" (cancelled)="closeNew()" />
                   </td>
                 </tr>
               }
@@ -120,7 +132,35 @@ import { searchKey } from './nickname';
 
       /* Largeur fixe : assez pour la ligne « Nouveau MJ », son champ et ses boutons. */
       table {
-        width: 32rem;
+        width: 40rem;
+      }
+
+      .pips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+      }
+
+      /* Un rond par créneau, de même taille quel que soit l'état : plein ou cerclé, son rang dedans. */
+      .pip {
+        display: inline-grid;
+        place-items: center;
+        box-sizing: border-box;
+        width: 1.375rem;
+        height: 1.375rem;
+        border: 1px solid var(--engraving-strong);
+        border-radius: 50%;
+        color: var(--text-muted);
+        font-size: var(--font-size-overline);
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+
+        &.available {
+          border-color: var(--accent);
+          background: var(--accent);
+          color: var(--on-accent);
+          font-weight: 600;
+        }
       }
 
       tbody tr:not(.new):hover {
@@ -186,15 +226,31 @@ export class GameMasterList {
   protected readonly adding = computed(() => this.newKeys().length > 0);
   private nextKey = 0;
 
+  private readonly store = inject(ConventionStore);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
 
-  /** Les MJ affichés : filtrés sans casse ni accent, dans l'ordre naturel ou son inverse. */
+  /**
+   * Les MJ affichés : filtrés sans casse ni accent, dans l'ordre naturel ou son inverse, avec un
+   * rond par créneau.
+   */
   protected readonly rows = computed(() => {
     const all = this.gameMasters.hasValue() ? this.gameMasters.value() : [];
+    const timeSlots = this.store.timeSlots();
     const key = searchKey(this.filter());
     const shown = all.filter(({ nickname }) => searchKey(nickname).includes(key));
-    return this.descending() ? shown.reverse() : shown;
+    return (this.descending() ? shown.reverse() : shown).map((gameMaster) => {
+      const pips = timeSlots.map(({ id, rank, start, end }) => {
+        const available = gameMaster.availabilities.includes(id);
+        const state = available ? 'disponible' : 'pas disponible';
+        return {
+          rank,
+          available,
+          title: `Créneau ${rank} · ${formatTimeRange(start, end)}${NBSP}: ${state}`,
+        };
+      });
+      return { gameMaster, pips, summary: availabilitySummary(pips) };
+    });
   });
 
   /** Ouvre une ligne d'ajout vide, en dernier ; le filtre s'efface pour montrer tous les MJ. */
@@ -225,4 +281,16 @@ export class GameMasterList {
       injector: this.injector,
     });
   }
+}
+
+// Espace insécable devant « : » (docs/design/ton.md).
+const NBSP = '\u00a0';
+
+const RANKS = new Intl.ListFormat('fr', { type: 'conjunction' });
+
+/** « Créneaux 1 et 3 », « Créneau 2 », « Aucune » : le texte des pastilles, pour les lecteurs d'écran. */
+function availabilitySummary(pips: { rank: number; available: boolean }[]): string {
+  const ranks = pips.filter(({ available }) => available).map(({ rank }) => String(rank));
+  if (!ranks.length) return 'Aucune';
+  return `${ranks.length > 1 ? 'Créneaux' : 'Créneau'} ${RANKS.format(ranks)}`;
 }

@@ -115,7 +115,7 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 - Pendant l'envoi, le bouton passe en « Enregistrement… » et refuse un second envoi. Dans une ligne, Échap et « Annuler » sont alors sans effet : l'enregistrement en cours n'est pas perdu.
 - Après succès, un formulaire de page affiche « Enregistré » à côté du bouton pendant quelques secondes.
 - **Quitter la page d'un scénario avec des modifications non enregistrées** ouvre « Quitter sans enregistrer ? ». Quitter la page pendant l'édition d'une ligne abandonne la saisie sans rien demander.
-- **Exception : les cases à cocher de geste** (disponibilités) s'enregistrent dès qu'on les coche. Voir [Disponibilités](#disponibilités).
+- **Exception : les cases à cocher de geste** (les blocs de la frise des disponibilités) s'enregistrent dès qu'on les coche. Voir [Disponibilités](#disponibilités).
 
 ### Image d'un scénario
 
@@ -142,7 +142,7 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 - Les **actions secondaires** d'une ligne passent par un menu « ⋯ » en bout de ligne (motif Menu d'Aria), et non par une rangée d'icônes.
 - Les **nombres** sont en chiffres à chasse fixe, alignés à droite.
 - Listes de l'Organisateur :
-  - MJ : pseudo, nombre de scénarios, disponibilités par créneau, parties menées ;
+  - MJ : pseudo, nombre de scénarios, disponibilités par créneau, parties menées. Les disponibilités sont des ronds numérotés de même taille, un par créneau : plein en orange si le MJ peut y mener une partie, cerclé sinon, sans icône ;
   - scénarios : vignette, titre, jeu, MJ, places, durée, parties.
 
 ## Chargement, état vide, erreur de lecture
@@ -274,7 +274,8 @@ Le glisser-déposer (`@angular/cdk/drag-drop`) sert la souris et le tactile. Cha
 
 ### Disponibilités
 
-Sur la fiche du MJ, une rangée de cases à cocher, une par créneau : « Créneau 1 · 9 h 00 – 12 h 30 ».
+Sur la fiche du MJ, la **frise de la journée** : un bloc par créneau, à sa place et à sa durée, sous les heures pleines. Un bloc coché dit « Je peux mener une partie », les autres « Pas disponible ». Au-dessus, « Toute la journée » et « Aucun créneau ».
 
-- **Chaque case s'enregistre dès qu'on la coche** : c'est un geste. Pendant l'écriture, la case est atténuée ; refusée, elle revient à son état.
+- **Chaque bloc s'enregistre dès qu'on clique dessus** : c'est un geste, une case à cocher (« Créneau 1 · 9 h 00 – 12 h 30 ») sous son dessin. Pendant l'écriture, le bloc est atténué ; refusé, il revient à son état.
+- **Un créneau court reste lisible** : il garde une largeur minimale, prise sur les pauses. Son texte rétrécit (de 13 à 11 px), la plage passe à la ligne entre début et fin, sans couper une heure, puis « Créneau » se réduit au rang et l'état à son icône.
 - Une disponibilité sur laquelle le MJ mène une partie (PR-15) est **cochée et verrouillée**, avec son motif : « Mène « Néons sur Neo-Paris » ». Ce verdict vient de la lecture de la fiche, calculé par le domaine ; le front ne recode pas la règle.

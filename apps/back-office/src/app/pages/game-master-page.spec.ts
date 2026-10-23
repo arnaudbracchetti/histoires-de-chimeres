@@ -3,7 +3,13 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { apiUrl, gameMasterEndpoints, type ProblemDto } from '@chimeres/contract';
+import {
+  apiUrl,
+  conventionEndpoints,
+  gameMasterEndpoints,
+  type GameMasterDto,
+  type ProblemDto,
+} from '@chimeres/contract';
 import { GameMasterPage } from './game-master-page';
 
 // Espace insécable et espace fine insécable de docs/design/ton.md.
@@ -24,7 +30,9 @@ describe('GameMasterPage', () => {
     });
   });
 
-  async function render(response: { nickname: string } | 'not-found' = { nickname: 'Élodie' }) {
+  async function render(
+    response: Omit<GameMasterDto, 'id'> | 'not-found' = { nickname: 'Élodie', availabilities: [] },
+  ) {
     const fixture = TestBed.createComponent(GameMasterPage);
     fixture.componentRef.setInput('id', 'g1');
     const http = TestBed.inject(HttpTestingController);
@@ -32,6 +40,9 @@ describe('GameMasterPage', () => {
     const read = http.expectOne(apiUrl(gameMasterEndpoints.read, { gameMasterId: 'g1' }));
     if (response === 'not-found') read.flush(null, { status: 404, statusText: 'Introuvable' });
     else read.flush({ id: 'g1', ...response });
+    http
+      .expectOne(apiUrl(conventionEndpoints.read))
+      .flush({ id: 'c1', name: 'Histoires de Chimères', date: null, tables: [], timeSlots: [] });
     await fixture.whenStable();
     const host = fixture.nativeElement as HTMLElement;
     const settle = async () => {
@@ -63,7 +74,7 @@ describe('GameMasterPage', () => {
   }
 
   it('montre le pseudo tel qu’il a été saisi, sous le fil « MJ › pseudo »', async () => {
-    const { host, text } = await render({ nickname: 'Élodie' });
+    const { host, text } = await render({ nickname: 'Élodie', availabilities: [] });
 
     expect(text(host.querySelector('h1'))).toBe('Élodie');
     const crumbs = [...host.querySelectorAll('nav[aria-label="Fil d\'Ariane"] li')].map(text);
@@ -82,7 +93,7 @@ describe('GameMasterPage', () => {
     await press('Enter');
     const request = http.expectOne(apiUrl(gameMasterEndpoints.rename, { gameMasterId: 'g1' }));
     expect(request.request.body).toEqual({ nickname: 'Élodie la Rouge' });
-    request.flush({ id: 'g1', nickname: 'Élodie la Rouge' });
+    request.flush({ id: 'g1', nickname: 'Élodie la Rouge', availabilities: [] });
     await settle();
 
     expect(input()).toBeNull();
@@ -129,8 +140,11 @@ describe('GameMasterPage', () => {
     expect(input()!.value).toBe('kairos');
   });
 
-  it('« ⋯ » puis « Supprimer le MJ » demande confirmation, supprime, et revient à la liste', async () => {
-    const { http, button, settle, text } = await render();
+  it('« ⋯ » puis « Supprimer le MJ » demande confirmation, avec ses disponibilités, supprime, et revient à la liste', async () => {
+    const { http, button, settle, text } = await render({
+      nickname: 'Élodie',
+      availabilities: ['s1', 's2'],
+    });
     const router = TestBed.inject(Router);
 
     button('Autres actions sur le MJ')!.click();
@@ -143,12 +157,20 @@ describe('GameMasterPage', () => {
     expect(text(document.querySelector('[role="alertdialog"] h2'))).toBe(
       `Supprimer le MJ «${NBSP}Élodie${NBSP}»${THIN}?`,
     );
+    expect(text(document.querySelector('[role="alertdialog"] p'))).toBe(
+      'Ses 2 disponibilités seront supprimées.',
+    );
     [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')]
       .find((b) => text(b) === 'Supprimer le MJ')!
       .click();
     http
       .expectOne(apiUrl(gameMasterEndpoints.remove, { gameMasterId: 'g1' }))
       .flush(null, { status: 204, statusText: 'No Content' });
+    // Les nombres de disponibilités des créneaux ont changé : la convention est relue.
+    await new Promise((resolve) => setTimeout(resolve));
+    http
+      .expectOne(apiUrl(conventionEndpoints.read))
+      .flush({ id: 'c1', name: 'Histoires de Chimères', date: null, tables: [], timeSlots: [] });
     await settle();
 
     expect(router.url).toBe('/mj');

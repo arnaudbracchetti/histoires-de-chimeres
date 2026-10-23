@@ -18,7 +18,11 @@ export class PrismaConventionRepository implements ConventionRepository {
   async get(): Promise<Convention> {
     const { id, name, date, version, timeSlots, tables, gameMasters } =
       await this.prisma.convention.findFirstOrThrow({
-        include: { timeSlots: true, tables: true, gameMasters: true },
+        include: {
+          timeSlots: true,
+          tables: true,
+          gameMasters: { include: { availabilities: { select: { timeSlotId: true } } } },
+        },
       });
     return Convention.restore({
       id,
@@ -34,7 +38,12 @@ export class PrismaConventionRepository implements ConventionRepository {
       ),
       tables: tables.map((table) => new Table(table.id, ComparableName.of(table.name))),
       gameMasters: gameMasters.map(
-        (gameMaster) => new GameMaster(gameMaster.id, ComparableName.of(gameMaster.nickname)),
+        (gameMaster) =>
+          new GameMaster(
+            gameMaster.id,
+            ComparableName.of(gameMaster.nickname),
+            gameMaster.availabilities.map(({ timeSlotId }) => timeSlotId),
+          ),
       ),
       version,
     });
@@ -42,7 +51,8 @@ export class PrismaConventionRepository implements ConventionRepository {
 
   /**
    * N'écrit que si la version en base est encore celle du chargement (verrou optimiste), en une
-   * transaction : la convention, ses créneaux, ses tables et ses MJ sont écrits ensemble, ou pas du tout.
+   * transaction : la convention, ses créneaux, ses tables, ses MJ et leurs disponibilités sont écrits
+   * ensemble, ou pas du tout.
    */
   async save(convention: Convention): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
@@ -98,6 +108,16 @@ export class PrismaConventionRepository implements ConventionRepository {
           update: { nickname },
         });
       }
+
+      await tx.availability.deleteMany({ where: { gameMaster: { conventionId: convention.id } } });
+      await tx.availability.createMany({
+        data: convention.gameMasters.flatMap((gameMaster) =>
+          [...gameMaster.availabilities].map((timeSlotId) => ({
+            gameMasterId: gameMaster.id,
+            timeSlotId,
+          })),
+        ),
+      });
     });
   }
 }

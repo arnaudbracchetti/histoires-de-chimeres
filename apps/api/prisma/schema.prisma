@@ -22,11 +22,12 @@ model Convention {
 
 /// Créneau de la convention. Ses heures sont en minutes depuis minuit, de 0 à 1439.
 model TimeSlot {
-  id           String     @id @db.Uuid
-  conventionId String     @db.Uuid
-  convention   Convention @relation(fields: [conventionId], references: [id], onDelete: Cascade)
-  startMinute  Int
-  endMinute    Int
+  id             String         @id @db.Uuid
+  conventionId   String         @db.Uuid
+  convention     Convention     @relation(fields: [conventionId], references: [id], onDelete: Cascade)
+  startMinute    Int
+  endMinute      Int
+  availabilities Availability[]
 
   @@index([conventionId])
 }
@@ -45,10 +46,22 @@ model Table {
 /// MJ de la convention. Son pseudo est unique parmi les MJ, à la casse, aux accents et aux espaces
 /// près : le domaine le vérifie (PR-12, ID-7).
 model GameMaster {
-  id           String     @id @db.Uuid
-  conventionId String     @db.Uuid
-  convention   Convention @relation(fields: [conventionId], references: [id], onDelete: Cascade)
-  nickname     String
+  id             String         @id @db.Uuid
+  conventionId   String         @db.Uuid
+  convention     Convention     @relation(fields: [conventionId], references: [id], onDelete: Cascade)
+  nickname       String
+  availabilities Availability[]
 
   @@index([conventionId])
+}
+
+/// Disponibilité d'un MJ sur un créneau (PR-2). Elle part avec son créneau ou son MJ (PR-10, PR-12).
+model Availability {
+  gameMasterId String     @db.Uuid
+  gameMaster   GameMaster @relation(fields: [gameMasterId], references: [id], onDelete: Cascade)
+  timeSlotId   String     @db.Uuid
+  timeSlot     TimeSlot   @relation(fields: [timeSlotId], references: [id], onDelete: Cascade)
+
+  @@id([gameMasterId, timeSlotId])
+  @@index([timeSlotId])
 }

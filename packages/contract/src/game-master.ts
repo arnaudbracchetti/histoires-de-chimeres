@@ -8,6 +8,8 @@ export type GameMasterDto = {
   id: string;
   /** Le pseudo tel qu'il a été saisi. */
   nickname: string;
+  /** Les identifiants des créneaux où le MJ est disponible, dans l'ordre de la journée (PR-2). */
+  availabilities: string[];
 };
 
 /** Pseudo d'un MJ. Corps de la création et du changement de pseudo. */

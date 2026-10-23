@@ -50,6 +50,7 @@ describe('Créneaux', () => {
       rank: 1,
       start: '09:00',
       end: '11:30',
+      availabilityCount: 0,
     });
   });
 

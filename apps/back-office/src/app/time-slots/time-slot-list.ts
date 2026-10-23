@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { timeSlotEndpoints, type TimeSlotDto } from '@chimeres/contract';
 import { ConventionStore } from '../convention/convention-store';
+import { availabilitiesConsequence } from '../game-masters/availabilities-consequence';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { Button } from '../ui/button';
@@ -157,9 +158,7 @@ export class TimeSlotList {
   private readonly announcer = inject(Announcer);
   protected readonly cards = new CardEditing();
 
-  private readonly timeSlots = computed(() =>
-    this.store.convention.hasValue() ? this.store.convention.value().timeSlots : [],
-  );
+  private readonly timeSlots = this.store.timeSlots;
 
   protected readonly rows = computed(() =>
     this.timeSlots().map((slot, index) => {
@@ -184,6 +183,7 @@ export class TimeSlotList {
     const index = this.timeSlots().findIndex(({ id }) => id === slot.id);
     const removed = await this.cards.remove(index, {
       question: `Supprimer le créneau ${slot.rank} ?`,
+      consequence: availabilitiesConsequence(slot.availabilityCount),
       confirmLabel: 'Supprimer le créneau',
       action: () => this.store.write(timeSlotEndpoints.remove, { params: { timeSlotId: slot.id } }),
     });
