@@ -18,6 +18,7 @@ model Convention {
   timeSlots   TimeSlot[]
   tables      Table[]
   gameMasters GameMaster[]
+  games       Game[]
 }
 
 /// Créneau de la convention. Ses heures sont en minutes depuis minuit, de 0 à 1439.
@@ -28,6 +29,7 @@ model TimeSlot {
   startMinute    Int
   endMinute      Int
   availabilities Availability[]
+  games          GameTimeSlot[]
 
   @@index([conventionId])
 }
@@ -35,10 +37,11 @@ model TimeSlot {
 /// Table de la convention. Son nom est unique dans la convention, à la casse, aux accents et aux
 /// espaces près : le domaine le vérifie (PR-9).
 model Table {
-  id           String     @id @db.Uuid
-  conventionId String     @db.Uuid
-  convention   Convention @relation(fields: [conventionId], references: [id], onDelete: Cascade)
+  id           String         @id @db.Uuid
+  conventionId String         @db.Uuid
+  convention   Convention     @relation(fields: [conventionId], references: [id], onDelete: Cascade)
   name         String
+  games        GameTimeSlot[]
 
   @@index([conventionId])
 }
@@ -52,6 +55,7 @@ model GameMaster {
   nickname       String
   availabilities Availability[]
   scenarios      Scenario[]
+  games          GameTimeSlot[]
 
   @@index([conventionId])
 }
@@ -70,9 +74,9 @@ model Availability {
 /// Scénario d'un MJ, fixé à sa création (PR-16). Agrégat à part de la convention (ADR 0005). Un MJ
 /// qui a des scénarios ne se supprime pas : la clé étrangère le refuse (RESTRICT).
 model Scenario {
-  id              String     @id @db.Uuid
-  gameMasterId    String     @db.Uuid
-  gameMaster      GameMaster @relation(fields: [gameMasterId], references: [id], onDelete: Restrict)
+  id              String          @id @db.Uuid
+  gameMasterId    String          @db.Uuid
+  gameMaster      GameMaster      @relation(fields: [gameMasterId], references: [id], onDelete: Restrict)
   title           String
   system          String
   presentation    String
@@ -85,6 +89,7 @@ model Scenario {
   /// L'image servie, ou rien : l'illustration par défaut (PR-7).
   imageId         String?         @db.Uuid
   images          ScenarioImage[]
+  games           Game[]
 
   @@index([gameMasterId])
 }
@@ -98,4 +103,42 @@ model ScenarioImage {
   bytes      Bytes
 
   @@index([scenarioId])
+}
+
+/// Partie de la convention : un scénario programmé (PR-3). Un scénario qui a des parties ne se
+/// supprime pas : la clé étrangère le refuse (RESTRICT).
+model Game {
+  id           String         @id @db.Uuid
+  conventionId String         @db.Uuid
+  convention   Convention     @relation(fields: [conventionId], references: [id], onDelete: Cascade)
+  scenarioId   String         @db.Uuid
+  scenario     Scenario       @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
+  /// Ses propres places, ou rien : celles de son scénario (PR-4).
+  seatsMin     Int?
+  seatsMax     Int?
+  /// L'ordre de programmation.
+  scheduledAt  DateTime       @default(now())
+  timeSlots    GameTimeSlot[]
+
+  @@index([conventionId])
+  @@index([scenarioId])
+}
+
+/// Un créneau d'une partie, une ligne par créneau. La table et le MJ y sont recopiés : les index
+/// uniques sont le filet de PR-5, que le domaine garantit.
+model GameTimeSlot {
+  gameId       String     @db.Uuid
+  game         Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  timeSlotId   String     @db.Uuid
+  timeSlot     TimeSlot   @relation(fields: [timeSlotId], references: [id], onDelete: Restrict)
+  tableId      String     @db.Uuid
+  table        Table      @relation(fields: [tableId], references: [id], onDelete: Restrict)
+  gameMasterId String     @db.Uuid
+  gameMaster   GameMaster @relation(fields: [gameMasterId], references: [id], onDelete: Restrict)
+
+  @@id([gameId, timeSlotId])
+  @@unique([timeSlotId, tableId])
+  @@unique([timeSlotId, gameMasterId])
+  @@index([tableId])
+  @@index([gameMasterId])
 }

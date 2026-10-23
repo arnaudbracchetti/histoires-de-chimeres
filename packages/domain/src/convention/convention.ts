@@ -2,6 +2,7 @@ import { ComparableName } from '../comparable-name.js';
 import { Refusal } from '../refusal.js';
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Scenario, type ScenarioDetails } from '../scenario/scenario.js';
+import { Game } from './game.js';
 import { GameMaster } from './game-master.js';
 import { Table } from './table.js';
 import type { TimeOfDay } from './time-of-day.js';
@@ -18,6 +19,8 @@ export type ConventionState = {
   tables: Table[];
   /** Dans n'importe quel ordre : `gameMasters` les rend dans l'ordre naturel de leur pseudo. */
   gameMasters: GameMaster[];
+  /** Les parties programmées, dans l'ordre de leur programmation. */
+  games: Game[];
   /** Numéro de version, pour le verrou optimiste : seul le repository le fait avancer. */
   version: number;
 };
@@ -39,6 +42,7 @@ export class Convention {
       timeSlots: [...state.timeSlots],
       tables: [...state.tables],
       gameMasters: [...state.gameMasters],
+      games: [...state.games],
     });
   }
 
@@ -98,9 +102,15 @@ export class Convention {
     this.state.timeSlots[index] = this.verifyFits(new TimeSlot(id, start, end));
   }
 
-  /** Supprime un créneau, et les disponibilités qui s'y rattachent (PR-10). */
+  /**
+   * Supprime un créneau, et les disponibilités qui s'y rattachent. Un créneau qui porte des parties
+   * reste (PR-10).
+   */
   removeTimeSlot(id: string): void {
-    this.state.timeSlots.splice(this.indexOf(id), 1);
+    const index = this.indexOf(id);
+    const games = this.state.games.filter((game) => game.isOn(id)).length;
+    if (games > 0) throw new Refusal('time-slot-has-games', { rank: this.rankOf(id), games });
+    this.state.timeSlots.splice(index, 1);
     this.state.gameMasters = this.state.gameMasters.map((gameMaster) =>
       gameMaster.withoutAvailabilityOn(id),
     );
@@ -127,8 +137,14 @@ export class Convention {
     this.state.tables[index] = this.verifyTableName(new Table(id, ComparableName.of(name)));
   }
 
+  /** Supprime une table. Une table qui porte des parties reste (PR-10). */
   removeTable(id: string): void {
-    this.state.tables.splice(this.indexOfTable(id), 1);
+    const index = this.indexOfTable(id);
+    const games = this.state.games.filter((game) => game.tableId === id).length;
+    if (games > 0) {
+      throw new Refusal('table-has-games', { name: this.state.tables[index]!.name.text, games });
+    }
+    this.state.tables.splice(index, 1);
   }
 
   /** Les MJ, dans l'ordre naturel de leur pseudo. */
@@ -185,6 +201,94 @@ export class Convention {
     return Scenario.propose(id, gameMasterId, details);
   }
 
+  /** Le programme : les parties, dans l'ordre de leur programmation. */
+  get games(): readonly Game[] {
+    return [...this.state.games];
+  }
+
+  /**
+   * Programme le scénario sur un créneau et une table (PR-3), dans le respect de PR-5. Seuls les
+   * scénarios d'un créneau se programment ici ; les parties doubles viendront à part.
+   */
+  schedule(id: string, scenario: Scenario, timeSlotId: string, tableId: string): void {
+    const refusal = this.placementRefusalOf(scenario, timeSlotId, tableId);
+    if (refusal) throw refusal;
+    this.state.games.push(new Game(id, scenario.id, scenario.gameMasterId, tableId, [timeSlotId]));
+  }
+
+  /**
+   * Le verdict de chaque case créneaux × tables pour le scénario : le refus que `schedule()` y
+   * lèverait, ou `null`. Dans l'ordre des créneaux, puis des tables.
+   */
+  placementsOf(scenario: Scenario): Placement[] {
+    return this.timeSlots.flatMap((slot) =>
+      this.tables.map((table) => ({
+        timeSlotId: slot.id,
+        tableId: table.id,
+        refusal: this.placementRefusalOf(scenario, slot.id, table.id),
+      })),
+    );
+  }
+
+  /**
+   * La réserve de chaque créneau (PR-6) : les scénarios d'un créneau dont le MJ y est disponible et
+   * n'y mène aucune partie, même programmés ailleurs. Les tables libres n'y comptent pas.
+   */
+  reserve(catalogue: ScenarioCatalogue): ReserveOfTimeSlot[] {
+    return this.timeSlots.map((slot) => ({
+      timeSlotId: slot.id,
+      scenarioIds: catalogue
+        .entries()
+        .filter(
+          (entry) =>
+            entry.duration === 1 &&
+            this.gameMasterOf(entry.gameMasterId).isAvailableOn(slot.id) &&
+            !this.runsGameOn(entry.gameMasterId, slot.id),
+        )
+        .map(({ id }) => id),
+    }));
+  }
+
+  /**
+   * La règle PR-5 d'une case, la même pour l'écriture et pour le verdict. Les motifs s'excluent dans
+   * cet ordre : MJ indisponible, MJ déjà occupé, table prise.
+   */
+  private placementRefusalOf(
+    scenario: Scenario,
+    timeSlotId: string,
+    tableId: string,
+  ): Refusal | null {
+    // Les parties doubles viendront à part : ni verdict, ni écriture d'ici là.
+    if (scenario.duration !== 1) {
+      throw new RangeError(`Scénario de ${scenario.duration} créneaux : partie double à venir.`);
+    }
+    this.verifyTimeSlotExists(timeSlotId);
+    const table = this.state.tables[this.indexOfTable(tableId)]!;
+    const gameMaster = this.gameMasterOf(scenario.gameMasterId);
+    const rank = this.rankOf(timeSlotId);
+    const nickname = gameMaster.nickname.text;
+    if (!gameMaster.isAvailableOn(timeSlotId)) {
+      return new Refusal('game-master-unavailable', { nickname, rank });
+    }
+    if (this.runsGameOn(gameMaster.id, timeSlotId)) {
+      return new Refusal('game-master-busy', { nickname, rank });
+    }
+    if (this.state.games.some((game) => game.tableId === tableId && game.isOn(timeSlotId))) {
+      return new Refusal('table-taken', { table: table.name.text, rank });
+    }
+    return null;
+  }
+
+  private runsGameOn(gameMasterId: string, timeSlotId: string): boolean {
+    return this.state.games.some(
+      (game) => game.gameMasterId === gameMasterId && game.isOn(timeSlotId),
+    );
+  }
+
+  private gameMasterOf(gameMasterId: string): GameMaster {
+    return this.state.gameMasters[this.indexOfGameMaster(gameMasterId)]!;
+  }
+
   private indexOfGameMaster(gameMasterId: string): number {
     const index = this.state.gameMasters.findIndex((gameMaster) => gameMaster.id === gameMasterId);
     if (index < 0) throw new Refusal('game-master-not-found', {});
@@ -226,7 +330,7 @@ export class Convention {
     return candidate;
   }
 
-  /** Une disponibilité porte sur un créneau existant. */
+  /** Une disponibilité ou une partie porte sur un créneau existant. */
   private verifyTimeSlotExists(timeSlotId: string): void {
     this.indexOf(timeSlotId);
   }
@@ -254,3 +358,9 @@ export class Convention {
     return candidate;
   }
 }
+
+/** Le verdict d'une case créneau × table pour un scénario : le refus d'écriture, ou `null`. */
+export type Placement = { timeSlotId: string; tableId: string; refusal: Refusal | null };
+
+/** Les scénarios de la réserve d'un créneau, dans l'ordre du catalogue. */
+export type ReserveOfTimeSlot = { timeSlotId: string; scenarioIds: string[] };

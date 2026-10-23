@@ -12,11 +12,15 @@ export type RefusalParams = {
   'time-slot-end-overlaps': { rank: number };
   /** `rank` : le rang du créneau ; `availabilities` : le nombre de MJ disponibles dessus. */
   'time-slot-hours-locked': { rank: number; availabilities: number };
+  /** `rank` : le rang du créneau ; `games` : le nombre de parties qu'il porte. */
+  'time-slot-has-games': { rank: number; games: number };
   'table-not-found': Record<string, never>;
   'table-name-required': Record<string, never>;
   'table-name-too-long': { max: number };
   /** `name` : le nom de la table qui le porte déjà, tel qu'il s'affiche. */
   'table-name-taken': { name: string };
+  /** `name` : le nom de la table ; `games` : le nombre de parties qu'elle porte. */
+  'table-has-games': { name: string; games: number };
   'game-master-not-found': Record<string, never>;
   'nickname-required': Record<string, never>;
   'nickname-too-long': { max: number };
@@ -24,6 +28,11 @@ export type RefusalParams = {
   'nickname-taken': { nickname: string };
   /** `scenarios` : le nombre de scénarios du MJ. */
   'game-master-has-scenarios': { scenarios: number };
+  /** `nickname` : le pseudo du MJ ; `rank` : le rang du créneau. */
+  'game-master-unavailable': { nickname: string; rank: number };
+  'game-master-busy': { nickname: string; rank: number };
+  /** `table` : le nom de la table ; `rank` : le rang du créneau. */
+  'table-taken': { table: string; rank: number };
   'scenario-not-found': Record<string, never>;
   'scenario-title-required': Record<string, never>;
   'scenario-title-too-long': { max: number };

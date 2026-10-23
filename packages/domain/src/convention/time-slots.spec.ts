@@ -11,6 +11,7 @@ function aConvention(): Convention {
     timeSlots: [],
     tables: [],
     gameMasters: [],
+    games: [],
     version: 0,
   });
 }

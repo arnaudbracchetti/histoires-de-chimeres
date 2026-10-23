@@ -62,6 +62,11 @@ export const problemCatalogue: Catalogue = {
     detail: ({ rank, availabilities }) =>
       `${availabilities > 1 ? `${availabilities} MJ sont disponibles` : 'Un MJ est disponible'} sur le créneau ${rank} : ses heures ne changent plus. Pour les changer, supprime le créneau, puis recrée-le.`,
   },
+  'time-slot-has-games': {
+    title: 'Créneau programmé',
+    detail: ({ rank, games }) =>
+      `Le créneau ${rank} porte ${games > 1 ? `${games} parties` : 'une partie'} : déprogramme-${games > 1 ? 'les' : 'la'} d'abord.`,
+  },
   'table-not-found': {
     title: 'Table introuvable',
     detail: () => "Cette table n'existe plus : recharge la page.",
@@ -81,6 +86,11 @@ export const problemCatalogue: Catalogue = {
     title: 'Nom déjà pris',
     detail: ({ name }) => `La table « ${name} » porte déjà ce nom : choisis-en un autre.`,
     field: 'name',
+  },
+  'table-has-games': {
+    title: 'Table programmée',
+    detail: ({ name, games }) =>
+      `La table « ${name} » porte ${games > 1 ? `${games} parties` : 'une partie'} : déprogramme-${games > 1 ? 'les' : 'la'} d'abord.`,
   },
   'game-master-not-found': {
     title: 'MJ introuvable',
@@ -108,6 +118,21 @@ export const problemCatalogue: Catalogue = {
       scenarios > 1
         ? `Ce MJ a ${scenarios} scénarios : supprime-les d'abord.`
         : `Ce MJ a un scénario : supprime-le d'abord.`,
+  },
+  'game-master-unavailable': {
+    title: 'MJ indisponible',
+    detail: ({ nickname, rank }) =>
+      `${nickname} n'est pas disponible sur le créneau ${rank} : coche d'abord sa disponibilité sur sa fiche.`,
+  },
+  'game-master-busy': {
+    title: 'MJ déjà occupé',
+    detail: ({ nickname, rank }) =>
+      `${nickname} mène déjà une partie sur le créneau ${rank} : choisis un autre créneau.`,
+  },
+  'table-taken': {
+    title: 'Table prise',
+    detail: ({ table, rank }) =>
+      `La table « ${table} » accueille déjà une partie sur le créneau ${rank} : choisis une autre table.`,
   },
   'scenario-not-found': {
     title: 'Scénario introuvable',
@@ -198,4 +223,13 @@ export const problemCatalogue: Catalogue = {
 /** « 1 500 » : espace fine insécable pour les milliers (docs/design/ton.md). */
 function formatCount(count: number): string {
   return count.toLocaleString('fr-FR').replace(/\s/g, '\u202f');
+}
+
+/** Le motif et la phrase d'un refus du domaine, tels que les Problem Details les donnent. */
+export function messageOf<C extends RefusalCode>(
+  code: C,
+  params: RefusalParams[C],
+): { title: string; detail: string } {
+  const message = problemCatalogue[code] as Message<RefusalParams[C]>;
+  return { title: message.title, detail: message.detail(params) };
 }

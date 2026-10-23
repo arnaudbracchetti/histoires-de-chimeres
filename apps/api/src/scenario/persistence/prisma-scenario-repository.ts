@@ -32,8 +32,12 @@ export class PrismaScenarioRepository implements ScenarioRepository {
   }
 
   async catalogue(): Promise<ScenarioCatalogue> {
-    const rows = await this.prisma.scenario.findMany({ select: { id: true, gameMasterId: true } });
-    return ScenarioCatalogue.restore(rows);
+    const rows = await this.prisma.scenario.findMany({
+      select: { id: true, gameMasterId: true, duration: true },
+    });
+    return ScenarioCatalogue.restore(
+      rows.map((row) => ({ ...row, duration: row.duration as Duration })),
+    );
   }
 
   /** L'image s'écrit à part, avec ses octets (`ScenarioImageRepository`). */

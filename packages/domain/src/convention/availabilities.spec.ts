@@ -15,6 +15,7 @@ function aConvention(): Convention {
     timeSlots: [],
     tables: [],
     gameMasters: [],
+    games: [],
     version: 0,
   });
   convention.addTimeSlot('s1', at('09:00'), at('11:30'));

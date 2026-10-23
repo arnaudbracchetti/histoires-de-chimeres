@@ -5,6 +5,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { API_PREFIX } from '@chimeres/contract';
 import { ConventionModule } from './convention/convention.module.js';
+import { GameModule } from './game/game.module.js';
 import { GameMasterModule } from './game-master/game-master.module.js';
 import { HealthModule } from './health/health.module.js';
 import { ScenarioModule } from './scenario/scenario.module.js';
@@ -46,6 +47,7 @@ const fronts = existsSync(publicDir)
     TableModule,
     GameMasterModule,
     ScenarioModule,
+    GameModule,
   ],
   // Filtre global, déclaré ici pour valoir aussi dans les tests qui démarrent AppModule.
   providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],

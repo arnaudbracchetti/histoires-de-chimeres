@@ -11,14 +11,17 @@ export class PrismaScenarioReader implements ScenarioReader {
 
   async list(): Promise<ScenarioListItemDto[]> {
     const rows = await this.prisma.scenario.findMany({
-      select: { ...SCENARIO_SUMMARY_SELECT, gameMaster: { select: { id: true, nickname: true } } },
+      select: {
+        ...SCENARIO_SUMMARY_SELECT,
+        gameMaster: { select: { id: true, nickname: true } },
+        _count: { select: { games: true } },
+      },
     });
     return rows
-      .map(({ gameMaster, ...summary }) => ({
+      .map(({ gameMaster, _count, ...summary }) => ({
         ...toScenarioSummary(summary),
         gameMaster,
-        // Les parties arrivent avec la programmation.
-        games: 0,
+        games: _count.games,
       }))
       .sort(byTitle);
   }

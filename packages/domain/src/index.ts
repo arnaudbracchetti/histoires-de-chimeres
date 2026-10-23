@@ -1,5 +1,11 @@
 export { ComparableName } from './comparable-name.js';
-export { Convention, type ConventionState } from './convention/convention.js';
+export {
+  Convention,
+  type ConventionState,
+  type Placement,
+  type ReserveOfTimeSlot,
+} from './convention/convention.js';
+export { Game } from './convention/game.js';
 export { GameMaster } from './convention/game-master.js';
 export { Table } from './convention/table.js';
 export { TimeOfDay } from './convention/time-of-day.js';

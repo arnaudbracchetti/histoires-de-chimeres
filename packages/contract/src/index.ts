@@ -49,6 +49,15 @@ export {
   type SeatsDto,
 } from './scenario.js';
 export {
+  scheduleEndpoints,
+  type GameDto,
+  type PlacementDto,
+  type ReserveDto,
+  type ScheduleDto,
+  type ScheduleGameBody,
+  type ScheduleScenarioDto,
+} from './schedule.js';
+export {
   TABLE_NAME_MAX_LENGTH,
   tableEndpoints,
   type TableDto,

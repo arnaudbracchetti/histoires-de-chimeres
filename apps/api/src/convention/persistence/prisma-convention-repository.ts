@@ -3,7 +3,9 @@ import { StaleConventionError, type ConventionRepository } from '@chimeres/appli
 import {
   ComparableName,
   Convention,
+  Game,
   GameMaster,
+  Seats,
   Table,
   TimeOfDay,
   TimeSlot,
@@ -16,12 +18,16 @@ export class PrismaConventionRepository implements ConventionRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async get(): Promise<Convention> {
-    const { id, name, date, version, timeSlots, tables, gameMasters } =
+    const { id, name, date, version, timeSlots, tables, gameMasters, games } =
       await this.prisma.convention.findFirstOrThrow({
         include: {
           timeSlots: true,
           tables: true,
           gameMasters: { include: { availabilities: { select: { timeSlotId: true } } } },
+          games: {
+            include: { scenario: { select: { gameMasterId: true } }, timeSlots: true },
+            orderBy: { scheduledAt: 'asc' },
+          },
         },
       });
     return Convention.restore({
@@ -45,14 +51,31 @@ export class PrismaConventionRepository implements ConventionRepository {
             gameMaster.availabilities.map(({ timeSlotId }) => timeSlotId),
           ),
       ),
+      games: games.map(
+        (game) =>
+          new Game(
+            game.id,
+            game.scenarioId,
+            game.scenario.gameMasterId,
+            game.timeSlots[0]!.tableId,
+            game.timeSlots
+              .map(({ timeSlotId }) => timeSlots.find((slot) => slot.id === timeSlotId)!)
+              .sort((a, b) => a.startMinute - b.startMinute)
+              .map((slot) => slot.id),
+            game.seatsMin === null || game.seatsMax === null
+              ? null
+              : Seats.of(game.seatsMin, game.seatsMax),
+          ),
+      ),
       version,
     });
   }
 
   /**
    * N'écrit que si la version en base est encore celle du chargement (verrou optimiste), en une
-   * transaction : la convention, ses créneaux, ses tables, ses MJ et leurs disponibilités sont écrits
-   * ensemble, ou pas du tout.
+   * transaction : la convention, ses créneaux, ses tables, ses MJ, leurs disponibilités et les
+   * parties sont écrits ensemble, ou pas du tout. Les créneaux des parties partent en premier et
+   * reviennent en dernier : ils tiennent les créneaux, les tables et les MJ (RESTRICT).
    */
   async save(convention: Convention): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
@@ -65,6 +88,14 @@ export class PrismaConventionRepository implements ConventionRepository {
         },
       });
       if (count === 0) throw new StaleConventionError();
+
+      await tx.gameTimeSlot.deleteMany({ where: { game: { conventionId: convention.id } } });
+      await tx.game.deleteMany({
+        where: {
+          conventionId: convention.id,
+          id: { notIn: convention.games.map(({ id }) => id) },
+        },
+      });
 
       const timeSlots = convention.timeSlots.map((slot) => ({
         id: slot.id,
@@ -115,6 +146,30 @@ export class PrismaConventionRepository implements ConventionRepository {
           [...gameMaster.availabilities].map((timeSlotId) => ({
             gameMasterId: gameMaster.id,
             timeSlotId,
+          })),
+        ),
+      });
+
+      for (const game of convention.games) {
+        const seats = { seatsMin: game.seats?.min ?? null, seatsMax: game.seats?.max ?? null };
+        await tx.game.upsert({
+          where: { id: game.id },
+          create: {
+            id: game.id,
+            conventionId: convention.id,
+            scenarioId: game.scenarioId,
+            ...seats,
+          },
+          update: seats,
+        });
+      }
+      await tx.gameTimeSlot.createMany({
+        data: convention.games.flatMap((game) =>
+          game.timeSlotIds.map((timeSlotId) => ({
+            gameId: game.id,
+            timeSlotId,
+            tableId: game.tableId,
+            gameMasterId: game.gameMasterId,
           })),
         ),
       });
