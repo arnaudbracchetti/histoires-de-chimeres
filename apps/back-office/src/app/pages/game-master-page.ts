@@ -259,6 +259,7 @@ export class GameMasterPage {
       consequence: availabilitiesConsequence(availabilities.length),
       confirmLabel: 'Supprimer le MJ',
       action: () => this.apiCall(gameMasterEndpoints.remove, { params: { gameMasterId: id } }),
+      onStale: () => this.reloadAfterRefusal(),
     });
     if (!removed) return;
     this.announcer.announce(`MJ « ${nickname} » supprimé.`);

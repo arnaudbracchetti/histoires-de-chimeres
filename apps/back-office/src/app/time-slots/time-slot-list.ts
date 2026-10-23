@@ -186,6 +186,7 @@ export class TimeSlotList {
       consequence: availabilitiesConsequence(slot.availabilityCount),
       confirmLabel: 'Supprimer le créneau',
       action: () => this.store.write(timeSlotEndpoints.remove, { params: { timeSlotId: slot.id } }),
+      onStale: () => this.store.convention.reload(),
     });
     if (removed) this.announcer.announce(`Créneau ${slot.rank} supprimé.`);
   }

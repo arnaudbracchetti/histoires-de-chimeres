@@ -1,7 +1,7 @@
 import { Dialog, DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { Component, inject, Injectable, signal } from '@angular/core';
+import { Component, computed, inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { readProblem } from '../problem';
+import { injectGesture } from '../gesture';
 import { Button } from './button';
 
 export type ConfirmationRequest = {
@@ -13,7 +13,11 @@ export type ConfirmationRequest = {
   confirmLabel: string;
   /** L'écriture, lancée par le bouton destructeur. Un refus s'affiche dans le dialogue. */
   action: () => Promise<unknown>;
+  /** Le refus dit que l'écran est périmé : appelé à la fermeture du dialogue, pour le relire. */
+  onStale?: () => void;
 };
+
+type DialogData = ConfirmationRequest & { titleId: string; markStale: () => void };
 
 let nextId = 0;
 
@@ -25,7 +29,7 @@ let nextId = 0;
 @Component({
   selector: 'app-confirm-dialog',
   imports: [Button],
-  host: { '[attr.aria-busy]': 'running()' },
+  host: { '[attr.aria-busy]': 'gesture.running()' },
   template: `
     <h2 [id]="request.titleId">{{ request.question }}</h2>
     @if (request.consequence) {
@@ -78,30 +82,23 @@ let nextId = 0;
   `,
 })
 export class ConfirmDialog {
-  protected readonly request = inject<ConfirmationRequest & { titleId: string }>(DIALOG_DATA);
+  protected readonly request = inject<DialogData>(DIALOG_DATA);
   protected readonly ref = inject<DialogRef<boolean>>(DialogRef);
 
-  protected readonly running = signal(false);
-  protected readonly refusal = signal<string | undefined>(undefined);
+  protected readonly gesture = injectGesture();
+  protected readonly refusal = computed(() => this.gesture.refusal()?.message);
 
   protected async confirm() {
-    if (this.running()) return;
-    this.running.set(true);
-    try {
-      await this.request.action();
-      this.ref.close(true);
-    } catch (error) {
-      const { alert, fieldErrors } = readProblem(error);
-      this.refusal.set(
-        alert ? (alert.detail ?? alert.title) : fieldErrors.map(({ message }) => message).join(' '),
-      );
-    } finally {
-      this.running.set(false);
-    }
+    const outcome = await this.gesture.run(this.request.action);
+    if (outcome.status === 'done') this.ref.close(true);
+    else if (outcome.status === 'refused' && outcome.refusal.stale) this.request.markStale();
   }
 }
 
-/** Ouvre le dialogue de confirmation. À sa fermeture, le focus revient à l'élément qui l'a ouvert. */
+/**
+ * Ouvre le dialogue de confirmation. À sa fermeture, le focus revient à l'élément qui l'a ouvert,
+ * et un refus qui dit l'écran périmé appelle `onStale`.
+ */
 @Injectable({ providedIn: 'root' })
 export class Confirmation {
   private readonly dialog = inject(Dialog);
@@ -109,13 +106,17 @@ export class Confirmation {
   /** Résout `true` une fois l'action réussie, `false` si le dialogue se ferme sans elle. */
   async ask(request: ConfirmationRequest): Promise<boolean> {
     const titleId = `confirm-${nextId++}`;
+    let stale = false;
+    const data: DialogData = { ...request, titleId, markStale: () => (stale = true) };
     const ref = this.dialog.open<boolean, unknown, ConfirmDialog>(ConfirmDialog, {
-      data: { ...request, titleId },
+      data,
       role: 'alertdialog',
       ariaLabelledBy: titleId,
       autoFocus: '.cancel',
       restoreFocus: true,
     });
-    return (await firstValueFrom(ref.closed)) ?? false;
+    const done = (await firstValueFrom(ref.closed)) ?? false;
+    if (stale) request.onStale?.();
+    return done;
   }
 }

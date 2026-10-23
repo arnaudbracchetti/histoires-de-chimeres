@@ -1,15 +1,10 @@
-import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { availabilityEndpoints, type GameMasterDto, type TimeSlotDto } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
-import { readProblem } from '../problem';
+import { injectGesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
-import { Notifications } from '../shell/notifications';
 import { formatTime, minutesOf, timeSlotLabel } from '../time-slots/time-format';
 import { Icon } from '../ui/icon';
-
-/** Refus qui disent que l'écran est périmé : un créneau ou le MJ a changé ailleurs. */
-const STALE_STATUSES = [404, 409, 422];
 
 /** Un morceau de la journée, en minutes : un créneau, ou une pause sans `slot`. */
 type Segment = { start: number; end: number; slot?: TimeSlotDto };
@@ -52,7 +47,7 @@ const THIN_NBSP = '\u202f';
           <label
             class="block"
             [class.on]="isChecked(block.slot.id)"
-            [class.pending]="pending().has(block.slot.id)"
+            [class.pending]="writes.isRunning(block.slot.id)"
             [style.grid-column]="block.column"
           >
             <input
@@ -257,12 +252,11 @@ export class AvailabilityTimeline {
   /** Une écriture est refusée (404, 409, 422) : le bloc est revenu à son état, l'écran est à relire. */
   readonly refused = output<void>();
 
-  /** Les créneaux en cours d'écriture, avec l'état demandé. */
-  protected readonly pending = signal<ReadonlyMap<string, boolean>>(new Map());
+  /** Une écriture à la fois par créneau ; un refus part en notification. */
+  protected readonly writes = injectGesture({ notify: true });
 
   private readonly apiCall = injectApiCall();
   private readonly announcer = inject(Announcer);
-  private readonly notifications = inject(Notifications);
 
   /**
    * La journée en segments, de l'heure pleine avant le premier créneau à l'heure pleine après le
@@ -330,13 +324,15 @@ export class AvailabilityTimeline {
     ),
   );
 
+  /** Pendant son écriture, un bloc montre l'état demandé : chaque écriture inverse l'état enregistré. */
   protected isChecked(timeSlotId: string): boolean {
-    return this.pending().get(timeSlotId) ?? this.gameMaster().availabilities.includes(timeSlotId);
+    const saved = this.gameMaster().availabilities.includes(timeSlotId);
+    return this.writes.isRunning(timeSlotId) ? !saved : saved;
   }
 
   protected onChange(slot: TimeSlotDto, box: HTMLInputElement): void {
     // Une seule écriture à la fois par créneau : un second clic pendant l'écriture est sans effet.
-    if (this.pending().has(slot.id)) {
+    if (this.writes.isRunning(slot.id)) {
       box.checked = this.isChecked(slot.id);
       return;
     }
@@ -346,7 +342,7 @@ export class AvailabilityTimeline {
   /** Tous les créneaux d'un geste, un par un : les écritures simultanées se gêneraient. */
   protected async setAll(available: boolean): Promise<void> {
     const slots = this.timeSlots().filter(
-      ({ id }) => this.isChecked(id) !== available && !this.pending().has(id),
+      ({ id }) => this.isChecked(id) !== available && !this.writes.isRunning(id),
     );
     for (const slot of slots) {
       if (!(await this.write(slot, available))) return;
@@ -355,38 +351,17 @@ export class AvailabilityTimeline {
 
   /** Enregistre un créneau ; `false` si l'écriture est refusée. */
   private async write(slot: TimeSlotDto, available: boolean): Promise<boolean> {
-    this.setPending(slot.id, available);
     const params = { gameMasterId: this.gameMaster().id, timeSlotId: slot.id };
-    try {
-      const gameMaster = await this.apiCall(
-        available ? availabilityEndpoints.declare : availabilityEndpoints.withdraw,
-        { params },
-      );
-      this.changed.emit(gameMaster);
+    const endpoint = available ? availabilityEndpoints.declare : availabilityEndpoints.withdraw;
+    const outcome = await this.writes.run(() => this.apiCall(endpoint, { params }), slot.id);
+    if (outcome.status === 'done') {
+      this.changed.emit(outcome.value);
       this.announcer.announce(
         `${available ? 'Disponible' : 'Plus disponible'} sur le créneau ${slot.rank}.`,
       );
       return true;
-    } catch (error) {
-      const { alert, fieldErrors } = readProblem(error);
-      this.notifications.error(
-        alert ?? { title: fieldErrors.map(({ message }) => message).join(' ') },
-      );
-      if (error instanceof HttpErrorResponse && STALE_STATUSES.includes(error.status)) {
-        this.refused.emit();
-      }
-      return false;
-    } finally {
-      this.setPending(slot.id, undefined);
     }
-  }
-
-  private setPending(timeSlotId: string, available: boolean | undefined): void {
-    this.pending.update((pending) => {
-      const next = new Map(pending);
-      if (available === undefined) next.delete(timeSlotId);
-      else next.set(timeSlotId, available);
-      return next;
-    });
+    if (outcome.status === 'refused' && outcome.refusal.stale) this.refused.emit();
+    return false;
   }
 }

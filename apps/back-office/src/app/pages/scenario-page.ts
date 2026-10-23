@@ -123,6 +123,7 @@ export class ScenarioPage implements UnsavedChanges {
       question: `Supprimer le scénario « ${title} » ?`,
       confirmLabel: 'Supprimer le scénario',
       action: () => this.apiCall(scenarioEndpoints.remove, { params: { scenarioId: id } }),
+      onStale: () => this.resource.reload(),
     });
     if (!removed) return;
     this.removed = true;

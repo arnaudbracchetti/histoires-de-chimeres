@@ -10,6 +10,7 @@ import { Confirmation } from './confirmation';
 class Host {
   private readonly confirmation = inject(Confirmation);
   action = vi.fn<() => Promise<void>>(() => Promise.resolve());
+  onStale = vi.fn();
   result: Promise<boolean> | undefined;
 
   open() {
@@ -17,6 +18,7 @@ class Host {
       question: 'Supprimer le créneau 2\u202f?',
       confirmLabel: 'Supprimer le créneau',
       action: this.action,
+      onStale: this.onStale,
     });
   }
 }
@@ -91,5 +93,33 @@ describe('Confirmation', () => {
     button('Fermer')!.click();
     await settle();
     expect(await host.result).toBe(false);
+  });
+
+  it('un refus qui dit l’écran périmé appelle onStale, à la fermeture du dialogue', async () => {
+    const { host, button, settle } = await render();
+    host.action.mockRejectedValue(
+      new HttpErrorResponse({ status: 404, error: { title: 'Créneau introuvable' } }),
+    );
+
+    button('Supprimer le créneau')!.click();
+    await settle();
+    expect(host.onStale).not.toHaveBeenCalled();
+
+    button('Fermer')!.click();
+    await settle();
+    expect(await host.result).toBe(false);
+    expect(host.onStale).toHaveBeenCalledOnce();
+  });
+
+  it('une coupure n’appelle pas onStale', async () => {
+    const { host, button, settle } = await render();
+    host.action.mockRejectedValue(new HttpErrorResponse({ status: 0 }));
+
+    button('Supprimer le créneau')!.click();
+    await settle();
+    button('Fermer')!.click();
+    await settle();
+
+    expect(host.onStale).not.toHaveBeenCalled();
   });
 });

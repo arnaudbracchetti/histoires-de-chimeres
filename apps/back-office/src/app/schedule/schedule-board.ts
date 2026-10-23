@@ -16,10 +16,9 @@ import {
 } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { apiResource } from '../api-resource';
-import { readProblem } from '../problem';
+import { injectGesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
-import { Notifications } from '../shell/notifications';
 import { GameSheet } from './game-sheet';
 import { Placements } from './placement-dialog';
 import { ReserveTray } from './reserve-tray';
@@ -46,6 +45,7 @@ import { ScheduleTimeline } from './schedule-timeline';
           />
           @if (selected(); as game) {
             <app-game-sheet
+              [attr.aria-busy]="unscheduling.running()"
               [game]="game"
               [timeSlots]="convention().timeSlots"
               [tables]="convention().tables"
@@ -115,10 +115,10 @@ export class ScheduleBoard {
   private readonly sheet = viewChild(GameSheet);
   private readonly placements = inject(Placements);
   private readonly announcer = inject(Announcer);
-  private readonly notifications = inject(Notifications);
   private readonly apiCall = injectApiCall();
   private readonly injector = inject(Injector);
-  private unscheduling = false;
+  /** Un refus part en notification : la fiche n'a pas de place pour lui. */
+  protected readonly unscheduling = injectGesture({ notify: true });
 
   /**
    * Ouvre le dialogue de placement. Une fois la partie programmée, le focus va à sa carte, et la
@@ -172,28 +172,20 @@ export class ScheduleBoard {
   /**
    * Déprogramme la partie, sans confirmation (docs/design/patterns.md, Actions destructrices). La
    * fiche se ferme, et le focus va à la réserve, où revient son scénario. Un refus s'affiche en
-   * notification, et le programme se relit.
+   * notification ; s'il dit le programme changé entre-temps, le programme se relit.
    */
   protected async unschedule(game: GameDto) {
-    if (this.unscheduling) return;
-    this.unscheduling = true;
-    try {
-      const schedule = await this.apiCall(scheduleEndpoints.unschedule, {
-        params: { gameId: game.id },
-      });
-      this.schedule.set(schedule);
-      this.selectedId.set(null);
-      this.announcer.announce(`Partie « ${game.scenario.title} » déprogrammée.`);
-      afterNextRender(() => document.getElementById('reserve-title')?.focus(), {
-        injector: this.injector,
-      });
-    } catch (error) {
-      const { alert } = readProblem(error);
-      if (alert) this.notifications.error(alert);
-      this.schedule.reload();
-    } finally {
-      this.unscheduling = false;
-    }
+    const outcome = await this.unscheduling.run(() =>
+      this.apiCall(scheduleEndpoints.unschedule, { params: { gameId: game.id } }),
+    );
+    if (outcome.status === 'refused' && outcome.refusal.stale) this.schedule.reload();
+    if (outcome.status !== 'done') return;
+    this.schedule.set(outcome.value);
+    this.selectedId.set(null);
+    this.announcer.announce(`Partie « ${game.scenario.title} » déprogrammée.`);
+    afterNextRender(() => document.getElementById('reserve-title')?.focus(), {
+      injector: this.injector,
+    });
   }
 
   private focusGame(game: GameDto) {

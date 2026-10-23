@@ -1,8 +1,8 @@
-import { Component, inject, input, output, signal } from '@angular/core';
+import { Component, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { scenarioEndpoints, type ScenarioDto } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { injectApiUpload } from '../api-upload';
-import { readProblem } from '../problem';
+import { injectGesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
 import { Button } from '../ui/button';
 import { Confirmation } from '../ui/confirmation';
@@ -13,6 +13,8 @@ import { ScenarioIllustration } from '../ui/scenario-illustration';
  * « Enregistrer », l'image part dès qu'elle est choisie ou déposée, avec une barre de progression.
  * L'aperçu 3:2 est celui que renvoie l'API. Une image refusée l'est sous la zone, à une place
  * réservée qui ne décale rien. `changed` transmet le scénario relu après un envoi ou un retrait.
+ * Un refus ne relit jamais la page, même s'il dit l'écran périmé : la relire effacerait la saisie
+ * en cours du formulaire, et un 422 vient aussi d'une image illisible. Le message suffit.
  */
 @Component({
   selector: 'app-scenario-image',
@@ -21,7 +23,7 @@ import { ScenarioIllustration } from '../ui/scenario-illustration';
     <div
       class="zone"
       [class.dropping]="dropping()"
-      [attr.aria-busy]="progress() !== null"
+      [attr.aria-busy]="upload.running()"
       (dragover)="onDragOver($event)"
       (dragleave)="dropping.set(false)"
       (drop)="onDrop($event)"
@@ -126,7 +128,10 @@ export class ScenarioImage {
   /** De 0 à 1 pendant un envoi, `null` sinon. */
   protected readonly progress = signal<number | null>(null);
   protected readonly dropping = signal(false);
-  protected readonly error = signal('');
+  /** Un envoi à la fois ; son refus s'affiche sous la zone. */
+  protected readonly upload = injectGesture();
+  /** Le refus du dernier envoi, effacé une fois l'image retirée. */
+  protected readonly error = linkedSignal(() => this.upload.refusal()?.message ?? '');
 
   private readonly apiCall = injectApiCall();
   private readonly apiUpload = injectApiUpload();
@@ -153,26 +158,22 @@ export class ScenarioImage {
   }
 
   private async send(file: File): Promise<void> {
-    if (this.progress() !== null) return;
-    this.error.set('');
-    this.progress.set(0);
-    try {
-      const scenario = await this.apiUpload(scenarioEndpoints.changeImage, {
-        params: { scenarioId: this.scenarioId() },
-        file,
-        field: 'image',
-        progress: (fraction) => this.progress.set(fraction),
-      });
-      this.changed.emit(scenario);
-      this.announcer.announce('Image enregistrée.');
-    } catch (error) {
-      const { alert, fieldErrors } = readProblem(error);
-      this.error.set(
-        alert ? (alert.detail ?? alert.title) : fieldErrors.map(({ message }) => message).join(' '),
-      );
-    } finally {
-      this.progress.set(null);
-    }
+    const outcome = await this.upload.run(async () => {
+      this.progress.set(0);
+      try {
+        return await this.apiUpload(scenarioEndpoints.changeImage, {
+          params: { scenarioId: this.scenarioId() },
+          file,
+          field: 'image',
+          progress: (fraction) => this.progress.set(fraction),
+        });
+      } finally {
+        this.progress.set(null);
+      }
+    });
+    if (outcome.status !== 'done') return;
+    this.changed.emit(outcome.value);
+    this.announcer.announce('Image enregistrée.');
   }
 
   protected async remove(): Promise<void> {

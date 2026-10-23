@@ -2,12 +2,12 @@ import { Dialog, DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import {
   afterNextRender,
   Component,
+  computed,
   effect,
   ElementRef,
   inject,
   Injectable,
   Injector,
-  signal,
 } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -21,7 +21,7 @@ import {
 } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { apiResource } from '../api-resource';
-import { readProblem } from '../problem';
+import { injectGesture } from '../gesture';
 import { Loadable } from '../shell/loadable';
 import { formatTimeRange, timeSlotLabel } from '../time-slots/time-format';
 import { Button } from '../ui/button';
@@ -51,7 +51,7 @@ let nextId = 0;
 @Component({
   selector: 'app-placement-dialog',
   imports: [Button, Loadable],
-  host: { '[attr.aria-busy]': 'running()' },
+  host: { '[attr.aria-busy]': 'gesture.running()' },
   template: `
     <h2 [id]="request.titleId">{{ title }}</h2>
     <app-loadable [resource]="placements" failure="Impossible de lire les cases possibles.">
@@ -189,8 +189,8 @@ export class PlacementDialog {
       ? `Déplacer « ${this.request.game.scenario.title} » vers…`
       : `Programmer « ${this.request.scenario.title} » sur…`;
   protected readonly placements = placementsOf(this.request);
-  protected readonly running = signal(false);
-  protected readonly refusal = signal<string | undefined>(undefined);
+  protected readonly gesture = injectGesture();
+  protected readonly refusal = computed(() => this.gesture.refusal()?.message);
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
@@ -227,31 +227,22 @@ export class PlacementDialog {
     return game.timeSlotIds[0] === slot.id && game.tableId === table.id;
   }
 
-  /** Un refus (le programme a changé entre-temps) s'affiche dans le dialogue, et la grille se relit. */
+  /**
+   * Un refus s'affiche dans le dialogue. S'il dit le programme changé entre-temps, la grille se
+   * relit ; après une coupure, elle reste telle quelle, pour réessayer.
+   */
   protected async choose(slot: TimeSlotDto, table: TableDto) {
-    if (this.running()) return;
-    this.running.set(true);
-    try {
-      const place = { timeSlotId: slot.id, tableId: table.id };
-      const schedule =
-        'game' in this.request
-          ? await this.apiCall(scheduleEndpoints.move, {
-              params: { gameId: this.request.game.id },
-              body: place,
-            })
-          : await this.apiCall(scheduleEndpoints.schedule, {
-              body: { scenarioId: this.request.scenario.id, ...place },
-            });
-      this.ref.close(schedule);
-    } catch (error) {
-      const { alert, fieldErrors } = readProblem(error);
-      this.refusal.set(
-        alert ? (alert.detail ?? alert.title) : fieldErrors.map(({ message }) => message).join(' '),
-      );
-      this.placements.reload();
-    } finally {
-      this.running.set(false);
-    }
+    const place = { timeSlotId: slot.id, tableId: table.id };
+    const request = this.request;
+    const outcome = await this.gesture.run(() =>
+      'game' in request
+        ? this.apiCall(scheduleEndpoints.move, { params: { gameId: request.game.id }, body: place })
+        : this.apiCall(scheduleEndpoints.schedule, {
+            body: { scenarioId: request.scenario.id, ...place },
+          }),
+    );
+    if (outcome.status === 'done') this.ref.close(outcome.value);
+    else if (outcome.status === 'refused' && outcome.refusal.stale) this.placements.reload();
   }
 }
 

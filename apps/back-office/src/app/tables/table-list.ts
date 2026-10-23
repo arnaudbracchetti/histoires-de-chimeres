@@ -149,6 +149,7 @@ export class TableList {
       question: `Supprimer la table « ${table.name} » ?`,
       confirmLabel: 'Supprimer la table',
       action: () => this.store.write(tableEndpoints.remove, { params: { tableId: table.id } }),
+      onStale: () => this.store.convention.reload(),
     });
     if (removed) this.announcer.announce(`Table « ${table.name} » supprimée.`);
   }
