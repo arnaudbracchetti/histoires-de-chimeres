@@ -143,7 +143,7 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 - Les **nombres** sont en chiffres à chasse fixe, alignés à droite.
 - Listes de l'Organisateur :
   - MJ : pseudo, nombre de scénarios, disponibilités par créneau, parties menées. Les disponibilités sont des ronds numérotés de même taille, un par créneau : plein en orange si le MJ peut y mener une partie, cerclé sinon, sans icône ;
-  - scénarios : vignette, titre, jeu, MJ, places, durée, parties.
+  - scénarios : vignette, titre, jeu, MJ, places, durée, parties. Lignes de 40 px autour de vignettes de 32 px, triables par titre, jeu et MJ.
 
 ## Chargement, état vide, erreur de lecture
 

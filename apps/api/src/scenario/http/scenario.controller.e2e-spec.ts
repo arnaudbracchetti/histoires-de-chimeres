@@ -8,9 +8,11 @@ import {
   type GameMasterDto,
   type ScenarioBody,
   type ScenarioDto,
+  type ScenarioListItemDto,
 } from '@chimeres/contract';
 import { startApp } from '../../../test/app.js';
 
+const NBSP = '\u00a0';
 const UNKNOWN_ID = '8d3c1a8e-0000-4000-8000-000000000000';
 
 const aBody = (changes: Partial<ScenarioBody> = {}): ScenarioBody => ({
@@ -46,6 +48,12 @@ describe('Scénarios', () => {
   const read = (scenarioId: string) => server().get(apiUrl(scenarioEndpoints.read, { scenarioId }));
   const update = (scenarioId: string, body: ScenarioBody | object) =>
     server().put(apiUrl(scenarioEndpoints.update, { scenarioId })).send(body);
+  const list = async () =>
+    (await server().get(apiUrl(scenarioEndpoints.list)).expect(200)).body as ScenarioListItemDto[];
+  const remove = (scenarioId: string) =>
+    server().delete(apiUrl(scenarioEndpoints.remove, { scenarioId }));
+  const removeGameMaster = (gameMasterId = gameMaster.id) =>
+    server().delete(apiUrl(gameMasterEndpoints.remove, { gameMasterId }));
   const readGameMaster = async () =>
     (
       await server()
@@ -165,6 +173,61 @@ describe('Scénarios', () => {
     expect((await read(id).expect(200)).body).toEqual(proposed);
   });
 
+  it('liste tous les scénarios, dans l’ordre naturel de leur titre, avec leur MJ', async () => {
+    const { body: other } = await server()
+      .post(apiUrl(gameMasterEndpoints.add))
+      .send({ nickname: 'Élodie' })
+      .expect(201);
+    const elodie = (other as GameMasterDto[]).find(({ nickname }) => nickname === 'Élodie')!;
+    await propose(aBody({ title: 'Scénario 10' })).expect(201);
+    await propose(aBody({ title: 'Scénario 2', seats: { min: 2, max: 4 } }), elodie.id).expect(201);
+
+    const scenarios = await list();
+
+    expect(scenarios.map(({ title }) => title)).toEqual(['Scénario 2', 'Scénario 10']);
+    expect(scenarios[0]).toEqual({
+      id: expect.any(String),
+      title: 'Scénario 2',
+      system: "L'Appel de Cthulhu",
+      seats: { min: 2, max: 4 },
+      duration: 1,
+      imageUrl: null,
+      gameMaster: { id: elodie.id, nickname: 'Élodie' },
+      games: 0,
+    });
+  });
+
+  it('supprime un scénario (PR-14)', async () => {
+    const { body } = await propose(aBody()).expect(201);
+    const { id } = body as ScenarioDto;
+
+    await remove(id).expect(204);
+
+    expect(await list()).toEqual([]);
+    await read(id).expect(404);
+  });
+
+  it('refuse de supprimer un MJ qui a un scénario, et le garde (PR-12)', async () => {
+    await propose(aBody()).expect(201);
+
+    const response = await removeGameMaster()
+      .expect(422)
+      .expect('Content-Type', /application\/problem\+json/);
+
+    expect(response.body).toMatchObject({
+      code: 'game-master-has-scenarios',
+      detail: `Ce MJ a un scénario${NBSP}: supprime-le d'abord.`,
+    });
+    expect((await readGameMaster()).nickname).toBe('Kaïros');
+  });
+
+  it('supprime un MJ dont le scénario a été supprimé', async () => {
+    const { body } = await propose(aBody()).expect(201);
+    await remove((body as ScenarioDto).id).expect(204);
+
+    await removeGameMaster().expect(204);
+  });
+
   it.each([
     ['proposer un scénario pour un', () => propose(aBody(), UNKNOWN_ID), 'game-master-not-found'],
     [
@@ -180,6 +243,8 @@ describe('Scénarios', () => {
       () => update('abc', aBody()),
       'scenario-not-found',
     ],
+    ['supprimer un', () => remove(UNKNOWN_ID), 'scenario-not-found'],
+    ['supprimer, par un identifiant mal formé, un', () => remove('abc'), 'scenario-not-found'],
   ])('répond 404 pour %s élément inconnu', async (_, action, code) => {
     const response = await action()
       .expect(404)

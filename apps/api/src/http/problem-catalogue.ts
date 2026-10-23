@@ -102,6 +102,13 @@ export const problemCatalogue: Catalogue = {
     detail: ({ nickname }) => `Le MJ « ${nickname} » porte déjà ce pseudo : choisis-en un autre.`,
     field: 'nickname',
   },
+  'game-master-has-scenarios': {
+    title: 'MJ avec des scénarios',
+    detail: ({ scenarios }) =>
+      scenarios > 1
+        ? `Ce MJ a ${scenarios} scénarios : supprime-les d'abord.`
+        : `Ce MJ a un scénario : supprime-le d'abord.`,
+  },
   'scenario-not-found': {
     title: 'Scénario introuvable',
     detail: () => "Ce scénario n'existe plus : recharge la page.",

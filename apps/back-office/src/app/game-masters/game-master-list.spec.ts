@@ -108,7 +108,7 @@ describe('GameMasterList', () => {
       ],
     );
 
-    const cells = [...host.querySelectorAll('tbody td')];
+    const cells = [...host.querySelectorAll('tbody td.availabilities')];
     const pips = (cell: Element) =>
       [...cell.querySelectorAll('.pip')].map(
         (pip) => `${text(pip)}${pip.classList.contains('available') ? '✓' : ''}`,
@@ -121,6 +121,28 @@ describe('GameMasterList', () => {
       'Créneaux 1 et 3',
       'Aucune',
     ]);
+  });
+
+  it('montre le nombre de scénarios de chaque MJ', async () => {
+    const scenario = {
+      id: 's1',
+      title: 'Zénith',
+      system: 'Alien',
+      seats: { min: 3, max: 5 },
+      duration: 1 as const,
+      imageUrl: null,
+    };
+    const { host, text } = await render([
+      {
+        id: 'g1',
+        nickname: 'Élodie',
+        availabilities: [],
+        scenarios: [scenario, { ...scenario, id: 's2' }],
+      },
+      { id: 'g2', nickname: 'Kaïros', availabilities: [], scenarios: [] },
+    ]);
+
+    expect([...host.querySelectorAll('tbody td.scenarios')].map(text)).toEqual(['2', '0']);
   });
 
   it('trie par pseudo, dans un sens puis dans l’autre, et l’indique par aria-sort', async () => {

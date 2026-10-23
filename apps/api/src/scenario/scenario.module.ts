@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import {
   ProposeScenario,
+  RemoveScenario,
   UpdateScenario,
   type ConventionRepository,
   type ScenarioRepository,
@@ -31,6 +32,13 @@ import { SCENARIO_REPOSITORY } from './scenario-repository.token.js';
       useFactory: (scenarios: ScenarioRepository) => new UpdateScenario(scenarios),
       inject: [SCENARIO_REPOSITORY],
     },
+    {
+      provide: RemoveScenario,
+      useFactory: (conventions: ConventionRepository, scenarios: ScenarioRepository) =>
+        new RemoveScenario(conventions, scenarios),
+      inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY],
+    },
   ],
+  exports: [SCENARIO_REPOSITORY],
 })
 export class ScenarioModule {}

@@ -12,6 +12,7 @@ export { RemoveGameMaster } from './game-master/remove-game-master.js';
 export { RenameGameMaster } from './game-master/rename-game-master.js';
 export { WithdrawAvailability } from './game-master/withdraw-availability.js';
 export { ProposeScenario } from './scenario/propose-scenario.js';
+export { RemoveScenario } from './scenario/remove-scenario.js';
 export type { ScenarioReader } from './scenario/scenario-reader.js';
 export type { ScenarioRepository } from './scenario/scenario-repository.js';
 export { UpdateScenario } from './scenario/update-scenario.js';

@@ -250,3 +250,102 @@ test('lien profond vers un scénario', async ({ page }) => {
   await page.goto('/gestion/scenarios/8d3c1a8e-0000-4000-8000-000000000000');
   await expect(page.getByText("Ce scénario n'existe pas, ou plus.")).toBeVisible();
 });
+
+function scenarioList(page: Page) {
+  const table = page.getByRole('table', { name: 'Scénarios de la convention' });
+  return {
+    table,
+    /** Les titres affichés, dans l'ordre du tableau. */
+    titles: table.locator('tbody th a'),
+    sort: (column: string) => table.getByRole('button', { name: column, exact: true }),
+    header: (column: string) => table.getByRole('columnheader', { name: column, exact: true }),
+    filter: page.getByRole('searchbox', { name: 'Filtrer les scénarios' }),
+  };
+}
+
+test('liste des scénarios : tri par colonne et filtre sans accent (PR-14)', async ({ page }) => {
+  const kairos = await addGameMaster(page, 'Kaïros');
+  const elodie = await addGameMaster(page, 'Élodie');
+  await proposeScenario(page, kairos.id, { title: 'Scénario 10', system: 'Pendragon' });
+  await proposeScenario(page, elodie.id, {
+    title: 'Scénario 2',
+    system: 'Alien',
+    seats: { min: 4, max: 4 },
+    duration: 2,
+  });
+  await page.goto('/gestion/scenarios');
+  const scenarios = scenarioList(page);
+
+  await expect(scenarios.titles).toHaveText(['Scénario 2', 'Scénario 10']);
+  await expect(scenarios.table.locator('tbody tr').first()).toContainText(
+    /Scénario 2\s*Alien\s*Élodie\s*4 places\s*2 créneaux\s*0/,
+  );
+  await expect(scenarios.table.locator('tbody tr').first().locator('svg').first()).toBeVisible();
+  await expect(scenarios.header('Titre')).toHaveAttribute('aria-sort', 'ascending');
+
+  await scenarios.sort('Titre').click();
+  await expect(scenarios.titles).toHaveText(['Scénario 10', 'Scénario 2']);
+  await expect(scenarios.header('Titre')).toHaveAttribute('aria-sort', 'descending');
+  await scenarios.sort('MJ').click();
+  await expect(scenarios.titles).toHaveText(['Scénario 2', 'Scénario 10']);
+  await scenarios.sort('Jeu').click();
+  await expect(scenarios.titles).toHaveText(['Scénario 2', 'Scénario 10']);
+  await scenarios.sort('Jeu').click();
+  await expect(scenarios.titles).toHaveText(['Scénario 10', 'Scénario 2']);
+
+  await scenarios.filter.fill('kairos');
+  await expect(scenarios.titles).toHaveText(['Scénario 10']);
+  await scenarios.filter.fill('ALIEN');
+  await expect(scenarios.titles).toHaveText(['Scénario 2']);
+
+  await scenarios.titles.first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Scénario 2' })).toBeVisible();
+});
+
+test('sans scénario, l’état vide renvoie vers les MJ', async ({ page }) => {
+  await page.goto('/gestion/scenarios');
+
+  await expect(page.getByText(/^Aucun scénario pour l'instant/)).toBeVisible();
+  await page.getByRole('link', { name: 'Choisir un MJ' }).click();
+  await expect(page).toHaveURL(/\/gestion\/mj$/);
+});
+
+test('supprimer un scénario depuis « ⋯ », après confirmation (PR-14)', async ({ page }) => {
+  const kairos = await addGameMaster(page, 'Kaïros');
+  const { id } = await proposeScenario(page, kairos.id);
+  await proposeScenario(page, kairos.id, { title: 'Zénith' });
+  await page.goto(`/gestion/scenarios/${id}`);
+
+  await page.getByRole('button', { name: 'Autres actions sur le scénario' }).click();
+  await page.getByRole('menuitem', { name: 'Supprimer le scénario' }).click();
+  const dialog = page.getByRole('alertdialog', {
+    name: `Supprimer le scénario «${NBSP}La Tour d'ébène${NBSP}»${THIN}?`,
+  });
+  await expect(dialog.getByRole('button', { name: 'Annuler' })).toBeFocused();
+  await dialog.getByRole('button', { name: 'Supprimer le scénario' }).click();
+
+  await expect(page).toHaveURL(/\/gestion\/scenarios$/);
+  await expect(scenarioList(page).titles).toHaveText(['Zénith']);
+});
+
+test('un MJ qui a un scénario : la suppression est refusée dans le dialogue (PR-12)', async ({
+  page,
+}) => {
+  const kairos = await addGameMaster(page, 'Kaïros');
+  await proposeScenario(page, kairos.id);
+  await page.goto(`/gestion/mj/${kairos.id}`);
+
+  await page.getByRole('button', { name: 'Autres actions sur le MJ' }).click();
+  await page.getByRole('menuitem', { name: 'Supprimer le MJ' }).click();
+  const dialog = page.getByRole('alertdialog', {
+    name: `Supprimer le MJ «${NBSP}Kaïros${NBSP}»${THIN}?`,
+  });
+  await dialog.getByRole('button', { name: 'Supprimer le MJ' }).click();
+
+  await expect(dialog.getByRole('alert')).toHaveText(
+    `Ce MJ a un scénario${NBSP}: supprime-le d'abord.`,
+  );
+  await expect(dialog.getByRole('button')).toHaveText(['Fermer']);
+  await dialog.getByRole('button', { name: 'Fermer' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Kaïros' })).toBeVisible();
+});

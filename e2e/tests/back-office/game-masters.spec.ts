@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test';
-import { apiUrl, gameMasterEndpoints, type GameMasterDto } from '@chimeres/contract';
+import {
+  apiUrl,
+  availabilityEndpoints,
+  gameMasterEndpoints,
+  timeSlotEndpoints,
+  type ConventionDto,
+  type GameMasterDto,
+} from '@chimeres/contract';
 import { expect, test } from '../../fixtures.js';
 
 // Espace insécable (U+00A0) et espace fine insécable (U+202F) de docs/design/ton.md.
@@ -112,8 +119,22 @@ test('changer le pseudo dans l’en-tête de la fiche', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Élodie la Rouge' })).toBeVisible();
 });
 
-test('supprimer un MJ depuis « ⋯ », après confirmation', async ({ page }) => {
+test('supprimer un MJ sans scénario depuis « ⋯ », avec ses disponibilités (PR-12)', async ({
+  page,
+}) => {
   const [elodie] = await addThroughApi(page, 'Élodie', 'Kaïros');
+  for (const data of [
+    { start: '09:00', end: '11:30' },
+    { start: '14:00', end: '16:30' },
+  ]) {
+    const response = await page.request.post(apiUrl(timeSlotEndpoints.add), { data });
+    expect(response.ok()).toBe(true);
+    for (const { id: timeSlotId } of ((await response.json()) as ConventionDto).timeSlots) {
+      await page.request.put(
+        apiUrl(availabilityEndpoints.declare, { gameMasterId: elodie!.id, timeSlotId }),
+      );
+    }
+  }
   await page.goto(`/gestion/mj/${elodie!.id}`);
 
   await page.getByRole('button', { name: 'Autres actions sur le MJ' }).click();
@@ -122,6 +143,7 @@ test('supprimer un MJ depuis « ⋯ », après confirmation', async ({ page }) =
     name: `Supprimer le MJ «${NBSP}Élodie${NBSP}»${THIN}?`,
   });
   await expect(dialog.getByRole('button', { name: 'Annuler' })).toBeFocused();
+  await expect(dialog).toContainText('Ses 2 disponibilités seront supprimées.');
   await dialog.getByRole('button', { name: 'Supprimer le MJ' }).click();
 
   await expect(page).toHaveURL(/\/gestion\/mj$/);

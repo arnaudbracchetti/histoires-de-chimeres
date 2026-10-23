@@ -40,6 +40,8 @@ export {
   type DurationDto,
   type ScenarioBody,
   type ScenarioDto,
+  type ScenarioGameMasterDto,
+  type ScenarioListItemDto,
   type ScenarioParams,
   type ScenarioSummaryDto,
   type SeatsDto,

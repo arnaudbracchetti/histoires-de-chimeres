@@ -198,4 +198,10 @@ describe('Modifier un scénario (PR-14)', () => {
 
     expect(scenario.gameMasterId).toBe('g1');
   });
+
+  it('se supprime tant qu’il n’a aucune partie (PR-14)', () => {
+    const scenario = aScenario();
+
+    expect(() => scenario.remove(aConvention())).not.toThrow();
+  });
 });

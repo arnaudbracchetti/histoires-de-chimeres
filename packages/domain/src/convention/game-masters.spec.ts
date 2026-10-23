@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Refusal } from '../refusal.js';
+import { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Convention } from './convention.js';
 
 function aConvention(): Convention {
@@ -108,19 +109,41 @@ describe('MJ de la convention', () => {
     expect(gameMastersOf(convention)).toEqual(['g1 Élodie', 'g2 Kaïros']);
   });
 
-  it('supprime un MJ', () => {
+  it('supprime un MJ sans scénario, même si un autre MJ en a', () => {
     const convention = aConvention();
     convention.addGameMaster('g1', 'Élodie');
     convention.addGameMaster('g2', 'Kaïros');
+    const catalogue = ScenarioCatalogue.restore([{ id: 's1', gameMasterId: 'g2' }]);
 
-    convention.removeGameMaster('g1');
+    convention.removeGameMaster('g1', catalogue);
 
     expect(gameMastersOf(convention)).toEqual(['g2 Kaïros']);
   });
 
+  it('refuse de supprimer un MJ qui a des scénarios, avec leur nombre (PR-12)', () => {
+    const convention = aConvention();
+    convention.addGameMaster('g1', 'Élodie');
+    const catalogue = ScenarioCatalogue.restore([
+      { id: 's1', gameMasterId: 'g1' },
+      { id: 's2', gameMasterId: 'g1' },
+    ]);
+
+    const refusal = refusalOf(() => convention.removeGameMaster('g1', catalogue));
+
+    expect(refusal.code).toBe('game-master-has-scenarios');
+    expect(refusal.params).toEqual({ scenarios: 2 });
+    expect(gameMastersOf(convention)).toEqual(['g1 Élodie']);
+  });
+
   it.each([
-    ['changer le pseudo d’un', (convention: Convention) => convention.renameGameMaster('x', 'Alix')],
-    ['supprimer un', (convention: Convention) => convention.removeGameMaster('x')],
+    [
+      'changer le pseudo d’un',
+      (convention: Convention) => convention.renameGameMaster('x', 'Alix'),
+    ],
+    [
+      'supprimer un',
+      (convention: Convention) => convention.removeGameMaster('x', ScenarioCatalogue.restore([])),
+    ],
   ])('refuse de %s MJ inconnu', (_, action) => {
     const convention = aConvention();
 

@@ -19,9 +19,9 @@ import { NewGameMaster } from './new-game-master';
 import { searchKey } from './nickname';
 
 /**
- * Les MJ, en tableau (docs/design/patterns.md, Tableaux et MJ) : chaque pseudo mène à la fiche, et
- * ses disponibilités s'affichent en ronds numérotés, un par créneau, de même taille : plein si le
- * MJ peut y mener une partie, cerclé sinon.
+ * Les MJ, en tableau (docs/design/patterns.md, Tableaux et MJ) : chaque pseudo mène à la fiche,
+ * suivi de son nombre de scénarios ; ses disponibilités s'affichent en ronds numérotés, un par
+ * créneau, de même taille : plein si le MJ peut y mener une partie, cerclé sinon.
  * Tri et filtre sont des signaux, sur la liste que l'API renvoie dans l'ordre naturel. « Ajouter
  * un MJ », sous le tableau, ouvre une ligne « Nouveau MJ » en dernier ; après chaque ajout, une
  * ligne vide s'ouvre aussitôt. Quitter la page pendant une saisie l'abandonne sans rien demander.
@@ -63,6 +63,7 @@ import { searchKey } from './nickname';
                     <app-icon [name]="descending() ? 'arrow-down' : 'arrow-up'" />
                   </button>
                 </th>
+                <th scope="col" class="number">Scénarios</th>
                 <th scope="col">Disponibilités</th>
               </tr>
             </thead>
@@ -72,7 +73,8 @@ import { searchKey } from './nickname';
                   <th scope="row">
                     <a [routerLink]="['/mj', row.gameMaster.id]">{{ row.gameMaster.nickname }}</a>
                   </th>
-                  <td>
+                  <td class="scenarios number">{{ row.gameMaster.scenarios.length }}</td>
+                  <td class="availabilities">
                     <span class="visually-hidden">{{ row.summary }}</span>
                     <span class="pips" aria-hidden="true">
                       @for (pip of row.pips; track pip.rank) {
@@ -86,7 +88,7 @@ import { searchKey } from './nickname';
               } @empty {
                 @if (filter()) {
                   <tr>
-                    <td class="none" colspan="2">
+                    <td class="none" colspan="3">
                       Aucun MJ ne correspond
                       <button type="button" appButton="quiet" (click)="clearFilter()">
                         Effacer le filtre
@@ -97,7 +99,7 @@ import { searchKey } from './nickname';
               }
               @for (key of newKeys(); track key) {
                 <tr class="new">
-                  <td colspan="2">
+                  <td colspan="3">
                     <app-new-game-master (added)="onAdded($event)" (cancelled)="closeNew()" />
                   </td>
                 </tr>
@@ -133,6 +135,11 @@ import { searchKey } from './nickname';
       /* Largeur fixe : assez pour la ligne « Nouveau MJ », son champ et ses boutons. */
       table {
         width: 40rem;
+      }
+
+      .number {
+        font-variant-numeric: tabular-nums;
+        text-align: right;
       }
 
       .pips {

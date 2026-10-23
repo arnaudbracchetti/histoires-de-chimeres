@@ -1,5 +1,6 @@
 import { ComparableName } from '../comparable-name.js';
 import { Refusal } from '../refusal.js';
+import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Scenario, type ScenarioDetails } from '../scenario/scenario.js';
 import { GameMaster } from './game-master.js';
 import { Table } from './table.js';
@@ -150,11 +151,14 @@ export class Convention {
   }
 
   /**
-   * Supprime un MJ, et ses disponibilités avec lui (PR-12). Le refus d'un MJ qui a des scénarios
-   * arrivera avec eux.
+   * Supprime un MJ, et ses disponibilités avec lui. Un MJ qui a au moins un scénario reste (PR-12) :
+   * le catalogue, entier, le dit.
    */
-  removeGameMaster(id: string): void {
-    this.state.gameMasters.splice(this.indexOfGameMaster(id), 1);
+  removeGameMaster(id: string, catalogue: ScenarioCatalogue): void {
+    const index = this.indexOfGameMaster(id);
+    const scenarios = catalogue.countOf(id);
+    if (scenarios > 0) throw new Refusal('game-master-has-scenarios', { scenarios });
+    this.state.gameMasters.splice(index, 1);
   }
 
   /** Le MJ se déclare disponible sur un créneau existant (PR-2). Déclarer deux fois ne change rien. */

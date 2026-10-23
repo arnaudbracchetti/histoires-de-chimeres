@@ -22,6 +22,8 @@ export type RefusalParams = {
   'nickname-too-long': { max: number };
   /** `nickname` : le pseudo du MJ qui le porte déjà, tel qu'il s'affiche. */
   'nickname-taken': { nickname: string };
+  /** `scenarios` : le nombre de scénarios du MJ. */
+  'game-master-has-scenarios': { scenarios: number };
   'scenario-not-found': Record<string, never>;
   'scenario-title-required': Record<string, never>;
   'scenario-title-too-long': { max: number };

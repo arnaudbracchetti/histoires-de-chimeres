@@ -1,3 +1,4 @@
+import type { Convention } from '../convention/convention.js';
 import { Refusal } from '../refusal.js';
 import { ContentWarnings } from './content-warnings.js';
 import { Seats } from './seats.js';
@@ -105,6 +106,12 @@ export class Scenario {
   changeDuration(duration: Duration): void {
     this.state.duration = duration;
   }
+
+  /**
+   * Vérifie que le scénario peut être supprimé ; le repository le supprime ensuite. La convention
+   * dira s'il a des parties, refusées avec la programmation (PR-14).
+   */
+  remove(_convention: Convention): void {}
 }
 
 /** Vérifie le contenu, champ par champ dans l'ordre de la saisie, et le renvoie sans les espaces autour. */

@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, input, viewChild } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { scenarioEndpoints, type ScenarioBody, type ScenarioDto } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { apiResource } from '../api-resource';
@@ -9,21 +9,35 @@ import { ScenarioForm } from '../scenarios/scenario-form';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
+import { Confirmation } from '../ui/confirmation';
+import { MoreMenu, type MoreMenuItem } from '../ui/more-menu';
 import { ScenarioIllustration } from '../ui/scenario-illustration';
+
+const MENU: readonly MoreMenuItem[] = [
+  { value: 'remove', label: 'Supprimer le scénario', danger: true },
+];
 
 /**
  * Page d'un scénario : « Scénarios › titre », son MJ, son bandeau, et la saisie de son contenu, de
  * ses places et de sa durée (PR-14). Quitter avec des modifications non enregistrées demande
- * confirmation.
+ * confirmation. La suppression passe par « ⋯ », après confirmation, puis revient à la liste.
  */
 @Component({
   selector: 'app-scenario-page',
-  imports: [Loadable, PageHeader, RouterLink, ScenarioForm, ScenarioIllustration],
+  imports: [Loadable, MoreMenu, PageHeader, RouterLink, ScenarioForm, ScenarioIllustration],
   template: `
     <app-page-header
       [title]="scenario()?.title ?? 'Scénario'"
       [trail]="[{ label: 'Scénarios', link: '/scenarios' }]"
-    />
+    >
+      @if (scenario(); as scenario) {
+        <app-more-menu
+          label="Autres actions sur le scénario"
+          [items]="menu"
+          (selected)="onMenu($event, scenario)"
+        />
+      }
+    </app-page-header>
     <app-loadable [resource]="resource" [failure]="failure()">
       @if (scenario(); as scenario) {
         <p class="game-master">
@@ -80,16 +94,37 @@ export class ScenarioPage implements UnsavedChanges {
   private readonly form = viewChild(ScenarioForm);
   private readonly apiCall = injectApiCall();
   private readonly announcer = inject(Announcer);
+  private readonly confirmation = inject(Confirmation);
+  private readonly router = inject(Router);
+  protected readonly menu = MENU;
+  /** Posé une fois le scénario supprimé : rien ne reste à enregistrer en quittant la page. */
+  private removed = false;
 
   protected readonly update = (body: ScenarioBody) =>
     this.apiCall(scenarioEndpoints.update, { params: { scenarioId: this.id() }, body });
 
   hasUnsavedChanges(): boolean {
-    return this.form()?.hasUnsavedChanges() ?? false;
+    return !this.removed && (this.form()?.hasUnsavedChanges() ?? false);
   }
 
   protected onUpdated(scenario: ScenarioDto): void {
     this.resource.set(scenario);
     this.announcer.announce(`Scénario « ${scenario.title} » enregistré.`);
+  }
+
+  protected onMenu(value: string, scenario: ScenarioDto): void {
+    if (value === 'remove') void this.remove(scenario);
+  }
+
+  private async remove({ id, title }: ScenarioDto) {
+    const removed = await this.confirmation.ask({
+      question: `Supprimer le scénario « ${title} » ?`,
+      confirmLabel: 'Supprimer le scénario',
+      action: () => this.apiCall(scenarioEndpoints.remove, { params: { scenarioId: id } }),
+    });
+    if (!removed) return;
+    this.removed = true;
+    this.announcer.announce(`Scénario « ${title} » supprimé.`);
+    await this.router.navigate(['/scenarios']);
   }
 }

@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import type { ScenarioRepository } from '@chimeres/application';
-import { ContentWarnings, Scenario, Seats, type Duration } from '@chimeres/domain';
+import {
+  ContentWarnings,
+  Scenario,
+  ScenarioCatalogue,
+  Seats,
+  type Duration,
+} from '@chimeres/domain';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { UUID } from '../../prisma/uuid.js';
 
@@ -24,6 +30,11 @@ export class PrismaScenarioRepository implements ScenarioRepository {
     });
   }
 
+  async catalogue(): Promise<ScenarioCatalogue> {
+    const rows = await this.prisma.scenario.findMany({ select: { id: true, gameMasterId: true } });
+    return ScenarioCatalogue.restore(rows);
+  }
+
   async save(scenario: Scenario): Promise<void> {
     const data = {
       title: scenario.title,
@@ -39,5 +50,9 @@ export class PrismaScenarioRepository implements ScenarioRepository {
       create: { id: scenario.id, gameMasterId: scenario.gameMasterId, ...data },
       update: data,
     });
+  }
+
+  async remove(scenario: Scenario): Promise<void> {
+    await this.prisma.scenario.delete({ where: { id: scenario.id } });
   }
 }

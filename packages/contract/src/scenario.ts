@@ -24,10 +24,19 @@ export type ScenarioSummaryDto = {
   imageUrl: string | null;
 };
 
+/** Le MJ d'un scénario, fixé à sa création (PR-16). */
+export type ScenarioGameMasterDto = { id: string; nickname: string };
+
+/** Un scénario, dans la liste de tous les scénarios. */
+export type ScenarioListItemDto = ScenarioSummaryDto & {
+  gameMaster: ScenarioGameMasterDto;
+  /** Nombre de parties programmées. */
+  games: number;
+};
+
 /** Un scénario, sur sa page. */
 export type ScenarioDto = ScenarioSummaryDto & {
-  /** Le MJ, fixé à la création (PR-16). */
-  gameMaster: { id: string; nickname: string };
+  gameMaster: ScenarioGameMasterDto;
   /** En Markdown restreint : paragraphes, gras, italique et listes. */
   presentation: string;
   /** Vide sans avertissement. */
@@ -47,12 +56,14 @@ export type ScenarioBody = {
 
 export type ScenarioParams = { scenarioId: string };
 
-/** Proposer et modifier renvoient le scénario relu. */
+/** La liste est dans l'ordre naturel des titres. Proposer et modifier renvoient le scénario relu. */
 export const scenarioEndpoints = {
+  list: endpoint<ScenarioListItemDto[]>('GET', 'scenarios'),
   read: endpoint<ScenarioDto, ScenarioParams>('GET', 'scenarios/:scenarioId'),
   propose: endpoint<ScenarioDto, GameMasterParams, ScenarioBody>(
     'POST',
     'game-masters/:gameMasterId/scenarios',
   ),
   update: endpoint<ScenarioDto, ScenarioParams, ScenarioBody>('PUT', 'scenarios/:scenarioId'),
+  remove: endpoint<void, ScenarioParams>('DELETE', 'scenarios/:scenarioId'),
 };

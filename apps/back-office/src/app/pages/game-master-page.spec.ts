@@ -223,6 +223,37 @@ describe('GameMasterPage', () => {
     expect(router.url).toBe('/mj');
   });
 
+  it('un MJ qui a un scénario : le refus de l’API s’affiche dans le dialogue, qui ne garde que « Fermer » (PR-12)', async () => {
+    const { http, button, settle, text } = await render();
+    const detail = `Ce MJ a un scénario${NBSP}: supprime-le d'abord.`;
+    const problem: ProblemDto = {
+      type: 'urn:histoires-de-chimeres:problem:game-master-has-scenarios',
+      title: 'MJ avec des scénarios',
+      status: 422,
+      detail,
+      code: 'game-master-has-scenarios',
+    };
+    const dialogButtons = () =>
+      [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')].map(text);
+
+    button('Autres actions sur le MJ')!.click();
+    await settle();
+    [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+      .find((element) => text(element) === 'Supprimer le MJ')!
+      .click();
+    await settle();
+    [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')]
+      .find((b) => text(b) === 'Supprimer le MJ')!
+      .click();
+    http
+      .expectOne(apiUrl(gameMasterEndpoints.remove, { gameMasterId: 'g1' }))
+      .flush(problem, { status: 422, statusText: 'Refus' });
+    await settle();
+
+    expect(text(document.querySelector('[role="alertdialog"] [role="alert"]'))).toBe(detail);
+    expect(dialogButtons()).toEqual(['Fermer']);
+  });
+
   it('un MJ inconnu : un message sobre à la place de la fiche', async () => {
     const { host, text, button } = await render('not-found');
 

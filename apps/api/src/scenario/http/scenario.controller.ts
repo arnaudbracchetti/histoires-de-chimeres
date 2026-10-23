@@ -1,5 +1,21 @@
-import { Body, Controller, Get, Inject, Param, Post, Put } from '@nestjs/common';
-import { ProposeScenario, UpdateScenario, type ScenarioReader } from '@chimeres/application';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
+import {
+  ProposeScenario,
+  RemoveScenario,
+  UpdateScenario,
+  type ScenarioReader,
+} from '@chimeres/application';
 import {
   scenarioEndpoints,
   type ResponseOf,
@@ -17,7 +33,13 @@ export class ScenarioController {
     @Inject(SCENARIO_READER) private readonly reader: ScenarioReader,
     @Inject(ProposeScenario) private readonly proposeScenario: ProposeScenario,
     @Inject(UpdateScenario) private readonly updateScenario: UpdateScenario,
+    @Inject(RemoveScenario) private readonly removeScenario: RemoveScenario,
   ) {}
+
+  @Get(scenarioEndpoints.list.path)
+  list(): Promise<ResponseOf<typeof scenarioEndpoints.list>> {
+    return this.reader.list();
+  }
 
   @Get(scenarioEndpoints.read.path)
   read(
@@ -44,6 +66,14 @@ export class ScenarioController {
   ): Promise<ResponseOf<typeof scenarioEndpoints.update>> {
     await this.updateScenario.execute(scenarioId, body);
     return this.readOrRefuse(scenarioId);
+  }
+
+  @Delete(scenarioEndpoints.remove.path)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(
+    @Param('scenarioId') scenarioId: string,
+  ): Promise<ResponseOf<typeof scenarioEndpoints.remove>> {
+    return this.removeScenario.execute(scenarioId);
   }
 
   /** Un scénario inconnu répond 404, comme le refus du domaine pour une écriture. */

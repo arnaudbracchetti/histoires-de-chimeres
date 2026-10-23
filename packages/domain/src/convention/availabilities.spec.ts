@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Refusal } from '../refusal.js';
+import { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Convention } from './convention.js';
 import { TimeOfDay } from './time-of-day.js';
 
@@ -121,7 +122,7 @@ describe('Disponibilités des MJ (PR-2)', () => {
     convention.declareAvailability('g1', 's1');
     convention.declareAvailability('g2', 's1');
 
-    convention.removeGameMaster('g1');
+    convention.removeGameMaster('g1', ScenarioCatalogue.restore([]));
 
     expect(convention.availabilityCountOf('s1')).toBe(1);
   });

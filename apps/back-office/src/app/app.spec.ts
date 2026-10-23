@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { apiUrl, conventionEndpoints } from '@chimeres/contract';
+import { apiUrl, conventionEndpoints, scenarioEndpoints } from '@chimeres/contract';
 import { App } from './app';
 import { routes } from './app.routes';
 import { Announcer } from './shell/announcer';
@@ -27,13 +27,17 @@ describe('App', () => {
       .expectOne(apiUrl(conventionEndpoints.read))
       .flush({ id: 'c1', name: 'Histoires de Chimères', date: null });
     await navigate('/');
-    return { host: fixture.nativeElement as HTMLElement, navigate };
+    return { host: fixture.nativeElement as HTMLElement, navigate, router, fixture };
   }
 
   it('après une navigation, met le focus sur le h1 de la page', async () => {
-    const { host, navigate } = await render();
+    const { host, router, fixture } = await render();
 
-    await navigate('/scenarios');
+    await router.navigateByUrl('/scenarios');
+    // La page charge ses scénarios : la requête est servie pour que l'application se stabilise.
+    fixture.detectChanges();
+    TestBed.inject(HttpTestingController).expectOne(apiUrl(scenarioEndpoints.list)).flush([]);
+    await fixture.whenStable();
 
     const title = host.querySelector('main h1');
     expect(title?.textContent).toBe('Scénarios');
