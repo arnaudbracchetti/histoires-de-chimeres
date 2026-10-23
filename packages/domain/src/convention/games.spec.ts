@@ -230,21 +230,44 @@ describe('Réserve (PR-6)', () => {
     })),
   );
 
-  it('rend, par créneau, les scénarios dont le MJ est disponible', () => {
-    expect(aConvention().reserve(catalogue)).toEqual([
-      { timeSlotId: 's1', scenarioIds: ['a', 'b', 'c'] },
-      { timeSlotId: 's2', scenarioIds: ['a', 'b'] },
-    ]);
+  /** `réserve` ou `programmé` par créneau, `-` pour ni l'un ni l'autre. */
+  const placesOf = (convention: Convention, scenarios = catalogue) =>
+    Object.fromEntries(
+      convention
+        .reserve(scenarios)
+        .map(({ scenarioId, timeSlots }) => [
+          scenarioId,
+          timeSlots.map(({ inReserve, scheduled }) =>
+            inReserve ? 'réserve' : scheduled ? 'programmé' : '-',
+          ),
+        ]),
+    );
+
+  it("rend, pour chaque scénario d'un créneau, les créneaux où son MJ est disponible", () => {
+    expect(placesOf(aConvention())).toEqual({
+      a: ['réserve', 'réserve'],
+      b: ['réserve', 'réserve'],
+      c: ['réserve', '-'],
+    });
+    expect(aConvention().reserve(catalogue)[0]).toEqual({
+      scenarioId: 'a',
+      timeSlots: [
+        { timeSlotId: 's1', inReserve: true, scheduled: false },
+        { timeSlotId: 's2', inReserve: true, scheduled: false },
+      ],
+      unschedulable: null,
+    });
   });
 
-  it('retire les scénarios dont le MJ mène déjà une partie sur le créneau', () => {
+  it("retire d'un créneau les scénarios dont le MJ y mène déjà une partie", () => {
     const convention = aConvention();
     convention.schedule('p1', neons, 's1', 't1');
 
-    expect(convention.reserve(catalogue)).toEqual([
-      { timeSlotId: 's1', scenarioIds: ['c'] },
-      { timeSlotId: 's2', scenarioIds: ['a', 'b'] },
-    ]);
+    expect(placesOf(convention)).toEqual({
+      a: ['programmé', 'réserve'],
+      b: ['-', 'réserve'],
+      c: ['réserve', '-'],
+    });
   });
 
   it('garde un scénario programmé ailleurs, et ignore les tables libres', () => {
@@ -252,9 +275,43 @@ describe('Réserve (PR-6)', () => {
     convention.schedule('p1', brumes, 's1', 't1');
     convention.schedule('p2', neons, 's1', 't2');
 
-    expect(convention.reserve(catalogue)).toEqual([
-      { timeSlotId: 's1', scenarioIds: [] },
-      { timeSlotId: 's2', scenarioIds: ['a', 'b'] },
-    ]);
+    expect(placesOf(convention)).toEqual({
+      a: ['programmé', 'réserve'],
+      b: ['-', 'réserve'],
+      c: ['programmé', '-'],
+    });
+  });
+
+  it("dit pourquoi un scénario n'a aucun créneau possible : son MJ n'a aucune disponibilité", () => {
+    const convention = aConvention();
+    convention.withdrawAvailability('g2', 's1');
+
+    const [, , brumesReserve] = convention.reserve(catalogue);
+    expect(brumesReserve!.timeSlots.some(({ inReserve }) => inReserve)).toBe(false);
+    expect(brumesReserve!.unschedulable).toMatchObject({
+      code: 'game-master-without-availability',
+      params: { nickname: 'Kaïros' },
+    });
+  });
+
+  it('… ou son MJ mène déjà une autre partie sur chacune de ses disponibilités', () => {
+    const abysses = aScenario('e', 'g2');
+    const withAbysses = ScenarioCatalogue.restore(
+      [neons, ruines, brumes, abysses].map(({ id, gameMasterId, duration }) => ({
+        id,
+        gameMasterId,
+        duration,
+      })),
+    );
+    const convention = aConvention();
+    convention.schedule('p1', brumes, 's1', 't1');
+
+    const [, , brumesReserve, abyssesReserve] = convention.reserve(withAbysses);
+    expect(abyssesReserve!.unschedulable).toMatchObject({
+      code: 'game-master-busy-everywhere',
+      params: { nickname: 'Kaïros' },
+    });
+    // Programmé, un scénario n'est pas oublié : il n'est pas grisé.
+    expect(brumesReserve!.unschedulable).toBeNull();
   });
 });

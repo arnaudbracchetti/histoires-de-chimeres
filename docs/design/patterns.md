@@ -202,11 +202,11 @@ Pensés dès maintenant pour le pilotage du jour J (demande / capacité, PRD §4
 | Vert | `--success` | `circle-check` | correct, complet |
 | Jaune | `--warning` | `triangle-alert` | attention : la demande approche de la capacité |
 | Rouge brique | `--danger` | `octagon-alert` | surcharge, erreur |
-| Neutre | `--text-muted` sur `--surface-3` | propre au sens : `pencil` (places modifiées), `clock` (à venir) | information sans jugement : « double », « places modifiées », « à venir » |
+| Neutre | `--text-muted` sur `--surface-3` | propre au sens : `pencil` (places modifiées), `clock` (à venir), `inbox` (en réserve) | information sans jugement : « double », « places modifiées », « à venir », « en réserve » |
 
 - Une forme d'icône par couleur : aucune information ne passe par la couleur seule. Un statut a **toujours une icône et un libellé**.
 - **Deux formes seulement** :
-  - **pastille** : point, icône et libellé, en ligne, dans un tableau ;
+  - **pastille** : icône et libellé, en ligne, dans un tableau ;
   - **badge** : fond teinté à 14 % et libellé, en pilule, dans une carte.
 - **Jamais un bouton plein** : les statuts voisinent avec l'orange des actions. Seul le bouton destructeur est rouge plein.
 - Un **ratio demande / capacité** s'écrit « 42 / 36 », en chiffres à chasse fixe, à côté de sa pastille.
@@ -237,9 +237,11 @@ La page Calendrier est l'écran d'accueil et le lieu de la programmation.
 Sous la frise, filtré au choix :
 
 - par créneau, chaque filtre portant son nombre de scénarios ;
-- sur « Tous les scénarios », avec une pastille par créneau (en réserve, ou programmé). Un scénario sans aucun créneau possible est grisé, par exemple celui d'un MJ sans disponibilité.
+- sur « Tous les scénarios », avec une pastille par statut, qui liste ses créneaux : « Programmé : créneau 1 », « En réserve : créneaux 2, 3 et 4 ». Le bac est la seule carte qui porte des pastilles. Un scénario ni en réserve ni programmé nulle part est grisé, avec sa raison : par exemple celui d'un MJ sans disponibilité.
 
-Vignettes de 44 px.
+Vignettes de 44 px. Dans un filtre de créneau, un scénario programmé ailleurs porte « Déjà programmé : créneau 1 ».
+
+Chaque carte : vignette, titre et méta en tête, jusqu'au bord ; dessous, sur toute la largeur, les pastilles puis « Programmer sur… », calé à droite. Trois cartes dans la largeur de la frise, chacune à sa hauteur.
 
 ### Fiche de la partie
 

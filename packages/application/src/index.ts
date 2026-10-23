@@ -6,7 +6,7 @@ export {
 } from './convention/convention-repository.js';
 export { UpdateConvention } from './convention/update-convention.js';
 export { ReadPlacements } from './game/read-placements.js';
-export { ReadSchedule } from './game/read-schedule.js';
+export { ReadSchedule, type ReserveScenario, type Schedule } from './game/read-schedule.js';
 export { ScheduleGame } from './game/schedule-game.js';
 export type { ScheduleReader } from './game/schedule-reader.js';
 export { AddGameMaster } from './game-master/add-game-master.js';

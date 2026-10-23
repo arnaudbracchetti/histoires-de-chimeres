@@ -137,6 +137,92 @@ test('le bac de réserve compte les scénarios de chaque créneau (PR-6)', async
   await expect(reserve(page).getByRole('heading', { level: 3 })).toHaveText(['Néons', 'Ruines']);
 });
 
+/** La carte d'un scénario dans le bac de réserve. */
+const reserveCard = (page: Page, title: string) =>
+  reserve(page)
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('heading', { level: 3, name: title }) });
+
+test('« Tous les scénarios » donne une pastille par statut : programmé, en réserve', async ({
+  page,
+}) => {
+  const { neons, slot1, tableId } = await prepare(page);
+  await post(page, apiUrl(scheduleEndpoints.schedule), {
+    scenarioId: neons.id,
+    timeSlotId: slot1,
+    tableId: tableId('Table 1'),
+  });
+  await page.goto('/gestion/');
+
+  const all = reserve(page).getByRole('button', { name: /^Tous les scénarios / });
+  await expect(all).toHaveAccessibleName('Tous les scénarios · 3 scénarios');
+  await all.click();
+  await expect(all).toHaveAttribute('aria-pressed', 'true');
+  await expect(reserve(page).getByRole('heading', { level: 3 })).toHaveText([
+    'Brumes',
+    'Néons',
+    'Ruines',
+  ]);
+  const pastilles = (title: string) =>
+    reserveCard(page, title).getByRole('list', { name: 'Créneaux' }).getByRole('listitem');
+  await expect(pastilles('Néons')).toHaveText([
+    `Programmé${NBSP}: créneau 1`,
+    `En réserve${NBSP}: créneau 2`,
+  ]);
+  await expect(pastilles('Ruines')).toHaveText([`En réserve${NBSP}: créneau 2`]);
+  await expect(pastilles('Brumes')).toHaveText([`En réserve${NBSP}: créneau 1`]);
+});
+
+test("le scénario d'un MJ sans disponibilité est grisé, avec sa raison", async ({ page }) => {
+  await prepare(page);
+  const gameMasters: GameMasterDto[] = await post(page, apiUrl(gameMasterEndpoints.add), {
+    nickname: 'Morgane',
+  });
+  const morgane = gameMasters.find(({ nickname }) => nickname === 'Morgane')!;
+  await post(page, apiUrl(scenarioEndpoints.propose, { gameMasterId: morgane.id }), {
+    title: 'Abysses',
+    system: 'Cthulhu',
+    presentation: 'Une enquête.',
+    contentWarnings: '',
+    seats: { min: 3, max: 5 },
+    duration: 1,
+  });
+  await page.goto('/gestion/');
+
+  await expect(reserveCard(page, 'Abysses')).toHaveCount(0);
+  await reserve(page)
+    .getByRole('button', { name: /^Tous les scénarios / })
+    .click();
+  const card = reserveCard(page, 'Abysses');
+  await expect(card).toContainText(
+    `Morgane n'a aucune disponibilité${NBSP}: coche ses créneaux sur sa fiche.`,
+  );
+  await expect(card.getByRole('button', { name: 'Programmer sur…' })).toHaveCount(0);
+  await expect(card.getByRole('list', { name: 'Créneaux' })).toHaveCount(0);
+  await expect(card).toHaveClass(/unschedulable/);
+});
+
+test("dans le filtre d'un créneau, un scénario programmé ailleurs porte une mention (PR-3, PR-6)", async ({
+  page,
+}) => {
+  const { neons, slot1, tableId } = await prepare(page);
+  await post(page, apiUrl(scheduleEndpoints.schedule), {
+    scenarioId: neons.id,
+    timeSlotId: slot1,
+    tableId: tableId('Table 1'),
+  });
+  await page.goto('/gestion/');
+
+  await reserve(page)
+    .getByRole('button', { name: /^Créneau 2 / })
+    .click();
+  await expect(reserveCard(page, 'Néons')).toContainText(`Déjà programmé${NBSP}: créneau 1`);
+  await expect(reserveCard(page, 'Ruines')).not.toContainText('Déjà programmé');
+  await expect(
+    reserveCard(page, 'Néons').getByRole('button', { name: 'Programmer sur…' }),
+  ).toBeVisible();
+});
+
 test('programmer par « Programmer sur… » : la partie entre dans la frise (PR-3)', async ({
   page,
 }) => {

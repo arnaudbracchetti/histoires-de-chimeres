@@ -31,7 +31,6 @@ import { ScheduleTimeline } from './schedule-timeline';
           <app-reserve-tray
             [timeSlots]="convention().timeSlots"
             [reserve]="schedule.value().reserve"
-            [scenarios]="schedule.value().scenarios"
             (scheduleOn)="scheduleOn($event)"
           />
         </section>

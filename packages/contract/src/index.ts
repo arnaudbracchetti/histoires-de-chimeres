@@ -52,10 +52,11 @@ export {
   scheduleEndpoints,
   type GameDto,
   type PlacementDto,
-  type ReserveDto,
+  type ReserveScenarioDto,
   type ScheduleDto,
   type ScheduleGameBody,
   type ScheduleScenarioDto,
+  type VerdictRefusalDto,
 } from './schedule.js';
 export {
   TABLE_NAME_MAX_LENGTH,

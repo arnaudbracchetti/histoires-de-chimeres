@@ -31,6 +31,9 @@ export type RefusalParams = {
   /** `nickname` : le pseudo du MJ ; `rank` : le rang du créneau. */
   'game-master-unavailable': { nickname: string; rank: number };
   'game-master-busy': { nickname: string; rank: number };
+  /** `nickname` : le pseudo du MJ, dont un scénario n'est en réserve sur aucun créneau (PR-6). */
+  'game-master-without-availability': { nickname: string };
+  'game-master-busy-everywhere': { nickname: string };
   /** `table` : le nom de la table ; `rank` : le rang du créneau. */
   'table-taken': { table: string; rank: number };
   'scenario-not-found': Record<string, never>;

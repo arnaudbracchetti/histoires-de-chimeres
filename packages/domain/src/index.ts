@@ -3,7 +3,7 @@ export {
   Convention,
   type ConventionState,
   type Placement,
-  type ReserveOfTimeSlot,
+  type ReserveOfScenario,
 } from './convention/convention.js';
 export { Game } from './convention/game.js';
 export { GameMaster } from './convention/game-master.js';

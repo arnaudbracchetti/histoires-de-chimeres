@@ -129,6 +129,16 @@ export const problemCatalogue: Catalogue = {
     detail: ({ nickname, rank }) =>
       `${nickname} mène déjà une partie sur le créneau ${rank} : choisis un autre créneau.`,
   },
+  'game-master-without-availability': {
+    title: 'MJ sans disponibilité',
+    detail: ({ nickname }) =>
+      `${nickname} n'a aucune disponibilité : coche ses créneaux sur sa fiche.`,
+  },
+  'game-master-busy-everywhere': {
+    title: 'MJ occupé partout',
+    detail: ({ nickname }) =>
+      `${nickname} mène déjà une partie sur chacune de ses disponibilités : coche-lui un autre créneau sur sa fiche, ou déprogramme une partie.`,
+  },
   'table-taken': {
     title: 'Table prise',
     detail: ({ table, rank }) =>

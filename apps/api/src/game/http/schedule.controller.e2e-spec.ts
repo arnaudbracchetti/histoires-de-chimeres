@@ -95,10 +95,17 @@ describe('Programme', () => {
     server().post(apiUrl(scheduleEndpoints.schedule)).send(body);
   const placements = (scenarioId: string) =>
     server().get(apiUrl(scheduleEndpoints.placements, { scenarioId }));
+  /** Les titres en réserve, créneau par créneau. */
   const reserveTitles = (dto: ScheduleDto) =>
-    dto.reserve.map(({ scenarioIds }) =>
-      scenarioIds.map((id) => dto.scenarios.find((s) => s.id === id)!.title).sort(),
+    convention.timeSlots.map((_, index) =>
+      dto.reserve.filter(({ timeSlots }) => timeSlots[index]!.inReserve).map(({ title }) => title),
     );
+  const placeOf = (dto: ScheduleDto, title: string) =>
+    dto.reserve
+      .find((scenario) => scenario.title === title)!
+      .timeSlots.map(({ inReserve, scheduled }) =>
+        inReserve ? 'réserve' : scheduled ? 'programmé' : '-',
+      );
 
   it('lit un programme vide, avec la réserve de chaque créneau (PR-6)', async () => {
     const dto = await read();
@@ -108,8 +115,44 @@ describe('Programme', () => {
       ['Brumes', 'Néons', 'Ruines'],
       ['Néons', 'Ruines'],
     ]);
-    expect(dto.scenarios.map(({ title }) => title)).toEqual(['Brumes', 'Néons', 'Ruines']);
-    expect(dto.scenarios[0]).toMatchObject({ gameMaster: { id: kairos.id, nickname: 'Kaïros' } });
+    expect(dto.reserve.map(({ title }) => title)).toEqual(['Brumes', 'Néons', 'Ruines']);
+    expect(dto.reserve[0]).toMatchObject({
+      gameMaster: { id: kairos.id, nickname: 'Kaïros' },
+      timeSlots: [
+        { timeSlotId: slot(1), inReserve: true, scheduled: false },
+        { timeSlotId: slot(2), inReserve: false, scheduled: false },
+      ],
+      unschedulable: null,
+    });
+  });
+
+  it('garde en réserve un scénario programmé sur un autre créneau (PR-3, PR-6)', async () => {
+    await schedule({
+      scenarioId: neons.id,
+      timeSlotId: slot(1),
+      tableId: table('Table 1'),
+    }).expect(201);
+
+    const dto = await read();
+    expect(placeOf(dto, 'Néons')).toEqual(['programmé', 'réserve']);
+    expect(placeOf(dto, 'Ruines')).toEqual(['-', 'réserve']);
+    expect(dto.reserve.find(({ title }) => title === 'Néons')!.unschedulable).toBeNull();
+  });
+
+  it("donne le scénario d'un MJ sans disponibilité, sans créneau possible et avec sa raison", async () => {
+    await server()
+      .delete(
+        apiUrl(availabilityEndpoints.withdraw, { gameMasterId: kairos.id, timeSlotId: slot(1) }),
+      )
+      .expect(200);
+
+    const dto = await read();
+    expect(placeOf(dto, 'Brumes')).toEqual(['-', '-']);
+    expect(dto.reserve.find(({ title }) => title === 'Brumes')!.unschedulable).toEqual({
+      code: 'game-master-without-availability',
+      title: 'MJ sans disponibilité',
+      detail: "Kaïros n'a aucune disponibilité : coche ses créneaux sur sa fiche.",
+    });
   });
 
   it('programme une partie, et renvoie le programme relu (PR-3)', async () => {

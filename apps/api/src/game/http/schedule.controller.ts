@@ -1,6 +1,11 @@
 import { Body, Controller, Get, Inject, Param, Post } from '@nestjs/common';
-import { ReadPlacements, ReadSchedule, ScheduleGame } from '@chimeres/application';
-import { scheduleEndpoints, type ResponseOf, type ScheduleGameBody } from '@chimeres/contract';
+import { ReadPlacements, ReadSchedule, ScheduleGame, type Schedule } from '@chimeres/application';
+import {
+  scheduleEndpoints,
+  type ResponseOf,
+  type ScheduleGameBody,
+  type VerdictRefusalDto,
+} from '@chimeres/contract';
 import { Refusal } from '@chimeres/domain';
 import { messageOf } from '../../http/problem-catalogue.js';
 import { ZodBody } from '../../http/zod-body.pipe.js';
@@ -15,8 +20,8 @@ export class ScheduleController {
   ) {}
 
   @Get(scheduleEndpoints.read.path)
-  read(): Promise<ResponseOf<typeof scheduleEndpoints.read>> {
-    return this.readSchedule.execute();
+  async read(): Promise<ResponseOf<typeof scheduleEndpoints.read>> {
+    return toDto(await this.readSchedule.execute());
   }
 
   /** Chaque case refusée porte le motif et la phrase du refus que l'écriture lèverait. */
@@ -29,7 +34,7 @@ export class ScheduleController {
     return placements.map(({ timeSlotId, tableId, refusal }) => ({
       timeSlotId,
       tableId,
-      refusal: refusal && { code: refusal.code, ...messageOf(refusal.code, refusal.params) },
+      refusal: refusal && verdictOf(refusal),
     }));
   }
 
@@ -39,6 +44,21 @@ export class ScheduleController {
     @Body(new ZodBody(scheduleGameBodySchema)) body: ScheduleGameBody,
   ): Promise<ResponseOf<typeof scheduleEndpoints.schedule>> {
     await this.scheduleGame.execute(body);
-    return this.readSchedule.execute();
+    return toDto(await this.readSchedule.execute());
   }
+}
+
+/** Un scénario sans créneau possible porte le motif et la phrase de son refus. */
+function toDto({ games, reserve }: Schedule): ResponseOf<typeof scheduleEndpoints.read> {
+  return {
+    games,
+    reserve: reserve.map(({ unschedulable, ...scenario }) => ({
+      ...scenario,
+      unschedulable: unschedulable && verdictOf(unschedulable),
+    })),
+  };
+}
+
+function verdictOf({ code, params }: Refusal): VerdictRefusalDto {
+  return { code, ...messageOf(code, params) };
 }

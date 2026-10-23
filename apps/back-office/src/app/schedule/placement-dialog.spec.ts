@@ -60,7 +60,7 @@ const PLACEMENTS: PlacementDto[] = [
   { timeSlotId: 's2', tableId: 't2', refusal: refused('game-master-busy') },
 ];
 
-const SCHEDULE: ScheduleDto = { games: [], reserve: [], scenarios: [] };
+const SCHEDULE: ScheduleDto = { games: [], reserve: [] };
 
 describe('PlacementDialog', () => {
   beforeEach(() => {

@@ -21,16 +21,24 @@ export type GameDto = {
   scenario: ScheduleScenarioDto;
 };
 
-/** La réserve d'un créneau (PR-6). */
-export type ReserveDto = { timeSlotId: string; scenarioIds: string[] };
+/** Un refus du domaine, avec son motif court et sa phrase. */
+export type VerdictRefusalDto = { code: RefusalCode; title: string; detail: string };
 
-/** Le programme, et la réserve de chaque créneau. */
+/**
+ * Un scénario d'un créneau dans la réserve (PR-6). Sur chaque créneau, dans l'ordre de la journée :
+ * s'il y est en réserve, et s'il y est programmé ; les deux s'excluent. `unschedulable` : pourquoi
+ * il n'est ni en réserve ni programmé nulle part, ou `null`.
+ */
+export type ReserveScenarioDto = ScheduleScenarioDto & {
+  timeSlots: { timeSlotId: string; inReserve: boolean; scheduled: boolean }[];
+  unschedulable: VerdictRefusalDto | null;
+};
+
+/** Le programme, et la réserve. */
 export type ScheduleDto = {
   games: GameDto[];
-  /** Dans l'ordre de la journée. */
-  reserve: ReserveDto[];
-  /** Les scénarios de la réserve, dans l'ordre naturel de leur titre. */
-  scenarios: ScheduleScenarioDto[];
+  /** Tous les scénarios d'un créneau, dans l'ordre naturel de leur titre. */
+  reserve: ReserveScenarioDto[];
 };
 
 /**
@@ -40,7 +48,7 @@ export type ScheduleDto = {
 export type PlacementDto = {
   timeSlotId: string;
   tableId: string;
-  refusal: { code: RefusalCode; title: string; detail: string } | null;
+  refusal: VerdictRefusalDto | null;
 };
 
 export type ScheduleGameBody = { scenarioId: string; timeSlotId: string; tableId: string };

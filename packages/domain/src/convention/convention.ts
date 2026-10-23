@@ -231,22 +231,32 @@ export class Convention {
   }
 
   /**
-   * La réserve de chaque créneau (PR-6) : les scénarios d'un créneau dont le MJ y est disponible et
-   * n'y mène aucune partie, même programmés ailleurs. Les tables libres n'y comptent pas.
+   * La réserve (PR-6). Pour chaque scénario d'un seul créneau, et pour chaque créneau, dit :
+   * - s'il est en réserve sur ce créneau : son MJ y est disponible et n'y mène pas déjà une partie.
+   *   Peu importe qu'il soit déjà programmé sur un autre créneau, ou qu'une table soit libre ;
+   * Un scénario ni en réserve ni programmé nulle part donne la raison dans `unschedulable`.
+   * Un scénario en réserve sur aucun créneau donne la raison dans `unschedulable`.
+   * Les scénarios suivent l'ordre du catalogue.
    */
-  reserve(catalogue: ScenarioCatalogue): ReserveOfTimeSlot[] {
-    return this.timeSlots.map((slot) => ({
-      timeSlotId: slot.id,
-      scenarioIds: catalogue
-        .entries()
-        .filter(
-          (entry) =>
-            entry.duration === 1 &&
-            this.gameMasterOf(entry.gameMasterId).isAvailableOn(slot.id) &&
-            !this.runsGameOn(entry.gameMasterId, slot.id),
-        )
-        .map(({ id }) => id),
-    }));
+  reserve(catalogue: ScenarioCatalogue): ReserveOfScenario[] {
+    return catalogue
+      .entries()
+      .filter((entry) => entry.duration === 1)
+      .map((entry) => {
+        const gameMaster = this.gameMasterOf(entry.gameMasterId);
+        const timeSlots = this.timeSlots.map((slot) => ({
+          timeSlotId: slot.id,
+          inReserve: gameMaster.isAvailableOn(slot.id) && !this.runsGameOn(gameMaster.id, slot.id),
+          scheduled: this.isScheduledOn(entry.id, slot.id),
+        }));
+        return {
+          scenarioId: entry.id,
+          timeSlots,
+          unschedulable: timeSlots.some(({ inReserve, scheduled }) => inReserve || scheduled)
+            ? null
+            : this.unschedulableRefusalOf(gameMaster),
+        };
+      });
   }
 
   /**
@@ -277,6 +287,18 @@ export class Convention {
       return new Refusal('table-taken', { table: table.name.text, rank });
     }
     return null;
+  }
+
+  /** Pourquoi un scénario du MJ n'est ni en réserve ni programmé nulle part. */
+  private unschedulableRefusalOf(gameMaster: GameMaster): Refusal {
+    const nickname = gameMaster.nickname.text;
+    return this.timeSlots.some((slot) => gameMaster.isAvailableOn(slot.id))
+      ? new Refusal('game-master-busy-everywhere', { nickname })
+      : new Refusal('game-master-without-availability', { nickname });
+  }
+
+  private isScheduledOn(scenarioId: string, timeSlotId: string): boolean {
+    return this.state.games.some((game) => game.scenarioId === scenarioId && game.isOn(timeSlotId));
   }
 
   private runsGameOn(gameMasterId: string, timeSlotId: string): boolean {
@@ -362,5 +384,14 @@ export class Convention {
 /** Le verdict d'une case créneau × table pour un scénario : le refus d'écriture, ou `null`. */
 export type Placement = { timeSlotId: string; tableId: string; refusal: Refusal | null };
 
-/** Les scénarios de la réserve d'un créneau, dans l'ordre du catalogue. */
-export type ReserveOfTimeSlot = { timeSlotId: string; scenarioIds: string[] };
+/**
+ * La place d'un scénario dans la réserve : sur chaque créneau, dans l'ordre de la journée, s'il y
+ * est en réserve et s'il y est programmé. Les deux s'excluent : son MJ y mènerait déjà une partie.
+ * `unschedulable` : le refus qui explique pourquoi il n'est ni en réserve ni programmé nulle part,
+ * ou `null`.
+ */
+export type ReserveOfScenario = {
+  scenarioId: string;
+  timeSlots: { timeSlotId: string; inReserve: boolean; scheduled: boolean }[];
+  unschedulable: Refusal | null;
+};
