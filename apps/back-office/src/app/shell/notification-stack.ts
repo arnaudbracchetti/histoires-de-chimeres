@@ -1,11 +1,12 @@
 import { Component, inject } from '@angular/core';
-import { Icon } from '../icon';
+import { Button } from '../ui/button';
+import { Icon } from '../ui/icon';
 import { Notifications } from './notifications';
 
 /** Les notifications d'erreur, en bas à droite. */
 @Component({
   selector: 'app-notification-stack',
-  imports: [Icon],
+  imports: [Button, Icon],
   template: `
     @for (notice of notifications.notices(); track notice.id) {
       <div class="notice" role="alert">
@@ -17,7 +18,7 @@ import { Notifications } from './notifications';
         </div>
         <button
           type="button"
-          class="close"
+          appButton="icon"
           aria-label="Fermer"
           title="Fermer"
           (click)="notifications.close(notice.id)"
@@ -56,22 +57,6 @@ import { Notifications } from './notifications';
 
       p {
         color: var(--text-muted);
-      }
-
-      .close {
-        display: grid;
-        place-items: center;
-        padding: var(--space-xs);
-        border: none;
-        border-radius: var(--radius-control);
-        background: none;
-        color: var(--text-muted);
-        cursor: pointer;
-
-        &:hover {
-          background: var(--surface-3);
-          color: var(--text);
-        }
       }
     }
   `,

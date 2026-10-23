@@ -1,7 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { afterNextRender, inject, Injector } from '@angular/core';
 import { isFieldTree, type FieldTree, type ValidationError } from '@angular/forms/signals';
 import type { ProblemDto } from '@chimeres/contract';
-import type { ErrorNotice } from './shell/notifications';
+import { Notifications, type ErrorNotice } from './shell/notifications';
 
 /** Ce qu'un formulaire affiche d'une écriture refusée (docs/design/patterns.md, Validation). */
 export type FormProblem = {
@@ -58,4 +59,23 @@ export function toSubmissionErrors(
 /** Met le focus au premier champ en erreur. */
 export function focusFirstError(form: FieldTree<unknown>): void {
   form().errorSummary()[0]?.fieldTree().focusBoundControl();
+}
+
+/**
+ * Renvoie le traitement d'une écriture refusée, pour l'`action` de `submit()` : les erreurs de
+ * champ vont sous leur champ (valeur renvoyée à `submit()`), le reste en notification, et le focus
+ * au premier champ en erreur. À créer dans un contexte d'injection (champ d'un composant).
+ */
+export function injectSubmissionFailure(): (
+  error: unknown,
+  form: FieldTree<unknown>,
+) => ValidationError.WithFieldTree[] {
+  const notifications = inject(Notifications);
+  const injector = inject(Injector);
+  return (error, form) => {
+    const { errors, alert } = toSubmissionErrors(readProblem(error), form);
+    if (alert) notifications.error(alert);
+    afterNextRender(() => focusFirstError(form), { injector });
+    return errors;
+  };
 }

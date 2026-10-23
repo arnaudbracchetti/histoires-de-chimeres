@@ -262,7 +262,8 @@ describe('TimeSlotList', () => {
     await settle();
     expect(text(editor()?.querySelector('h3'))).toBe('Modifier le créneau 1');
     expect([input('Début').value, input('Fin').value]).toEqual(['09:00', '11:30']);
-    expect(host.querySelector('ol')?.classList).toContain('busy');
+    // Les autres cartes s'estompent le temps de la saisie.
+    expect(host.querySelector('article.card:not(.editing)')?.classList).toContain('dimmed');
     await type('Fin', '12:00');
     button('Enregistrer').click();
     await settle();

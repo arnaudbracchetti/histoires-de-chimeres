@@ -1,99 +1,78 @@
-import {
-  afterNextRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  Injector,
-  input,
-  linkedSignal,
-  output,
-  signal,
-  viewChild,
-} from '@angular/core';
-import { form, FormField, submit, validate } from '@angular/forms/signals';
+import { Component, inject, input, linkedSignal, output } from '@angular/core';
+import { form, FormField, validate, type ValidationError } from '@angular/forms/signals';
 import { TABLE_NAME_MAX_LENGTH, tableEndpoints, type TableDto } from '@chimeres/contract';
-import { injectApiCall } from '../api-call';
 import { ConventionStore } from '../convention/convention-store';
-import { focusFirstError, readProblem, toSubmissionErrors } from '../problem';
+import { focusFirstError, injectSubmissionFailure } from '../problem';
 import { Announcer } from '../shell/announcer';
-import { Notifications } from '../shell/notifications';
 import { Button } from '../ui/button';
+import { CardForm } from '../ui/card-form';
+import { Field } from '../ui/field';
 import { IconTile } from '../ui/icon-tile';
 
-let nextId = 0;
-
 /**
- * Carte d'une table en saisie (docs/design/patterns.md, Tables), de la même taille qu'une carte au
- * repos : « Ajouter la table » ou « Enregistrer », ou Entrée, enregistre ; « Annuler », ou Échap,
- * ferme. L'erreur s'affiche dans une bulle sous la carte, par-dessus : elle ne décale rien.
+ * Contenu d'une carte de table en saisie (docs/design/patterns.md, Tables), dans un
+ * `article[appCard]` de la même taille qu'au repos : « Ajouter la table » ou « Enregistrer », ou
+ * Entrée, enregistre ; « Annuler », ou Échap, ferme. L'erreur s'affiche en bulle sous la carte.
  */
 @Component({
-  selector: 'article[appTableEditor]',
-  imports: [Button, FormField, IconTile],
+  selector: 'app-table-editor',
+  imports: [Button, Field, FormField, IconTile],
   host: {
-    class: 'editing',
-    '(keydown.enter)': 'onEnter($event)',
-    '(keydown.escape)': '$event.preventDefault(); cancel()',
+    '(keydown.enter)': 'card.onEnter($event)',
+    '(keydown.escape)': 'card.onEscape($event)',
   },
   template: `
     <div class="heading">
       <app-icon-tile name="dices" />
-      <input
-        #name
-        type="text"
-        autocomplete="off"
-        placeholder="Nom de la table"
-        [attr.aria-label]="
-          table() ? 'Nom de la table ' + table()!.name : 'Nom de la nouvelle table'
-        "
-        [formField]="form.name"
-        [attr.aria-invalid]="!!error()"
-        [attr.aria-describedby]="error() ? id + '-error' : null"
-      />
+      <app-field
+        [label]="table() ? 'Nom de la table ' + table()!.name : 'Nom de la nouvelle table'"
+        labelHidden
+        compact
+        [attempted]="card.attempted()"
+      >
+        <input
+          type="text"
+          autocomplete="off"
+          placeholder="Nom de la table"
+          [formField]="form.name"
+        />
+      </app-field>
     </div>
     <div class="buttons">
-      <button type="button" appButton="primary" (click)="save()">
-        {{ submitting() ? 'Enregistrement…' : table() ? 'Enregistrer' : 'Ajouter la table' }}
+      <button type="button" appButton="primary" (click)="card.save()">
+        {{ card.submitting() ? 'Enregistrement…' : table() ? 'Enregistrer' : 'Ajouter la table' }}
       </button>
-      <button type="button" appButton="quiet" (click)="cancel()">Annuler</button>
+      <button type="button" appButton="quiet" (click)="card.cancel()">Annuler</button>
     </div>
-    @if (error()) {
-      <p class="error" [id]="id + '-error'">{{ error() }}</p>
-    }
   `,
   styles: `
     @layer components {
+      :host {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        justify-content: space-between;
+        min-width: 0;
+      }
+
       .heading {
         display: flex;
         gap: var(--space-s);
         align-items: center;
       }
 
-      input {
+      app-field {
         flex: 1;
-        width: 100%;
         min-width: 0;
+      }
+
+      input {
+        width: 100%;
       }
 
       .buttons {
         display: flex;
         gap: var(--space-xs);
-      }
-
-      /* Bulle sous la carte, par-dessus : l'erreur qui apparaît ne décale rien. */
-      .error {
-        position: absolute;
-        top: calc(100% + var(--space-xxs));
-        left: 0;
-        z-index: 2;
-        padding: var(--space-xs) var(--space-s);
-        border: 1px solid var(--danger);
-        border-radius: var(--radius-control);
-        background: var(--surface-2);
-        color: var(--danger);
-        font-size: var(--font-size-meta);
-        white-space: nowrap;
       }
     }
   `,
@@ -106,20 +85,10 @@ export class TableEditor {
   readonly cancelled = output<void>();
 
   private readonly store = inject(ConventionStore);
-  private readonly apiCall = injectApiCall();
   private readonly announcer = inject(Announcer);
-  private readonly notifications = inject(Notifications);
-  private readonly injector = inject(Injector);
-  private readonly nameInput = viewChild.required<ElementRef<HTMLInputElement>>('name');
-  protected readonly id = `table-editor-${nextId++}`;
+  private readonly failure = injectSubmissionFailure();
 
   private readonly model = linkedSignal(() => ({ name: this.table()?.name ?? '' }));
-  /** Un enregistrement a été tenté : un nom manquant se signale dès lors, pas avant. */
-  private readonly attempted = signal(false);
-  /** Un enregistrement est en cours, de l'appel à `submit()` jusqu'à sa réponse. */
-  private saving = false;
-  /** Pendant l'envoi, « Enregistrer » passe en « Enregistrement… ». */
-  readonly submitting = computed(() => this.form().submitting());
 
   protected readonly form = form(
     this.model,
@@ -146,58 +115,20 @@ export class TableEditor {
     },
   );
 
-  /**
-   * L'erreur du champ quitté. Un nom manquant attend la tentative d'enregistrement : quitter un
-   * champ vide pour cliquer « Annuler » n'affiche rien.
-   */
-  protected readonly error = computed(() => {
-    const state = this.form.name();
-    if (!state.touched()) return undefined;
-    return state.errors().find(({ kind }) => kind !== 'required' || this.attempted())?.message;
-  });
+  protected readonly card = new CardForm(this.form, this.cancelled);
 
-  constructor() {
-    afterNextRender(() => this.nameInput().nativeElement.focus());
-  }
-
-  /** Entrée dans le champ enregistre. */
-  protected onEnter(event: Event) {
-    if (!(event.target instanceof HTMLInputElement)) return;
-    event.preventDefault();
-    this.save();
-  }
-
-  save() {
-    this.attempted.set(true);
-    this.saving = true;
-    void submit(this.form).finally(() => (this.saving = false));
-  }
-
-  /** Ferme la saisie sans rien enregistrer. Sans effet pendant un enregistrement, qui serait sinon perdu. */
-  cancel() {
-    if (this.saving) return;
-    this.cancelled.emit();
-  }
-
-  private async write() {
+  private async write(): Promise<ValidationError.WithFieldTree[] | undefined> {
     const name = this.model().name.trim();
     const table = this.table();
     try {
-      const convention = table
-        ? await this.apiCall(tableEndpoints.rename, {
-            params: { tableId: table.id },
-            body: { name },
-          })
-        : await this.apiCall(tableEndpoints.add, { body: { name } });
-      this.store.convention.set(convention);
+      await (table
+        ? this.store.write(tableEndpoints.rename, { params: { tableId: table.id }, body: { name } })
+        : this.store.write(tableEndpoints.add, { body: { name } }));
       this.announcer.announce(`Table « ${name} » enregistrée.`);
       this.saved.emit();
       return undefined;
     } catch (error) {
-      const { errors, alert } = toSubmissionErrors(readProblem(error), this.form);
-      if (alert) this.notifications.error(alert);
-      afterNextRender(() => focusFirstError(this.form), { injector: this.injector });
-      return errors;
+      return this.failure(error, this.form);
     }
   }
 }

@@ -1,24 +1,12 @@
-import {
-  afterNextRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  Injector,
-  input,
-  linkedSignal,
-  output,
-  signal,
-  viewChild,
-} from '@angular/core';
-import { form, FormField, required, submit, validate } from '@angular/forms/signals';
+import { Component, computed, inject, input, linkedSignal, output } from '@angular/core';
+import { form, FormField, required, validate, type ValidationError } from '@angular/forms/signals';
 import { timeSlotEndpoints, type TimeSlotDto } from '@chimeres/contract';
-import { injectApiCall } from '../api-call';
 import { ConventionStore } from '../convention/convention-store';
-import { focusFirstError, readProblem, toSubmissionErrors } from '../problem';
+import { focusFirstError, injectSubmissionFailure } from '../problem';
 import { Announcer } from '../shell/announcer';
-import { Notifications } from '../shell/notifications';
 import { Button } from '../ui/button';
+import { CardForm } from '../ui/card-form';
+import { Field } from '../ui/field';
 import { formatDuration, minutesOf, normalizeTime, timeOf, timeSlotLabel } from './time-format';
 
 /** Durée habituelle d'un créneau : la fin d'un nouveau créneau est proposée d'après elle. */
@@ -30,18 +18,20 @@ type HoursModel = { start: string; end: string };
 let nextId = 0;
 
 /**
- * Carte d'un créneau en saisie (docs/design/patterns.md, Créneaux) : « Ajouter le créneau » ou
- * « Enregistrer », ou Entrée, enregistre ; « Annuler », ou Échap, ferme. Un nouveau créneau
- * commence à `proposedStart`, et sa fin est proposée 2 h 30 après le début tant qu'on ne l'a pas
- * saisie. Les heures se saisissent sur 24 heures. Chaque erreur a sa ligne réservée sous son champ.
+ * Contenu d'une carte de créneau en saisie (docs/design/patterns.md, Créneaux), dans un
+ * `article[appCard]` : « Ajouter le créneau » ou « Enregistrer », ou Entrée, enregistre ;
+ * « Annuler », ou Échap, ferme. Un nouveau créneau commence à `proposedStart`, et sa fin est
+ * proposée 2 h 30 après le début tant qu'on ne l'a pas saisie. Les heures se saisissent sur
+ * 24 heures. Chaque erreur a sa ligne réservée sous son champ.
  */
 @Component({
-  selector: 'article[appTimeSlotEditor]',
-  imports: [Button, FormField],
+  selector: 'app-time-slot-editor',
+  imports: [Button, Field, FormField],
   host: {
+    role: 'group',
     '[attr.aria-labelledby]': "id + '-title'",
-    '(keydown.enter)': 'onEnter($event)',
-    '(keydown.escape)': '$event.preventDefault(); cancel()',
+    '(keydown.enter)': 'card.onEnter($event)',
+    '(keydown.escape)': 'card.onEscape($event)',
   },
   template: `
     <p class="mode">Saisie en cours</p>
@@ -49,46 +39,44 @@ let nextId = 0;
       {{ timeSlot() ? 'Modifier le créneau ' + timeSlot()!.rank : 'Nouveau créneau' }}
     </h3>
     <div class="fields">
-      <div class="field">
-        <label [for]="id + '-start'">Début</label>
+      <app-field label="Début" [attempted]="card.attempted()">
         <input
-          #start
-          [id]="id + '-start'"
           type="text"
           placeholder="hh:mm"
           autocomplete="off"
           [formField]="form.start"
           (input)="proposeEnd($any($event.target).value)"
-          [attr.aria-invalid]="!!startError()"
-          [attr.aria-describedby]="startError() ? id + '-start-error' : null"
         />
-        <p class="error" [id]="id + '-start-error'">{{ startError() }}</p>
-      </div>
-      <div class="field">
-        <label [for]="id + '-end'">Fin</label>
+      </app-field>
+      <app-field label="Fin" [attempted]="card.attempted()">
         <input
-          [id]="id + '-end'"
           type="text"
           placeholder="hh:mm"
           autocomplete="off"
           [formField]="form.end"
           (input)="endEntered = true"
-          [attr.aria-invalid]="!!endError()"
-          [attr.aria-describedby]="endError() ? id + '-end-error' : null"
         />
-        <p class="error" [id]="id + '-end-error'">{{ endError() }}</p>
-      </div>
+      </app-field>
       <p class="duration">{{ duration() || '—' }}</p>
     </div>
     <div class="buttons">
-      <button type="button" appButton="primary" (click)="save()">
-        {{ submitting() ? 'Enregistrement…' : timeSlot() ? 'Enregistrer' : 'Ajouter le créneau' }}
+      <button type="button" appButton="primary" (click)="card.save()">
+        {{
+          card.submitting() ? 'Enregistrement…' : timeSlot() ? 'Enregistrer' : 'Ajouter le créneau'
+        }}
       </button>
-      <button type="button" appButton="quiet" (click)="cancel()">Annuler</button>
+      <button type="button" appButton="quiet" (click)="card.cancel()">Annuler</button>
     </div>
   `,
   styles: `
     @layer components {
+      :host {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: var(--space-s);
+      }
+
       .mode {
         color: var(--accent);
         font-size: var(--font-size-overline);
@@ -100,23 +88,15 @@ let nextId = 0;
         font-size: var(--font-size-block);
       }
 
+      /* Deux colonnes égales, et deux lignes réservées : les messages passent à la ligne sans
+         déborder sur le champ voisin. */
       .fields {
-        display: flex;
+        --field-error-lines: 2;
+
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
         gap: var(--space-l);
-        align-items: flex-start;
-      }
-
-      /* Le bas du champ réserve la ligne de son erreur. */
-      .field {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-xxs);
-        padding-bottom: calc(var(--font-size-meta) * 1.4);
-      }
-
-      label {
-        font-weight: 600;
+        align-items: start;
       }
 
       input {
@@ -124,16 +104,7 @@ let nextId = 0;
         font-variant-numeric: tabular-nums;
       }
 
-      /* Dans la ligne réservée, sans élargir le champ : l'erreur qui apparaît ne décale rien. */
-      .error {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        color: var(--danger);
-        font-size: var(--font-size-meta);
-        white-space: nowrap;
-      }
-
+      /* À la hauteur des champs, sous leur libellé. */
       .duration {
         padding-top: 1.6rem;
         color: var(--text-muted);
@@ -157,10 +128,8 @@ export class TimeSlotEditor {
   readonly cancelled = output<void>();
 
   private readonly store = inject(ConventionStore);
-  private readonly apiCall = injectApiCall();
   private readonly announcer = inject(Announcer);
-  private readonly injector = inject(Injector);
-  private readonly startInput = viewChild.required<ElementRef<HTMLInputElement>>('start');
+  private readonly failure = injectSubmissionFailure();
   protected readonly id = `time-slot-editor-${nextId++}`;
 
   private readonly model = linkedSignal<HoursModel>(() => {
@@ -169,14 +138,6 @@ export class TimeSlotEditor {
     const start = this.proposedStart();
     return { start, end: proposedEndOf(start) };
   });
-
-  private readonly notifications = inject(Notifications);
-  /** Un enregistrement a été tenté : une heure manquante se signale dès lors, pas avant. */
-  private readonly attempted = signal(false);
-  /** Un enregistrement est en cours, de l'appel à `submit()` jusqu'à sa réponse. */
-  private saving = false;
-  /** Pendant l'envoi, « Enregistrer » passe en « Enregistrement… ». */
-  readonly submitting = computed(() => this.form().submitting());
 
   protected readonly form = form(
     this.model,
@@ -187,7 +148,7 @@ export class TimeSlotEditor {
         validate(time, ({ value }) =>
           !value() || normalizeTime(value())
             ? undefined
-            : { kind: 'time', message: "Écris l'heure sur 24\u00a0heures, de 00:00 à 23:59." },
+            : { kind: 'time', message: "Écris l'heure sur 24 heures, de 00:00 à 23:59." },
         );
       }
       validate(path.end, ({ value, valueOf }) => {
@@ -196,7 +157,7 @@ export class TimeSlotEditor {
         if (!start || !end || end > start) return undefined;
         return {
           kind: 'end-not-after-start',
-          message: "La fin du créneau vient après son début\u00a0: change l'une des deux heures.",
+          message: "La fin du créneau vient après son début : change l'une des deux heures.",
         };
       });
     },
@@ -208,8 +169,7 @@ export class TimeSlotEditor {
     },
   );
 
-  protected readonly startError = computed(() => this.errorOf(this.form.start()));
-  protected readonly endError = computed(() => this.errorOf(this.form.end()));
+  protected readonly card = new CardForm(this.form, this.cancelled);
 
   /** Les heures saisies, en `HH:MM`, si ce sont des heures. */
   private readonly hours = computed(() => ({
@@ -225,72 +185,29 @@ export class TimeSlotEditor {
   /** La fin a été saisie : elle n'est plus proposée. */
   protected endEntered = false;
 
-  constructor() {
-    afterNextRender(() => this.startInput().nativeElement.focus());
-  }
-
   /** Fin proposée 2 h 30 après le début, pour un nouveau créneau, tant qu'on ne l'a pas saisie. */
   protected proposeEnd(text: string) {
     if (this.timeSlot() || this.endEntered || !normalizeTime(text)) return;
     this.form.end().value.set(proposedEndOf(text));
   }
 
-  /** Entrée dans un champ enregistre ; sur un bouton, elle ne fait que le cliquer. */
-  protected onEnter(event: Event) {
-    if (!(event.target instanceof HTMLInputElement)) return;
-    event.preventDefault();
-    this.save();
-  }
-
-  /** Enregistre le créneau : Entrée, ou le bouton principal de la carte. */
-  save() {
-    this.attempted.set(true);
-    this.saving = true;
-    void submit(this.form).finally(() => (this.saving = false));
-  }
-
-  /**
-   * Ferme la saisie sans rien enregistrer : Échap, ou « Annuler ». Sans effet pendant un
-   * enregistrement, qui serait sinon perdu.
-   */
-  cancel() {
-    if (this.saving) return;
-    this.cancelled.emit();
-  }
-
-  /**
-   * L'erreur d'un champ quitté. Une heure manquante attend la tentative d'enregistrement : quitter
-   * un champ vide pour cliquer « Annuler » n'affiche rien.
-   */
-  private errorOf(state: {
-    touched(): boolean;
-    errors(): readonly { kind: string; message?: string }[];
-  }) {
-    if (!state.touched()) return undefined;
-    return state.errors().find(({ kind }) => kind !== 'required' || this.attempted())?.message;
-  }
-
-  private async write() {
+  private async write(): Promise<ValidationError.WithFieldTree[] | undefined> {
     // Le formulaire est valide : les deux heures se lisent.
-    const body = this.hours() as { start: string; end: string };
+    const body = this.hours() as HoursModel;
     const timeSlot = this.timeSlot();
     try {
       const convention = timeSlot
-        ? await this.apiCall(timeSlotEndpoints.changeHours, {
+        ? await this.store.write(timeSlotEndpoints.changeHours, {
             params: { timeSlotId: timeSlot.id },
             body,
           })
-        : await this.apiCall(timeSlotEndpoints.add, { body });
-      this.store.convention.set(convention);
+        : await this.store.write(timeSlotEndpoints.add, { body });
       const saved = convention.timeSlots.find(({ start }) => start === body.start);
       if (saved) this.announcer.announce(`${timeSlotLabel(saved)}, enregistré.`);
       this.saved.emit();
       return undefined;
     } catch (error) {
-      const { errors, alert } = toSubmissionErrors(readProblem(error), this.form);
-      if (alert) this.notifications.error(alert);
-      afterNextRender(() => focusFirstError(this.form), { injector: this.injector });
-      return errors;
+      return this.failure(error, this.form);
     }
   }
 }

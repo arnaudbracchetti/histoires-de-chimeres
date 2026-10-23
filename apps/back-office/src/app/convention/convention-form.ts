@@ -1,11 +1,16 @@
-import { afterNextRender, Component, inject, Injector, linkedSignal, signal } from '@angular/core';
-import { form, FormField, FormRoot, maxLength, required } from '@angular/forms/signals';
+import { Component, inject, linkedSignal, signal } from '@angular/core';
+import {
+  form,
+  FormField,
+  FormRoot,
+  maxLength,
+  required,
+  type ValidationError,
+} from '@angular/forms/signals';
 import { CONVENTION_NAME_MAX_LENGTH, conventionEndpoints } from '@chimeres/contract';
-import { injectApiCall } from '../api-call';
-import { focusFirstError, readProblem, toSubmissionErrors } from '../problem';
+import { focusFirstError, injectSubmissionFailure } from '../problem';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
-import { Notifications } from '../shell/notifications';
 import { Field } from '../ui/field';
 import { SaveButton } from '../ui/save-button';
 import { formatConventionDate } from './convention-date';
@@ -58,10 +63,8 @@ type ConventionModel = { name: string; date: string };
 export class ConventionForm {
   protected readonly store = inject(ConventionStore);
   protected readonly formatDate = formatConventionDate;
-  private readonly apiCall = injectApiCall();
   private readonly announcer = inject(Announcer);
-  private readonly notifications = inject(Notifications);
-  private readonly injector = inject(Injector);
+  private readonly failure = injectSubmissionFailure();
 
   /** Repart de la convention lue, et de celle que renvoie chaque enregistrement. */
   private readonly model = linkedSignal<ConventionModel>(() => {
@@ -87,21 +90,15 @@ export class ConventionForm {
     },
   );
 
-  private async save() {
+  private async save(): Promise<ValidationError.WithFieldTree[] | undefined> {
     const { name, date } = this.model();
     try {
-      const convention = await this.apiCall(conventionEndpoints.update, {
-        body: { name, date: date || null },
-      });
-      this.store.convention.set(convention);
+      await this.store.write(conventionEndpoints.update, { body: { name, date: date || null } });
       this.savedAt.set(Date.now());
       this.announcer.announce('Convention enregistrée.');
       return undefined;
     } catch (error) {
-      const { errors, alert } = toSubmissionErrors(readProblem(error), this.form);
-      if (alert) this.notifications.error(alert);
-      afterNextRender(() => focusFirstError(this.form), { injector: this.injector });
-      return errors;
+      return this.failure(error, this.form);
     }
   }
 }

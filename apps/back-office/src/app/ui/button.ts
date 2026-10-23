@@ -1,10 +1,12 @@
 import { Component, input } from '@angular/core';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'quiet-danger' | 'icon' | 'danger';
 
 /**
  * Bouton natif dessiné selon la charte (docs/design/patterns.md, Boutons) :
- * `<button appButton="primary">`. Le destructeur ne sert que dans un dialogue de confirmation.
+ * `<button appButton="primary">`. Le destructeur plein ne sert que dans un dialogue de
+ * confirmation ; hors dialogue, « Supprimer » est discret, en rouge brique (`quiet-danger`). Un
+ * bouton à icône seule (`icon`) porte son nom accessible et son infobulle.
  */
 @Component({
   selector: 'button[appButton]',
@@ -47,6 +49,27 @@ export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'danger';
         color: var(--text-muted);
 
         &:hover {
+          color: var(--text);
+        }
+      }
+
+      :host(.quiet-danger) {
+        padding-inline: var(--space-xs);
+        color: var(--danger);
+
+        &:hover {
+          filter: brightness(1.15);
+        }
+      }
+
+      :host(.icon) {
+        display: inline-grid;
+        place-items: center;
+        padding: var(--space-xs);
+        color: var(--text-muted);
+
+        &:hover {
+          background: var(--surface-3);
           color: var(--text);
         }
       }

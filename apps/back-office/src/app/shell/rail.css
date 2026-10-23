@@ -134,19 +134,6 @@
 
   .toggle {
     align-self: flex-start;
-    display: grid;
-    place-items: center;
-    padding: var(--space-s);
-    border: none;
-    border-radius: var(--radius-control);
-    background: none;
-    color: var(--text-muted);
-    cursor: pointer;
-
-    &:hover {
-      background: var(--surface-3);
-      color: var(--text);
-    }
   }
 
   /* Replié : le libellé reste dans le DOM (nom accessible), masqué, et revient en infobulle. */

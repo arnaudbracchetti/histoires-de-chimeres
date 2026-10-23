@@ -1,19 +1,11 @@
-import {
-  afterNextRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  Injector,
-  signal,
-} from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { tableEndpoints, type TableDto } from '@chimeres/contract';
-import { injectApiCall } from '../api-call';
 import { ConventionStore } from '../convention/convention-store';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { Button } from '../ui/button';
-import { Confirmation } from '../ui/confirmation';
+import { AddCard, Card } from '../ui/card';
+import { CardEditing } from '../ui/card-editing';
 import { IconTile } from '../ui/icon-tile';
 import { TableEditor } from './table-editor';
 
@@ -26,25 +18,26 @@ import { TableEditor } from './table-editor';
  */
 @Component({
   selector: 'app-table-list',
-  imports: [Button, IconTile, Loadable, TableEditor],
+  imports: [AddCard, Button, Card, IconTile, Loadable, TableEditor],
   template: `
     <app-loadable [resource]="store.convention" failure="Impossible de charger les tables.">
-      <ul class="grid" [class.busy]="editing()" aria-label="Tables de la convention">
+      <ul class="grid" aria-label="Tables de la convention">
         @for (table of tables(); track table.id) {
           <li>
-            @if (editing() === table.id) {
-              <article
-                appTableEditor
-                class="card"
-                [table]="table"
-                (saved)="closeEditor(table.id)"
-                (cancelled)="closeEditor(table.id)"
-              ></article>
+            @if (cards.editing() === table.id) {
+              <article appCard editing [cardId]="table.id">
+                <app-table-editor
+                  [table]="table"
+                  (saved)="cards.close(table.id)"
+                  (cancelled)="cards.close(table.id)"
+                />
+              </article>
             } @else {
               <article
-                class="card"
+                appCard
                 tabindex="-1"
-                [attr.data-table]="table.id"
+                [cardId]="table.id"
+                [dimmed]="cards.isDimmed(table.id)"
                 [attr.aria-labelledby]="'table-' + table.id"
               >
                 <div class="heading">
@@ -56,14 +49,13 @@ import { TableEditor } from './table-editor';
                     type="button"
                     appButton="secondary"
                     [attr.aria-label]="'Modifier la table ' + table.name"
-                    (click)="edit(table)"
+                    (click)="cards.edit(table.id)"
                   >
                     Modifier
                   </button>
                   <button
                     type="button"
-                    appButton="quiet"
-                    class="destructive"
+                    appButton="quiet-danger"
                     [attr.aria-label]="'Supprimer la table ' + table.name"
                     (click)="remove(table)"
                   >
@@ -75,16 +67,18 @@ import { TableEditor } from './table-editor';
           </li>
         }
         <li>
-          @for (key of newKeys(); track key) {
-            <article
-              appTableEditor
-              class="card"
-              (saved)="openNew()"
-              (cancelled)="closeNew()"
-            ></article>
+          @for (key of cards.newKeys(); track key) {
+            <article appCard editing>
+              <app-table-editor (saved)="cards.openNew()" (cancelled)="cards.closeNew()" />
+            </article>
           } @empty {
-            <button type="button" class="add" aria-label="Ajouter une table" (click)="openNew()">
-              <span aria-hidden="true">+</span> Ajouter une table
+            <button
+              appAddCard
+              aria-label="Ajouter une table"
+              [dimmed]="cards.isDimmed('new')"
+              (click)="cards.openNew()"
+            >
+              Ajouter une table
             </button>
           }
         </li>
@@ -107,30 +101,16 @@ import { TableEditor } from './table-editor';
       }
 
       /* Toutes les cartes ont la même hauteur, carte en saisie comprise : rien ne bouge. */
-      .card {
-        position: relative;
-        display: flex;
+      .card,
+      .add {
         flex: 1;
-        flex-direction: column;
-        justify-content: space-between;
-        min-width: 0;
         height: 84px;
-        padding: var(--space-s) var(--space-m);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-card);
-        background: var(--surface-1);
-        transition: opacity 150ms;
-
-        &.editing {
-          border-color: var(--accent);
-          box-shadow: var(--halo);
-        }
       }
 
-      /* Pendant une saisie, les autres cartes s'estompent : on voit où l'on en est. */
-      .busy .card:not(.editing),
-      .busy .add {
-        opacity: 0.45;
+      .card {
+        flex-direction: column;
+        justify-content: space-between;
+        padding: var(--space-s) var(--space-m);
       }
 
       .heading {
@@ -151,97 +131,25 @@ import { TableEditor } from './table-editor';
         display: flex;
         gap: var(--space-xs);
       }
-
-      .destructive {
-        color: var(--danger);
-      }
-
-      .add {
-        flex: 1;
-        height: 84px;
-        border: 1px dashed var(--border);
-        border-radius: var(--radius-card);
-        background: none;
-        color: var(--text-muted);
-        cursor: pointer;
-
-        &:hover {
-          border-color: var(--accent);
-          color: var(--text);
-        }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .card {
-          transition: none;
-        }
-      }
     }
   `,
 })
 export class TableList {
   protected readonly store = inject(ConventionStore);
-  private readonly apiCall = injectApiCall();
   private readonly announcer = inject(Announcer);
-  private readonly confirmation = inject(Confirmation);
-  private readonly injector = inject(Injector);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-
-  /** La carte en saisie : l'identifiant d'une table, `new` pour un ajout, ou rien. */
-  protected readonly editing = computed(() => (this.newKeys().length ? 'new' : this.editedId()));
-  private readonly editedId = signal<string | undefined>(undefined);
-  /** La carte d'ajout : une clé neuve à chaque carte ouverte, ou aucune. */
-  protected readonly newKeys = signal<number[]>([]);
-  private nextKey = 0;
+  protected readonly cards = new CardEditing();
 
   protected readonly tables = computed(() =>
     this.store.convention.hasValue() ? this.store.convention.value().tables : [],
   );
 
-  protected openNew() {
-    this.editedId.set(undefined);
-    this.newKeys.set([this.nextKey++]);
-  }
-
-  protected closeNew() {
-    this.newKeys.set([]);
-    this.focusAfterRender(() => this.host.querySelector('.add'));
-  }
-
-  protected edit(table: TableDto) {
-    this.newKeys.set([]);
-    this.editedId.set(table.id);
-  }
-
-  protected closeEditor(tableId: string) {
-    this.editedId.set(undefined);
-    this.focusAfterRender(() => this.host.querySelector(`article[data-table="${tableId}"]`));
-  }
-
   protected async remove(table: TableDto) {
     const index = this.tables().findIndex(({ id }) => id === table.id);
-    const removed = await this.confirmation.ask({
+    const removed = await this.cards.remove(index, {
       question: `Supprimer la table « ${table.name} » ?`,
       confirmLabel: 'Supprimer la table',
-      action: async () => {
-        const convention = await this.apiCall(tableEndpoints.remove, {
-          params: { tableId: table.id },
-        });
-        this.store.convention.set(convention);
-      },
+      action: () => this.store.write(tableEndpoints.remove, { params: { tableId: table.id } }),
     });
-    if (!removed) return;
-    this.announcer.announce(`Table « ${table.name} » supprimée.`);
-    // Le focus va à la carte suivante, à défaut à la précédente, à défaut à « Ajouter une table ».
-    this.focusAfterRender(() => {
-      const cards = this.host.querySelectorAll<HTMLElement>('article.card');
-      return cards[index] ?? cards[index - 1] ?? this.host.querySelector('.add');
-    });
-  }
-
-  private focusAfterRender(target: () => Element | null) {
-    afterNextRender(() => (target() as HTMLElement | null)?.focus(), {
-      injector: this.injector,
-    });
+    if (removed) this.announcer.announce(`Table « ${table.name} » supprimée.`);
   }
 }

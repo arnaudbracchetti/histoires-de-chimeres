@@ -2,7 +2,8 @@ import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ConventionStore } from '../convention/convention-store';
 import { formatConventionDate } from '../convention/convention-date';
-import { Icon } from '../icon';
+import { Button } from '../ui/button';
+import { Icon } from '../ui/icon';
 import { Loadable } from './loadable';
 
 /** Clé de l'état replié, mémorisé par navigateur. */
@@ -47,7 +48,7 @@ function storeCollapsed(collapsed: boolean): void {
  */
 @Component({
   selector: 'app-rail',
-  imports: [Icon, Loadable, RouterLink, RouterLinkActive],
+  imports: [Button, Icon, Loadable, RouterLink, RouterLinkActive],
   host: { '[class.collapsed]': 'collapsed()' },
   templateUrl: './rail.html',
   styleUrl: './rail.css',

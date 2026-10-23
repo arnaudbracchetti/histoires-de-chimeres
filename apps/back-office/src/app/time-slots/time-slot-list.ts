@@ -1,19 +1,11 @@
-import {
-  afterNextRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  Injector,
-  signal,
-} from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { timeSlotEndpoints, type TimeSlotDto } from '@chimeres/contract';
-import { injectApiCall } from '../api-call';
 import { ConventionStore } from '../convention/convention-store';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { Button } from '../ui/button';
-import { Confirmation } from '../ui/confirmation';
+import { AddCard, Card } from '../ui/card';
+import { CardEditing } from '../ui/card-editing';
 import { IconTile } from '../ui/icon-tile';
 import { formatDuration, formatTimeRange } from './time-format';
 import { TimeSlotEditor } from './time-slot-editor';
@@ -26,25 +18,26 @@ import { TimeSlotEditor } from './time-slot-editor';
  */
 @Component({
   selector: 'app-time-slot-list',
-  imports: [Button, IconTile, Loadable, TimeSlotEditor],
+  imports: [AddCard, Button, Card, IconTile, Loadable, TimeSlotEditor],
   template: `
     <app-loadable [resource]="store.convention" failure="Impossible de charger les créneaux.">
-      <ol class="day" [class.busy]="editing()" aria-label="Créneaux de la journée">
+      <ol class="day" aria-label="Créneaux de la journée">
         @for (row of rows(); track row.slot.id) {
           <li>
-            @if (editing() === row.slot.id) {
-              <article
-                appTimeSlotEditor
-                class="card editing"
-                [timeSlot]="row.slot"
-                (saved)="closeEditor(row.slot.id)"
-                (cancelled)="closeEditor(row.slot.id)"
-              ></article>
+            @if (cards.editing() === row.slot.id) {
+              <article appCard editing [cardId]="row.slot.id">
+                <app-time-slot-editor
+                  [timeSlot]="row.slot"
+                  (saved)="cards.close(row.slot.id)"
+                  (cancelled)="cards.close(row.slot.id)"
+                />
+              </article>
             } @else {
               <article
-                class="card"
+                appCard
                 tabindex="-1"
-                [attr.data-time-slot]="row.slot.id"
+                [cardId]="row.slot.id"
+                [dimmed]="cards.isDimmed(row.slot.id)"
                 [attr.aria-labelledby]="'time-slot-' + row.slot.id"
               >
                 <div class="heading">
@@ -60,14 +53,13 @@ import { TimeSlotEditor } from './time-slot-editor';
                     type="button"
                     appButton="secondary"
                     [attr.aria-label]="'Modifier le créneau ' + row.slot.rank"
-                    (click)="edit(row.slot)"
+                    (click)="cards.edit(row.slot.id)"
                   >
                     Modifier
                   </button>
                   <button
                     type="button"
-                    appButton="quiet"
-                    class="destructive"
+                    appButton="quiet-danger"
                     [attr.aria-label]="'Supprimer le créneau ' + row.slot.rank"
                     (click)="remove(row.slot)"
                   >
@@ -82,17 +74,22 @@ import { TimeSlotEditor } from './time-slot-editor';
           </li>
         }
         <li>
-          @for (key of newKeys(); track key) {
-            <article
-              appTimeSlotEditor
-              class="card editing"
-              [proposedStart]="lastEnd()"
-              (saved)="openNew()"
-              (cancelled)="closeNew()"
-            ></article>
+          @for (key of cards.newKeys(); track key) {
+            <article appCard editing>
+              <app-time-slot-editor
+                [proposedStart]="lastEnd()"
+                (saved)="cards.openNew()"
+                (cancelled)="cards.closeNew()"
+              />
+            </article>
           } @empty {
-            <button type="button" class="add" aria-label="Ajouter un créneau" (click)="openNew()">
-              <span aria-hidden="true">+</span> Ajouter un créneau
+            <button
+              appAddCard
+              aria-label="Ajouter un créneau"
+              [dimmed]="cards.isDimmed('new')"
+              (click)="cards.openNew()"
+            >
+              Ajouter un créneau
             </button>
           }
         </li>
@@ -111,30 +108,11 @@ import { TimeSlotEditor } from './time-slot-editor';
       }
 
       .card {
-        display: flex;
         gap: var(--space-l);
         align-items: center;
         justify-content: space-between;
         min-height: 72px;
         padding: var(--space-m) var(--space-l);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-card);
-        background: var(--surface-1);
-        transition: opacity 150ms;
-
-        &.editing {
-          flex-direction: column;
-          gap: var(--space-s);
-          align-items: stretch;
-          border-color: var(--accent);
-          box-shadow: var(--halo);
-        }
-      }
-
-      /* Pendant une saisie, les autres cartes s'estompent : on voit où l'on en est. */
-      .busy .card:not(.editing),
-      .busy .add {
-        opacity: 0.45;
       }
 
       .heading {
@@ -158,10 +136,6 @@ import { TimeSlotEditor } from './time-slot-editor';
         gap: var(--space-s);
       }
 
-      .destructive {
-        color: var(--danger);
-      }
-
       .pause {
         margin-left: var(--space-xl);
         padding: var(--space-xs) var(--space-l);
@@ -174,40 +148,14 @@ import { TimeSlotEditor } from './time-slot-editor';
         width: 100%;
         min-height: 56px;
         margin-top: var(--space-m);
-        border: 1px dashed var(--border);
-        border-radius: var(--radius-card);
-        background: none;
-        color: var(--text-muted);
-        cursor: pointer;
-
-        &:hover {
-          border-color: var(--accent);
-          color: var(--text);
-        }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        .card {
-          transition: none;
-        }
       }
     }
   `,
 })
 export class TimeSlotList {
   protected readonly store = inject(ConventionStore);
-  private readonly apiCall = injectApiCall();
   private readonly announcer = inject(Announcer);
-  private readonly confirmation = inject(Confirmation);
-  private readonly injector = inject(Injector);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-
-  /** La carte en saisie : l'identifiant d'un créneau, `new` pour un ajout, ou rien. */
-  protected readonly editing = computed(() => (this.newKeys().length ? 'new' : this.editedId()));
-  private readonly editedId = signal<string | undefined>(undefined);
-  /** La carte d'ajout : une clé neuve à chaque carte ouverte, ou aucune. */
-  protected readonly newKeys = signal<number[]>([]);
-  private nextKey = 0;
+  protected readonly cards = new CardEditing();
 
   private readonly timeSlots = computed(() =>
     this.store.convention.hasValue() ? this.store.convention.value().timeSlots : [],
@@ -232,54 +180,13 @@ export class TimeSlotList {
   /** Fin du dernier créneau : le début proposé pour le suivant. */
   protected readonly lastEnd = computed(() => this.timeSlots().at(-1)?.end ?? '');
 
-  protected openNew() {
-    this.editedId.set(undefined);
-    this.newKeys.set([this.nextKey++]);
-  }
-
-  protected closeNew() {
-    this.newKeys.set([]);
-    this.focusAfterRender(() => this.host.querySelector('.add'));
-  }
-
-  protected edit(slot: TimeSlotDto) {
-    this.newKeys.set([]);
-    this.editedId.set(slot.id);
-  }
-
-  protected closeEditor(timeSlotId: string) {
-    this.editedId.set(undefined);
-    this.focusAfterRender(() => this.cardOf(timeSlotId));
-  }
-
   protected async remove(slot: TimeSlotDto) {
     const index = this.timeSlots().findIndex(({ id }) => id === slot.id);
-    const removed = await this.confirmation.ask({
+    const removed = await this.cards.remove(index, {
       question: `Supprimer le créneau ${slot.rank} ?`,
       confirmLabel: 'Supprimer le créneau',
-      action: async () => {
-        const convention = await this.apiCall(timeSlotEndpoints.remove, {
-          params: { timeSlotId: slot.id },
-        });
-        this.store.convention.set(convention);
-      },
+      action: () => this.store.write(timeSlotEndpoints.remove, { params: { timeSlotId: slot.id } }),
     });
-    if (!removed) return;
-    this.announcer.announce(`Créneau ${slot.rank} supprimé.`);
-    // Le focus va à la carte suivante, à défaut à la précédente, à défaut à « Ajouter un créneau ».
-    this.focusAfterRender(() => {
-      const cards = this.host.querySelectorAll<HTMLElement>('article.card');
-      return cards[index] ?? cards[index - 1] ?? this.host.querySelector('.add');
-    });
-  }
-
-  private cardOf(timeSlotId: string): HTMLElement | null {
-    return this.host.querySelector(`article[data-time-slot="${timeSlotId}"]`);
-  }
-
-  private focusAfterRender(target: () => Element | null) {
-    afterNextRender(() => (target() as HTMLElement | null)?.focus(), {
-      injector: this.injector,
-    });
+    if (removed) this.announcer.announce(`Créneau ${slot.rank} supprimé.`);
   }
 }

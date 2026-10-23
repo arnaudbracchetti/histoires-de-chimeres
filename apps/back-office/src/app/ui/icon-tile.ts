@@ -1,5 +1,5 @@
 import { Component, input } from '@angular/core';
-import { Icon } from '../icon';
+import { Icon } from './icon';
 
 /**
  * Icône de carte (docs/design/patterns.md) : une icône orange sur un carré arrondi, en tête des

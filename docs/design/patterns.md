@@ -63,7 +63,7 @@ Forme retenue sur prototype, face au tableau à ligne en édition, aux étiquett
 - **« Modifier »** retourne la carte en saisie, bordée d'orange, **à la même taille** : le champ du nom, « Enregistrer » (principal) et « Annuler » (discret). Les autres cartes s'estompent. Une seule carte en saisie à la fois.
 - **« Ajouter une table »**, une carte en pointillés en dernier, ouvre une carte de saisie vide. Le bouton principal dit « Ajouter la table ».
 - **Saisie à la chaîne** : après un ajout, une nouvelle carte vide s'ouvre aussitôt, focus sur le nom. « Annuler », ou Échap, la ferme.
-- **L'erreur** s'affiche dans une bulle sous la carte, par-dessus la rangée suivante : aucune carte ne bouge.
+- **L'erreur** s'affiche dans une bulle sous la carte, par-dessus la rangée suivante, sans couvrir les boutons : aucune carte ne bouge.
 - **Focus** : comme pour les créneaux.
 
 ### Icône de carte
@@ -90,7 +90,7 @@ Une carte de créneau ou de table s'ouvre sur son icône : une icône Lucide ora
 L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton ou ligne ne bouge. Sinon, quitter un champ pour cliquer un bouton fait apparaître une erreur qui déplace le bouton, et le clic tombe à côté.
 
 - **Sous un champ**, la ligne de l'erreur est réservée : elle reste vide tant qu'il n'y a pas d'erreur.
-- **Dans une carte en saisie**, la ligne de l'erreur est réservée sous chaque champ (créneau), ou l'erreur s'affiche dans une bulle sous la carte (table) ; les boutons ne bougent pas.
+- **Dans une carte en saisie** à plusieurs champs (créneau), la ligne de l'erreur est réservée sous chaque champ. Dans une carte compacte à un seul champ (table), l'erreur s'affiche dans une bulle sous la carte. Une bulle ne couvre jamais les boutons, et ni la carte ni ses boutons ne bougent.
 - **Dans un tableau** :
   - toutes les lignes ont la même hauteur, ligne en édition comprise ;
   - les colonnes ont une largeur fixe, assez large pour les champs de la ligne en édition et pour « Nouveau … » ;
