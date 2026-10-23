@@ -1,8 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { afterNextRender, inject, Injector } from '@angular/core';
-import { isFieldTree, type FieldTree, type ValidationError } from '@angular/forms/signals';
 import type { ProblemDto } from '@chimeres/contract';
-import { Notifications, type ErrorNotice } from './shell/notifications';
+import type { ErrorNotice } from './shell/notifications';
 
 /** Ce qu'un formulaire affiche d'une écriture refusée (docs/design/patterns.md, Validation). */
 export type FormProblem = {
@@ -33,49 +31,4 @@ export function readProblem(error: unknown): FormProblem {
     };
   }
   return { fieldErrors: [], alert: { title: problem.title, detail: problem.detail } };
-}
-
-/**
- * Erreurs de champ pour `submit()` de Signal Forms : chacune sur le champ que nomme son `field`
- * (`seats.min` → `form.seats.min`). Une erreur dont le champ n'est pas dans le formulaire passe en notification.
- */
-export function toSubmissionErrors(
-  problem: FormProblem,
-  form: FieldTree<unknown>,
-): { errors: ValidationError.WithFieldTree[]; alert?: ErrorNotice } {
-  const errors: ValidationError.WithFieldTree[] = [];
-  const orphans: string[] = [];
-  for (const { field, message } of problem.fieldErrors) {
-    const fieldTree = field
-      .split('.')
-      .reduce<unknown>((tree, key) => (tree as Record<string, unknown> | undefined)?.[key], form);
-    if (isFieldTree(fieldTree)) errors.push({ kind: 'server', message, fieldTree });
-    else orphans.push(message);
-  }
-  const orphan = orphans.length ? { title: orphans.join(' ') } : undefined;
-  return { errors, alert: problem.alert ?? orphan };
-}
-
-/** Met le focus au premier champ en erreur. */
-export function focusFirstError(form: FieldTree<unknown>): void {
-  form().errorSummary()[0]?.fieldTree().focusBoundControl();
-}
-
-/**
- * Renvoie le traitement d'une écriture refusée, pour l'`action` de `submit()` : les erreurs de
- * champ vont sous leur champ (valeur renvoyée à `submit()`), le reste en notification, et le focus
- * au premier champ en erreur. À créer dans un contexte d'injection (champ d'un composant).
- */
-export function injectSubmissionFailure(): (
-  error: unknown,
-  form: FieldTree<unknown>,
-) => ValidationError.WithFieldTree[] {
-  const notifications = inject(Notifications);
-  const injector = inject(Injector);
-  return (error, form) => {
-    const { errors, alert } = toSubmissionErrors(readProblem(error), form);
-    if (alert) notifications.error(alert);
-    afterNextRender(() => focusFirstError(form), { injector });
-    return errors;
-  };
 }

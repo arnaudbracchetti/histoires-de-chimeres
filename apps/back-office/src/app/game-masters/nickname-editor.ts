@@ -1,11 +1,11 @@
 import { Component, inject, input, linkedSignal, output } from '@angular/core';
-import { form, FormField, type ValidationError } from '@angular/forms/signals';
+import { form, FormField } from '@angular/forms/signals';
 import { gameMasterEndpoints, type GameMasterDto } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
-import { focusFirstError, injectSubmissionFailure } from '../problem';
+import { CardForm } from '../forms/card-form';
+import { submitWith } from '../forms/submit-with';
 import { Announcer } from '../shell/announcer';
 import { Button } from '../ui/button';
-import { CardForm } from '../ui/card-form';
 import { Field } from '../ui/field';
 import { nicknameRules } from './nickname';
 
@@ -17,10 +17,7 @@ import { nicknameRules } from './nickname';
 @Component({
   selector: 'app-nickname-editor',
   imports: [Button, Field, FormField],
-  host: {
-    '(keydown.enter)': 'editor.onEnter($event)',
-    '(keydown.escape)': 'editor.onEscape($event)',
-  },
+  hostDirectives: [{ directive: CardForm, outputs: ['cancelled'] }],
   template: `
     <app-field label="Pseudo du MJ" labelHidden [attempted]="editor.attempted()">
       <input type="text" autocomplete="off" [formField]="form.nickname" />
@@ -54,35 +51,25 @@ export class NicknameEditor {
   readonly gameMaster = input.required<GameMasterDto>();
   /** Le pseudo est enregistré : la fiche relue. */
   readonly saved = output<GameMasterDto>();
-  readonly cancelled = output<void>();
 
   private readonly apiCall = injectApiCall();
   private readonly announcer = inject(Announcer);
-  private readonly failure = injectSubmissionFailure();
 
   private readonly model = linkedSignal(() => ({ nickname: this.gameMaster().nickname }));
 
   protected readonly form = form(this.model, (path) => nicknameRules(path.nickname), {
-    submission: {
-      action: () => this.write(),
-      onInvalid: (field) => focusFirstError(field),
-    },
+    submission: submitWith(() => this.write()),
   });
 
-  protected readonly editor = new CardForm(this.form, this.cancelled);
+  protected readonly editor = inject(CardForm).attach(this.form);
 
-  private async write(): Promise<ValidationError.WithFieldTree[] | undefined> {
+  private async write(): Promise<void> {
     const nickname = this.model().nickname.trim();
-    try {
-      const gameMaster = await this.apiCall(gameMasterEndpoints.rename, {
-        params: { gameMasterId: this.gameMaster().id },
-        body: { nickname },
-      });
-      this.announcer.announce(`Pseudo enregistré : ${nickname}.`);
-      this.saved.emit(gameMaster);
-      return undefined;
-    } catch (error) {
-      return this.failure(error, this.form);
-    }
+    const gameMaster = await this.apiCall(gameMasterEndpoints.rename, {
+      params: { gameMasterId: this.gameMaster().id },
+      body: { nickname },
+    });
+    this.announcer.announce(`Pseudo enregistré : ${nickname}.`);
+    this.saved.emit(gameMaster);
   }
 }

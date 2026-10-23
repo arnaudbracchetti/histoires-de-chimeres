@@ -132,6 +132,16 @@ describe('ConventionForm', () => {
     expect(document.activeElement).toBe(input('Nom'));
   });
 
+  it('refuse un nom fait seulement d’espaces, compté comme le domaine', async () => {
+    const { type, save, errorOf, http } = await render();
+
+    await type('Nom', '   ');
+    await save();
+
+    http.expectNone(apiUrl(conventionEndpoints.update));
+    expect(errorOf('Nom')).toBe('Donne un nom à la convention.');
+  });
+
   it("affiche sous le champ une erreur de l'API rattachée à ce champ", async () => {
     const { type, save, flush, errorOf, input } = await render();
     const problem: ProblemDto = {
@@ -149,7 +159,7 @@ describe('ConventionForm', () => {
       ],
     };
 
-    await type('Nom', '   ');
+    await type('Nom', 'Chimères 2027');
     await save();
     await flush(problem, 422);
 

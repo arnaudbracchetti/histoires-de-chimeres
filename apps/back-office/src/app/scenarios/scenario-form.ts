@@ -1,23 +1,11 @@
-import {
-  afterNextRender,
-  Component,
-  computed,
-  inject,
-  Injector,
-  input,
-  linkedSignal,
-  output,
-  signal,
-} from '@angular/core';
+import { Component, computed, input, linkedSignal, output, signal } from '@angular/core';
 import {
   form,
   FormField,
   FormRoot,
   required,
   validate,
-  type FieldTree,
   type SchemaPath,
-  type ValidationError,
 } from '@angular/forms/signals';
 import {
   CONTENT_WARNINGS_MAX_LENGTH,
@@ -28,7 +16,8 @@ import {
   type ScenarioDto,
 } from '@chimeres/contract';
 import { formatCount } from '../format-count';
-import { focusFirstError, injectSubmissionFailure } from '../problem';
+import { submitWith } from '../forms/submit-with';
+import { textRules } from '../forms/text-rules';
 import { Field } from '../ui/field';
 import { SaveButton } from '../ui/save-button';
 import { PresentationPreview } from './presentation-preview';
@@ -69,21 +58,6 @@ function toBody({ seats, duration, ...content }: ScenarioModel): ScenarioBody {
     seats: { min: seats.min ?? 0, max: seats.max ?? 0 },
     duration: +duration as 1 | 2,
   };
-}
-
-/** Texte obligatoire et borné, compté comme le domaine : sans les espaces du début et de la fin. */
-function textRules(
-  path: SchemaPath<string>,
-  max: number,
-  messages: { required?: string; tooLong: string },
-): void {
-  if (messages.required) {
-    const message = messages.required;
-    validate(path, ({ value }) => (value().trim() ? undefined : { kind: 'required', message }));
-  }
-  validate(path, ({ value }) =>
-    value().trim().length <= max ? undefined : { kind: 'too-long', message: messages.tooLong },
-  );
 }
 
 /** Nombre de places : saisi, entier. */
@@ -252,9 +226,6 @@ export class ScenarioForm {
     () => JSON.stringify(this.model()) !== JSON.stringify(this.snapshot()),
   );
 
-  private readonly failure = injectSubmissionFailure();
-  private readonly injector = inject(Injector);
-
   protected readonly form = form(
     this.model,
     (path) => {
@@ -295,10 +266,8 @@ export class ScenarioForm {
       });
     },
     {
-      submission: {
-        action: () => this.write(),
-        onInvalid: (field) => this.focusFirstError(field),
-      },
+      // Le premier champ en erreur peut être la présentation, masquée par l'aperçu.
+      submission: submitWith(() => this.write(), { beforeFocus: () => this.previewing.set(false) }),
     },
   );
 
@@ -307,23 +276,11 @@ export class ScenarioForm {
     return this.unsaved();
   }
 
-  private async write(): Promise<ValidationError.WithFieldTree[] | undefined> {
+  private async write(): Promise<void> {
     const model = this.model();
-    try {
-      const scenario = await this.save()(toBody(model));
-      this.snapshot.set(model);
-      this.savedAt.set(Date.now());
-      this.saved.emit(scenario);
-      return undefined;
-    } catch (error) {
-      this.previewing.set(false);
-      return this.failure(error, this.form);
-    }
-  }
-
-  /** Le premier champ en erreur peut être la présentation, masquée par l'aperçu. */
-  private focusFirstError(field: FieldTree<unknown>): void {
-    this.previewing.set(false);
-    afterNextRender(() => focusFirstError(field), { injector: this.injector });
+    const scenario = await this.save()(toBody(model));
+    this.snapshot.set(model);
+    this.savedAt.set(Date.now());
+    this.saved.emit(scenario);
   }
 }

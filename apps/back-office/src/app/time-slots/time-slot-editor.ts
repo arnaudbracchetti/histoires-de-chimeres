@@ -1,11 +1,11 @@
 import { Component, computed, inject, input, linkedSignal, output } from '@angular/core';
-import { form, FormField, required, validate, type ValidationError } from '@angular/forms/signals';
+import { form, FormField, required, validate } from '@angular/forms/signals';
 import { timeSlotEndpoints, type TimeSlotDto } from '@chimeres/contract';
 import { ConventionStore } from '../convention/convention-store';
-import { focusFirstError, injectSubmissionFailure } from '../problem';
+import { CardForm } from '../forms/card-form';
+import { submitWith } from '../forms/submit-with';
 import { Announcer } from '../shell/announcer';
 import { Button } from '../ui/button';
-import { CardForm } from '../ui/card-form';
 import { Field } from '../ui/field';
 import { formatDuration, minutesOf, normalizeTime, timeOf, timeSlotLabel } from './time-format';
 
@@ -30,9 +30,8 @@ let nextId = 0;
   host: {
     role: 'group',
     '[attr.aria-labelledby]': "id + '-title'",
-    '(keydown.enter)': 'card.onEnter($event)',
-    '(keydown.escape)': 'card.onEscape($event)',
   },
+  hostDirectives: [{ directive: CardForm, outputs: ['cancelled'] }],
   template: `
     <p class="mode">Saisie en cours</p>
     <h3 [id]="id + '-title'">
@@ -125,11 +124,9 @@ export class TimeSlotEditor {
   readonly proposedStart = input('');
   /** Le créneau est enregistré, et la convention partagée est à jour. */
   readonly saved = output<void>();
-  readonly cancelled = output<void>();
 
   private readonly store = inject(ConventionStore);
   private readonly announcer = inject(Announcer);
-  private readonly failure = injectSubmissionFailure();
   protected readonly id = `time-slot-editor-${nextId++}`;
 
   private readonly model = linkedSignal<HoursModel>(() => {
@@ -162,14 +159,11 @@ export class TimeSlotEditor {
       });
     },
     {
-      submission: {
-        action: () => this.write(),
-        onInvalid: (field) => focusFirstError(field),
-      },
+      submission: submitWith(() => this.write()),
     },
   );
 
-  protected readonly card = new CardForm(this.form, this.cancelled);
+  protected readonly card = inject(CardForm).attach(this.form);
 
   /** Les heures saisies, en `HH:MM`, si ce sont des heures. */
   private readonly hours = computed(() => ({
@@ -191,24 +185,19 @@ export class TimeSlotEditor {
     this.form.end().value.set(proposedEndOf(text));
   }
 
-  private async write(): Promise<ValidationError.WithFieldTree[] | undefined> {
+  private async write(): Promise<void> {
     // Le formulaire est valide : les deux heures se lisent.
     const body = this.hours() as HoursModel;
     const timeSlot = this.timeSlot();
-    try {
-      const convention = timeSlot
-        ? await this.store.write(timeSlotEndpoints.changeHours, {
-            params: { timeSlotId: timeSlot.id },
-            body,
-          })
-        : await this.store.write(timeSlotEndpoints.add, { body });
-      const saved = convention.timeSlots.find(({ start }) => start === body.start);
-      if (saved) this.announcer.announce(`${timeSlotLabel(saved)}, enregistré.`);
-      this.saved.emit();
-      return undefined;
-    } catch (error) {
-      return this.failure(error, this.form);
-    }
+    const convention = timeSlot
+      ? await this.store.write(timeSlotEndpoints.changeHours, {
+          params: { timeSlotId: timeSlot.id },
+          body,
+        })
+      : await this.store.write(timeSlotEndpoints.add, { body });
+    const saved = convention.timeSlots.find(({ start }) => start === body.start);
+    if (saved) this.announcer.announce(`${timeSlotLabel(saved)}, enregistré.`);
+    this.saved.emit();
   }
 }
 
