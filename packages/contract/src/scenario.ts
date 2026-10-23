@@ -56,7 +56,16 @@ export type ScenarioBody = {
 
 export type ScenarioParams = { scenarioId: string };
 
-/** La liste est dans l'ordre naturel des titres. Proposer et modifier renvoient le scénario relu. */
+export type ScenarioImageParams = ScenarioParams & { imageId: string };
+
+/** Poids maximal d'une image envoyée : 10 Mo (PR-7). */
+export const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+
+/**
+ * La liste est dans l'ordre naturel des titres. Proposer et modifier renvoient le scénario relu.
+ * L'image a ses propres endpoints, sans `Body` typé (ADR 0007) : l'envoi est un multipart au champ
+ * `image`, et renvoie le scénario relu, comme le retrait. La lecture répond en `image/webp`.
+ */
 export const scenarioEndpoints = {
   list: endpoint<ScenarioListItemDto[]>('GET', 'scenarios'),
   read: endpoint<ScenarioDto, ScenarioParams>('GET', 'scenarios/:scenarioId'),
@@ -66,4 +75,10 @@ export const scenarioEndpoints = {
   ),
   update: endpoint<ScenarioDto, ScenarioParams, ScenarioBody>('PUT', 'scenarios/:scenarioId'),
   remove: endpoint<void, ScenarioParams>('DELETE', 'scenarios/:scenarioId'),
+  changeImage: endpoint<ScenarioDto, ScenarioParams>('PUT', 'scenarios/:scenarioId/image'),
+  removeImage: endpoint<ScenarioDto, ScenarioParams>('DELETE', 'scenarios/:scenarioId/image'),
+  readImage: endpoint<Uint8Array, ScenarioImageParams>(
+    'GET',
+    'scenarios/:scenarioId/images/:imageId',
+  ),
 };

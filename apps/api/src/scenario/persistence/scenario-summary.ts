@@ -1,8 +1,13 @@
-import type { DurationDto, ScenarioSummaryDto } from '@chimeres/contract';
+import {
+  apiUrl,
+  scenarioEndpoints,
+  type DurationDto,
+  type ScenarioSummaryDto,
+} from '@chimeres/contract';
 import { ComparableName } from '@chimeres/domain';
 import type { Prisma } from '../../generated/prisma/client.js';
 
-/** Ce qu'une liste lit d'un scénario : ni présentation, ni avertissements. */
+/** Ce qu'une liste lit d'un scénario : ni présentation, ni avertissements, ni octets d'image. */
 export const SCENARIO_SUMMARY_SELECT = {
   id: true,
   title: true,
@@ -10,6 +15,7 @@ export const SCENARIO_SUMMARY_SELECT = {
   seatsMin: true,
   seatsMax: true,
   duration: true,
+  imageId: true,
 } satisfies Prisma.ScenarioSelect;
 
 type ScenarioSummaryRow = Prisma.ScenarioGetPayload<{ select: typeof SCENARIO_SUMMARY_SELECT }>;
@@ -21,6 +27,7 @@ export function toScenarioSummary({
   seatsMin,
   seatsMax,
   duration,
+  imageId,
 }: ScenarioSummaryRow): ScenarioSummaryDto {
   return {
     id,
@@ -28,8 +35,8 @@ export function toScenarioSummary({
     system,
     seats: { min: seatsMin, max: seatsMax },
     duration: duration as DurationDto,
-    // L'image arrive avec son envoi (ADR 0007) : en attendant, l'illustration par défaut.
-    imageUrl: null,
+    // Une URL par image : elle change avec l'image (ADR 0007).
+    imageUrl: imageId && apiUrl(scenarioEndpoints.readImage, { scenarioId: id, imageId }),
   };
 }
 

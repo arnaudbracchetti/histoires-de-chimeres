@@ -1,9 +1,17 @@
-import { Catch, HttpException, HttpStatus, Logger, type ArgumentsHost } from '@nestjs/common';
+import {
+  Catch,
+  HttpException,
+  HttpStatus,
+  Logger,
+  PayloadTooLargeException,
+  type ArgumentsHost,
+} from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
 import type { Response } from 'express';
 import { StaleConventionError } from '@chimeres/application';
 import type { ProblemCode, ProblemDto, RefusalCode, RefusalParams } from '@chimeres/contract';
 import { Refusal } from '@chimeres/domain';
+import { ImageRefusedError } from './image-refused.error.js';
 import { MalformedRequestError } from './malformed-request.error.js';
 import { problemCatalogue } from './problem-catalogue.js';
 
@@ -31,6 +39,14 @@ export class ProblemFilter extends BaseExceptionFilter {
       const code: RefusalCode = error.code;
       const status = problemCatalogue[code].status ?? HttpStatus.UNPROCESSABLE_ENTITY;
       return problem(status, error.code, error.params);
+    }
+    if (error instanceof ImageRefusedError) {
+      const status = problemCatalogue[error.code].status ?? HttpStatus.UNPROCESSABLE_ENTITY;
+      return problem(status, error.code, {});
+    }
+    // Seul l'envoi d'une image a une limite de taille (multer) : la dépasser donne ce 413.
+    if (error instanceof PayloadTooLargeException) {
+      return problem(HttpStatus.PAYLOAD_TOO_LARGE, 'image-too-large', {});
     }
     if (error instanceof MalformedRequestError || isUnreadableBody(error)) {
       return problem(HttpStatus.BAD_REQUEST, 'malformed-request', {});

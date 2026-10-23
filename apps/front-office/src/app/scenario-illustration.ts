@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, signal } from '@angular/core';
 import { initialOf } from '@chimeres/design';
 
 /** Vignette carrée (32 et 44 px), carte 3:2 du front office, bandeau 4:1 de la page d'un scénario. */
@@ -37,7 +37,8 @@ const FRAMES = {
 } as const;
 
 /**
- * Image d'un scénario, ou à défaut son illustration par défaut (PR-7) : la lettrine de son titre,
+ * Image d'un scénario, ou à défaut son illustration par défaut (PR-7), qui remplace aussi une image
+ * qui ne se charge pas, sans icône d'image cassée : la lettrine de son titre,
  * article ignoré, en Uncial Antiqua, dans le motif gravé (simplifié pour les vignettes). Décorative,
  * masquée aux lecteurs d'écran : le titre est toujours écrit à côté. Le parent en fixe la largeur.
  * Copie de celui du back office (ADR 0006, docs/design/ecriture-css.md).
@@ -46,8 +47,8 @@ const FRAMES = {
   selector: 'app-scenario-illustration',
   host: { '[class]': 'format()' },
   template: `
-    @if (imageUrl(); as url) {
-      <img [src]="url" alt="" />
+    @if (shownUrl(); as url) {
+      <img [src]="url" alt="" (error)="failedUrl.set(url)" />
     } @else {
       <svg
         aria-hidden="true"
@@ -114,6 +115,13 @@ export class ScenarioIllustration {
   readonly title = input.required<string>();
   readonly imageUrl = input<string | null>(null);
   readonly format = input<IllustrationFormat>('thumb');
+
+  /** L'URL qui n'a pas pu se charger : une autre URL retente. */
+  protected readonly failedUrl = signal<string | null>(null);
+  protected readonly shownUrl = computed(() => {
+    const url = this.imageUrl();
+    return url !== this.failedUrl() ? url : null;
+  });
 
   protected readonly frame = computed(() => FRAMES[this.format()]);
   /** Vide tant que le titre l'est : le motif reste seul. */

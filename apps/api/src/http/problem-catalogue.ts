@@ -11,7 +11,7 @@ type Message<P> = {
   detail: (params: P) => string;
   /** Champ du corps concerné, avec des points pour l'imbrication (`seats.min`). */
   field?: string;
-  /** Statut HTTP d'un refus, 422 par défaut : 404 pour un élément inconnu. */
+  /** Statut HTTP, 422 par défaut : 404 pour un élément inconnu. */
   status?: number;
 };
 
@@ -168,6 +168,27 @@ export const problemCatalogue: Catalogue = {
   'concurrent-modification': {
     title: 'Modification simultanée',
     detail: () => 'La convention a changé entre-temps : recharge la page, puis recommence.',
+  },
+  'image-too-large': {
+    title: 'Image trop lourde',
+    detail: () => "L'image fait plus de 10 Mo : choisis-en une plus légère.",
+    status: 413,
+  },
+  'image-format-unsupported': {
+    title: 'Format refusé',
+    detail: () =>
+      "Ce fichier n'est ni un JPEG, ni un PNG, ni un WebP, ni un AVIF : enregistre l'image en JPEG, puis recommence.",
+    status: 415,
+  },
+  'image-unreadable': {
+    title: 'Image illisible',
+    detail: () =>
+      "L'image est abîmée, ou dépasse 40 mégapixels : enregistre-la de nouveau en JPEG, plus petite, puis recommence.",
+  },
+  'image-not-found': {
+    title: 'Image introuvable',
+    detail: () => "Cette image n'existe plus : recharge la page.",
+    status: 404,
   },
   'internal-error': {
     title: 'Erreur interne',

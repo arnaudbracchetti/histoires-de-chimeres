@@ -54,7 +54,7 @@ Un scénario sans image (PR-7) prend une illustration dessinée côté client en
 - L'image d'un scénario apparaît **partout où le scénario apparaît**, ou à défaut son illustration par défaut.
 - **Un seul format** : paysage 3:2, recadré au centre par le serveur (1200 × 800 px au plus, [ADR 0007](../adr/0007-images-de-scenario-stockees-en-base.md)). Vignette carrée et bandeau en dérivent en CSS (`object-fit: cover`).
 - **Couleurs d'origine**, sans filtre ni virage.
-- **Back office** : vignette carrée de 32 px dans la frise et les tableaux, de 44 px dans la réserve, bandeau 4:1 sur la page d'un scénario.
+- **Back office** : vignette carrée de 32 px dans la frise et les tableaux, de 44 px dans la réserve, aperçu 3:2 dans la zone image de la page d'un scénario.
 - **Front office** : grande carte 3:2, l'image en fond, un dégradé charbon sous le texte. Pas d'effet de verre (`backdrop-filter`) : coûteux sur téléphone, et au contraste imprévisible.
 
 ## Inspirations

@@ -40,7 +40,14 @@ export type RefusalParams = {
 export type RefusalCode = keyof RefusalParams;
 
 /** Codes que seule l'API produit. */
-export type ApiErrorCode = 'malformed-request' | 'concurrent-modification' | 'internal-error';
+export type ApiErrorCode =
+  | 'malformed-request'
+  | 'concurrent-modification'
+  | 'image-too-large'
+  | 'image-format-unsupported'
+  | 'image-unreadable'
+  | 'image-not-found'
+  | 'internal-error';
 
 export type ProblemCode = RefusalCode | ApiErrorCode;
 

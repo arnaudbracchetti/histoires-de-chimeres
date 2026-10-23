@@ -33,6 +33,7 @@ export type {
 } from './problem.js';
 export {
   CONTENT_WARNINGS_MAX_LENGTH,
+  IMAGE_MAX_BYTES,
   PRESENTATION_MAX_LENGTH,
   SCENARIO_TITLE_MAX_LENGTH,
   SYSTEM_MAX_LENGTH,
@@ -41,6 +42,7 @@ export {
   type ScenarioBody,
   type ScenarioDto,
   type ScenarioGameMasterDto,
+  type ScenarioImageParams,
   type ScenarioListItemDto,
   type ScenarioParams,
   type ScenarioSummaryDto,

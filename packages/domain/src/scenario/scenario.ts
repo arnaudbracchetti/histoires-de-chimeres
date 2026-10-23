@@ -32,6 +32,8 @@ export type ScenarioState = {
   contentWarnings: ContentWarnings;
   seats: Seats;
   duration: Duration;
+  /** Référence opaque de l'image (ADR 0007), ou `null` : l'illustration par défaut (PR-7). */
+  imageId: string | null;
 };
 
 /** Scénario : ce qu'un MJ propose de faire jouer. Agrégat à part de la convention (ADR 0005). */
@@ -58,6 +60,7 @@ export class Scenario {
       ...verifyContent(details),
       seats: Seats.of(details.seats.min, details.seats.max),
       duration: details.duration,
+      imageId: null,
     });
   }
 
@@ -93,6 +96,10 @@ export class Scenario {
     return this.state.duration;
   }
 
+  get imageId(): string | null {
+    return this.state.imageId;
+  }
+
   /** Le contenu reste modifiable à tout moment (PR-14). */
   changeContent(content: ScenarioContent): void {
     this.state = { ...this.state, ...verifyContent(content) };
@@ -105,6 +112,15 @@ export class Scenario {
   /** Le refus d'un scénario qui a des parties arrivera avec la programmation (PR-14). */
   changeDuration(duration: Duration): void {
     this.state.duration = duration;
+  }
+
+  /** L'image change à tout moment, même quand le scénario est programmé (PR-7). */
+  changeImage(imageId: string): void {
+    this.state.imageId = imageId;
+  }
+
+  removeImage(): void {
+    this.state.imageId = null;
   }
 
   /**

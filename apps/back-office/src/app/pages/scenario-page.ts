@@ -1,30 +1,30 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, input, viewChild } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, viewChild } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { scenarioEndpoints, type ScenarioBody, type ScenarioDto } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { apiResource } from '../api-resource';
 import type { UnsavedChanges } from '../scenarios/leave-unsaved';
 import { ScenarioForm } from '../scenarios/scenario-form';
+import { ScenarioImage } from '../scenarios/scenario-image';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
 import { Confirmation } from '../ui/confirmation';
 import { MoreMenu, type MoreMenuItem } from '../ui/more-menu';
-import { ScenarioIllustration } from '../ui/scenario-illustration';
 
 const MENU: readonly MoreMenuItem[] = [
   { value: 'remove', label: 'Supprimer le scénario', danger: true },
 ];
 
 /**
- * Page d'un scénario : « Scénarios › titre », son MJ, son bandeau, et la saisie de son contenu, de
- * ses places et de sa durée (PR-14). Quitter avec des modifications non enregistrées demande
+ * Page d'un scénario : « Scénarios › titre », son MJ, la zone de son image, et la saisie de son contenu, de
+ * ses places et de sa durée (PR-14), et son image (PR-7), qui part hors de « Enregistrer ». Quitter avec des modifications non enregistrées demande
  * confirmation. La suppression passe par « ⋯ », après confirmation, puis revient à la liste.
  */
 @Component({
   selector: 'app-scenario-page',
-  imports: [Loadable, MoreMenu, PageHeader, RouterLink, ScenarioForm, ScenarioIllustration],
+  imports: [Loadable, MoreMenu, PageHeader, RouterLink, ScenarioForm, ScenarioImage],
   template: `
     <app-page-header
       [title]="scenario()?.title ?? 'Scénario'"
@@ -44,10 +44,11 @@ const MENU: readonly MoreMenuItem[] = [
           Proposé par
           <a [routerLink]="['/mj', scenario.gameMaster.id]">{{ scenario.gameMaster.nickname }}</a>
         </p>
-        <app-scenario-illustration
-          format="banner"
+        <app-scenario-image
+          [scenarioId]="scenario.id"
           [title]="scenario.title"
-          [imageUrl]="scenario.imageUrl"
+          [imageUrl]="imageUrl()"
+          (changed)="imageUrl.set($event.imageUrl)"
         />
         <app-scenario-form [scenario]="scenario" [save]="update" (saved)="onUpdated($event)" />
       }
@@ -65,11 +66,6 @@ const MENU: readonly MoreMenuItem[] = [
       .game-master {
         color: var(--text-muted);
       }
-
-      app-scenario-illustration {
-        max-width: 44rem;
-        border-radius: var(--radius-card);
-      }
     }
   `,
 })
@@ -83,6 +79,12 @@ export class ScenarioPage implements UnsavedChanges {
   protected readonly scenario = computed(() =>
     this.resource.hasValue() ? this.resource.value() : undefined,
   );
+
+  /**
+   * À part du scénario : changer l'image ne passe pas par le formulaire, dont la saisie en cours
+   * repartirait de zéro avec un nouveau scénario.
+   */
+  protected readonly imageUrl = linkedSignal(() => this.scenario()?.imageUrl ?? null);
 
   protected readonly failure = computed(() => {
     const error = this.resource.error();

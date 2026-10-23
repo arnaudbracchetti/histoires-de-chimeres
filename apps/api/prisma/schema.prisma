@@ -82,6 +82,20 @@ model Scenario {
   seatsMax        Int
   /// En créneaux : 1 ou 2.
   duration        Int
+  /// L'image servie, ou rien : l'illustration par défaut (PR-7).
+  imageId         String?         @db.Uuid
+  images          ScenarioImage[]
 
   @@index([gameMasterId])
+}
+
+/// Image d'un scénario, en WebP (ADR 0007). À part du scénario, pour que les listes ne chargent
+/// jamais les octets. Elle part avec son scénario.
+model ScenarioImage {
+  id         String   @id @db.Uuid
+  scenarioId String   @db.Uuid
+  scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  bytes      Bytes
+
+  @@index([scenarioId])
 }

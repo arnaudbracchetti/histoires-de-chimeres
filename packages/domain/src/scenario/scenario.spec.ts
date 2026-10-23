@@ -204,4 +204,19 @@ describe('Modifier un scénario (PR-14)', () => {
 
     expect(() => scenario.remove(aConvention())).not.toThrow();
   });
+
+  it('naît sans image (PR-7)', () => {
+    expect(aScenario().imageId).toBeNull();
+  });
+
+  it('change d’image, puis la retire, sans règle bloquante (PR-7)', () => {
+    const scenario = aScenario();
+
+    scenario.changeImage('i1');
+    scenario.changeImage('i2');
+    expect(scenario.imageId).toBe('i2');
+
+    scenario.removeImage();
+    expect(scenario.imageId).toBeNull();
+  });
 });

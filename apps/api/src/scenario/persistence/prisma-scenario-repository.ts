@@ -27,6 +27,7 @@ export class PrismaScenarioRepository implements ScenarioRepository {
       contentWarnings: ContentWarnings.of(row.contentWarnings),
       seats: Seats.of(row.seatsMin, row.seatsMax),
       duration: row.duration as Duration,
+      imageId: row.imageId,
     });
   }
 
@@ -35,6 +36,7 @@ export class PrismaScenarioRepository implements ScenarioRepository {
     return ScenarioCatalogue.restore(rows);
   }
 
+  /** L'image s'écrit à part, avec ses octets (`ScenarioImageRepository`). */
   async save(scenario: Scenario): Promise<void> {
     const data = {
       title: scenario.title,
