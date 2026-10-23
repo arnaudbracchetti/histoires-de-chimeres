@@ -15,6 +15,11 @@ export type RefusalParams = {
   'table-name-too-long': { max: number };
   /** `name` : le nom de la table qui le porte déjà, tel qu'il s'affiche. */
   'table-name-taken': { name: string };
+  'game-master-not-found': Record<string, never>;
+  'nickname-required': Record<string, never>;
+  'nickname-too-long': { max: number };
+  /** `nickname` : le pseudo du MJ qui le porte déjà, tel qu'il s'affiche. */
+  'nickname-taken': { nickname: string };
 };
 
 export type RefusalCode = keyof RefusalParams;

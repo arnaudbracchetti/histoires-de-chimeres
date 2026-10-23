@@ -1,5 +1,6 @@
 import { ComparableName } from '../comparable-name.js';
 import { Refusal } from '../refusal.js';
+import { GameMaster } from './game-master.js';
 import { Table } from './table.js';
 import type { TimeOfDay } from './time-of-day.js';
 import { TimeSlot } from './time-slot.js';
@@ -13,6 +14,8 @@ export type ConventionState = {
   timeSlots: TimeSlot[];
   /** Dans n'importe quel ordre : `tables` les rend dans l'ordre naturel. */
   tables: Table[];
+  /** Dans n'importe quel ordre : `gameMasters` les rend dans l'ordre naturel de leur pseudo. */
+  gameMasters: GameMaster[];
   /** Numéro de version, pour le verrou optimiste : seul le repository le fait avancer. */
   version: number;
 };
@@ -23,6 +26,8 @@ export class Convention {
   static readonly NAME_MAX_LENGTH = 80;
   /** Reprise par `contract` (`TABLE_NAME_MAX_LENGTH`) ; le même test d'`application` le vérifie. */
   static readonly TABLE_NAME_MAX_LENGTH = 30;
+  /** Reprise par `contract` (`NICKNAME_MAX_LENGTH`) ; le même test d'`application` le vérifie. */
+  static readonly NICKNAME_MAX_LENGTH = 30;
 
   private constructor(private state: ConventionState) {}
 
@@ -31,6 +36,7 @@ export class Convention {
       ...state,
       timeSlots: [...state.timeSlots],
       tables: [...state.tables],
+      gameMasters: [...state.gameMasters],
     });
   }
 
@@ -104,6 +110,51 @@ export class Convention {
 
   removeTable(id: string): void {
     this.state.tables.splice(this.indexOfTable(id), 1);
+  }
+
+  /** Les MJ, dans l'ordre naturel de leur pseudo. */
+  get gameMasters(): readonly GameMaster[] {
+    return [...this.state.gameMasters].sort((a, b) => a.nickname.compareTo(b.nickname));
+  }
+
+  addGameMaster(id: string, nickname: string): void {
+    this.state.gameMasters.push(
+      this.verifyNickname(new GameMaster(id, ComparableName.of(nickname))),
+    );
+  }
+
+  /** Change le pseudo d'un MJ, à tout moment (PR-12). */
+  renameGameMaster(id: string, nickname: string): void {
+    const index = this.indexOfGameMaster(id);
+    this.state.gameMasters[index] = this.verifyNickname(
+      new GameMaster(id, ComparableName.of(nickname)),
+    );
+  }
+
+  /** Supprime un MJ. Le refus d'un MJ qui a des scénarios (PR-12) arrivera avec eux. */
+  removeGameMaster(id: string): void {
+    this.state.gameMasters.splice(this.indexOfGameMaster(id), 1);
+  }
+
+  private indexOfGameMaster(gameMasterId: string): number {
+    const index = this.state.gameMasters.findIndex((gameMaster) => gameMaster.id === gameMasterId);
+    if (index < 0) throw new Refusal('game-master-not-found', {});
+    return index;
+  }
+
+  /** Vérifie le pseudo d'un MJ : obligatoire, borné, unique parmi les MJ (PR-12, ID-7). */
+  private verifyNickname(candidate: GameMaster): GameMaster {
+    const { text } = candidate.nickname;
+    if (!text) throw new Refusal('nickname-required', {});
+    if (text.length > Convention.NICKNAME_MAX_LENGTH) {
+      throw new Refusal('nickname-too-long', { max: Convention.NICKNAME_MAX_LENGTH });
+    }
+    const namesake = this.state.gameMasters.find(
+      (gameMaster) =>
+        gameMaster.id !== candidate.id && gameMaster.nickname.equals(candidate.nickname),
+    );
+    if (namesake) throw new Refusal('nickname-taken', { nickname: namesake.nickname.text });
+    return candidate;
   }
 
   private indexOfTable(tableId: string): number {

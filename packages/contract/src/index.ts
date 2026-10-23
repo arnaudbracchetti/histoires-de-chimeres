@@ -14,6 +14,13 @@ export {
   type ParamsOf,
   type ResponseOf,
 } from './endpoint.js';
+export {
+  NICKNAME_MAX_LENGTH,
+  gameMasterEndpoints,
+  type GameMasterDto,
+  type GameMasterNicknameBody,
+  type GameMasterParams,
+} from './game-master.js';
 export { healthEndpoints, type HealthDto } from './health.js';
 export type {
   ApiErrorCode,

@@ -77,6 +77,26 @@ export const problemCatalogue: Catalogue = {
     detail: ({ name }) => `La table « ${name} » porte déjà ce nom : choisis-en un autre.`,
     field: 'name',
   },
+  'game-master-not-found': {
+    title: 'MJ introuvable',
+    detail: () => "Ce MJ n'existe plus : recharge la page.",
+    status: 404,
+  },
+  'nickname-required': {
+    title: 'Pseudo obligatoire',
+    detail: () => 'Donne un pseudo au MJ.',
+    field: 'nickname',
+  },
+  'nickname-too-long': {
+    title: 'Pseudo trop long',
+    detail: ({ max }) => `Un pseudo fait ${max} caractères au plus : raccourcis-le.`,
+    field: 'nickname',
+  },
+  'nickname-taken': {
+    title: 'Pseudo déjà pris',
+    detail: ({ nickname }) => `Le MJ « ${nickname} » porte déjà ce pseudo : choisis-en un autre.`,
+    field: 'nickname',
+  },
   'malformed-request': {
     title: 'Requête illisible',
     detail: () => 'Le serveur ne comprend pas cette requête : recharge la page, puis recommence.',

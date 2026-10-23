@@ -39,7 +39,7 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 
 - **Créneau** : une **carte par créneau**, dans l'ordre de la journée, et la pause entre deux cartes (voir [Créneaux](#créneaux)).
 - **Table** : une **petite carte par table**, sur une grille, dans l'ordre naturel (voir [Tables](#tables)).
-- **MJ** : sa ligne mène à sa fiche. Son pseudo se modifie dans l'en-tête de la fiche (crayon, puis champ en place, Entrée ou Échap), jamais dans la liste.
+- **MJ** : une ligne en saisie en bas du tableau, ouverte par « Ajouter un MJ » sous le tableau (voir [MJ](#mj)). Sa ligne mène à sa fiche. Son pseudo se modifie dans l'en-tête de la fiche (crayon, puis champ en place, Entrée ou Échap), jamais dans la liste.
 - **Scénario** : il a **sa propre page**, en lecture puis en édition. Il se crée depuis la fiche de son MJ, qui lui est fixé dès la création (PR-16), et s'ouvre aussi depuis la liste des scénarios.
 - **Dialogues** (`@angular/cdk/dialog`) : réservés aux confirmations et aux dialogues de placement de la programmation. Jamais de formulaire de saisie dans un dialogue.
 
@@ -65,6 +65,17 @@ Forme retenue sur prototype, face au tableau à ligne en édition, aux étiquett
 - **Saisie à la chaîne** : après un ajout, une nouvelle carte vide s'ouvre aussitôt, focus sur le nom. « Annuler », ou Échap, la ferme.
 - **L'erreur** s'affiche dans une bulle sous la carte, par-dessus la rangée suivante, sans couvrir les boutons : aucune carte ne bouge.
 - **Focus** : comme pour les créneaux.
+
+### MJ
+
+Forme retenue sur prototype, face au champ d'ajout permanent, au champ « Chercher ou créer » et à la saisie en lot : la ligne en saisie du tableau.
+
+- **La liste** est un tableau (voir [Tableaux](#tableaux)) : le pseudo, lien vers la fiche, triable, avec un filtre texte au-dessus. Le filtre ignore la casse et les accents.
+- **« Ajouter un MJ »** (secondaire), **sous le tableau**, ouvre une ligne « Nouveau MJ » en dernier : le champ du pseudo, « Ajouter » (principal) et « Annuler » (discret). Le filtre s'efface pour montrer tous les MJ. Le bouton disparaît le temps de la saisie.
+- **Saisie à la chaîne** : après un ajout, le MJ prend sa place dans l'ordre naturel et une ligne vide s'ouvre aussitôt, focus sur le pseudo. « Annuler », ou Échap, la ferme ; le focus revient à « Ajouter un MJ ».
+- La ligne en saisie est centrée et garde la hauteur des autres. Elle est la dernière du tableau : **son erreur s'affiche en bulle juste dessous**, comme pour une table, sans rien couvrir ni décaler.
+- **La fiche** : « MJ › pseudo ». Un crayon à côté du titre (« Modifier le pseudo ») remplace le h1 par le champ, avec « Enregistrer » et « Annuler ». Entrée enregistre, Échap ferme, le refus s'affiche sous le champ, et le focus revient au crayon. « Supprimer le MJ » est dans le menu « ⋯ » de l'en-tête.
+- **Sans MJ**, l'état vide gravé invite à « Créer le premier MJ », qui ouvre la ligne de saisie.
 
 ### Icône de carte
 

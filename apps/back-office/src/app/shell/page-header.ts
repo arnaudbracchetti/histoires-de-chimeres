@@ -6,7 +6,8 @@ export type Crumb = { label: string; link: string };
 
 /**
  * En-tête d'une page : fil d'Ariane dès le second niveau, h1 en Uncial Antiqua, et à droite une
- * seule action principale, projetée.
+ * seule action principale, projetée. Ce qui porte `appPageTitle` se place à côté du h1 ;
+ * `titleHidden` retire le h1, pour modifier le titre dans un champ en place.
  */
 @Component({
   selector: 'app-page-header',
@@ -23,7 +24,12 @@ export type Crumb = { label: string; link: string };
           </ol>
         </nav>
       }
-      <h1 tabindex="-1">{{ title() }}</h1>
+      <div class="title-line">
+        @if (!titleHidden()) {
+          <h1 tabindex="-1">{{ title() }}</h1>
+        }
+        <ng-content select="[appPageTitle]" />
+      </div>
     </div>
     <ng-content />
   `,
@@ -61,6 +67,12 @@ export type Crumb = { label: string; link: string };
         }
       }
 
+      .title-line {
+        display: flex;
+        gap: var(--space-s);
+        align-items: center;
+      }
+
       h1:focus {
         outline: none;
       }
@@ -70,4 +82,5 @@ export type Crumb = { label: string; link: string };
 export class PageHeader {
   readonly title = input.required<string>();
   readonly trail = input<readonly Crumb[]>([]);
+  readonly titleHidden = input(false);
 }

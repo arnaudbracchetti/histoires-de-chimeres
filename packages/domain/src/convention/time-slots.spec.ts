@@ -10,6 +10,7 @@ function aConvention(): Convention {
     date: null,
     timeSlots: [],
     tables: [],
+    gameMasters: [],
     version: 0,
   });
 }

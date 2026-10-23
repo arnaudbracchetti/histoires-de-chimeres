@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { StaleConventionError, type ConventionRepository } from '@chimeres/application';
-import { ComparableName, Convention, Table, TimeOfDay, TimeSlot } from '@chimeres/domain';
+import {
+  ComparableName,
+  Convention,
+  GameMaster,
+  Table,
+  TimeOfDay,
+  TimeSlot,
+} from '@chimeres/domain';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { fromDatabaseDate, toDatabaseDate } from './calendar-date.js';
 
@@ -9,9 +16,9 @@ export class PrismaConventionRepository implements ConventionRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async get(): Promise<Convention> {
-    const { id, name, date, version, timeSlots, tables } =
+    const { id, name, date, version, timeSlots, tables, gameMasters } =
       await this.prisma.convention.findFirstOrThrow({
-        include: { timeSlots: true, tables: true },
+        include: { timeSlots: true, tables: true, gameMasters: true },
       });
     return Convention.restore({
       id,
@@ -26,13 +33,16 @@ export class PrismaConventionRepository implements ConventionRepository {
           ),
       ),
       tables: tables.map((table) => new Table(table.id, ComparableName.of(table.name))),
+      gameMasters: gameMasters.map(
+        (gameMaster) => new GameMaster(gameMaster.id, ComparableName.of(gameMaster.nickname)),
+      ),
       version,
     });
   }
 
   /**
    * N'écrit que si la version en base est encore celle du chargement (verrou optimiste), en une
-   * transaction : la convention, ses créneaux et ses tables sont écrits ensemble, ou pas du tout.
+   * transaction : la convention, ses créneaux, ses tables et ses MJ sont écrits ensemble, ou pas du tout.
    */
   async save(convention: Convention): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
@@ -71,6 +81,21 @@ export class PrismaConventionRepository implements ConventionRepository {
           where: { id },
           create: { id, conventionId: convention.id, name },
           update: { name },
+        });
+      }
+
+      const gameMasters = convention.gameMasters.map((gameMaster) => ({
+        id: gameMaster.id,
+        nickname: gameMaster.nickname.text,
+      }));
+      await tx.gameMaster.deleteMany({
+        where: { conventionId: convention.id, id: { notIn: gameMasters.map(({ id }) => id) } },
+      });
+      for (const { id, nickname } of gameMasters) {
+        await tx.gameMaster.upsert({
+          where: { id },
+          create: { id, conventionId: convention.id, nickname },
+          update: { nickname },
         });
       }
     });

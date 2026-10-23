@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { CONVENTION_NAME_MAX_LENGTH, TABLE_NAME_MAX_LENGTH } from '@chimeres/contract';
+import {
+  CONVENTION_NAME_MAX_LENGTH,
+  NICKNAME_MAX_LENGTH,
+  TABLE_NAME_MAX_LENGTH,
+} from '@chimeres/contract';
 import { Convention } from '@chimeres/domain';
 
 describe('Bornes du contrat et du domaine', () => {
@@ -9,5 +13,9 @@ describe('Bornes du contrat et du domaine', () => {
 
   it('le nom d’une table a la même longueur maximale', () => {
     expect(TABLE_NAME_MAX_LENGTH).toBe(Convention.TABLE_NAME_MAX_LENGTH);
+  });
+
+  it('le pseudo d’un MJ a la même longueur maximale', () => {
+    expect(NICKNAME_MAX_LENGTH).toBe(Convention.NICKNAME_MAX_LENGTH);
   });
 });

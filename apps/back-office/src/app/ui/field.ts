@@ -68,6 +68,8 @@ let nextId = 0;
         color: var(--danger);
         font-size: var(--font-size-meta);
         line-height: 1.4;
+        /* nowrap pour un champ étroit dont l'erreur peut déborder à droite sans rien couvrir. */
+        white-space: var(--field-error-white-space, normal);
       }
 
       /* Compact : ni ligne réservée ni position propre, la bulle se place sous la carte. */

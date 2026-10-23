@@ -10,13 +10,14 @@ datasource db {
 }
 
 model Convention {
-  id        String     @id @default(uuid()) @db.Uuid
-  name      String
-  date      DateTime?  @db.Date
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String
+  date        DateTime?    @db.Date
   /// Verrou optimiste : chaque sauvegarde de l'agrégat l'incrémente.
-  version   Int        @default(0)
-  timeSlots TimeSlot[]
-  tables    Table[]
+  version     Int          @default(0)
+  timeSlots   TimeSlot[]
+  tables      Table[]
+  gameMasters GameMaster[]
 }
 
 /// Créneau de la convention. Ses heures sont en minutes depuis minuit, de 0 à 1439.
@@ -37,6 +38,17 @@ model Table {
   conventionId String     @db.Uuid
   convention   Convention @relation(fields: [conventionId], references: [id], onDelete: Cascade)
   name         String
+
+  @@index([conventionId])
+}
+
+/// MJ de la convention. Son pseudo est unique parmi les MJ, à la casse, aux accents et aux espaces
+/// près : le domaine le vérifie (PR-12, ID-7).
+model GameMaster {
+  id           String     @id @db.Uuid
+  conventionId String     @db.Uuid
+  convention   Convention @relation(fields: [conventionId], references: [id], onDelete: Cascade)
+  nickname     String
 
   @@index([conventionId])
 }

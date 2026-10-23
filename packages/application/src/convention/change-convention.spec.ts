@@ -18,6 +18,7 @@ class FakeConventionRepository implements ConventionRepository {
       date: null,
       timeSlots: [],
       tables: [],
+      gameMasters: [],
       version: 0,
     });
   }
