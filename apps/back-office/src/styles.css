@@ -57,6 +57,12 @@
     font-weight: normal;
   }
 
+  /* Titre de section : Aldrich n'a qu'une graisse, pas de faux gras. */
+  h2 {
+    font-family: var(--font-caps);
+    font-weight: normal;
+  }
+
   a {
     color: var(--accent);
   }

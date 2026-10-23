@@ -58,8 +58,11 @@ let nextId = 0;
         background: var(--surface-2);
       }
 
+      /* Une question, pas un titre de section : police système. */
       h2 {
+        font-family: var(--font-ui);
         font-size: var(--font-size-block);
+        font-weight: 600;
       }
 
       .refusal {
