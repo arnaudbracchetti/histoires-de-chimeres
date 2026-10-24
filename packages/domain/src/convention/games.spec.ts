@@ -222,7 +222,7 @@ describe('Programmer une partie double (PR-5, PR-8)', () => {
 
   it("donne pour chaque case le refus même de l'écriture", () => {
     const verdicts = withThreeSlots()
-      .placementsOf(double)
+      .placementsOfScenario(double)
       .map(({ timeSlotId, tableId, refusal }) => [timeSlotId, tableId, refusal?.code ?? null]);
 
     expect(verdicts).toEqual([
@@ -320,7 +320,7 @@ describe('Une disponibilité qui porte une partie (PR-15)', () => {
     });
     convention.unschedule('p1');
     convention.withdrawAvailability('g1', 's1');
-    expect(convention.gameMasters[0]!.isAvailableOn('s1')).toBe(false);
+    expect(convention.gameMasters[0]!.isAvailableOnTimeSlot('s1')).toBe(false);
   });
 
   it('refuse de retirer le second créneau d’une partie double', () => {
@@ -337,7 +337,7 @@ describe('Une disponibilité qui porte une partie (PR-15)', () => {
     const convention = aConvention();
     convention.schedule('p1', neons, 's2', 't1');
 
-    const withdrawals = convention.withdrawalsOf('g1');
+    const withdrawals = convention.withdrawalsOfGameMaster('g1');
 
     expect(
       withdrawals.map(({ timeSlotId, refusal }) => [timeSlotId, refusal?.code ?? null]),
@@ -348,7 +348,7 @@ describe('Une disponibilité qui porte une partie (PR-15)', () => {
     expect(withdrawals[1]!.refusal).toEqual(
       refusalOf(() => convention.withdrawAvailability('g1', 's2')),
     );
-    expect(convention.withdrawalsOf('g2')).toEqual([{ timeSlotId: 's1', refusal: null }]);
+    expect(convention.withdrawalsOfGameMaster('g2')).toEqual([{ timeSlotId: 's1', refusal: null }]);
   });
 });
 
@@ -398,8 +398,8 @@ describe('Scénario qui a des parties (PR-14)', () => {
     expect(refusalOf(() => neons.remove(convention))).toMatchObject({
       code: 'scenario-has-games',
     });
-    expect(convention.hasGamesOf('a')).toBe(true);
-    expect(convention.hasGamesOf('b')).toBe(false);
+    expect(convention.scenarioHasGames('a')).toBe(true);
+    expect(convention.scenarioHasGames('b')).toBe(false);
     convention.unschedule('p1');
     expect(() => neons.remove(convention)).not.toThrow();
   });
@@ -413,7 +413,7 @@ describe('Verdicts de placement', () => {
       return convention;
     };
 
-    const verdicts = withOneGame().placementsOf(brumes);
+    const verdicts = withOneGame().placementsOfScenario(brumes);
 
     expect(
       verdicts.map(({ timeSlotId, tableId, refusal }) => [
@@ -766,7 +766,7 @@ describe('Verdicts de déplacement', () => {
       return convention;
     };
 
-    const verdicts = withTwoGames().movePlacementsOf('p2');
+    const verdicts = withTwoGames().movePlacementsOfGame('p2');
 
     expect(
       verdicts
@@ -799,7 +799,7 @@ describe('Verdicts de déplacement', () => {
       return convention;
     };
 
-    const verdicts = withThreeGames().movePlacementsOf('p2');
+    const verdicts = withThreeGames().movePlacementsOfGame('p2');
 
     expect(
       verdicts.map(({ timeSlotId, tableId, swapWith, refusal }) => [
@@ -848,7 +848,7 @@ describe('Verdicts de déplacement', () => {
 
     expect(
       convention
-        .movePlacementsOf('p2')
+        .movePlacementsOfGame('p2')
         .filter(({ tableId }) => tableId === 't1')
         .map(({ swapWith, refusal }) => [swapWith, refusal?.code ?? null]),
     ).toEqual([
@@ -858,7 +858,7 @@ describe('Verdicts de déplacement', () => {
   });
 
   it('refuse une partie inconnue', () => {
-    expect(refusalOf(() => aConvention().movePlacementsOf('x')).code).toBe('game-not-found');
+    expect(refusalOf(() => aConvention().movePlacementsOfGame('x')).code).toBe('game-not-found');
   });
 });
 

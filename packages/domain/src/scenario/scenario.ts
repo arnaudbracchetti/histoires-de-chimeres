@@ -112,7 +112,7 @@ export class Scenario {
   /** La durée ne change plus dès qu'une partie du scénario est programmée (PR-14). */
   changeDuration(duration: Duration, convention: Convention): void {
     if (duration === this.state.duration) return;
-    if (convention.hasGamesOf(this.id)) throw new Refusal('scenario-duration-locked', {});
+    if (convention.scenarioHasGames(this.id)) throw new Refusal('scenario-duration-locked', {});
     this.state.duration = duration;
   }
 
@@ -130,7 +130,7 @@ export class Scenario {
    * supprime ensuite.
    */
   remove(convention: Convention): void {
-    if (convention.hasGamesOf(this.id)) throw new Refusal('scenario-has-games', {});
+    if (convention.scenarioHasGames(this.id)) throw new Refusal('scenario-has-games', {});
   }
 }
 

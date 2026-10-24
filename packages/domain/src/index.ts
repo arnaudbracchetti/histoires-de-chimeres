@@ -4,10 +4,10 @@ export {
   type ConventionState,
   type MovePlacement,
   type Placement,
-  type ReserveOfScenario,
   type Withdrawal,
 } from './convention/convention.js';
 export { Game } from './convention/game.js';
+export type { ReserveOfScenario } from './convention/reserve.js';
 export { GameMaster } from './convention/game-master.js';
 export { Table } from './convention/table.js';
 export { TimeOfDay } from './convention/time-of-day.js';

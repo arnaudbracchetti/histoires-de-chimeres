@@ -39,7 +39,7 @@ function refusalOf(action: () => void): Refusal {
 const availabilitiesOf = (convention: Convention, gameMasterId: string) => {
   const gameMaster = convention.gameMasters.find(({ id }) => id === gameMasterId)!;
   return convention.timeSlots
-    .filter((slot) => gameMaster.isAvailableOn(slot.id))
+    .filter((slot) => gameMaster.isAvailableOnTimeSlot(slot.id))
     .map(({ id }) => id);
 };
 
@@ -63,7 +63,7 @@ describe('Disponibilités des MJ (PR-2)', () => {
     convention.withdrawAvailability('g1', 's2');
 
     expect(availabilitiesOf(convention, 'g1')).toEqual(['s1']);
-    expect(convention.availabilityCountOf('s1')).toBe(1);
+    expect(convention.availabilityCountOnTimeSlot('s1')).toBe(1);
   });
 
   it('garde les disponibilités d’un MJ qui change de pseudo', () => {
@@ -81,8 +81,8 @@ describe('Disponibilités des MJ (PR-2)', () => {
     convention.declareAvailability('g2', 's1');
     convention.declareAvailability('g2', 's2');
 
-    expect(convention.availabilityCountOf('s1')).toBe(2);
-    expect(convention.availabilityCountOf('s2')).toBe(1);
+    expect(convention.availabilityCountOnTimeSlot('s1')).toBe(2);
+    expect(convention.availabilityCountOnTimeSlot('s2')).toBe(1);
   });
 
   it.each([
@@ -115,7 +115,7 @@ describe('Disponibilités des MJ (PR-2)', () => {
     expect(availabilitiesOf(convention, 'g2')).toEqual([]);
     // Un créneau recréé ne retrouve rien.
     convention.addTimeSlot('s3', at('09:00'), at('11:30'));
-    expect(convention.availabilityCountOf('s3')).toBe(0);
+    expect(convention.availabilityCountOnTimeSlot('s3')).toBe(0);
   });
 
   it('supprimer un MJ supprime ses disponibilités (PR-12)', () => {
@@ -125,7 +125,7 @@ describe('Disponibilités des MJ (PR-2)', () => {
 
     convention.removeGameMaster('g1', ScenarioCatalogue.restore([]));
 
-    expect(convention.availabilityCountOf('s1')).toBe(1);
+    expect(convention.availabilityCountOnTimeSlot('s1')).toBe(1);
   });
 
   describe('heures figées (PR-11)', () => {
@@ -152,7 +152,7 @@ describe('Disponibilités des MJ (PR-2)', () => {
 
       convention.changeTimeSlotHours('s2', at('14:00'), at('16:30'));
 
-      expect(convention.availabilityCountOf('s2')).toBe(1);
+      expect(convention.availabilityCountOnTimeSlot('s2')).toBe(1);
     });
 
     it('rend les heures modifiables une fois la dernière disponibilité retirée', () => {

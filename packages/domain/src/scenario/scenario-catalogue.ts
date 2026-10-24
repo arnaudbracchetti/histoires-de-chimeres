@@ -24,7 +24,7 @@ export class ScenarioCatalogue {
   }
 
   /** Nombre de scénarios du MJ. */
-  countOf(gameMasterId: string): number {
+  scenarioCountOfGameMaster(gameMasterId: string): number {
     return this.all.filter((entry) => entry.gameMasterId === gameMasterId).length;
   }
 }

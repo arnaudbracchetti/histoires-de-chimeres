@@ -13,19 +13,19 @@ export class GameMaster {
     this.availabilities = new Set(availabilities);
   }
 
-  isAvailableOn(timeSlotId: string): boolean {
+  isAvailableOnTimeSlot(timeSlotId: string): boolean {
     return this.availabilities.has(timeSlotId);
   }
 
-  renamed(nickname: ComparableName): GameMaster {
+  afterRenaming(nickname: ComparableName): GameMaster {
     return new GameMaster(this.id, nickname, this.availabilities);
   }
 
-  withAvailabilityOn(timeSlotId: string): GameMaster {
+  afterDeclaringAvailability(timeSlotId: string): GameMaster {
     return new GameMaster(this.id, this.nickname, [...this.availabilities, timeSlotId]);
   }
 
-  withoutAvailabilityOn(timeSlotId: string): GameMaster {
+  afterWithdrawingAvailability(timeSlotId: string): GameMaster {
     return new GameMaster(
       this.id,
       this.nickname,

@@ -31,7 +31,7 @@ const at = TimeOfDay.parse;
 /** Les créneaux dans l'ordre de la journée : rang, identifiant et heures. */
 function scheduleOf(convention: Convention): string[] {
   return convention.timeSlots.map(
-    (slot) => `${convention.rankOf(slot.id)} ${slot.id} ${slot.start}-${slot.end}`,
+    (slot) => `${convention.rankOfTimeSlot(slot.id)} ${slot.id} ${slot.start}-${slot.end}`,
   );
 }
 

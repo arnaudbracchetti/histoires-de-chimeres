@@ -17,7 +17,7 @@ export class ReadGameMaster {
   async execute(gameMasterId: string): Promise<GameMasterSheet | null> {
     const gameMaster = await this.reader.read(gameMasterId);
     if (!gameMaster) return null;
-    const withdrawals = (await this.conventions.get()).withdrawalsOf(gameMasterId);
+    const withdrawals = (await this.conventions.get()).withdrawalsOfGameMaster(gameMasterId);
     return { ...gameMaster, withdrawals };
   }
 }

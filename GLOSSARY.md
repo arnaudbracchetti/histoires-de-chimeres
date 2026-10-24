@@ -13,6 +13,10 @@ L'événement dans son ensemble, sur une journée, découpé en créneaux.
 Plage horaire de la journée, habituellement de 2h30, pendant laquelle se jouent les parties en parallèle. Les créneaux ne se chevauchent pas ; deux créneaux sont consécutifs quand aucun autre ne se place entre eux, même s'ils sont séparés par une pause (repas, etc.).
 _Avoid_: Session, tour, slot (seul)
 
+**Journée** · `Day`:
+La suite ordonnée des créneaux de la convention. Elle dit le rang de chaque créneau et quels créneaux sont consécutifs.
+_Avoid_: Planning, grille, Programme (réservé aux parties programmées)
+
 **Scénario** · `Scenario`:
 Ce qu'un MJ propose de faire jouer : un contenu (titre, jeu, présentation, image, avertissements de contenu), un nombre de places minimum et maximum, MJ non compris, et une durée d'un ou deux créneaux. Un scénario appartient à un seul MJ.
 _Avoid_: Module, aventure, proposition
