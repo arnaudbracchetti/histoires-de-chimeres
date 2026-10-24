@@ -28,13 +28,13 @@ Ordres de grandeur :
 
 | Profil | Connu à l'avance ? | Identification | Interface |
 |---|---|---|---|
-| **Participant** | Non | **Pseudo** + **code de récupération** | Front office mobile (PWA) |
-| **MJ** | Oui (email) | Back office : lien magique par email. Téléphone : **code MJ** | Back office (avant la convention) + front office mobile |
+| **Participant** | Non | **Pseudo** seul, derrière le **code de présence** | Front office mobile (PWA) |
+| **MJ** | Oui (email) | Back office : lien magique par email. Téléphone : **pseudo** + **code MJ** | Back office (avant la convention) + front office mobile |
 | **Organisateur** | Oui (email) | Lien magique par email | Back office, sur ordinateur portable, y compris le jour J |
 
 Un MJ est aussi un participant : il peut jouer sur les créneaux où il ne mène pas. Une même personne peut être MJ et Organisateur ; elle n'a qu'un compte et un code MJ.
 
-Choix d'identification : voir [ADR 0001](adr/0001-identification-par-pseudo-et-code-de-recuperation.md).
+Choix d'identification : voir [ADR 0009](adr/0009-identification-par-pseudo-sans-secret-derriere-un-code-de-presence.md), qui remplace l'ADR 0001.
 
 ## 3. Les deux applications
 
@@ -50,17 +50,19 @@ Choix d'identification : voir [ADR 0001](adr/0001-identification-par-pseudo-et-c
 3. Le MJ se connecte au back office par lien magique, puis propose ses **scénarios** et ses **disponibilités** (les créneaux où il peut mener). Il peut modifier ses scénarios à tout moment ; il n'y a pas de validation par les Organisateurs. Un Organisateur peut aussi les saisir et les modifier à sa place (PR-13).
 4. Les Organisateurs **programment** des scénarios sur un créneau et une table, dès avant la convention, ce qui crée des **parties**, ou les laissent en **réserve**. Le jour J, ils peuvent encore programmer une partie depuis la réserve (TI-6).
 5. Un Organisateur fixe la **plage d'accès** du front office (début et fin, en date et heure) et le **code d'accès anticipé**.
+6. Les Organisateurs affichent sur place le QR code qui porte le **code de présence** de la convention. Ce code est fixé à la création de la convention, ne change pas et se lit dans le back office.
 
 Avant la plage d'accès, le front office est fermé : il affiche seulement « L'application sera accessible le *date* à *heure* », et le programme ne s'y lit pas. Le code d'accès anticipé permet d'entrer quand même, par exemple pour que les Organisateurs testent le parcours sur leur téléphone. Après la plage, l'application affiche « La convention est terminée » et plus rien n'y est consultable.
 
-Tant qu'aucune plage d'accès n'est fixée, le front office reste fermé ; la seule contrainte est que le début précède la fin. Hors de la plage et sans le code, le serveur refuse aussi de créer un pseudo, de relier un téléphone et de servir le programme. Changer le code d'accès anticipé renvoie à l'écran d'attente les téléphones entrés avec l'ancien.
+Tant qu'aucune plage d'accès n'est fixée, le front office reste fermé ; la seule contrainte est que le début précède la fin. Hors de la plage et sans le code d'accès anticipé, le serveur refuse aussi de créer un pseudo, de relier un téléphone et de servir le programme. Changer le code d'accès anticipé renvoie à l'écran d'attente les téléphones entrés avec l'ancien.
 
 ### 4.2 Arrivée sur place
 
-1. Le participant scanne le QR code affiché dans la salle : il ouvre l'application.
-2. Le premier écran est l'identification : on ne peut rien faire dans l'application sans elle. L'application demande « Avez-vous un code MJ ? »
-   - **Oui** : il saisit son code MJ ; son pseudo, déjà enregistré, est récupéré et le téléphone est relié à son compte MJ.
-   - **Non** : il choisit un pseudo (unique dans la convention, distinct des pseudos des MJ, qui sont réservés) et reçoit un **code de récupération** à conserver.
+1. Le participant scanne le QR code affiché sur place : il ouvre l'application, qui reçoit le **code de présence**.
+2. Le premier écran est l'identification : on ne peut rien faire dans l'application sans elle. L'application demande un pseudo.
+   - **Pseudo nouveau** : il est créé et relié au téléphone.
+   - **Pseudo existant** : l'application demande « Ce pseudo existe déjà. Est-ce bien toi qui l'as créé ? ». Sur un « oui », le téléphone y est relié ; sinon, le participant en choisit un autre.
+   - **Pseudo d'un MJ** : l'application demande son **code MJ**, puis relie le téléphone à son compte MJ.
 3. L'application le guide pour l'ajouter à l'écran d'accueil (indispensable sur iPhone) et accepter les notifications.
 
 Tant que les inscriptions ne sont pas ouvertes, l'application affiche « Les inscriptions ouvriront le jour de la convention » et permet de consulter le programme.
@@ -88,16 +90,18 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 
 ### 5.1 Identité
 
-- **ID-1** Un participant s'identifie par un pseudo, unique dans la convention (ID-7), sans compte ni email.
-- **ID-2** À la création du pseudo, l'application remet un code de récupération qui permet de retrouver son identité sur un autre appareil.
-- **ID-3** Un MJ saisit son code MJ au lieu de créer un pseudo ; son pseudo, défini dans le back office, est récupéré. Le code MJ est réutilisable et lui sert aussi de code de récupération.
+- **ID-1** Un participant s'identifie par son seul pseudo, unique dans la convention (ID-7), sans compte, sans email et sans secret. Quand le pseudo saisi existe, l'application demande « Ce pseudo existe déjà. Est-ce bien toi qui l'as créé ? » et ne relie le téléphone qu'après un « oui ».
+- **ID-2** Sans le code de présence de la convention, le serveur refuse toute identification. Le QR code affiché sur place transmet ce code ; l'application le garde, le renvoie à chaque identification, et ne le demande au participant que s'il lui manque. Il est imprimé en clair sous le QR code : 6 caractères, majuscules et chiffres, sans 0/O ni 1/I/L. Le code est fixé à la création de la convention, ne change pas et se lit dans le back office. Les essais sont limités à 20 échecs par adresse IP et par 10 minutes.
+- **ID-3** Quand le pseudo saisi est celui d'un MJ, l'application demande son code MJ, réutilisable ; le téléphone est alors relié à son compte MJ.
 - **ID-4** Les pseudos des MJ sont réservés : un participant ne peut pas les prendre.
 - **ID-5** Dans le back office, un Organisateur peut :
-  - retrouver un participant par son pseudo et lui redonner son code de récupération (après l'avoir reconnu en personne) ;
+  - retrouver un participant par son pseudo et le lui redire ;
   - relier ou délier un pseudo et un compte MJ ; lors d'une liaison, les inscriptions du pseudo provisoire sont reportées sur le compte MJ et le pseudo provisoire disparaît ;
   - supprimer un pseudo (doublon, abus).
 - **ID-6** MJ et Organisateurs se connectent au back office par lien magique envoyé par email.
 - **ID-7** Deux pseudos sont le même pseudo quand ils ne diffèrent que par la casse, les accents ou les espaces (au début, à la fin, ou plusieurs à la suite) : « Élodie » et « elodie » sont le même pseudo. La ponctuation compte : « Jean-Luc » et « Jean Luc » sont deux pseudos distincts. Un pseudo s'affiche tel qu'il a été saisi.
+- **ID-8** Un téléphone est relié à un seul pseudo à la fois ; un pseudo peut être relié à plusieurs téléphones. Le relier à un nouveau téléphone ne coupe rien sur les autres ; un pseudo supprimé (ID-5) perd tous ses liens. Les notifications vont aux téléphones reliés au pseudo au moment de l'envoi.
+- **ID-9** « Changer de pseudo » coupe le lien du téléphone et ramène à l'identification : pour corriger une erreur, ou pour inscrire plusieurs personnes depuis un même téléphone. L'ancien pseudo reste, avec ses inscriptions. Un participant ne peut pas modifier son pseudo.
 
 ### 5.2 Programme
 
@@ -186,6 +190,7 @@ Pour les participants sans notifications :
 - **PWA avec push web** (service worker, clés VAPID). Sur iPhone, le push n'est possible qu'une fois l'application ajoutée à l'écran d'accueil (iOS 16.4+) : le parcours d'accueil doit l'expliquer pas à pas.
 - **Réseau mobile uniquement** : pages légères, images compressées, programme et affectations mis en cache pour rester consultables sans réseau.
 - **Charge** : jusqu'à ~80 personnes qui consultent et s'inscrivent en même temps, avec un pic à chaque publication.
+- **Session** : un cookie posé par le serveur, illisible par les scripts de la page, relie le téléphone à son pseudo. Il n'a pas d'expiration propre : la plage d'accès fait foi. L'application garde à côté une copie non secrète pour l'affichage hors ligne.
 - **Données personnelles** : aucun email ni donnée nominative côté participant ; seuls les emails des MJ et Organisateurs sont stockés.
 - **Envoi d'emails** : nécessaire uniquement pour les liens magiques du back office.
 - **Langue** : français.
@@ -201,7 +206,7 @@ Pour les participants sans notifications :
 - Écran public d'affichage des affectations.
 - MJ désigné à la volée le jour J : toutes les parties viennent de scénarios enregistrés à l'avance.
 - Espace Organisateur sur mobile, alertes push aux Organisateurs.
-- Badges QR, passkeys ou autre identification plus robuste (pistes d'évolution, cf. ADR 0001).
+- Badges QR, passkeys ou autre identification plus robuste (pistes d'évolution, cf. ADR 0009).
 - Site public du programme avant la convention : une troisième interface, distincte du front office et du back office.
 - Reprise des données d'une convention à la suivante (comptes MJ, scénarios, tables) : chaque convention repart d'une base vide.
 

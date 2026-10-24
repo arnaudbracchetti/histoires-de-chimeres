@@ -85,13 +85,13 @@ _Avoid_: Utilisateur, inscrit, User
 Nom sous lequel un participant apparaît dans la convention. Celui d'un MJ est défini avant la convention.
 _Avoid_: Login, nom d'utilisateur, compte, Username
 
-**Code de récupération** · `RecoveryCode`:
-Code personnel remis au participant à la création de son pseudo, qui lui permet de retrouver son identité sur un autre appareil.
-_Avoid_: Mot de passe, code d'accès, Password
+**Code de présence** · `PresenceCode`:
+Code unique de la convention, fixé à sa création, que le QR code affiché sur place transmet au téléphone. Sans lui, on ne peut pas s'identifier dans le front office. Il n'identifie personne.
+_Avoid_: Code de salle, code d'accès, mot de passe
 
 **Code MJ** · `GameMasterCode`:
-Code personnel remis à l'avance à un MJ ; saisi dans l'application, il relie le téléphone à son compte MJ et à son pseudo.
-_Avoid_: Code d'inscription, code d'invitation
+Code personnel remis à l'avance à un MJ ; demandé quand on saisit son pseudo dans l'application, il relie le téléphone à son compte MJ.
+_Avoid_: Code d'inscription, code d'invitation, code de récupération
 
 **Code d'accès anticipé** · `EarlyAccessCode`:
 Code unique de la convention, choisi par un Organisateur, qui laisse entrer un téléphone dans le front office hors de la plage d'accès. Il n'identifie personne.
