@@ -5,6 +5,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "lint": "node scripts/check-typography.mjs src",
     "test": "ng test --watch=false"
   },
   "private": true,
