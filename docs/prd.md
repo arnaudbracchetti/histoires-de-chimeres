@@ -29,10 +29,10 @@ Ordres de grandeur :
 | Profil | Connu à l'avance ? | Identification | Interface |
 |---|---|---|---|
 | **Participant** | Non | **Pseudo** seul, derrière le **code de présence** | Front office mobile (PWA) |
-| **MJ** | Oui (email) | Back office : lien magique par email. Téléphone : **pseudo** + **code MJ** | Back office (avant la convention) + front office mobile |
+| **MJ** | Oui (email) | Back office : lien magique par email. Téléphone : **pseudo**, comme un participant | Back office (avant la convention) + front office mobile |
 | **Organisateur** | Oui (email) | Lien magique par email | Back office, sur ordinateur portable, y compris le jour J |
 
-Un MJ est aussi un participant : il peut jouer sur les créneaux où il ne mène pas. Une même personne peut être MJ et Organisateur ; elle n'a qu'un compte et un code MJ.
+Un MJ est aussi un participant : il peut jouer sur les créneaux où il ne mène pas. Une même personne peut être MJ et Organisateur ; elle n'a qu'un compte. Sur le téléphone, un Organisateur qui n'est pas MJ est un participant comme les autres.
 
 Choix d'identification : voir [ADR 0009](adr/0009-identification-par-pseudo-sans-secret-derriere-un-code-de-presence.md), qui remplace l'ADR 0001.
 
@@ -46,7 +46,7 @@ Choix d'identification : voir [ADR 0009](adr/0009-identification-par-pseudo-sans
 ### 4.1 Préparation (avant la convention)
 
 1. Un Organisateur renseigne la convention (nom, date), ses **créneaux** (heure de début, heure de fin) et ses **tables** (nom).
-2. Il crée les MJ, chacun avec son **pseudo** (PR-12), puis les comptes MJ et Organisateurs (email). Chaque compte reçoit un **code MJ** personnel, distribué par les Organisateurs.
+2. Il crée les MJ, chacun avec son **pseudo** (PR-12), puis les comptes MJ et Organisateurs (email).
 3. Le MJ se connecte au back office par lien magique, puis propose ses **scénarios** et ses **disponibilités** (les créneaux où il peut mener). Il peut modifier ses scénarios à tout moment ; il n'y a pas de validation par les Organisateurs. Un Organisateur peut aussi les saisir et les modifier à sa place (PR-13).
 4. Les Organisateurs **programment** des scénarios sur un créneau et une table, dès avant la convention, ce qui crée des **parties**, ou les laissent en **réserve**. Le jour J, ils peuvent encore programmer une partie depuis la réserve (TI-6).
 5. Un Organisateur fixe la **plage d'accès** du front office (début et fin, en date et heure) et le **code d'accès anticipé**.
@@ -62,7 +62,7 @@ Tant qu'aucune plage d'accès n'est fixée, le front office reste fermé ; la se
 2. Le premier écran est l'identification : on ne peut rien faire dans l'application sans elle. L'application demande un pseudo.
    - **Pseudo nouveau** : il est créé et relié au téléphone.
    - **Pseudo existant** : l'application demande « Ce pseudo existe déjà. Est-ce bien toi qui l'as créé ? ». Sur un « oui », le téléphone y est relié ; sinon, le participant en choisit un autre.
-   - **Pseudo d'un MJ** : l'application demande son **code MJ**, puis relie le téléphone à son compte MJ.
+   - **Pseudo d'un MJ** : l'application demande au participant de confirmer qu'il est ce MJ. Sur un « oui », le téléphone est relié à ce MJ ; sinon, le participant choisit un autre pseudo.
 3. L'application le guide pour l'ajouter à l'écran d'accueil (indispensable sur iPhone) et accepter les notifications.
 
 Tant que les inscriptions ne sont pas ouvertes, l'application affiche « Les inscriptions ouvriront le jour de la convention » et permet de consulter le programme.
@@ -92,12 +92,13 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 
 - **ID-1** Un participant s'identifie par son seul pseudo, unique dans la convention (ID-7), sans compte, sans email et sans secret. Quand le pseudo saisi existe, l'application demande « Ce pseudo existe déjà. Est-ce bien toi qui l'as créé ? » et ne relie le téléphone qu'après un « oui ».
 - **ID-2** Sans le code de présence de la convention, le serveur refuse toute identification. Le QR code affiché sur place transmet ce code ; l'application le garde, le renvoie à chaque identification, et ne le demande au participant que s'il lui manque. Il est imprimé en clair sous le QR code : 6 caractères, majuscules et chiffres, sans 0/O ni 1/I/L. Le code est fixé à la création de la convention, ne change pas et se lit dans le back office. Les essais sont limités à 20 échecs par adresse IP et par 10 minutes.
-- **ID-3** Quand le pseudo saisi est celui d'un MJ, l'application demande son code MJ, réutilisable ; le téléphone est alors relié à son compte MJ.
-- **ID-4** Les pseudos des MJ sont réservés : un participant ne peut pas les prendre.
+- **ID-3** Quand le pseudo saisi est celui d'un MJ, l'application demande au participant de confirmer qu'il est ce MJ, et ne relie le téléphone à ce MJ qu'après un « oui ». Aucun code n'est demandé. Le téléphone suit alors les mêmes règles que celui d'un participant (ID-8, ID-9, IN-4), et reçoit en plus les notifications propres au MJ (§5.6). Il ne donne accès à aucune fonction du back office.
+- **ID-4** Le pseudo d'un MJ ne devient jamais celui d'un participant : le saisir relie le téléphone à ce MJ (ID-3). Un MJ ne peut pas recevoir un pseudo déjà pris par un participant (PR-12).
 - **ID-5** Dans le back office, un Organisateur peut :
   - retrouver un participant par son pseudo et le lui redire ;
-  - relier ou délier un pseudo et un compte MJ ; lors d'une liaison, les inscriptions du pseudo provisoire sont reportées sur le compte MJ et le pseudo provisoire disparaît ;
   - supprimer un pseudo (doublon, abus).
+
+  Les inscriptions d'un pseudo ne passent jamais sur un autre : un MJ qui s'est d'abord inscrit sous un autre pseudo se réinscrit sous le sien.
 - **ID-6** MJ et Organisateurs se connectent au back office par lien magique envoyé par email.
 - **ID-7** Deux pseudos sont le même pseudo quand ils ne diffèrent que par la casse, les accents ou les espaces (au début, à la fin, ou plusieurs à la suite) : « Élodie » et « elodie » sont le même pseudo. La ponctuation compte : « Jean-Luc » et « Jean Luc » sont deux pseudos distincts. Un pseudo s'affiche tel qu'il a été saisi.
 - **ID-8** Un téléphone est relié à un seul pseudo à la fois ; un pseudo peut être relié à plusieurs téléphones. Le relier à un nouveau téléphone ne coupe rien sur les autres ; un pseudo supprimé (ID-5) perd tous ses liens. Les notifications vont aux téléphones reliés au pseudo au moment de l'envoi.
@@ -129,7 +130,7 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 - **PR-9** Le nom d'une table est unique dans la convention, selon la même règle de comparaison que les pseudos (ID-7).
 - **PR-10** On ne peut pas supprimer un créneau ou une table qui porte des parties. Supprimer un créneau supprime les disponibilités qui s'y rattachent.
 - **PR-11** Les heures d'un créneau ne se modifient plus dès qu'une partie ou une disponibilité s'y rattache. Aucun créneau ne peut être ajouté ou déplacé entre les deux créneaux d'une partie double.
-- **PR-12** Un Organisateur crée les MJ, chacun avec un pseudo unique parmi les MJ (ID-7) et modifiable à tout moment. On ne peut pas supprimer un MJ qui a au moins un scénario. Supprimer un MJ supprime ses disponibilités.
+- **PR-12** Un Organisateur crée les MJ, chacun avec un pseudo unique dans la convention, parmi les MJ comme parmi les participants (ID-4, ID-7), et modifiable à tout moment. On ne peut pas supprimer un MJ qui a au moins un scénario. Supprimer un MJ supprime ses disponibilités.
 - **PR-13** Un Organisateur a, sur les scénarios et les disponibilités de chaque MJ, les mêmes droits que ce MJ.
 - **PR-14** Le contenu d'un scénario reste modifiable à tout moment. Sa durée ne se modifie plus dès qu'une partie en est programmée, et on ne peut pas supprimer un scénario qui a des parties.
 - **PR-15** Une disponibilité porte sur un créneau entier, pour le MJ, pas pour un scénario. On ne peut pas retirer une disponibilité sur laquelle le MJ mène une partie.
@@ -206,7 +207,7 @@ Pour les participants sans notifications :
 - Écran public d'affichage des affectations.
 - MJ désigné à la volée le jour J : toutes les parties viennent de scénarios enregistrés à l'avance.
 - Espace Organisateur sur mobile, alertes push aux Organisateurs.
-- Badges QR, passkeys ou autre identification plus robuste (pistes d'évolution, cf. ADR 0009).
+- Badges QR, passkeys, code MJ ou autre identification plus robuste (pistes d'évolution, cf. ADR 0009).
 - Site public du programme avant la convention : une troisième interface, distincte du front office et du back office.
 - Reprise des données d'une convention à la suivante (comptes MJ, scénarios, tables) : chaque convention repart d'une base vide.
 
