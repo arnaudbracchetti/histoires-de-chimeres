@@ -49,13 +49,16 @@ Choix d'identification : voir [ADR 0001](adr/0001-identification-par-pseudo-et-c
 2. Il crée les MJ, chacun avec son **pseudo** (PR-12), puis les comptes MJ et Organisateurs (email). Chaque compte reçoit un **code MJ** personnel, distribué par les Organisateurs.
 3. Le MJ se connecte au back office par lien magique, puis propose ses **scénarios** et ses **disponibilités** (les créneaux où il peut mener). Il peut modifier ses scénarios à tout moment ; il n'y a pas de validation par les Organisateurs. Un Organisateur peut aussi les saisir et les modifier à sa place (PR-13).
 4. Les Organisateurs **programment** des scénarios sur un créneau et une table, dès avant la convention, ce qui crée des **parties**, ou les laissent en **réserve**. Le jour J, ils peuvent encore programmer une partie depuis la réserve (TI-6).
+5. Un Organisateur fixe la **plage d'accès** du front office (début et fin, en date et heure) et le **code d'accès anticipé**.
 
-Le **programme** est consultable en lecture seule avant la convention (emplacement à décider, cf. §8).
+Avant la plage d'accès, le front office est fermé : il affiche seulement « L'application sera accessible le *date* à *heure* », et le programme ne s'y lit pas. Le code d'accès anticipé permet d'entrer quand même, par exemple pour que les Organisateurs testent le parcours sur leur téléphone. Après la plage, l'application affiche « La convention est terminée » et plus rien n'y est consultable.
+
+Tant qu'aucune plage d'accès n'est fixée, le front office reste fermé ; la seule contrainte est que le début précède la fin. Hors de la plage et sans le code, le serveur refuse aussi de créer un pseudo, de relier un téléphone et de servir le programme. Changer le code d'accès anticipé renvoie à l'écran d'attente les téléphones entrés avec l'ancien.
 
 ### 4.2 Arrivée sur place
 
 1. Le participant scanne le QR code affiché dans la salle : il ouvre l'application.
-2. L'application demande « Avez-vous un code MJ ? »
+2. Le premier écran est l'identification : on ne peut rien faire dans l'application sans elle. L'application demande « Avez-vous un code MJ ? »
    - **Oui** : il saisit son code MJ ; son pseudo, déjà enregistré, est récupéré et le téléphone est relié à son compte MJ.
    - **Non** : il choisit un pseudo (unique dans la convention, distinct des pseudos des MJ, qui sont réservés) et reçoit un **code de récupération** à conserver.
 3. L'application le guide pour l'ajouter à l'écran d'accueil (indispensable sur iPhone) et accepter les notifications.
@@ -199,9 +202,9 @@ Pour les participants sans notifications :
 - MJ désigné à la volée le jour J : toutes les parties viennent de scénarios enregistrés à l'avance.
 - Espace Organisateur sur mobile, alertes push aux Organisateurs.
 - Badges QR, passkeys ou autre identification plus robuste (pistes d'évolution, cf. ADR 0001).
+- Site public du programme avant la convention : une troisième interface, distincte du front office et du back office.
 - Reprise des données d'une convention à la suivante (comptes MJ, scénarios, tables) : chaque convention repart d'une base vide.
 
 ## 8. Points ouverts
 
-- **Programme public avant la convention** : dans l'application ou sur le site de l'association ?
 - **Pseudo du MJ** : une fois connecté au back office, le MJ peut-il modifier lui-même le pseudo qu'un Organisateur lui a donné (PR-12) ?
