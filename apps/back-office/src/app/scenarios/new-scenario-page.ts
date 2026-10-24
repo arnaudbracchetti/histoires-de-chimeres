@@ -9,8 +9,8 @@ import {
 } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { apiResource } from '../api-resource';
-import type { UnsavedChanges } from '../scenarios/leave-unsaved';
-import { ScenarioForm } from '../scenarios/scenario-form';
+import type { UnsavedChanges } from '../shell/leave-unsaved';
+import { ScenarioForm } from './scenario-form';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';

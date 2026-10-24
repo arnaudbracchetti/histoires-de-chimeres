@@ -1,7 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ConventionStore } from '../convention/convention-store';
-import { ScheduleBoard } from '../schedule/schedule-board';
+import { ScheduleBoard } from './schedule-board';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
 import { Button } from '../ui/button';

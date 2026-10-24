@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { ConventionForm } from '../convention/convention-form';
+import { ConventionForm } from './convention-form';
 import { PageHeader } from '../shell/page-header';
 import { TableList } from '../tables/table-list';
 import { TimeSlotList } from '../time-slots/time-slot-list';

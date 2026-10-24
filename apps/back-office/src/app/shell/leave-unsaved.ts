@@ -9,8 +9,9 @@ export interface UnsavedChanges {
 }
 
 /**
- * Garde de sortie d'une page de scénario (docs/design/patterns.md, Enregistrement) : « Quitter
- * sans enregistrer ? », seulement s'il reste des modifications non enregistrées.
+ * Garde de sortie d'une page à formulaire, comme celle d'un scénario (docs/design/patterns.md,
+ * Enregistrement) : « Quitter sans enregistrer ? », seulement s'il reste des modifications non
+ * enregistrées.
  */
 export const leaveUnsaved: CanDeactivateFn<UnsavedChanges> = (page) =>
   !page.hasUnsavedChanges() ||

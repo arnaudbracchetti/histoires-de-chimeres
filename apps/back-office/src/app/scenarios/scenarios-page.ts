@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { ScenarioList } from '../scenarios/scenario-list';
+import { ScenarioList } from './scenario-list';
 import { PageHeader } from '../shell/page-header';
 
 @Component({

@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { GameMasterList } from '../game-masters/game-master-list';
+import { GameMasterList } from './game-master-list';
 import { PageHeader } from '../shell/page-header';
 
 @Component({
