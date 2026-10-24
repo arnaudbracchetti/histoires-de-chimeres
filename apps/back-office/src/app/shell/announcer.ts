@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 
 /**
  * Région `aria-live="polite"` commune à la coquille : chaque écriture réussie y est annoncée aux
- * lecteurs d'écran (« Partie déplacée : créneau 2, table Dragon. »).
+ * lecteurs d'écran (« Partie déplacée : créneau 2, table Dragon. »).
  */
 @Injectable({ providedIn: 'root' })
 export class Announcer {

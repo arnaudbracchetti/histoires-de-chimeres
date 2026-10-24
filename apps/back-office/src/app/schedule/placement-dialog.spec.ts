@@ -13,6 +13,7 @@ import {
   type TableDto,
   type TimeSlotDto,
 } from '@chimeres/contract';
+import { NBSP } from '../typography/french';
 import { Placements } from './placement-dialog';
 
 const TIME_SLOTS: TimeSlotDto[] = [
@@ -114,7 +115,7 @@ describe('PlacementDialog', () => {
     const { dialog, grid, text, flushPlacements } = await open();
     await flushPlacements();
 
-    expect(text(dialog().querySelector('h2'))).toBe('Programmer « Brumes » sur…');
+    expect(text(dialog().querySelector('h2'))).toBe(`Programmer «${NBSP}Brumes${NBSP}» sur…`);
     expect(grid()).toEqual([
       ['Table 1', 'Table prise', 'MJ indisponible'],
       ['Table 2', 'Choisir', 'MJ déjà occupé'],
@@ -199,7 +200,7 @@ describe('PlacementDialog', () => {
     it('lit les verdicts de la partie, et marque sa place', async () => {
       const { dialog } = await openMove();
 
-      expect(dialog().querySelector('h2')?.textContent).toBe('Déplacer « Brumes » vers…');
+      expect(dialog().querySelector('h2')?.textContent).toBe(`Déplacer «${NBSP}Brumes${NBSP}» vers…`);
       const cell = dialog().querySelectorAll('tbody tr')[1]!.querySelectorAll('td')[0]!;
       expect(cell.textContent?.trim()).toBe('Sa place');
       expect(dialog().querySelectorAll('button[aria-label^="Choisir"]')).toHaveLength(0);

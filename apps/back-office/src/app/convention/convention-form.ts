@@ -5,9 +5,10 @@ import { submitWith } from '../forms/submit-with';
 import { textRules } from '../forms/text-rules';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
+import { formatConventionDate } from '../typography/date';
+import { countOf, fr } from '../typography/french';
 import { Field } from '../ui/field';
 import { SaveButton } from '../ui/save-button';
-import { formatConventionDate } from './convention-date';
 import { ConventionStore } from './convention-store';
 
 /** La saisie : la date reste un texte, vide tant qu'elle n'est pas fixée (`<input type="date">`). */
@@ -72,7 +73,7 @@ export class ConventionForm {
     (path) =>
       textRules(path.name, CONVENTION_NAME_MAX_LENGTH, {
         required: 'Donne un nom à la convention.',
-        tooLong: `Le nom fait ${CONVENTION_NAME_MAX_LENGTH} caractères au plus\u00a0: raccourcis-le.`,
+        tooLong: fr`Le nom fait ${countOf(CONVENTION_NAME_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-le.`,
       }),
     { submission: submitWith(() => this.save()) },
   );

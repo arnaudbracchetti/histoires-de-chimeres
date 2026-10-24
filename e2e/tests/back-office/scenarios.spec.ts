@@ -278,7 +278,7 @@ test('liste des scénarios : tri par colonne et filtre sans accent (PR-14)', asy
 
   await expect(scenarios.titles).toHaveText(['Scénario 2', 'Scénario 10']);
   await expect(scenarios.table.locator('tbody tr').first()).toContainText(
-    /Scénario 2\s*Alien\s*Élodie\s*4 places\s*2 créneaux\s*0/,
+    /Scénario 2\s*Alien\s*Élodie\s*4\s+places\s*2\s+créneaux\s*0/,
   );
   await expect(scenarios.table.locator('tbody tr').first().locator('svg').first()).toBeVisible();
   await expect(scenarios.header('Titre')).toHaveAttribute('aria-sort', 'ascending');

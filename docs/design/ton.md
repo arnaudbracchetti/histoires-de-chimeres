@@ -31,6 +31,7 @@ Seuls les termes de [GLOSSARY.md](../../GLOSSARY.md) apparaissent à l'écran, e
 - Guillemets français « », avec une espace insécable à l'intérieur.
 - Espace fine insécable (U+202F) devant ; ! ?, espace insécable (U+00A0) devant :.
 - Nombres : espace fine insécable pour les milliers (« 1 500 caractères »), virgule décimale.
+- Espace insécable entre un nombre et son nom ou son unité : « 4 places », « 24 heures », « 10 Mo ».
 
 ## Dates, heures et durées
 

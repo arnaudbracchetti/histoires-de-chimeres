@@ -1,7 +1,7 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ConventionStore } from '../convention/convention-store';
-import { formatConventionDate } from '../convention/convention-date';
+import { formatConventionDate } from '../typography/date';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { Loadable } from './loadable';

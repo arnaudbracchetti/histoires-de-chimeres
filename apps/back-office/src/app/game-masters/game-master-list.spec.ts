@@ -10,10 +10,9 @@ import {
   type ProblemDto,
   type TimeSlotDto,
 } from '@chimeres/contract';
+import { NBSP } from '../typography/french';
 import { GameMasterList } from './game-master-list';
 
-// Espace insécable de docs/design/ton.md.
-const NBSP = ' ';
 
 /** Les MJ, dans l'ordre donné : celui que renvoie l'API. */
 const gameMasters = (...nicknames: string[]): GameMasterDto[] =>
@@ -119,7 +118,7 @@ describe('GameMasterList', () => {
       ['1', '2', '3'],
     ]);
     expect(cells.map((cell) => text(cell.querySelector('.visually-hidden')))).toEqual([
-      'Créneaux 1 et 3',
+      'créneaux 1 et 3',
       'Aucune',
     ]);
   });

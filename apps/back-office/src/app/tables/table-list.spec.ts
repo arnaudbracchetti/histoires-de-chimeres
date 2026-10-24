@@ -8,6 +8,7 @@ import {
   type ConventionDto,
   type ProblemDto,
 } from '@chimeres/contract';
+import { NBSP, THIN_NBSP } from '../typography/french';
 import { TableList } from './table-list';
 
 /** La convention et ses tables, dans l'ordre donné : celui que renvoie l'API. */
@@ -145,7 +146,7 @@ describe('TableList', () => {
 
     await type('a'.repeat(31));
 
-    expect(errorText()).toBe("Le nom d'une table fait 30 caractères au plus : raccourcis-le.");
+    expect(errorText()).toBe(`Le nom d'une table fait 30${NBSP}caractères au plus${NBSP}: raccourcis-le.`);
   });
 
   it('affiche sous le champ un nom pris refusé par l’API, sans perdre la saisie', async () => {
@@ -215,7 +216,7 @@ describe('TableList', () => {
     button('Supprimer la table Licorne').click();
     await settle();
     expect(document.querySelector('[role="alertdialog"] h2')?.textContent).toBe(
-      'Supprimer la table « Licorne » ?',
+      `Supprimer la table «${NBSP}Licorne${NBSP}»${THIN_NBSP}?`,
     );
     dialogButton('Supprimer la table').click();
     http

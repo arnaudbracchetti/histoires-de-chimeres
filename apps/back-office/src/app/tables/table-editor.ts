@@ -6,6 +6,7 @@ import { CardForm } from '../forms/card-form';
 import { submitWith } from '../forms/submit-with';
 import { textRules } from '../forms/text-rules';
 import { Announcer } from '../shell/announcer';
+import { countOf, fr } from '../typography/french';
 import { Button } from '../ui/button';
 import { Field } from '../ui/field';
 import { IconTile } from '../ui/icon-tile';
@@ -91,7 +92,7 @@ export class TableEditor {
     (path) =>
       textRules(path.name, TABLE_NAME_MAX_LENGTH, {
         required: 'Donne un nom à la table.',
-        tooLong: `Le nom d'une table fait ${TABLE_NAME_MAX_LENGTH} caractères au plus : raccourcis-le.`,
+        tooLong: fr`Le nom d'une table fait ${countOf(TABLE_NAME_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-le.`,
       }),
     {
       submission: submitWith(() => this.write()),
@@ -106,7 +107,7 @@ export class TableEditor {
     await (table
       ? this.store.write(tableEndpoints.rename, { params: { tableId: table.id }, body: { name } })
       : this.store.write(tableEndpoints.add, { body: { name } }));
-    this.announcer.announce(`Table « ${name} » enregistrée.`);
+    this.announcer.announce(fr`Table « ${name} » enregistrée.`);
     this.saved.emit();
   }
 }

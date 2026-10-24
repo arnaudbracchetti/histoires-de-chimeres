@@ -10,11 +10,9 @@ import {
   type GameMasterDto,
   type ProblemDto,
 } from '@chimeres/contract';
+import { NBSP, THIN_NBSP } from '../typography/french';
 import { GameMasterPage } from './game-master-page';
 
-// Espace insécable et espace fine insécable de docs/design/ton.md.
-const NBSP = ' ';
-const THIN = ' ';
 
 @Component({ template: '' })
 class Empty {}
@@ -113,8 +111,8 @@ describe('GameMasterPage', () => {
     expect([...item.querySelectorAll('a, .meta')].map(text)).toEqual([
       "La Tour d'ébène",
       "L'Appel de Cthulhu",
-      '3 à 5 places',
-      '2 créneaux',
+      `3 à 5${NBSP}places`,
+      `2${NBSP}créneaux`,
     ]);
     const illustration = item.querySelector('app-scenario-illustration svg')!;
     expect(illustration.getAttribute('aria-hidden')).toBe('true');
@@ -209,10 +207,10 @@ describe('GameMasterPage', () => {
     item.click();
     await settle();
     expect(text(document.querySelector('[role="alertdialog"] h2'))).toBe(
-      `Supprimer le MJ «${NBSP}Élodie${NBSP}»${THIN}?`,
+      `Supprimer le MJ «${NBSP}Élodie${NBSP}»${THIN_NBSP}?`,
     );
     expect(text(document.querySelector('[role="alertdialog"] p'))).toBe(
-      'Ses 2 disponibilités seront supprimées.',
+      `Ses 2${NBSP}disponibilités seront supprimées.`,
     );
     [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')]
       .find((b) => text(b) === 'Supprimer le MJ')!

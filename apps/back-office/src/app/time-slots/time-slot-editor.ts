@@ -5,9 +5,11 @@ import { ConventionStore } from '../convention/convention-store';
 import { CardForm } from '../forms/card-form';
 import { submitWith } from '../forms/submit-with';
 import { Announcer } from '../shell/announcer';
+import { fr, NBSP } from '../typography/french';
+import { formatDuration, timeSlotLabel } from '../typography/time';
 import { Button } from '../ui/button';
 import { Field } from '../ui/field';
-import { formatDuration, minutesOf, normalizeTime, timeOf, timeSlotLabel } from './time-format';
+import { minutesOf, normalizeTime, timeOf } from './time-format';
 
 /** Durée habituelle d'un créneau : la fin d'un nouveau créneau est proposée d'après elle. */
 const USUAL_DURATION_MINUTES = 150;
@@ -145,7 +147,7 @@ export class TimeSlotEditor {
         validate(time, ({ value }) =>
           !value() || normalizeTime(value())
             ? undefined
-            : { kind: 'time', message: "Écris l'heure sur 24 heures, de 00:00 à 23:59." },
+            : { kind: 'time', message: `Écris l'heure sur 24${NBSP}heures, de 00:00 à 23:59.` },
         );
       }
       validate(path.end, ({ value, valueOf }) => {
@@ -154,7 +156,7 @@ export class TimeSlotEditor {
         if (!start || !end || end > start) return undefined;
         return {
           kind: 'end-not-after-start',
-          message: "La fin du créneau vient après son début : change l'une des deux heures.",
+          message: fr`La fin du créneau vient après son début : change l'une des deux heures.`,
         };
       });
     },

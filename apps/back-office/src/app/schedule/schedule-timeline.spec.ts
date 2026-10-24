@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import type { GameDto, TableDto, TimeSlotDto } from '@chimeres/contract';
+import { NBSP, THIN_NBSP } from '../typography/french';
 import { ScheduleTimeline } from './schedule-timeline';
 
-const NBSP = ' ';
 
 /** Créneau 1 de 2 h 30, pause de 1 h, créneau 2 de 3 h, puis créneau 3 collé au 2. */
 const TIME_SLOTS: TimeSlotDto[] = [
@@ -56,10 +56,10 @@ describe('ScheduleTimeline', () => {
     );
     const headers = [...host.querySelectorAll('[role="columnheader"]')].map(text);
     expect(headers).toEqual([
-      `Créneau 1 9${NBSP}h${NBSP}00 – 11${NBSP}h${NBSP}30`,
+      `Créneau 1 9${NBSP}h${NBSP}00${THIN_NBSP}–${THIN_NBSP}11${NBSP}h${NBSP}30`,
       `Pause de 1${NBSP}h`,
-      `Créneau 2 12${NBSP}h${NBSP}30 – 15${NBSP}h${NBSP}30`,
-      `Créneau 3 15${NBSP}h${NBSP}30 – 18${NBSP}h${NBSP}00`,
+      `Créneau 2 12${NBSP}h${NBSP}30${THIN_NBSP}–${THIN_NBSP}15${NBSP}h${NBSP}30`,
+      `Créneau 3 15${NBSP}h${NBSP}30${THIN_NBSP}–${THIN_NBSP}18${NBSP}h${NBSP}00`,
     ]);
   });
 
@@ -83,7 +83,7 @@ describe('ScheduleTimeline', () => {
       'Néons sur Neo-Paris',
       'Cyberpunk',
       'Kaïros',
-      '3 à 5 places',
+      `3 à 5${NBSP}places`,
     ]);
     expect(card.querySelector('app-scenario-illustration')).not.toBeNull();
   });

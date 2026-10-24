@@ -12,8 +12,9 @@ import { RouterLink } from '@angular/router';
 import { gameMasterEndpoints, type GameMasterDto } from '@chimeres/contract';
 import { apiResource } from '../api-resource';
 import { ConventionStore } from '../convention/convention-store';
-import { formatTimeRange } from '../time-slots/time-format';
 import { Loadable } from '../shell/loadable';
+import { fr } from '../typography/french';
+import { formatTimeRange, formatTimeSlotRanks } from '../typography/time';
 import { Button } from '../ui/button';
 import { EmptyState } from '../ui/empty-state';
 import { SortableHeader } from '../ui/sortable-header';
@@ -37,7 +38,7 @@ import { NewGameMaster } from './new-game-master';
       @if (gameMasters.hasValue()) {
         @if (!gameMasters.value().length && !adding()) {
           <app-empty-state>
-            <p>Aucun MJ pour l'instant : la convention attend ses conteurs.</p>
+            <p>Aucun MJ pour l'instant&nbsp;: la convention attend ses conteurs.</p>
             <button type="button" appButton="primary" (click)="openNew()">
               Créer le premier MJ
             </button>
@@ -207,7 +208,7 @@ export class GameMasterList {
         return {
           rank,
           available,
-          title: `Créneau ${rank} · ${formatTimeRange(start, end)}${NBSP}: ${state}`,
+          title: fr`Créneau ${rank} · ${formatTimeRange(start, end)} : ${state}`,
         };
       });
       return { gameMaster, pips, summary: availabilitySummary(pips) };
@@ -245,14 +246,8 @@ export class GameMasterList {
   }
 }
 
-// Espace insécable devant « : » (docs/design/ton.md).
-const NBSP = '\u00a0';
-
-const RANKS = new Intl.ListFormat('fr', { type: 'conjunction' });
-
-/** « Créneaux 1 et 3 », « Créneau 2 », « Aucune » : le texte des pastilles, pour les lecteurs d'écran. */
+/** « créneaux 1 et 3 », « créneau 2 », « Aucune » : le texte des pastilles, pour les lecteurs d'écran. */
 function availabilitySummary(pips: { rank: number; available: boolean }[]): string {
-  const ranks = pips.filter(({ available }) => available).map(({ rank }) => String(rank));
-  if (!ranks.length) return 'Aucune';
-  return `${ranks.length > 1 ? 'Créneaux' : 'Créneau'} ${RANKS.format(ranks)}`;
+  const ranks = pips.filter(({ available }) => available).map(({ rank }) => rank);
+  return formatTimeSlotRanks(ranks) || 'Aucune';
 }

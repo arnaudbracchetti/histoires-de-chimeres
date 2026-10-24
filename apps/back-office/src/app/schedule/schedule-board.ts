@@ -19,6 +19,7 @@ import { apiResource } from '../api-resource';
 import { injectGesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
+import { fr } from '../typography/french';
 import { GameSheet } from './game-sheet';
 import { Placements } from './placement-dialog';
 import { ReserveTray } from './reserve-tray';
@@ -135,7 +136,7 @@ export class ScheduleBoard {
     const slot = timeSlots.find(({ id }) => id === game.timeSlotIds[0]);
     const table = tables.find(({ id }) => id === game.tableId);
     this.announcer.announce(
-      `Partie « ${scenario.title} » programmée : créneau ${slot?.rank}, ${table?.name}.`,
+      fr`Partie « ${scenario.title} » programmée : créneau ${slot?.rank}, ${table?.name}.`,
     );
     this.focusGame(game);
   }
@@ -165,7 +166,7 @@ export class ScheduleBoard {
     if (!moved) return;
     const slot = timeSlots.find(({ id }) => id === moved.timeSlotIds[0]);
     const table = tables.find(({ id }) => id === moved.tableId);
-    this.announcer.announce(`Partie déplacée : créneau ${slot?.rank}, table ${table?.name}.`);
+    this.announcer.announce(fr`Partie déplacée : créneau ${slot?.rank}, table ${table?.name}.`);
     this.focusGame(moved);
   }
 
@@ -182,7 +183,7 @@ export class ScheduleBoard {
     if (outcome.status !== 'done') return;
     this.schedule.set(outcome.value);
     this.selectedId.set(null);
-    this.announcer.announce(`Partie « ${game.scenario.title} » déprogrammée.`);
+    this.announcer.announce(fr`Partie « ${game.scenario.title} » déprogrammée.`);
     afterNextRender(() => document.getElementById('reserve-title')?.focus(), {
       injector: this.injector,
     });

@@ -1,7 +1,8 @@
 import { Component, computed, input, output } from '@angular/core';
 import type { GameDto, TableDto, TimeSlotDto } from '@chimeres/contract';
 import { formatSeats } from '../scenarios/scenario-format';
-import { formatDuration, formatTimeRange, minutesOf } from '../time-slots/time-format';
+import { minutesOf } from '../time-slots/time-format';
+import { formatDuration, formatTimeRange } from '../typography/time';
 import { ScenarioIllustration } from '../ui/scenario-illustration';
 
 /**

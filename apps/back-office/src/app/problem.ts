@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import type { ProblemDto } from '@chimeres/contract';
 import type { ErrorNotice } from './shell/notifications';
+import { fr } from './typography/french';
 
 /** Ce qu'un formulaire affiche d'une écriture refusée (docs/design/patterns.md, Validation). */
 export type FormProblem = {
@@ -11,7 +12,7 @@ export type FormProblem = {
 };
 
 const INTERNAL_ERROR = 'Une erreur est survenue, réessaie.';
-const OFFLINE = "Pas de connexion : rien n'a été enregistré.";
+const OFFLINE = fr`Pas de connexion : rien n'a été enregistré.`;
 
 /** Lit l'erreur d'un `apiCall()`. Les textes viennent de l'API (ADR 0008), sauf pour un 500 et une coupure. */
 export function readProblem(error: unknown): FormProblem {

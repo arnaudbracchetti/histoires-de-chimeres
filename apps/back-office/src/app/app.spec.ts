@@ -6,6 +6,7 @@ import { apiUrl, conventionEndpoints, scenarioEndpoints } from '@chimeres/contra
 import { App } from './app';
 import { routes } from './app.routes';
 import { Announcer } from './shell/announcer';
+import { NBSP } from './typography/french';
 
 describe('App', () => {
   beforeEach(async () => {
@@ -50,12 +51,12 @@ describe('App', () => {
       const fixture = TestBed.createComponent(App);
       fixture.detectChanges();
 
-      TestBed.inject(Announcer).announce('Partie déplacée : créneau 2, table Dragon.');
+      TestBed.inject(Announcer).announce(`Partie déplacée${NBSP}: créneau 2, table Dragon.`);
       vi.runAllTimers();
       fixture.detectChanges();
 
       const live = (fixture.nativeElement as HTMLElement).querySelector('[aria-live="polite"]');
-      expect(live?.textContent).toBe('Partie déplacée : créneau 2, table Dragon.');
+      expect(live?.textContent).toBe(`Partie déplacée${NBSP}: créneau 2, table Dragon.`);
     } finally {
       vi.useRealTimers();
     }

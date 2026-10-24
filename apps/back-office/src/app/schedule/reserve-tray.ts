@@ -1,13 +1,13 @@
 import { Component, computed, input, linkedSignal, output } from '@angular/core';
 import type { ReserveScenarioDto, ScheduleScenarioDto, TimeSlotDto } from '@chimeres/contract';
+import { plural } from '../typography/french';
+import { formatTimeSlotRanks } from '../typography/time';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { ScenarioIllustration } from '../ui/scenario-illustration';
 
 /** Le filtre « Tous les scénarios » ; les autres sont des identifiants de créneau. */
 const ALL = 'all';
-
-const RANKS = new Intl.ListFormat('fr', { type: 'conjunction' });
 
 /**
  * Le bac de réserve, sous la frise (docs/design/patterns.md, Bac de réserve) : filtré par créneau,
@@ -32,7 +32,7 @@ const RANKS = new Intl.ListFormat('fr', { type: 'conjunction' });
           <span class="count"
             ><span class="visually-hidden">&#32;·&#32;</span>{{ filter.count
             }}<span class="visually-hidden"
-              >&#32;{{ filter.count > 1 ? 'scénarios' : 'scénario' }}</span
+              >&#32;{{ plural(filter.count, 'scénario', 'scénarios') }}</span
             ></span
           >
         </button>
@@ -284,6 +284,7 @@ export class ReserveTray {
   readonly scheduleOn = output<ScheduleScenarioDto>();
 
   protected readonly ALL = ALL;
+  protected readonly plural = plural;
 
   /** Un filtre par créneau, dans l'ordre de la journée, puis « Tous les scénarios ». */
   protected readonly filters = computed(() => [
@@ -319,11 +320,9 @@ export class ReserveTray {
     { timeSlots }: ReserveScenarioDto,
     state: 'scheduled' | 'inReserve',
   ): string {
-    const ranks = timeSlots
-      .filter((slot) => slot[state])
-      .map(({ timeSlotId }) => String(this.rankOf(timeSlotId)));
-    if (!ranks.length) return '';
-    return `${ranks.length > 1 ? 'créneaux' : 'créneau'} ${RANKS.format(ranks)}`;
+    return formatTimeSlotRanks(
+      timeSlots.filter((slot) => slot[state]).map(({ timeSlotId }) => this.rankOf(timeSlotId)),
+    );
   }
 
   private isInReserveOn({ timeSlots }: ReserveScenarioDto, timeSlotId: string): boolean {

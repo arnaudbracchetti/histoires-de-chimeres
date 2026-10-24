@@ -3,6 +3,7 @@ import { tableEndpoints, type TableDto } from '@chimeres/contract';
 import { ConventionStore } from '../convention/convention-store';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
+import { fr } from '../typography/french';
 import { Button } from '../ui/button';
 import { AddCard, Card } from '../ui/card';
 import { CardEditing } from '../ui/card-editing';
@@ -146,11 +147,11 @@ export class TableList {
   protected async remove(table: TableDto) {
     const index = this.tables().findIndex(({ id }) => id === table.id);
     const removed = await this.cards.remove(index, {
-      question: `Supprimer la table « ${table.name} » ?`,
+      question: fr`Supprimer la table « ${table.name} » ?`,
       confirmLabel: 'Supprimer la table',
       action: () => this.store.write(tableEndpoints.remove, { params: { tableId: table.id } }),
       onStale: () => this.store.convention.reload(),
     });
-    if (removed) this.announcer.announce(`Table « ${table.name} » supprimée.`);
+    if (removed) this.announcer.announce(fr`Table « ${table.name} » supprimée.`);
   }
 }

@@ -10,6 +10,7 @@ import {
   type ScheduleDto,
 } from '@chimeres/contract';
 import { Notifications } from '../shell/notifications';
+import { NBSP } from '../typography/french';
 import { ScheduleBoard } from './schedule-board';
 
 const CONVENTION: ConventionDto = {
@@ -126,7 +127,7 @@ describe('ScheduleBoard', () => {
 
     expect(sheet()).not.toBeNull();
     expect(TestBed.inject(Notifications).notices()).toEqual([
-      expect.objectContaining({ title: "Pas de connexion : rien n'a été enregistré." }),
+      expect.objectContaining({ title: `Pas de connexion${NBSP}: rien n'a été enregistré.` }),
     ]);
     http.verify();
   });

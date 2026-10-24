@@ -23,7 +23,8 @@ import { injectApiCall } from '../api-call';
 import { apiResource } from '../api-resource';
 import { injectGesture } from '../gesture';
 import { Loadable } from '../shell/loadable';
-import { formatTimeRange, timeSlotLabel } from '../time-slots/time-format';
+import { fr } from '../typography/french';
+import { formatTimeRange, timeSlotLabel } from '../typography/time';
 import { Button } from '../ui/button';
 
 /** La grille du programme : ses créneaux, dans l'ordre de la journée, et ses tables, dans l'ordre naturel. */
@@ -186,8 +187,8 @@ export class PlacementDialog {
 
   protected readonly title =
     'game' in this.request
-      ? `Déplacer « ${this.request.game.scenario.title} » vers…`
-      : `Programmer « ${this.request.scenario.title} » sur…`;
+      ? fr`Déplacer « ${this.request.game.scenario.title} » vers…`
+      : fr`Programmer « ${this.request.scenario.title} » sur…`;
   protected readonly placements = placementsOf(this.request);
   protected readonly gesture = injectGesture();
   protected readonly refusal = computed(() => this.gesture.refusal()?.message);

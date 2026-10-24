@@ -14,6 +14,7 @@ import { ScenarioForm } from '../scenarios/scenario-form';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
+import { fr } from '../typography/french';
 
 /**
  * Proposer un scénario depuis la fiche de son MJ, qui lui reste fixé (PR-16) : « MJ › pseudo ›
@@ -88,7 +89,7 @@ export class NewScenarioPage implements UnsavedChanges {
   }
 
   protected async onProposed(scenario: ScenarioDto): Promise<void> {
-    this.announcer.announce(`Scénario « ${scenario.title} » proposé.`);
+    this.announcer.announce(fr`Scénario « ${scenario.title} » proposé.`);
     await this.router.navigate(['/scenarios', scenario.id], { replaceUrl: true });
   }
 }

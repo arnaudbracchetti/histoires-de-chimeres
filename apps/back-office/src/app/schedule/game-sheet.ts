@@ -1,7 +1,8 @@
 import { Component, computed, ElementRef, inject, input, output } from '@angular/core';
 import type { GameDto, TableDto, TimeSlotDto } from '@chimeres/contract';
 import { formatSeats } from '../scenarios/scenario-format';
-import { timeSlotLabel } from '../time-slots/time-format';
+import { plural } from '../typography/french';
+import { timeSlotLabel } from '../typography/time';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { ScenarioIllustration } from '../ui/scenario-illustration';
@@ -38,7 +39,7 @@ import { ScenarioIllustration } from '../ui/scenario-illustration';
         <dd>{{ game().scenario.system }}</dd>
         <dt>MJ</dt>
         <dd>{{ game().scenario.gameMaster.nickname }}</dd>
-        <dt>{{ slots().length > 1 ? 'Créneaux' : 'Créneau' }}</dt>
+        <dt>{{ plural(slots().length, 'Créneau', 'Créneaux') }}</dt>
         @for (slot of slots(); track slot.id) {
           <dd>{{ slotLabel(slot) }}</dd>
         }
@@ -128,6 +129,7 @@ export class GameSheet {
   readonly unscheduleRequested = output<void>();
 
   protected readonly formatSeats = formatSeats;
+  protected readonly plural = plural;
   protected readonly slotLabel = timeSlotLabel;
   protected readonly slots = computed(() =>
     this.timeSlots().filter(({ id }) => this.game().timeSlotIds.includes(id)),

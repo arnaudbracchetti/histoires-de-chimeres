@@ -9,7 +9,7 @@ import { ScenarioIllustration } from '../ui/scenario-illustration';
 import { SortableHeader } from '../ui/sortable-header';
 import { TableFilter } from '../ui/table-filter';
 import { tableView } from '../ui/table-view';
-import { formatDuration, formatSeats } from './scenario-format';
+import { formatScenarioDuration, formatSeats } from './scenario-format';
 
 /** Les colonnes triables, chacune avec le texte qu'elle compare. */
 const SORT_KEYS = {
@@ -40,7 +40,7 @@ const SORT_KEYS = {
       @if (scenarios.hasValue()) {
         @if (!scenarios.value().length) {
           <app-empty-state>
-            <p>Aucun scénario pour l'instant : chaque MJ propose les siens depuis sa fiche.</p>
+            <p>Aucun scénario pour l'instant&nbsp;: chaque MJ propose les siens depuis sa fiche.</p>
             <a appButton="primary" routerLink="/mj">Choisir un MJ</a>
           </app-empty-state>
         } @else {
@@ -81,7 +81,7 @@ const SORT_KEYS = {
                     }}</a>
                   </td>
                   <td>{{ formatSeats(scenario.seats) }}</td>
-                  <td>{{ formatDuration(scenario.duration) }}</td>
+                  <td>{{ formatScenarioDuration(scenario.duration) }}</td>
                   <td class="number">{{ scenario.games }}</td>
                 </tr>
               } @empty {
@@ -172,7 +172,7 @@ export class ScenarioList {
     { key: 'gameMaster', label: 'MJ' },
   ];
   protected readonly formatSeats = formatSeats;
-  protected readonly formatDuration = formatDuration;
+  protected readonly formatScenarioDuration = formatScenarioDuration;
 
   private readonly filter = viewChild(TableFilter);
 

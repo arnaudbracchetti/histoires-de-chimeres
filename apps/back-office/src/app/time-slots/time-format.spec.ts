@@ -1,39 +1,4 @@
-import {
-  formatDuration,
-  formatTime,
-  formatTimeRange,
-  normalizeTime,
-  timeSlotLabel,
-} from './time-format';
-
-// Espace insécable (U+00A0) et espace fine insécable (U+202F), écrites en clair.
-const NBSP = '\u00a0';
-const THIN = '\u202f';
-
-describe('Heures et durées', () => {
-  it('écrit une heure « 14 h 00 », sans zéro devant l’heure', () => {
-    expect(formatTime('14:00')).toBe(`14${NBSP}h${NBSP}00`);
-    expect(formatTime('09:30')).toBe(`9${NBSP}h${NBSP}30`);
-  });
-
-  it('écrit une plage avec un demi-cadratin entouré d’espaces fines insécables', () => {
-    expect(formatTimeRange('14:00', '16:30')).toBe(
-      `14${NBSP}h${NBSP}00${THIN}–${THIN}16${NBSP}h${NBSP}30`,
-    );
-  });
-
-  it('écrit une durée en heures et minutes, en heures seules ou en minutes seules', () => {
-    expect(formatDuration('14:00', '16:30')).toBe(`2${NBSP}h${NBSP}30`);
-    expect(formatDuration('14:00', '16:00')).toBe(`2${NBSP}h`);
-    expect(formatDuration('12:15', '13:00')).toBe(`45${NBSP}min`);
-  });
-
-  it('désigne un créneau par son rang, puis sa plage', () => {
-    expect(timeSlotLabel({ rank: 2, start: '14:00', end: '16:30' })).toBe(
-      `Créneau 2 · 14${NBSP}h${NBSP}00${THIN}–${THIN}16${NBSP}h${NBSP}30`,
-    );
-  });
-});
+import { normalizeTime } from './time-format';
 
 describe('normalizeTime', () => {
   it.each([

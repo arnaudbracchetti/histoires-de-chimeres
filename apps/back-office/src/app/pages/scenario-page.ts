@@ -10,6 +10,7 @@ import { ScenarioImage } from '../scenarios/scenario-image';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
+import { fr } from '../typography/french';
 import { Confirmation } from '../ui/confirmation';
 import { MoreMenu, type MoreMenuItem } from '../ui/more-menu';
 
@@ -111,7 +112,7 @@ export class ScenarioPage implements UnsavedChanges {
 
   protected onUpdated(scenario: ScenarioDto): void {
     this.resource.set(scenario);
-    this.announcer.announce(`Scénario « ${scenario.title} » enregistré.`);
+    this.announcer.announce(fr`Scénario « ${scenario.title} » enregistré.`);
   }
 
   protected onMenu(value: string, scenario: ScenarioDto): void {
@@ -120,14 +121,14 @@ export class ScenarioPage implements UnsavedChanges {
 
   private async remove({ id, title }: ScenarioDto) {
     const removed = await this.confirmation.ask({
-      question: `Supprimer le scénario « ${title} » ?`,
+      question: fr`Supprimer le scénario « ${title} » ?`,
       confirmLabel: 'Supprimer le scénario',
       action: () => this.apiCall(scenarioEndpoints.remove, { params: { scenarioId: id } }),
       onStale: () => this.resource.reload(),
     });
     if (!removed) return;
     this.removed = true;
-    this.announcer.announce(`Scénario « ${title} » supprimé.`);
+    this.announcer.announce(fr`Scénario « ${title} » supprimé.`);
     await this.router.navigate(['/scenarios']);
   }
 }

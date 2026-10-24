@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { apiUrl, conventionEndpoints, type ProblemDto } from '@chimeres/contract';
+import { NBSP } from '../typography/french';
 import { ConventionForm } from './convention-form';
 import { ConventionStore } from './convention-store';
 import { Notifications } from '../shell/notifications';
@@ -201,7 +202,7 @@ describe('ConventionForm', () => {
       type: 'urn:histoires-de-chimeres:problem:concurrent-modification',
       title: 'Modification simultanée',
       status: 409,
-      detail: 'La convention a changé entre-temps : recharge la page, puis recommence.',
+      detail: `La convention a changé entre-temps${NBSP}: recharge la page, puis recommence.`,
       code: 'concurrent-modification',
     };
 

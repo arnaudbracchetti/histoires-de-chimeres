@@ -10,12 +10,11 @@ import {
   type TimeSlotDto,
 } from '@chimeres/contract';
 import { Notifications } from '../shell/notifications';
+import { NBSP, THIN_NBSP } from '../typography/french';
 import { TimeSlotList } from './time-slot-list';
 
-const NBSP = ' ';
-const THIN = ' ';
 /** « 14 h 00 – 16 h 30 ». */
-const range = (start: string, end: string) => `${start}${THIN}–${THIN}${end}`;
+const range = (start: string, end: string) => `${start}${THIN_NBSP}–${THIN_NBSP}${end}`;
 
 /** Créneaux de la journée, rangs recalculés comme le fait l'API. */
 function conventionWith(...hours: [string, string][]): ConventionDto {
@@ -166,7 +165,7 @@ describe('TimeSlotList', () => {
     await settle();
 
     http.expectNone(apiUrl(timeSlotEndpoints.add));
-    expect(errorOf('Début')).toBe("Écris l'heure sur 24 heures, de 00:00 à 23:59.");
+    expect(errorOf('Début')).toBe(`Écris l'heure sur 24${NBSP}heures, de 00:00 à 23:59.`);
   });
 
   it('quitter un champ vide n’affiche rien ; l’heure manquante est signalée à l’enregistrement', async () => {
@@ -217,7 +216,7 @@ describe('TimeSlotList', () => {
 
   it('affiche sous la fin un chevauchement refusé par l’API, focus sur la fin', async () => {
     const { button, type, press, http, settle, errorOf, input } = await render();
-    const message = 'Ce créneau empiète sur le créneau 1 : avance sa fin.';
+    const message = `Ce créneau empiète sur le créneau 1${NBSP}: avance sa fin.`;
     const problem: ProblemDto = {
       type: 'urn:histoires-de-chimeres:problem:time-slot-end-overlaps',
       title: 'Chevauchement',
@@ -293,7 +292,7 @@ describe('TimeSlotList', () => {
     button('Supprimer le créneau 2').click();
     await settle();
     expect(document.querySelector('[role="alertdialog"] h2')?.textContent).toBe(
-      'Supprimer le créneau 2 ?',
+      `Supprimer le créneau 2${THIN_NBSP}?`,
     );
     expect(document.activeElement).toBe(dialogButton('Annuler'));
     dialogButton('Supprimer le créneau').click();

@@ -3,15 +3,14 @@ import { availabilityEndpoints, type GameMasterDto, type TimeSlotDto } from '@ch
 import { injectApiCall } from '../api-call';
 import { injectGesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
-import { formatTime, minutesOf, timeSlotLabel } from '../time-slots/time-format';
+import { minutesOf } from '../time-slots/time-format';
+import { NBSP, THIN_NBSP } from '../typography/french';
+import { formatTime, timeSlotLabel } from '../typography/time';
 import { Icon } from '../ui/icon';
 
 /** Un morceau de la journée, en minutes : un créneau, ou une pause sans `slot`. */
 type Segment = { start: number; end: number; slot?: TimeSlotDto };
 
-// Typographie de docs/design/ton.md : « 14 h », et la plage « 9 h 00 – 12 h 30 ».
-const NBSP = '\u00a0';
-const THIN_NBSP = '\u202f';
 
 /**
  * Les disponibilités d'un MJ (docs/design/patterns.md, Disponibilités) : la journée en frise, à
@@ -75,7 +74,7 @@ const THIN_NBSP = '\u202f';
               </span>
               @if (block.game; as game) {
                 <span class="game" [id]="'game-' + block.slot.id">
-                  <span>Mène « {{ game.scenario.title }} »</span>
+                  <span>Mène «&nbsp;{{ game.scenario.title }}&nbsp;»</span>
                   <span class="table">{{ game.table.name }}</span>
                 </span>
               }

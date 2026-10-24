@@ -10,10 +10,8 @@ import {
   type TimeSlotDto,
 } from '@chimeres/contract';
 import { Notifications } from '../shell/notifications';
+import { NBSP, THIN_NBSP } from '../typography/french';
 import { AvailabilityTimeline } from './availability-timeline';
-
-const NBSP = '\u00a0';
-const THIN = '\u202f';
 
 const TIME_SLOTS: TimeSlotDto[] = [
   { id: 's1', rank: 1, start: '09:00', end: '12:30', availabilityCount: 1 },
@@ -69,8 +67,8 @@ describe('AvailabilityTimeline', () => {
     const { state } = await render(['s1']);
 
     expect(state()).toEqual([
-      `Créneau 1 · 9${NBSP}h${NBSP}00${THIN}–${THIN}12${NBSP}h${NBSP}30 ☑ Je peux mener une partie`,
-      `Créneau 2 · 14${NBSP}h${NBSP}00${THIN}–${THIN}16${NBSP}h${NBSP}30 ☐ Pas disponible`,
+      `Créneau 1 · 9${NBSP}h${NBSP}00${THIN_NBSP}–${THIN_NBSP}12${NBSP}h${NBSP}30 ☑ Je peux mener une partie`,
+      `Créneau 2 · 14${NBSP}h${NBSP}00${THIN_NBSP}–${THIN_NBSP}16${NBSP}h${NBSP}30 ☐ Pas disponible`,
     ]);
   });
 
@@ -91,7 +89,7 @@ describe('AvailabilityTimeline', () => {
     expect(first!.querySelector('.game')).toBeNull();
     const game = second!.querySelector('.game')!;
     expect([...game.children].map((line) => line.textContent)).toEqual([
-      'Mène « Néons sur Neo-Paris »',
+      `Mène «${NBSP}Néons sur Neo-Paris${NBSP}»`,
       'Table verte',
     ]);
     expect(second!.querySelector('input')!.getAttribute('aria-describedby')).toBe(game.id);

@@ -17,10 +17,11 @@ import { ConventionStore } from '../convention/convention-store';
 import { availabilitiesConsequence } from '../game-masters/availabilities-consequence';
 import { AvailabilityTimeline } from '../game-masters/availability-timeline';
 import { NicknameEditor } from '../game-masters/nickname-editor';
-import { formatDuration, formatSeats } from '../scenarios/scenario-format';
+import { formatScenarioDuration, formatSeats } from '../scenarios/scenario-format';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
+import { fr } from '../typography/french';
 import { Button } from '../ui/button';
 import { Confirmation } from '../ui/confirmation';
 import { Icon } from '../ui/icon';
@@ -103,7 +104,7 @@ const MENU: readonly MoreMenuItem[] = [{ value: 'remove', label: 'Supprimer le M
             />
           } @else {
             <p class="none">
-              Aucun créneau pour l'instant : les disponibilités attendent la journée.
+              Aucun créneau pour l'instant&nbsp;: les disponibilités attendent la journée.
             </p>
           }
         </section>
@@ -120,7 +121,7 @@ const MENU: readonly MoreMenuItem[] = [{ value: 'remove', label: 'Supprimer le M
                   <a [routerLink]="['/scenarios', scenario.id]">{{ scenario.title }}</a>
                   <span class="meta">{{ scenario.system }}</span>
                   <span class="meta">{{ formatSeats(scenario.seats) }}</span>
-                  <span class="meta">{{ formatDuration(scenario.duration) }}</span>
+                  <span class="meta">{{ formatScenarioDuration(scenario.duration) }}</span>
                 </li>
               }
             </ul>
@@ -205,7 +206,7 @@ export class GameMasterPage {
   protected readonly editing = signal(false);
   protected readonly menu = MENU;
   protected readonly formatSeats = formatSeats;
-  protected readonly formatDuration = formatDuration;
+  protected readonly formatScenarioDuration = formatScenarioDuration;
 
   protected readonly failure = computed(() => {
     const error = this.resource.error();
@@ -255,14 +256,14 @@ export class GameMasterPage {
 
   private async remove({ id, nickname, availabilities }: GameMasterDto) {
     const removed = await this.confirmation.ask({
-      question: `Supprimer le MJ « ${nickname} » ?`,
+      question: fr`Supprimer le MJ « ${nickname} » ?`,
       consequence: availabilitiesConsequence(availabilities.length),
       confirmLabel: 'Supprimer le MJ',
       action: () => this.apiCall(gameMasterEndpoints.remove, { params: { gameMasterId: id } }),
       onStale: () => this.reloadAfterRefusal(),
     });
     if (!removed) return;
-    this.announcer.announce(`MJ « ${nickname} » supprimé.`);
+    this.announcer.announce(fr`MJ « ${nickname} » supprimé.`);
     if (availabilities.length) this.store.convention.reload();
     await this.router.navigate(['/mj']);
   }

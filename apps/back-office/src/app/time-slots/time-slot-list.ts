@@ -4,11 +4,12 @@ import { ConventionStore } from '../convention/convention-store';
 import { availabilitiesConsequence } from '../game-masters/availabilities-consequence';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
+import { fr } from '../typography/french';
+import { formatDuration, formatTimeRange } from '../typography/time';
 import { Button } from '../ui/button';
 import { AddCard, Card } from '../ui/card';
 import { CardEditing } from '../ui/card-editing';
 import { IconTile } from '../ui/icon-tile';
-import { formatDuration, formatTimeRange } from './time-format';
 import { TimeSlotEditor } from './time-slot-editor';
 
 /**
@@ -182,7 +183,7 @@ export class TimeSlotList {
   protected async remove(slot: TimeSlotDto) {
     const index = this.timeSlots().findIndex(({ id }) => id === slot.id);
     const removed = await this.cards.remove(index, {
-      question: `Supprimer le créneau ${slot.rank} ?`,
+      question: fr`Supprimer le créneau ${slot.rank} ?`,
       consequence: availabilitiesConsequence(slot.availabilityCount),
       confirmLabel: 'Supprimer le créneau',
       action: () => this.store.write(timeSlotEndpoints.remove, { params: { timeSlotId: slot.id } }),

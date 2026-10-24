@@ -1,6 +1,6 @@
 import { booleanAttribute, Component, computed, contentChild, effect, input } from '@angular/core';
 import { FormField } from '@angular/forms/signals';
-import { formatCount } from '../format-count';
+import { formatCount } from '../typography/french';
 
 let nextId = 0;
 

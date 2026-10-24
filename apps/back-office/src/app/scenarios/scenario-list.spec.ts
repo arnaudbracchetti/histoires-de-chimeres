@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { apiUrl, scenarioEndpoints, type ScenarioListItemDto } from '@chimeres/contract';
+import { NBSP } from '../typography/french';
 import { ScenarioList } from './scenario-list';
 
 const aScenario = (
@@ -75,8 +76,8 @@ describe('ScenarioList', () => {
       'Scénario 2',
       'Pendragon',
       'Kaïros',
-      '4 places',
-      '2 créneaux',
+      `4${NBSP}places`,
+      `2${NBSP}créneaux`,
       '0',
     ]);
     const row = host.querySelector('tbody tr')!;

@@ -4,6 +4,7 @@ import { injectApiCall } from '../api-call';
 import { injectApiUpload } from '../api-upload';
 import { injectGesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
+import { fr } from '../typography/french';
 import { Button } from '../ui/button';
 import { Confirmation } from '../ui/confirmation';
 import { ScenarioIllustration } from '../ui/scenario-illustration';
@@ -179,7 +180,7 @@ export class ScenarioImage {
   protected async remove(): Promise<void> {
     let scenario: ScenarioDto | undefined;
     const removed = await this.confirmation.ask({
-      question: `Retirer l'image du scénario « ${this.title()} » ?`,
+      question: fr`Retirer l'image du scénario « ${this.title()} » ?`,
       consequence: "L'illustration par défaut la remplacera.",
       confirmLabel: "Retirer l'image",
       action: async () => {

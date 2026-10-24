@@ -1,6 +1,7 @@
 import type { SchemaPath } from '@angular/forms/signals';
 import { NICKNAME_MAX_LENGTH } from '@chimeres/contract';
 import { textRules } from '../forms/text-rules';
+import { countOf, fr } from '../typography/french';
 
 /**
  * Erreurs locales d'un pseudo (docs/design/patterns.md, Validation). Le pseudo déjà pris (ID-7)
@@ -9,6 +10,6 @@ import { textRules } from '../forms/text-rules';
 export function nicknameRules(path: SchemaPath<string>): void {
   textRules(path, NICKNAME_MAX_LENGTH, {
     required: 'Donne un pseudo au MJ.',
-    tooLong: `Un pseudo fait ${NICKNAME_MAX_LENGTH} caractères au plus : raccourcis-le.`,
+    tooLong: fr`Un pseudo fait ${countOf(NICKNAME_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-le.`,
   });
 }

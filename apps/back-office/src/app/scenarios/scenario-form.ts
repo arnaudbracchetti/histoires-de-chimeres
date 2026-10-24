@@ -15,9 +15,9 @@ import {
   type ScenarioBody,
   type ScenarioDto,
 } from '@chimeres/contract';
-import { formatCount } from '../format-count';
 import { submitWith } from '../forms/submit-with';
 import { textRules } from '../forms/text-rules';
+import { countOf, fr, NBSP } from '../typography/french';
 import { Field } from '../ui/field';
 import { SaveButton } from '../ui/save-button';
 import { PresentationPreview } from './presentation-preview';
@@ -116,8 +116,8 @@ function seatsRules(path: SchemaPath<number | null>, missing: string): void {
       </div>
       <fieldset>
         <legend>Durée</legend>
-        <label><input type="radio" value="1" [formField]="form.duration" /> 1 créneau</label>
-        <label><input type="radio" value="2" [formField]="form.duration" /> 2 créneaux</label>
+        <label><input type="radio" value="1" [formField]="form.duration" /> 1&nbsp;créneau</label>
+        <label><input type="radio" value="2" [formField]="form.duration" /> 2&nbsp;créneaux</label>
       </fieldset>
       <app-save-button [submitting]="form().submitting()" [savedAt]="savedAt()" />
     </form>
@@ -211,7 +211,7 @@ export class ScenarioForm {
     presentation: PRESENTATION_MAX_LENGTH,
     contentWarnings: CONTENT_WARNINGS_MAX_LENGTH,
   };
-  protected readonly markdownHelp = '**gras**, *italique*, « - » en début de ligne pour une liste';
+  protected readonly markdownHelp = fr`**gras**, *italique*, « - » en début de ligne pour une liste`;
   protected readonly previewing = signal(false);
   protected readonly savedAt = signal<number | undefined>(undefined);
 
@@ -231,18 +231,18 @@ export class ScenarioForm {
     (path) => {
       textRules(path.title, SCENARIO_TITLE_MAX_LENGTH, {
         required: 'Donne un titre au scénario.',
-        tooLong: `Le titre fait ${SCENARIO_TITLE_MAX_LENGTH} caractères au plus : raccourcis-le.`,
+        tooLong: fr`Le titre fait ${countOf(SCENARIO_TITLE_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-le.`,
       });
       textRules(path.system, SYSTEM_MAX_LENGTH, {
         required: 'Indique le jeu du scénario.',
-        tooLong: `Le jeu fait ${SYSTEM_MAX_LENGTH} caractères au plus : raccourcis-le.`,
+        tooLong: fr`Le jeu fait ${countOf(SYSTEM_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-le.`,
       });
       textRules(path.presentation, PRESENTATION_MAX_LENGTH, {
         required: 'Présente le scénario en quelques lignes.',
-        tooLong: `La présentation fait ${formatCount(PRESENTATION_MAX_LENGTH)} caractères au plus : raccourcis-la.`,
+        tooLong: fr`La présentation fait ${countOf(PRESENTATION_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-la.`,
       });
       textRules(path.contentWarnings, CONTENT_WARNINGS_MAX_LENGTH, {
-        tooLong: `Les avertissements de contenu font ${CONTENT_WARNINGS_MAX_LENGTH} caractères au plus : raccourcis-les.`,
+        tooLong: fr`Les avertissements de contenu font ${countOf(CONTENT_WARNINGS_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-les.`,
       });
       seatsRules(path.seats.min, 'Indique le nombre minimum de places.');
       seatsRules(path.seats.max, 'Indique le nombre maximum de places.');
@@ -252,7 +252,7 @@ export class ScenarioForm {
           ? undefined
           : {
               kind: 'below-one',
-              message: 'Il faut au moins 1 place.',
+              message: `Il faut au moins 1${NBSP}place.`,
             };
       });
       validate(path.seats.max, ({ value, valueOf }) => {
@@ -261,7 +261,7 @@ export class ScenarioForm {
           ? undefined
           : {
               kind: 'out-of-order',
-              message: 'Le maximum est sous le minimum : augmente-le.',
+              message: fr`Le maximum est sous le minimum : augmente-le.`,
             };
       });
     },

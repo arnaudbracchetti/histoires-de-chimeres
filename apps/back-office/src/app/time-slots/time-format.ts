@@ -1,10 +1,3 @@
-import type { TimeSlotDto } from '@chimeres/contract';
-
-// Typographie de docs/design/ton.md : espace insécable dans « 14 h 00 », espaces fines
-// insécables autour du demi-cadratin d'une plage.
-const NBSP = '\u00a0';
-const THIN_NBSP = '\u202f';
-
 /**
  * Heure saisie, sur 24 heures, remise en `HH:MM` : « 14:00 », « 9:30 », « 9 », « 14h », « 14h30 ».
  * `undefined` si ce n'est pas une heure de 00:00 à 23:59.
@@ -28,34 +21,4 @@ export function minutesOf(time: string): number {
 export function timeOf(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   return `${String(hours).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
-}
-
-/** « 14 h 00 », « 9 h 30 ». */
-export function formatTime(time: string): string {
-  const [hours, minutes] = time.split(':');
-  return `${Number(hours)}${NBSP}h${NBSP}${minutes}`;
-}
-
-/** « 14 h 00 – 16 h 30 ». */
-export function formatTimeRange(start: string, end: string): string {
-  return `${formatTime(start)}${THIN_NBSP}–${THIN_NBSP}${formatTime(end)}`;
-}
-
-/** Durée de `start` à `end` : « 2 h 30 », « 2 h », « 45 min ». */
-export function formatDuration(start: string, end: string): string {
-  const total = minutesOf(end) - minutesOf(start);
-  const hours = Math.floor(total / 60);
-  const minutes = total % 60;
-  if (hours === 0) return `${minutes}${NBSP}min`;
-  if (minutes === 0) return `${hours}${NBSP}h`;
-  return `${hours}${NBSP}h${NBSP}${String(minutes).padStart(2, '0')}`;
-}
-
-/** « Créneau 2 · 14 h 00 – 16 h 30 » : un créneau est désigné par son rang (PR-8). */
-export function timeSlotLabel({
-  rank,
-  start,
-  end,
-}: Pick<TimeSlotDto, 'rank' | 'start' | 'end'>): string {
-  return `Créneau ${rank} · ${formatTimeRange(start, end)}`;
 }

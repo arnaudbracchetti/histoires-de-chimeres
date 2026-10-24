@@ -11,7 +11,7 @@ import { renderPresentation } from './presentation-markdown';
     @if (text().trim()) {
       <div class="rendered" [innerHTML]="html()"></div>
     } @else {
-      <p class="empty">Rien à montrer pour l'instant : écris d'abord la présentation.</p>
+      <p class="empty">Rien à montrer pour l'instant&nbsp;: écris d'abord la présentation.</p>
     }
   `,
   styles: `

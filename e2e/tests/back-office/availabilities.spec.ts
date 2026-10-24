@@ -75,7 +75,7 @@ test('cliquer sur les créneaux de la frise du MJ, enregistrés sans bouton (PR-
   await expect(first).toBeChecked();
   await expect(second).not.toBeChecked();
   await page.getByRole('link', { name: 'MJ', exact: true }).first().click();
-  await expect(page.getByRole('row', { name: /Élodie/ })).toContainText('Créneau 1');
+  await expect(page.getByRole('row', { name: /Élodie/ })).toContainText('créneau 1');
 });
 
 test('les heures d’un créneau qui porte une disponibilité sont refusées (PR-11)', async ({

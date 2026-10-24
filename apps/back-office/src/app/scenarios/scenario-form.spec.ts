@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import type { ProblemDto, ScenarioBody, ScenarioDto } from '@chimeres/contract';
+import { NBSP } from '../typography/french';
 import { ScenarioForm } from './scenario-form';
 
 const SCENARIO: ScenarioDto = {
@@ -105,7 +106,7 @@ describe('ScenarioForm', () => {
       await type('Titre', 'a'.repeat(81), { leave: false });
       expect(errorOf('Titre')).toBe('');
       await type('Titre', 'a'.repeat(81));
-      expect(errorOf('Titre')).toBe('Le titre fait 80 caractères au plus : raccourcis-le.');
+      expect(errorOf('Titre')).toBe(`Le titre fait 80${NBSP}caractères au plus${NBSP}: raccourcis-le.`);
     });
 
     it('se mettent à jour à chaque frappe une fois le champ quitté', async () => {
@@ -123,7 +124,7 @@ describe('ScenarioForm', () => {
       await type('Places minimum', '5');
       await type('Places maximum', '3');
 
-      expect(errorOf('Places maximum')).toBe('Le maximum est sous le minimum : augmente-le.');
+      expect(errorOf('Places maximum')).toBe(`Le maximum est sous le minimum${NBSP}: augmente-le.`);
       expect(errorOf('Places minimum')).toBe('');
     });
 
@@ -132,7 +133,7 @@ describe('ScenarioForm', () => {
 
       await type('Places minimum', '0');
 
-      expect(errorOf('Places minimum')).toBe('Il faut au moins 1 place.');
+      expect(errorOf('Places minimum')).toBe(`Il faut au moins 1${NBSP}place.`);
     });
   });
 
@@ -157,7 +158,7 @@ describe('ScenarioForm', () => {
     await type('Présentation', 'Une tour, une nuit.');
     await type('Places minimum', '3');
     await type('Places maximum', '5');
-    control('2 créneaux').click();
+    control(`2${NBSP}créneaux`).click();
     await fixture.whenStable();
     await submit();
 

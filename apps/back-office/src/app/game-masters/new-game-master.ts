@@ -5,6 +5,7 @@ import { injectApiCall } from '../api-call';
 import { CardForm } from '../forms/card-form';
 import { submitWith } from '../forms/submit-with';
 import { Announcer } from '../shell/announcer';
+import { fr } from '../typography/french';
 import { Button } from '../ui/button';
 import { Field } from '../ui/field';
 import { nicknameRules } from './nickname';
@@ -63,7 +64,7 @@ export class NewGameMaster {
   private async write(): Promise<void> {
     const nickname = this.model().nickname.trim();
     const gameMasters = await this.apiCall(gameMasterEndpoints.add, { body: { nickname } });
-    this.announcer.announce(`MJ « ${nickname} » ajouté.`);
+    this.announcer.announce(fr`MJ « ${nickname} » ajouté.`);
     this.added.emit(gameMasters);
   }
 }
