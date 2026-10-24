@@ -1,6 +1,9 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import type { GameDto, TableDto, TimeSlotDto } from '@chimeres/contract';
 import { NBSP, THIN_NBSP } from '../typography/french';
+import { ScheduleDrag } from './schedule-drag';
 import { ScheduleTimeline } from './schedule-timeline';
 
 /** Créneau 1 de 2 h 30, pause de 1 h, créneau 2 de 3 h, puis créneau 3 collé au 2. */
@@ -32,6 +35,12 @@ const GAME: GameDto = {
 };
 
 describe('ScheduleTimeline', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [ScheduleDrag, provideHttpClient(), provideHttpClientTesting()],
+    });
+  });
+
   async function render(games: GameDto[] = [GAME]) {
     const fixture = TestBed.createComponent(ScheduleTimeline);
     const opened: GameDto[] = [];

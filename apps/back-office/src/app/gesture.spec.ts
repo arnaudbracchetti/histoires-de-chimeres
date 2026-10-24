@@ -1,8 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import type { ProblemDto } from '@chimeres/contract';
-import { injectGesture } from './gesture';
+import { injectGesture, type GestureOptions } from './gesture';
 import { Notifications } from './shell/notifications';
+import { NBSP } from './typography/french';
 
 /** Une écriture refusée par l'API, avec ce Problem Details. */
 function refusedWith(status: number, problem?: Partial<ProblemDto>) {
@@ -17,7 +18,7 @@ function pending<T>(value: T) {
 }
 
 describe('Gesture', () => {
-  const create = (options?: { notify?: boolean }) =>
+  const create = (options?: GestureOptions) =>
     TestBed.runInInjectionContext(() => injectGesture(options));
 
   it('renvoie la valeur de l’écriture réussie, sans refus', async () => {
@@ -134,6 +135,32 @@ describe('Gesture', () => {
     expect(TestBed.inject(Notifications).notices()).toEqual([
       expect.objectContaining({ title: 'Partie introuvable', detail: 'Elle n’existe plus.' }),
     ]);
+  });
+
+  it('après un 409, sur un écran qui se relit, le refus dit que l’écran est à jour', async () => {
+    const gesture = create({ notify: true, refreshes: true });
+
+    await gesture.run(
+      refusedWith(409, {
+        title: 'Modification simultanée',
+        detail: `La convention a changé entre-temps${NBSP}: recharge la page, puis recommence.`,
+      }),
+    );
+
+    const detail = `La convention a changé entre-temps${NBSP}: l'écran est à jour.`;
+    expect(gesture.refusal()?.message).toBe(detail);
+    expect(TestBed.inject(Notifications).notices()).toEqual([
+      expect.objectContaining({ title: 'Modification simultanée', detail }),
+    ]);
+  });
+
+  it('après un 409, sur un écran qui ne se relit pas, le refus garde le detail de l’API', async () => {
+    const gesture = create();
+    const detail = `La convention a changé entre-temps${NBSP}: recharge la page, puis recommence.`;
+
+    await gesture.run(refusedWith(409, { title: 'Modification simultanée', detail }));
+
+    expect(gesture.refusal()?.message).toBe(detail);
   });
 
   it('sans notify, aucune notification', async () => {

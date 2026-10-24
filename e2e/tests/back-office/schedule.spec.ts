@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import {
   apiUrl,
   availabilityEndpoints,
@@ -134,9 +134,12 @@ test('la frise prend toute la largeur, chaque créneau au prorata de sa durée',
   await page.goto('/gestion/');
 
   const frise = page.getByRole('table', { name: 'Programme, par table et par créneau' });
-  const [short, long] = await frise
-    .getByRole('columnheader', { name: /^Créneau/ })
-    .evaluateAll((headers) => headers.map((header) => header.getBoundingClientRect().width));
+  const headers = frise.getByRole('columnheader', { name: /^Créneau/ });
+  // `evaluateAll` n'attend pas : la frise doit d'abord être rendue.
+  await expect(headers).toHaveCount(2);
+  const [short, long] = await headers.evaluateAll((headers) =>
+    headers.map((header) => header.getBoundingClientRect().width),
+  );
   // 2 h 30 contre 5 h : la moitié, à l'espacement près.
   expect(short! / long!).toBeCloseTo(0.5, 1);
   const main = await page.locator('main').evaluate((element) => element.clientWidth);
@@ -804,4 +807,262 @@ test('un créneau ajouté entre les deux créneaux d’une partie double est ref
   );
   await page.reload();
   await expect(section.getByRole('heading', { name: /^Créneau \d/ })).toHaveCount(2);
+});
+
+/** La case d'un créneau et d'une table dans la frise : la cible d'un glisser-déposer. */
+const slotCell = (page: Page, timeSlotId: string, tableId: string) =>
+  timeline(page).locator(`[data-drop-time-slot="${timeSlotId}"][data-drop-table="${tableId}"]`);
+
+/** Le curseur que montre la frise sous le pointeur : `poll` le relit jusqu'à la valeur attendue. */
+const cursor = (page: Page) =>
+  expect.poll(() => timeline(page).evaluate((element) => getComputedStyle(element).cursor));
+
+/** La barre d'aide, au-dessus de la frise. */
+const helpBar = (page: Page) => page.locator('p.help');
+
+/** Le titre d'un scénario dans le bac de réserve : on le saisit par là. */
+const reserveTitle = (page: Page, title: string) =>
+  reserveCard(page, title).getByRole('heading', { level: 3 });
+
+/**
+ * Saisit `from` à la souris et l'amène sur `to`, par petits pas : le CDK ne démarre le geste
+ * qu'après quelques pixels. Le bouton reste enfoncé : `page.mouse.up()` dépose.
+ */
+async function dragOver(page: Page, from: Locator, to: Locator) {
+  const source = (await from.boundingBox())!;
+  const x = source.x + source.width / 2;
+  const y = source.y + source.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 10, y + 10, { steps: 5 });
+  const target = (await to.boundingBox())!;
+  await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 10 });
+}
+
+async function dragTo(page: Page, from: Locator, to: Locator) {
+  await dragOver(page, from, to);
+  await page.mouse.up();
+}
+
+test('programmer par glisser-déposer : une partie simple, puis une partie double (PR-3, PR-8)', async ({
+  page,
+}) => {
+  const { slot1, slot2, tableId } = await prepareDouble(page);
+  await page.goto('/gestion/');
+
+  // Saisi par son titre, le scénario se tient par sa vignette : elle est sous le pointeur.
+  await dragOver(page, reserveTitle(page, 'Brumes'), slotCell(page, slot1, tableId('Table 1')));
+  await expect(slotCell(page, slot1, tableId('Table 1'))).toHaveClass(/valid/);
+  const pointer = (await slotCell(page, slot1, tableId('Table 1')).boundingBox())!;
+  const thumbnail = (await page
+    .locator('.cdk-drag-preview app-scenario-illustration')
+    .boundingBox())!;
+  expect(thumbnail.x + thumbnail.width / 2).toBeCloseTo(pointer.x + pointer.width / 2, -1);
+  expect(thumbnail.y + thumbnail.height / 2).toBeCloseTo(pointer.y + pointer.height / 2, -1);
+  await cursor(page).toBe('grabbing');
+  await page.mouse.up();
+  await cursor(page).not.toBe('grabbing');
+
+  await expect(slotCell(page, slot1, tableId('Table 1'))).toContainText('Brumes');
+  await expect(gameButton(page, 'Brumes')).toBeFocused();
+  await expect(page.locator('[aria-live="polite"]')).toHaveText(
+    `Partie « Brumes » programmée${NBSP}: créneau 1, Table 1.`,
+  );
+
+  await dragTo(page, reserveTitle(page, 'Abysses'), slotCell(page, slot1, tableId('Table 2')));
+
+  // Ses deux créneaux, et la pause entre eux.
+  const abysses = slotCell(page, slot1, tableId('Table 2'));
+  await expect(abysses).toContainText('Abysses');
+  await expect(abysses).toHaveAttribute('aria-colspan', '3');
+  await expect(slotCell(page, slot2, tableId('Table 2'))).toHaveCount(0);
+  await page.reload();
+  await expect(slotCell(page, slot1, tableId('Table 2'))).toContainText('Abysses');
+});
+
+test('pendant un glisser, chaque cible refusée reste éteinte avec son motif, et la barre d’aide donne sa phrase (PR-5)', async ({
+  page,
+}) => {
+  const { neons, slot1, slot2, tableId } = await prepareDouble(page);
+  const showAll = async () => {
+    await page.goto('/gestion/');
+    await reserve(page)
+      .getByRole('button', { name: /^Tous les scénarios / })
+      .click();
+  };
+  const expectRefused = async (
+    title: string,
+    [timeSlotId, table]: [string, string],
+    motif: string,
+    phrase: string,
+  ) => {
+    const target = slotCell(page, timeSlotId, tableId(table));
+    await dragOver(page, reserveTitle(page, title), target);
+    await expect(target).toContainText(motif);
+    await expect(target).not.toHaveClass(/valid/);
+    await cursor(page).toBe('not-allowed');
+    // Une partie survolée ne s'éclaire pas : seul le halo des cibles valides parle.
+    const game = target.getByRole('article');
+    if (await game.count()) await expect(game).toHaveCSS('box-shadow', 'none');
+    await expect(helpBar(page)).toHaveText(phrase);
+    await page.mouse.up();
+    await expect(helpBar(page)).toHaveText('');
+    await cursor(page).not.toBe('not-allowed');
+    // Le scénario revient au bac avant le geste suivant.
+    await expect(page.locator('.cdk-drag-preview')).toHaveCount(0);
+  };
+
+  await showAll();
+  await expectRefused(
+    'Brumes',
+    [slot2, 'Table 1'],
+    'MJ indisponible',
+    `Kaïros n'est pas disponible sur le créneau 2${NBSP}: coche d'abord sa disponibilité sur sa fiche.`,
+  );
+  await expectRefused(
+    'Abysses',
+    [slot2, 'Table 2'],
+    'Pas de créneau suivant',
+    `Le créneau 2 est le dernier de la journée${NBSP}: une partie double commence au plus tard sur le créneau 1.`,
+  );
+
+  await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
+  await showAll();
+  await expectRefused(
+    'Ruines',
+    [slot1, 'Table 2'],
+    'MJ déjà occupé',
+    `Élodie mène déjà une partie sur le créneau 1${NBSP}: choisis un autre créneau.`,
+  );
+  await expectRefused(
+    'Brumes',
+    [slot1, 'Table 1'],
+    'Table prise',
+    `La table « Table 1 » accueille déjà une partie sur le créneau 1${NBSP}: choisis une autre table.`,
+  );
+  // Rien n'a été écrit : seule « Néons » est programmée.
+  await page.reload();
+  await expect(timeline(page).getByRole('article')).toHaveText([/Néons/]);
+});
+
+test('déplacer une partie par glisser-déposer vers un autre créneau, puis vers une autre table (PR-17)', async ({
+  page,
+}) => {
+  const { neons, slot1, slot2, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
+  await page.goto('/gestion/');
+
+  await dragTo(page, gameButton(page, 'Néons'), slotCell(page, slot2, tableId('Table 1')));
+
+  await expect(slotCell(page, slot2, tableId('Table 1'))).toContainText('Néons');
+  await expect(gameButton(page, 'Néons')).toBeFocused();
+  await expect(page.locator('[aria-live="polite"]')).toHaveText(
+    `Partie déplacée${NBSP}: créneau 2, table Table 1.`,
+  );
+
+  await dragTo(page, gameButton(page, 'Néons'), slotCell(page, slot2, tableId('Table 2')));
+
+  await expect(slotCell(page, slot2, tableId('Table 2'))).toContainText('Néons');
+  await expect(gameButton(page, 'Néons')).toBeFocused();
+  await page.reload();
+  await expect(slotCell(page, slot2, tableId('Table 2'))).toContainText('Néons');
+  await expect(timeline(page).getByRole('article')).toHaveCount(1);
+});
+
+test('échanger deux parties simples par glisser-déposer (PR-17)', async ({ page }) => {
+  const { neons, ruines, slot1, slot2, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot2, tableId('Table 1'));
+  await scheduleByApi(page, ruines.id, slot1, tableId('Table 2'));
+  await page.goto('/gestion/');
+
+  await dragTo(page, gameButton(page, 'Néons'), gameButton(page, 'Ruines'));
+
+  await expect(slotCell(page, slot1, tableId('Table 2'))).toContainText('Néons');
+  await expect(slotCell(page, slot2, tableId('Table 1'))).toContainText('Ruines');
+  await expect(gameButton(page, 'Néons')).toBeFocused();
+  await expect(page.locator('[aria-live="polite"]')).toHaveText(
+    'Parties « Néons » et « Ruines » échangées.',
+  );
+});
+
+test('échanger une partie double et une partie simple par glisser-déposer (PR-17)', async ({
+  page,
+}) => {
+  const { abysses, brumes, slot1, tableId } = await prepareDouble(page);
+  await scheduleByApi(page, abysses.id, slot1, tableId('Table 1'));
+  await scheduleByApi(page, brumes.id, slot1, tableId('Table 2'));
+  await page.goto('/gestion/');
+
+  await dragTo(page, gameButton(page, 'Abysses'), gameButton(page, 'Brumes'));
+
+  await expect(slotCell(page, slot1, tableId('Table 2'))).toContainText('Abysses');
+  await expect(slotCell(page, slot1, tableId('Table 2'))).toHaveAttribute('aria-colspan', '3');
+  await expect(slotCell(page, slot1, tableId('Table 1'))).toContainText('Brumes');
+  await page.reload();
+  await expect(slotCell(page, slot1, tableId('Table 2'))).toContainText('Abysses');
+});
+
+test('déprogrammer une partie en la déposant sur le bac de réserve', async ({ page }) => {
+  const { neons, slot1, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
+  await page.goto('/gestion/');
+  const tray = page.locator('app-reserve-tray');
+
+  await dragOver(page, gameButton(page, 'Néons'), tray);
+  await expect(tray).toHaveClass(/valid/);
+  await page.mouse.up();
+
+  await expect(timeline(page).getByRole('article')).toHaveCount(0);
+  await expect(reserve(page).getByRole('heading', { level: 2, name: 'Réserve' })).toBeFocused();
+  await expect(page.locator('[aria-live="polite"]')).toHaveText('Partie « Néons » déprogrammée.');
+  await page.reload();
+  await expect(timeline(page).getByRole('article')).toHaveCount(0);
+});
+
+test('un dépôt sur une case prise entre-temps est refusé : « Table prise », et l’écran se relit', async ({
+  page,
+  browser,
+}) => {
+  const { slot1, tableId } = await prepare(page);
+  await page.goto('/gestion/');
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const other = await context.newPage();
+  await other.goto('/gestion/');
+  const target = (on: Page) => slotCell(on, slot1, tableId('Table 1'));
+
+  // Le second saisit « Néons » : à ce moment, la case est libre.
+  await dragOver(other, reserveTitle(other, 'Néons'), target(other));
+  await expect(target(other)).toHaveClass(/valid/);
+  // Le premier la prend.
+  await dragTo(page, reserveTitle(page, 'Brumes'), target(page));
+  await expect(target(page)).toContainText('Brumes');
+  await other.mouse.up();
+
+  await expect(other.getByRole('alert').filter({ hasText: 'Table prise' })).toContainText(
+    `La table « Table 1 » accueille déjà une partie sur le créneau 1${NBSP}: choisis une autre table.`,
+  );
+  await expect(target(other)).toContainText('Brumes');
+  await expect(timeline(other).getByRole('article')).toHaveCount(1);
+  await context.close();
+});
+
+test('un geste hors ligne : la partie revient à sa place, avec le message de coupure', async ({
+  page,
+}) => {
+  const { neons, slot1, slot2, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
+  await page.goto('/gestion/');
+
+  // La case s'éclaire, puis la connexion tombe avant le dépôt.
+  await dragOver(page, gameButton(page, 'Néons'), slotCell(page, slot2, tableId('Table 1')));
+  await expect(slotCell(page, slot2, tableId('Table 1'))).toHaveClass(/valid/);
+  await page.context().setOffline(true);
+  await page.mouse.up();
+
+  await expect(page.getByRole('alert')).toContainText(
+    `Pas de connexion${NBSP}: rien n'a été enregistré.`,
+  );
+  await expect(slotCell(page, slot1, tableId('Table 1'))).toContainText('Néons');
+  await expect(slotCell(page, slot2, tableId('Table 1'))).not.toContainText('Néons');
+  await page.context().setOffline(false);
 });

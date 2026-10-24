@@ -36,7 +36,7 @@ Aucune couleur n'est écrite en TypeScript ni en dur dans un SVG : le SVG réfé
 ## CSS
 
 - **Natif, sans préprocesseur** : imbrication native, aplatie par esbuild selon la `browserslist`.
-- **Couches**, déclarées une fois dans le `styles.css` de chaque front : `@layer reset, tokens, base, components;`.
+- **Couches**, déclarées une fois dans le `styles.css` de chaque front : `@layer reset, tokens, base, components;`. Le back office ajoute `cdk-resets` en tête : le CDK y remet à zéro l'aperçu d'un glisser-déposer, et le style du composant doit l'emporter.
   - `reset` : remise à zéro courte ;
   - `tokens` : l'import de `tokens.css` ;
   - `base` : éléments HTML nus (corps, titres, liens, tableaux, champs), taille de base du front (13 px dans le back office) ;

@@ -1,5 +1,6 @@
 /* Styles globaux, courts : le reste vit dans les composants, en @layer components (docs/design/ecriture-css.md). */
-@layer reset, tokens, base, components;
+/* `cdk-resets` d'abord : le CDK y remet à zéro l'aperçu d'un glisser, que nos composants habillent. */
+@layer cdk-resets, reset, tokens, base, components;
 
 @import '@chimeres/design/tokens.css';
 @import '@chimeres/design/fonts.css';
@@ -128,5 +129,21 @@
   :focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
+  }
+}
+
+/*
+ * Curseur d'un glisser-déposer du Calendrier (schedule-drag.ts) : la main fermée, ou l'interdit
+ * au-dessus d'une cible refusée. Il l'emporte sur celui des éléments survolés.
+ */
+@layer base {
+  html.dragging,
+  html.dragging * {
+    cursor: grabbing !important;
+  }
+
+  html.drop-refused,
+  html.drop-refused * {
+    cursor: not-allowed !important;
   }
 }

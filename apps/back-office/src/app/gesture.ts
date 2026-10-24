@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { computed, inject, signal, type Signal } from '@angular/core';
 import { readProblem } from './problem';
+import { fr } from './typography/french';
 import { Notifications, type ErrorNotice } from './shell/notifications';
 
 /**
@@ -9,6 +10,9 @@ import { Notifications, type ErrorNotice } from './shell/notifications';
  * erreur 500 ne dit rien de l'écran : il reste tel quel, pour réessayer.
  */
 const STALE_STATUSES = [404, 409, 422];
+
+/** Le `detail` d'un 409, quand l'écran se relit (docs/design/patterns.md, Retours d'action). */
+const SCREEN_UP_TO_DATE = fr`La convention a changé entre-temps : l'écran est à jour.`;
 
 /** La clé d'un geste lancé sans clé. */
 const NO_KEY = '';
@@ -47,12 +51,19 @@ export type Gesture = {
   readonly refusal: Signal<GestureRefusal | undefined>;
 };
 
+export type GestureOptions = {
+  /** Le refus part aussi en notification. */
+  notify?: boolean;
+  /** L'écran se relit sur un refus périmé : le refus d'un 409 le dit, au lieu de « recharge la page ». */
+  refreshes?: boolean;
+};
+
 /**
  * Renvoie un `Gesture`, à créer dans un contexte d'injection (champ d'un composant). L'écran
  * choisit où afficher le refus (`refusal().message` en place, ou `notify` pour une notification)
  * et quoi relire quand il est périmé (`refusal.stale`).
  */
-export function injectGesture(options: { notify?: boolean } = {}): Gesture {
+export function injectGesture(options: GestureOptions = {}): Gesture {
   const notifications = inject(Notifications);
   const keys = signal<ReadonlySet<string>>(new Set());
   const refusal = signal<GestureRefusal | undefined>(undefined);
@@ -76,7 +87,7 @@ export function injectGesture(options: { notify?: boolean } = {}): Gesture {
       try {
         return { status: 'done', value: await action() };
       } catch (error) {
-        const refused = refusalOf(error);
+        const refused = refusalOf(error, options.refreshes ?? false);
         refusal.set(refused);
         if (options.notify) notifications.error(refused.notice);
         return { status: 'refused', refusal: refused };
@@ -87,12 +98,15 @@ export function injectGesture(options: { notify?: boolean } = {}): Gesture {
   };
 }
 
-function refusalOf(error: unknown): GestureRefusal {
+function refusalOf(error: unknown, refreshes: boolean): GestureRefusal {
   const { alert, fieldErrors } = readProblem(error);
-  const notice = alert ?? { title: fieldErrors.map(({ message }) => message).join(' ') };
+  let notice = alert ?? { title: fieldErrors.map(({ message }) => message).join(' ') };
+  const status = error instanceof HttpErrorResponse ? error.status : undefined;
+  // Seul le front sait qu'il relit l'écran : il remplace « recharge la page » de l'API.
+  if (status === 409 && refreshes) notice = { ...notice, detail: SCREEN_UP_TO_DATE };
   return {
     message: notice.detail ?? notice.title,
     notice,
-    stale: error instanceof HttpErrorResponse && STALE_STATUSES.includes(error.status),
+    stale: status !== undefined && STALE_STATUSES.includes(status),
   };
 }

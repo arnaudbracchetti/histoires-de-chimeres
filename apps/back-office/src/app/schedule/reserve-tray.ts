@@ -1,4 +1,5 @@
-import { Component, computed, input, linkedSignal, output } from '@angular/core';
+import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
+import { Component, computed, inject, input, linkedSignal, output } from '@angular/core';
 import type { ReserveScenarioDto, ScheduleScenarioDto, TimeSlotDto } from '@chimeres/contract';
 import { plural } from '../typography/french';
 import { formatTimeSlotRanks } from '../typography/time';
@@ -6,6 +7,7 @@ import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { ScenarioIllustration } from '../ui/scenario-illustration';
 import { TwoSlotBadge } from '../ui/two-slot-badge';
+import { ScheduleDrag, type Drop } from './schedule-drag';
 
 /** Le filtre « Tous les scénarios » ; les autres sont des identifiants de créneau. */
 const ALL = 'all';
@@ -14,11 +16,17 @@ const ALL = 'all';
  * Le bac de réserve, sous la frise (docs/design/patterns.md, Bac de réserve) : filtré par créneau,
  * chaque filtre portant son nombre de scénarios, ou sur « Tous les scénarios », avec une pastille
  * par statut. Un scénario double porte le badge « double ». Un scénario sans créneau possible y est
- * grisé, avec sa raison. Chaque autre scénario offre « Programmer sur… ».
+ * grisé, avec sa raison. Chaque autre scénario offre « Programmer sur… », et se glisse vers une case
+ * de la frise. Le bac est aussi la cible d'une partie qu'on déprogramme (`ScheduleDrag`).
  */
 @Component({
   selector: 'app-reserve-tray',
-  imports: [Button, Icon, ScenarioIllustration, TwoSlotBadge],
+  imports: [Button, CdkDrag, CdkDropList, Icon, ScenarioIllustration, TwoSlotBadge],
+  host: {
+    'data-drop-reserve': '',
+    '[class.valid]': 'drag.reserveIsValid()',
+    '[class.dragging]': '!!drag.subject()',
+  },
   template: `
     <div class="filters" role="group" aria-label="Filtre de la réserve">
       @for (filter of filters(); track filter.id) {
@@ -39,9 +47,20 @@ const ALL = 'all';
         </button>
       }
     </div>
-    <ul class="scenarios">
+    <ul class="scenarios" cdkDropList cdkDropListSortingDisabled>
       @for (scenario of shown(); track scenario.id) {
-        <li [class.unschedulable]="scenario.unschedulable">
+        <li
+          class="scenario"
+          cdkDrag
+          [cdkDragDisabled]="!!scenario.unschedulable"
+          [cdkDragStartDelay]="{ touch: 300, mouse: 0 }"
+          [class.unschedulable]="scenario.unschedulable"
+          (cdkDragStarted)="drag.start({ kind: 'scenario', scenario })"
+          [cdkDragConstrainPosition]="drag.byThumbnail"
+          (cdkDragMoved)="drag.move($event)"
+          (cdkDragReleased)="drag.release()"
+          (cdkDragEnded)="end()"
+        >
           <app-scenario-illustration [title]="scenario.title" [imageUrl]="scenario.imageUrl" />
           <h3 [id]="'reserve-' + scenario.id">{{ scenario.title }}</h3>
           <p class="meta">{{ scenario.system }} · {{ scenario.gameMaster.nickname }}</p>
@@ -106,6 +125,13 @@ const ALL = 'all';
         display: flex;
         flex-direction: column;
         gap: var(--space-m);
+        border-radius: var(--radius-control);
+        transition: box-shadow 150ms;
+      }
+
+      /* Pendant le geste d'une partie, le bac s'éclaire : on l'y dépose pour la déprogrammer. */
+      :host(.valid) {
+        box-shadow: var(--halo);
       }
 
       .filters {
@@ -173,7 +199,8 @@ const ALL = 'all';
        * Vignette, titre et méta en tête ; le pied court sur toute la largeur de la carte. Le bouton
        * s'y cale à droite, et passe à la ligne plutôt que de recouvrir les pastilles.
        */
-      .scenarios > li {
+      /* Sa propre classe : l'aperçu du glisser, cloné hors de la liste, garde sa mise en page. */
+      .scenario {
         display: grid;
         grid-template-areas:
           'thumb title badge'
@@ -186,13 +213,45 @@ const ALL = 'all';
         border: 1px solid var(--border);
         border-radius: var(--radius-control);
         background: var(--surface-1);
+
+        transition: box-shadow 150ms;
+
+        /* Une carte qu'on peut saisir : la main ouverte. */
+        &:not(.unschedulable) {
+          cursor: grab;
+        }
+
+        /* Le scénario saisi, sous le pointeur ; sa carte reste en filigrane dans le bac. */
+        &.cdk-drag-preview {
+          box-shadow: var(--halo);
+        }
+
+        &.cdk-drag-placeholder {
+          opacity: 0.3;
+        }
+
+        /* Lâché hors d'une cible valide, il revient à sa place. */
+        &.cdk-drag-animating:not(.landing) {
+          transition: transform 150ms ease-out;
+        }
       }
 
-      .scenarios > li.none {
-        display: block;
+      /* Le halo discret au survol, hors geste seulement : pendant un glisser, seul le halo des cibles
+         valides parle. */
+      :host(:not(.dragging)) .scenario:not(.unschedulable):hover {
+        box-shadow: var(--halo-soft);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        :host,
+        .scenario,
+        .scenario.cdk-drag-animating:not(.landing) {
+          transition: none;
+        }
+      }
+
+      .none {
         grid-column: 1 / -1;
-        border: 0;
-        background: none;
         color: var(--text-muted);
       }
 
@@ -292,6 +351,9 @@ export class ReserveTray {
   /** Les scénarios, dans l'ordre naturel de leur titre, avec leur place sur chaque créneau. */
   readonly reserve = input.required<readonly ReserveScenarioDto[]>();
   readonly scheduleOn = output<ScheduleScenarioDto>();
+  readonly dropped = output<Drop>();
+
+  protected readonly drag = inject(ScheduleDrag);
 
   protected readonly ALL = ALL;
   protected readonly plural = plural;
@@ -333,6 +395,11 @@ export class ReserveTray {
     return formatTimeSlotRanks(
       timeSlots.filter((slot) => slot[state]).map(({ timeSlotId }) => this.rankOf(timeSlotId)),
     );
+  }
+
+  protected end() {
+    const drop = this.drag.end();
+    if (drop) this.dropped.emit(drop);
   }
 
   private isInReserveOn({ timeSlots }: ReserveScenarioDto, timeSlotId: string): boolean {

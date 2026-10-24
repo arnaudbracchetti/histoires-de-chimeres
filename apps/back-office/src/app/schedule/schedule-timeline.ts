@@ -1,10 +1,12 @@
-import { Component, computed, input, output } from '@angular/core';
+import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
+import { Component, computed, inject, input, output } from '@angular/core';
 import type { GameDto, TableDto, TimeSlotDto } from '@chimeres/contract';
 import { formatSeats } from '../scenarios/scenario-format';
 import { minutesOf } from '../time-slots/time-format';
 import { formatDuration, formatTimeRange } from '../typography/time';
 import { ScenarioIllustration } from '../ui/scenario-illustration';
 import { TwoSlotBadge } from '../ui/two-slot-badge';
+import { ScheduleDrag, type Drop, type DropTarget } from './schedule-drag';
 
 /**
  * Largeur minimale d'une minute de créneau (docs/design/patterns.md, Frise). Au-delà, les créneaux
@@ -37,11 +39,13 @@ type Cell =
  * proportionnelle à sa durée, et une colonne étroite par pause, avec sa durée. Une ligne par table.
  * Chaque partie est une carte : un clic dessus ouvre sa fiche. La page focalise son bouton par son
  * id (`game-<id>`). Une partie double est une seule carte, étendue sur ses deux créneaux, par-dessus
- * la pause qui les sépare, avec le badge « double ».
+ * la pause qui les sépare, avec le badge « double ». Une partie se glisse vers une case, une autre
+ * partie ou le bac de réserve (`ScheduleDrag`) ; chaque case est une cible du geste.
  */
 @Component({
   selector: 'app-schedule-timeline',
-  imports: [ScenarioIllustration, TwoSlotBadge],
+  host: { '[class.dragging]': '!!drag.subject()' },
+  imports: [CdkDrag, CdkDropList, ScenarioIllustration, TwoSlotBadge],
   template: `
     <div class="scroller">
       <div
@@ -71,14 +75,33 @@ type Cell =
             <div role="rowheader" class="caps table-name">{{ row.table.name }}</div>
             @for (cell of row.cells; track cell.id) {
               @if (cell.kind === 'slot') {
+                @let state = drag.stateOf(targetOf(row.table.id, cell));
                 <div
                   role="cell"
                   class="cell"
+                  cdkDropList
+                  cdkDropListSortingDisabled
+                  [class.valid]="state.kind === 'valid'"
                   [style.grid-column]="'span ' + cell.span"
                   [attr.aria-colspan]="cell.span > 1 ? cell.span : null"
+                  [attr.data-drop-time-slot]="cell.id"
+                  [attr.data-drop-table]="row.table.id"
+                  [attr.data-drop-game]="cell.game?.id ?? ''"
                 >
-                  @if (cell.game; as game) {
-                    <article class="game" [class.selected]="game.id === selectedGameId()">
+                  <!-- Une liste d'un élément : la carte se recrée quand une autre partie prend la case. -->
+                  @for (game of cell.game ? [cell.game] : []; track game.id) {
+                    <article
+                      class="game"
+                      cdkDrag
+                      [cdkDragStartDelay]="{ touch: 300, mouse: 0 }"
+                      [class.selected]="game.id === selectedGameId()"
+                      [class.pending]="pendingGameIds().includes(game.id)"
+                      (cdkDragStarted)="drag.start({ kind: 'game', game })"
+                      [cdkDragConstrainPosition]="drag.byThumbnail"
+                      (cdkDragMoved)="drag.move($event)"
+                      (cdkDragReleased)="drag.release()"
+                      (cdkDragEnded)="end()"
+                    >
                       <app-scenario-illustration
                         [title]="game.scenario.title"
                         [imageUrl]="game.scenario.imageUrl"
@@ -104,6 +127,9 @@ type Cell =
                         <app-two-slot-badge />
                       }
                     </article>
+                  }
+                  @if (state.kind === 'refused') {
+                    <span class="reason">{{ state.refusal.title }}</span>
                   }
                 </div>
               } @else {
@@ -170,10 +196,28 @@ type Cell =
       }
 
       .cell {
+        position: relative;
         min-width: 0;
         height: 4.5rem;
         border: 1px dashed var(--border);
         border-radius: var(--radius-control);
+        transition: box-shadow 150ms;
+
+        /* Une cible valide du geste s'éclaire ; une cible refusée reste éteinte, avec son motif. */
+        &.valid {
+          box-shadow: var(--halo);
+        }
+      }
+
+      .reason {
+        position: absolute;
+        inset: auto var(--space-xxs) var(--space-xxs) auto;
+        padding: 0 var(--space-xs);
+        border-radius: var(--radius-control);
+        background: var(--surface-1);
+        color: var(--text-muted);
+        font-size: var(--font-size-meta);
+        white-space: nowrap;
       }
 
       .game {
@@ -186,9 +230,25 @@ type Cell =
         border: 1px solid var(--border);
         border-radius: var(--radius-control);
         background: var(--surface-2);
+        transition: opacity 150ms;
 
-        &:hover {
-          background: var(--surface-3);
+        /* Pendant l'écriture d'un geste, à sa nouvelle place. */
+        &.pending {
+          opacity: 0.45;
+        }
+
+        /* L'élément saisi, sous le pointeur. Sa place d'origine reste en filigrane. */
+        &.cdk-drag-preview {
+          box-shadow: var(--halo);
+        }
+
+        &.cdk-drag-placeholder {
+          opacity: 0.3;
+        }
+
+        /* Lâchée hors d'une cible valide, la carte revient à sa place. */
+        &.cdk-drag-animating:not(.landing) {
+          transition: transform 150ms ease-out;
         }
 
         &.selected {
@@ -199,6 +259,12 @@ type Cell =
           outline: 2px solid var(--focus);
           outline-offset: 2px;
         }
+      }
+
+      /* Hors geste seulement : pendant un glisser, seul le halo des cibles valides parle. */
+      :host(:not(.dragging)) .game:hover {
+        background: var(--surface-3);
+        box-shadow: var(--halo-soft);
       }
 
       /* Le bouton du titre couvre toute la carte : un clic n'importe où l'ouvre. */
@@ -251,6 +317,14 @@ type Cell =
         font-weight: 600;
         color: var(--text);
       }
+
+      @media (prefers-reduced-motion: reduce) {
+        .cell,
+        .game,
+        .game.cdk-drag-animating:not(.landing) {
+          transition: none;
+        }
+      }
     }
   `,
 })
@@ -261,7 +335,12 @@ export class ScheduleTimeline {
   readonly games = input.required<readonly GameDto[]>();
   /** La partie dont la fiche est ouverte. */
   readonly selectedGameId = input<string | null>(null);
+  /** Les parties dont un geste s'écrit encore : atténuées. */
+  readonly pendingGameIds = input<readonly string[]>([]);
   readonly opened = output<GameDto>();
+  readonly dropped = output<Drop>();
+
+  protected readonly drag = inject(ScheduleDrag);
 
   protected readonly formatSeats = formatSeats;
 
@@ -297,6 +376,15 @@ export class ScheduleTimeline {
   protected readonly rows = computed(() =>
     this.tables().map((table) => ({ table, cells: this.cellsOf(table.id) })),
   );
+
+  protected targetOf(tableId: string, cell: { id: string; game: GameDto | undefined }): DropTarget {
+    return { kind: 'cell', timeSlotId: cell.id, tableId, gameId: cell.game?.id ?? null };
+  }
+
+  protected end() {
+    const drop = this.drag.end();
+    if (drop) this.dropped.emit(drop);
+  }
 
   protected trackOf(column: Column): string {
     return column.kind === 'slot' ? column.slot.id : column.id;
