@@ -22,6 +22,15 @@ export class Game {
     return this.timeSlotIds.includes(timeSlotId);
   }
 
+  /**
+   * Ses créneaux se suivent dans la journée, donnée par les ids de ses créneaux dans l'ordre : aucun
+   * autre ne s'est glissé entre eux (PR-11).
+   */
+  isConsecutiveIn(dayTimeSlotIds: readonly string[]): boolean {
+    const start = dayTimeSlotIds.indexOf(this.timeSlotIds[0]!);
+    return this.timeSlotIds.every((slotId, offset) => dayTimeSlotIds[start + offset] === slotId);
+  }
+
   /** La même partie, avec ses places, sur une autre table et d'autres créneaux (PR-17). */
   movedTo(tableId: string, timeSlotIds: readonly string[]): Game {
     return new Game(this.id, this.scenarioId, this.gameMasterId, tableId, timeSlotIds, this.seats);

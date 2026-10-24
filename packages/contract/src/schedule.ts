@@ -25,9 +25,9 @@ export type GameDto = {
 export type VerdictRefusalDto = { code: RefusalCode; title: string; detail: string };
 
 /**
- * Un scénario d'un créneau dans la réserve (PR-6). Sur chaque créneau, dans l'ordre de la journée :
- * s'il y est en réserve, et s'il y est programmé ; les deux s'excluent. `unschedulable` : pourquoi
- * il n'est ni en réserve ni programmé nulle part, ou `null`.
+ * Un scénario dans la réserve (PR-6). Sur chaque créneau, dans l'ordre de la journée : s'il y est en
+ * réserve (sur ce créneau et le suivant pour un scénario double), et s'il y est programmé ; les deux
+ * s'excluent. `unschedulable` : pourquoi il n'est ni en réserve ni programmé nulle part, ou `null`.
  */
 export type ReserveScenarioDto = ScheduleScenarioDto & {
   timeSlots: { timeSlotId: string; inReserve: boolean; scheduled: boolean }[];
@@ -37,7 +37,7 @@ export type ReserveScenarioDto = ScheduleScenarioDto & {
 /** Le programme, et la réserve. */
 export type ScheduleDto = {
   games: GameDto[];
-  /** Tous les scénarios d'un créneau, dans l'ordre naturel de leur titre. */
+  /** Tous les scénarios, dans l'ordre naturel de leur titre. */
   reserve: ReserveScenarioDto[];
 };
 

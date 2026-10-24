@@ -328,6 +328,89 @@ describe('Programme', () => {
     await placements(UNKNOWN_ID).expect(404);
   });
 
+  describe('Partie double (PR-5, PR-8, PR-11)', () => {
+    /** « Abysses », double, d'Élodie. */
+    let abysses: ScenarioDto;
+
+    beforeEach(async () => {
+      abysses = await proposeScenario(elodie.id, 'Abysses', 2);
+    });
+
+    it('se programme sur son premier créneau, et prend le suivant à la même table', async () => {
+      const response = await schedule({
+        scenarioId: abysses.id,
+        timeSlotId: slot(1),
+        tableId: table('Table 1'),
+      }).expect(201);
+
+      const dto = response.body as ScheduleDto;
+      expect(dto.games).toEqual([
+        expect.objectContaining({
+          tableId: table('Table 1'),
+          timeSlotIds: [slot(1), slot(2)],
+          scenario: expect.objectContaining({ id: abysses.id, duration: 2 }),
+        }),
+      ]);
+      expect(placeOf(dto, 'Abysses')).toEqual(['programmé', 'programmé']);
+      expect(placeOf(dto, 'Néons')).toEqual(['-', '-']);
+    });
+
+    it('refuse « Pas de créneau suivant » sur le dernier créneau : 422, et la grille le dit', async () => {
+      const response = await schedule({
+        scenarioId: abysses.id,
+        timeSlotId: slot(2),
+        tableId: table('Table 1'),
+      }).expect(422);
+
+      expect(response.body).toMatchObject({
+        code: 'no-next-time-slot',
+        title: 'Pas de créneau suivant',
+        detail:
+          'Le créneau 2 est le dernier de la journée : une partie double commence au plus tard sur le créneau 1.',
+      });
+      const verdicts = (await placements(abysses.id).expect(200)).body as PlacementDto[];
+      expect(verdicts.map(({ refusal }) => refusal?.code ?? null)).toEqual([
+        null,
+        null,
+        'no-next-time-slot',
+        'no-next-time-slot',
+      ]);
+      expect(placeOf(await read(), 'Abysses')).toEqual(['réserve', '-']);
+    });
+
+    it('refuse un créneau ajouté ou déplacé entre ses deux créneaux : 422, rattaché au début', async () => {
+      await schedule({
+        scenarioId: abysses.id,
+        timeSlotId: slot(1),
+        tableId: table('Table 1'),
+      }).expect(201);
+
+      const added = await server()
+        .post(apiUrl(timeSlotEndpoints.add))
+        .send({ start: '12:00', end: '13:00' })
+        .expect(422);
+      expect(added.body).toMatchObject({
+        code: 'time-slot-splits-two-slot-game',
+        title: 'Partie double coupée',
+        detail:
+          "Ce créneau tomberait entre les créneaux 1 et 2, qu'occupe une partie double : choisis d'autres heures.",
+        errors: [{ field: 'start', code: 'time-slot-splits-two-slot-game' }],
+      });
+
+      const evening = (
+        await server()
+          .post(apiUrl(timeSlotEndpoints.add))
+          .send({ start: '17:00', end: '19:30' })
+          .expect(201)
+      ).body as ConventionDto;
+      await server()
+        .put(apiUrl(timeSlotEndpoints.changeHours, { timeSlotId: evening.timeSlots[2]!.id }))
+        .send({ start: '12:00', end: '13:00' })
+        .expect(422)
+        .expect(({ body }) => expect(body.code).toBe('time-slot-splits-two-slot-game'));
+    });
+  });
+
   describe('Déplacer et déprogrammer une partie (PR-17)', () => {
     /** Programme le scénario, et renvoie l'id de sa partie. */
     const scheduled = async (scenarioId: string, rank: number, tableName: string) => {

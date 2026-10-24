@@ -4,6 +4,7 @@ import { formatSeats } from '../scenarios/scenario-format';
 import { minutesOf } from '../time-slots/time-format';
 import { formatDuration, formatTimeRange } from '../typography/time';
 import { ScenarioIllustration } from '../ui/scenario-illustration';
+import { TwoSlotBadge } from '../ui/two-slot-badge';
 
 /**
  * Largeur minimale d'une minute de créneau (docs/design/patterns.md, Frise). Au-delà, les créneaux
@@ -24,14 +25,23 @@ type Column =
   | { kind: 'pause'; id: string; duration: string };
 
 /**
+ * Une case d'une ligne : celle d'un créneau, avec sa partie, qui couvre `span` colonnes (une partie
+ * double couvre ses deux créneaux et la pause entre eux), ou celle d'une pause.
+ */
+type Cell =
+  | { kind: 'slot'; id: string; game: GameDto | undefined; span: number }
+  | { kind: 'pause'; id: string };
+
+/**
  * La frise du programme : le temps court vers la droite, une colonne par créneau, de largeur
  * proportionnelle à sa durée, et une colonne étroite par pause, avec sa durée. Une ligne par table.
  * Chaque partie est une carte : un clic dessus ouvre sa fiche. La page focalise son bouton par son
- * id (`game-<id>`).
+ * id (`game-<id>`). Une partie double est une seule carte, étendue sur ses deux créneaux, par-dessus
+ * la pause qui les sépare, avec le badge « double ».
  */
 @Component({
   selector: 'app-schedule-timeline',
-  imports: [ScenarioIllustration],
+  imports: [ScenarioIllustration, TwoSlotBadge],
   template: `
     <div class="scroller">
       <div
@@ -56,13 +66,18 @@ type Column =
             }
           }
         </div>
-        @for (table of tables(); track table.id) {
+        @for (row of rows(); track row.table.id) {
           <div class="row" role="row">
-            <div role="rowheader" class="caps table-name">{{ table.name }}</div>
-            @for (column of columns(); track trackOf(column)) {
-              @if (column.kind === 'slot') {
-                <div role="cell" class="cell">
-                  @if (gameAt(column.slot.id, table.id); as game) {
+            <div role="rowheader" class="caps table-name">{{ row.table.name }}</div>
+            @for (cell of row.cells; track cell.id) {
+              @if (cell.kind === 'slot') {
+                <div
+                  role="cell"
+                  class="cell"
+                  [style.grid-column]="'span ' + cell.span"
+                  [attr.aria-colspan]="cell.span > 1 ? cell.span : null"
+                >
+                  @if (cell.game; as game) {
                     <article class="game" [class.selected]="game.id === selectedGameId()">
                       <app-scenario-illustration
                         [title]="game.scenario.title"
@@ -85,6 +100,9 @@ type Column =
                         <p>{{ game.scenario.gameMaster.nickname }}</p>
                         <p>{{ formatSeats(game.seats) }}</p>
                       </div>
+                      @if (game.timeSlotIds.length > 1) {
+                        <app-two-slot-badge />
+                      }
                     </article>
                   }
                 </div>
@@ -221,6 +239,12 @@ type Column =
         }
       }
 
+      /* Le badge « double », calé en haut à droite de la carte. */
+      app-two-slot-badge {
+        align-self: flex-start;
+        margin-left: auto;
+      }
+
       .title {
         font-family: var(--font-ui);
         font-size: var(--font-size-body);
@@ -269,6 +293,11 @@ export class ScheduleTimeline {
     ].join(' '),
   );
 
+  /** Une ligne par table, avec ses cases : la carte d'une partie double couvre les colonnes suivantes. */
+  protected readonly rows = computed(() =>
+    this.tables().map((table) => ({ table, cells: this.cellsOf(table.id) })),
+  );
+
   protected trackOf(column: Column): string {
     return column.kind === 'slot' ? column.slot.id : column.id;
   }
@@ -277,7 +306,27 @@ export class ScheduleTimeline {
     return formatTimeRange(start, end);
   }
 
-  protected gameAt(timeSlotId: string, tableId: string): GameDto | undefined {
+  private cellsOf(tableId: string): Cell[] {
+    const columns = this.columns();
+    const cells: Cell[] = [];
+    for (let index = 0; index < columns.length; index++) {
+      const column = columns[index]!;
+      if (column.kind === 'pause') {
+        cells.push(column);
+        continue;
+      }
+      const game = this.gameAt(column.slot.id, tableId);
+      const lastSlotId = game?.timeSlotIds.at(-1) ?? column.slot.id;
+      const last = columns.findIndex(
+        (other) => other.kind === 'slot' && other.slot.id === lastSlotId,
+      );
+      cells.push({ kind: 'slot', id: column.slot.id, game, span: last - index + 1 });
+      index = last;
+    }
+    return cells;
+  }
+
+  private gameAt(timeSlotId: string, tableId: string): GameDto | undefined {
     return this.games().find(
       (game) => game.tableId === tableId && game.timeSlotIds.includes(timeSlotId),
     );

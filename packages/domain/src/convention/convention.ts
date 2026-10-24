@@ -207,13 +207,21 @@ export class Convention {
   }
 
   /**
-   * Programme le scénario sur un créneau et une table (PR-3), dans le respect de PR-5. Seuls les
-   * scénarios d'un créneau se programment ici ; les parties doubles viendront à part.
+   * Programme le scénario sur un créneau et une table (PR-3), dans le respect de PR-5. Une partie
+   * double se programme sur son premier créneau, et prend le suivant, à la même table.
    */
   schedule(id: string, scenario: Scenario, timeSlotId: string, tableId: string): void {
     const refusal = this.schedulingRefusalOf(scenario, timeSlotId, tableId);
     if (refusal) throw refusal;
-    this.state.games.push(new Game(id, scenario.id, scenario.gameMasterId, tableId, [timeSlotId]));
+    this.state.games.push(
+      new Game(
+        id,
+        scenario.id,
+        scenario.gameMasterId,
+        tableId,
+        this.consecutiveFrom(timeSlotId, scenario.duration)!,
+      ),
+    );
   }
 
   /**
@@ -267,32 +275,30 @@ export class Convention {
   }
 
   /**
-   * La réserve (PR-6). Pour chaque scénario d'un seul créneau, et pour chaque créneau, dit :
-   * - s'il est en réserve sur ce créneau : son MJ y est disponible et n'y mène pas déjà une partie.
-   *   Peu importe qu'il soit déjà programmé sur un autre créneau, ou qu'une table soit libre ;
+   * La réserve (PR-6). Pour chaque scénario, et pour chaque créneau, dit :
+   * - s'il est en réserve sur ce créneau : son MJ y est disponible et n'y mène pas déjà une partie,
+   *   sur ce créneau et le suivant pour un scénario double. Peu importe qu'il soit déjà programmé
+   *   sur un autre créneau, ou qu'une table soit libre ;
+   * - s'il y est programmé : une partie double l'est sur ses deux créneaux.
    * Un scénario ni en réserve ni programmé nulle part donne la raison dans `unschedulable`.
-   * Un scénario en réserve sur aucun créneau donne la raison dans `unschedulable`.
    * Les scénarios suivent l'ordre du catalogue.
    */
   reserve(catalogue: ScenarioCatalogue): ReserveOfScenario[] {
-    return catalogue
-      .entries()
-      .filter((entry) => entry.duration === 1)
-      .map((entry) => {
-        const gameMaster = this.gameMasterOf(entry.gameMasterId);
-        const timeSlots = this.timeSlots.map((slot) => ({
-          timeSlotId: slot.id,
-          inReserve: gameMaster.isAvailableOn(slot.id) && !this.runsGameOn(gameMaster.id, slot.id),
-          scheduled: this.isScheduledOn(entry.id, slot.id),
-        }));
-        return {
-          scenarioId: entry.id,
-          timeSlots,
-          unschedulable: timeSlots.some(({ inReserve, scheduled }) => inReserve || scheduled)
-            ? null
-            : this.unschedulableRefusalOf(gameMaster),
-        };
-      });
+    return catalogue.entries().map((entry) => {
+      const gameMaster = this.gameMasterOf(entry.gameMasterId);
+      const timeSlots = this.timeSlots.map((slot) => ({
+        timeSlotId: slot.id,
+        inReserve: this.isFreeFrom(gameMaster, slot.id, entry.duration),
+        scheduled: this.isScheduledOn(entry.id, slot.id),
+      }));
+      return {
+        scenarioId: entry.id,
+        timeSlots,
+        unschedulable: timeSlots.some(({ inReserve, scheduled }) => inReserve || scheduled)
+          ? null
+          : this.unschedulableRefusalOf(gameMaster, entry.duration),
+      };
+    });
   }
 
   /** La règle PR-5 d'une case pour programmer un scénario. */
@@ -301,11 +307,13 @@ export class Convention {
     timeSlotId: string,
     tableId: string,
   ): Refusal | null {
-    // Les parties doubles viendront à part : ni verdict, ni écriture d'ici là.
-    if (scenario.duration !== 1) {
-      throw new RangeError(`Scénario de ${scenario.duration} créneaux : partie double à venir.`);
-    }
-    return this.placementRefusalOf(scenario.gameMasterId, 1, timeSlotId, tableId, null);
+    return this.placementRefusalOf(
+      scenario.gameMasterId,
+      scenario.duration,
+      timeSlotId,
+      tableId,
+      null,
+    );
   }
 
   /** La règle PR-5 d'une case pour déplacer la partie, sans la compter elle-même. */
@@ -362,12 +370,32 @@ export class Convention {
     return following.length === length ? following.map(({ id }) => id) : null;
   }
 
-  /** Pourquoi un scénario du MJ n'est ni en réserve ni programmé nulle part. */
-  private unschedulableRefusalOf(gameMaster: GameMaster): Refusal {
+  /**
+   * Le MJ est disponible et ne mène aucune partie sur les `length` créneaux consécutifs à partir de
+   * `timeSlotId`, qui existent.
+   */
+  private isFreeFrom(gameMaster: GameMaster, timeSlotId: string, length: number): boolean {
+    const timeSlotIds = this.consecutiveFrom(timeSlotId, length);
+    return (
+      timeSlotIds !== null &&
+      timeSlotIds.every(
+        (slotId) => gameMaster.isAvailableOn(slotId) && !this.runsGameOn(gameMaster.id, slotId),
+      )
+    );
+  }
+
+  /** Pourquoi un scénario de `length` créneaux du MJ n'est ni en réserve ni programmé nulle part. */
+  private unschedulableRefusalOf(gameMaster: GameMaster, length: number): Refusal {
     const nickname = gameMaster.nickname.text;
-    return this.timeSlots.some((slot) => gameMaster.isAvailableOn(slot.id))
+    if (!this.timeSlots.some((slot) => gameMaster.isAvailableOn(slot.id))) {
+      return new Refusal('game-master-without-availability', { nickname });
+    }
+    const available = this.timeSlots.some((slot) =>
+      this.consecutiveFrom(slot.id, length)?.every((slotId) => gameMaster.isAvailableOn(slotId)),
+    );
+    return available
       ? new Refusal('game-master-busy-everywhere', { nickname })
-      : new Refusal('game-master-without-availability', { nickname });
+      : new Refusal('game-master-without-consecutive-availabilities', { nickname });
   }
 
   private isScheduledOn(scenarioId: string, timeSlotId: string): boolean {
@@ -442,7 +470,10 @@ export class Convention {
     return index;
   }
 
-  /** Vérifie qu'un créneau tient dans la journée (PR-8), et le renvoie. */
+  /**
+   * Vérifie qu'un créneau tient dans la journée (PR-8), sans se placer entre les deux créneaux d'une
+   * partie double (PR-11), et le renvoie.
+   */
   private verifyFits(candidate: TimeSlot): TimeSlot {
     if (!candidate.start.isBefore(candidate.end)) {
       throw new Refusal('time-slot-end-not-after-start', {});
@@ -455,6 +486,18 @@ export class Convention {
       throw overlapped.includes(candidate.start)
         ? new Refusal('time-slot-start-overlaps', { rank })
         : new Refusal('time-slot-end-overlaps', { rank });
+    }
+    const dayTimeSlotIds = [
+      ...this.state.timeSlots.filter((slot) => slot.id !== candidate.id),
+      candidate,
+    ]
+      .sort((a, b) => a.start.minutes - b.start.minutes)
+      .map(({ id }) => id);
+    const split = this.state.games.find((game) => !game.isConsecutiveIn(dayTimeSlotIds));
+    if (split) {
+      throw new Refusal('time-slot-splits-two-slot-game', {
+        rank: this.rankOf(split.timeSlotIds[0]!),
+      });
     }
     return candidate;
   }

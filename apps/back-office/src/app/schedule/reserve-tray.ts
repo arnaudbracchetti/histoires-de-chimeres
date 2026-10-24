@@ -5,6 +5,7 @@ import { formatTimeSlotRanks } from '../typography/time';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { ScenarioIllustration } from '../ui/scenario-illustration';
+import { TwoSlotBadge } from '../ui/two-slot-badge';
 
 /** Le filtre « Tous les scénarios » ; les autres sont des identifiants de créneau. */
 const ALL = 'all';
@@ -12,12 +13,12 @@ const ALL = 'all';
 /**
  * Le bac de réserve, sous la frise (docs/design/patterns.md, Bac de réserve) : filtré par créneau,
  * chaque filtre portant son nombre de scénarios, ou sur « Tous les scénarios », avec une pastille
- * par statut. Un scénario sans créneau possible y est grisé, avec sa raison. Chaque autre scénario
- * offre « Programmer sur… ».
+ * par statut. Un scénario double porte le badge « double ». Un scénario sans créneau possible y est
+ * grisé, avec sa raison. Chaque autre scénario offre « Programmer sur… ».
  */
 @Component({
   selector: 'app-reserve-tray',
-  imports: [Button, Icon, ScenarioIllustration],
+  imports: [Button, Icon, ScenarioIllustration, TwoSlotBadge],
   template: `
     <div class="filters" role="group" aria-label="Filtre de la réserve">
       @for (filter of filters(); track filter.id) {
@@ -44,6 +45,9 @@ const ALL = 'all';
           <app-scenario-illustration [title]="scenario.title" [imageUrl]="scenario.imageUrl" />
           <h3 [id]="'reserve-' + scenario.id">{{ scenario.title }}</h3>
           <p class="meta">{{ scenario.system }} · {{ scenario.gameMaster.nickname }}</p>
+          @if (scenario.duration === 2) {
+            <app-two-slot-badge />
+          }
           <div class="foot">
             @if (selected() === ALL) {
               @if (scenario.unschedulable; as refusal) {
@@ -172,10 +176,10 @@ const ALL = 'all';
       .scenarios > li {
         display: grid;
         grid-template-areas:
-          'thumb title'
-          'thumb meta'
-          'foot foot';
-        grid-template-columns: 44px minmax(0, 1fr);
+          'thumb title badge'
+          'thumb meta badge'
+          'foot foot foot';
+        grid-template-columns: 44px minmax(0, 1fr) auto;
         gap: var(--space-xs) var(--space-s);
         align-items: center;
         padding: var(--space-s);
@@ -204,6 +208,12 @@ const ALL = 'all';
 
       .meta {
         grid-area: meta;
+        align-self: start;
+      }
+
+      /* Le badge « double », en haut à droite, à côté du titre. */
+      app-two-slot-badge {
+        grid-area: badge;
         align-self: start;
       }
 
@@ -279,7 +289,7 @@ const ALL = 'all';
 export class ReserveTray {
   /** Dans l'ordre de la journée. */
   readonly timeSlots = input.required<readonly TimeSlotDto[]>();
-  /** Les scénarios d'un créneau, dans l'ordre naturel de leur titre, avec leur place sur chacun. */
+  /** Les scénarios, dans l'ordre naturel de leur titre, avec leur place sur chaque créneau. */
   readonly reserve = input.required<readonly ReserveScenarioDto[]>();
   readonly scheduleOn = output<ScheduleScenarioDto>();
 

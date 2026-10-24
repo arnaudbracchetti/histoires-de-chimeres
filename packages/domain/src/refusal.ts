@@ -34,10 +34,14 @@ export type RefusalParams = {
   /** `nickname` : le pseudo du MJ, dont un scénario n'est en réserve sur aucun créneau (PR-6). */
   'game-master-without-availability': { nickname: string };
   'game-master-busy-everywhere': { nickname: string };
+  /** `nickname` : le pseudo du MJ, dont un scénario double n'a aucun créneau possible (PR-6). */
+  'game-master-without-consecutive-availabilities': { nickname: string };
   /** `table` : le nom de la table ; `rank` : le rang du créneau. */
   'table-taken': { table: string; rank: number };
   /** `rank` : le rang du dernier créneau, où une partie double ne commence pas. */
   'no-next-time-slot': { rank: number };
+  /** `rank` : le rang du premier créneau de la partie double qu'un créneau couperait (PR-11). */
+  'time-slot-splits-two-slot-game': { rank: number };
   'game-not-found': Record<string, never>;
   'scenario-not-found': Record<string, never>;
   'scenario-title-required': Record<string, never>;

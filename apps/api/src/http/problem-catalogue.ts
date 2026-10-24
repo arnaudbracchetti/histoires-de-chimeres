@@ -139,6 +139,11 @@ export const problemCatalogue: Catalogue = {
     detail: ({ nickname }) =>
       `${nickname} mène déjà une partie sur chacune de ses disponibilités : coche-lui un autre créneau sur sa fiche, ou déprogramme une partie.`,
   },
+  'game-master-without-consecutive-availabilities': {
+    title: 'MJ sans créneaux consécutifs',
+    detail: ({ nickname }) =>
+      `${nickname} n'est disponible sur aucun créneau suivi d'un autre : un scénario double en demande deux consécutifs. Coche-les sur sa fiche.`,
+  },
   'table-taken': {
     title: 'Table prise',
     detail: ({ table, rank }) =>
@@ -148,6 +153,12 @@ export const problemCatalogue: Catalogue = {
     title: 'Pas de créneau suivant',
     detail: ({ rank }) =>
       `Le créneau ${rank} est le dernier de la journée : une partie double commence au plus tard sur le créneau ${rank - 1}.`,
+  },
+  'time-slot-splits-two-slot-game': {
+    title: 'Partie double coupée',
+    detail: ({ rank }) =>
+      `Ce créneau tomberait entre les créneaux ${rank} et ${rank + 1}, qu'occupe une partie double : choisis d'autres heures.`,
+    field: 'start',
   },
   'game-not-found': {
     title: 'Partie introuvable',

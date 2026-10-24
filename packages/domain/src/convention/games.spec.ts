@@ -160,12 +160,120 @@ describe('Contraintes de programmation (PR-5)', () => {
       'game-master-unavailable',
     );
   });
+});
 
-  it("ne programme qu'un scénario d'un créneau, et n'en donne aucun verdict", () => {
-    const double = aScenario('d', 'g1', 2);
+describe('Programmer une partie double (PR-5, PR-8)', () => {
+  const double = aScenario('d', 'g1', 2);
 
-    expect(() => aConvention().schedule('p1', double, 's1', 't1')).toThrow(RangeError);
-    expect(() => aConvention().placementsOf(double)).toThrow(RangeError);
+  /**
+   * Créneaux s1 (9 h – 11 h 30), s2 (14 h – 16 h 30, après la pause) et s3 (16 h 30 – 19 h), tables
+   * t1 et t2 ; Élodie (g1) disponible partout, Kaïros (g2) sur s1 seulement.
+   */
+  const withThreeSlots = () => {
+    const convention = aConvention();
+    convention.addTimeSlot('s3', at('16:30'), at('19:00'));
+    convention.declareAvailability('g1', 's3');
+    return convention;
+  };
+
+  it('prend le créneau consécutif, sur la même table, même séparé par une pause', () => {
+    const convention = withThreeSlots();
+
+    convention.schedule('p1', double, 's1', 't1');
+
+    expect(convention.games).toEqual([
+      expect.objectContaining({ id: 'p1', tableId: 't1', timeSlotIds: ['s1', 's2'] }),
+    ]);
+  });
+
+  it('refuse le dernier créneau : pas de créneau suivant', () => {
+    expect(refusalOf(() => withThreeSlots().schedule('p1', double, 's3', 't1'))).toMatchObject({
+      code: 'no-next-time-slot',
+      params: { rank: 3 },
+    });
+  });
+
+  it('refuse un MJ qui mène déjà une partie sur le second créneau', () => {
+    const convention = withThreeSlots();
+    convention.schedule('p1', neons, 's2', 't2');
+
+    expect(refusalOf(() => convention.schedule('p2', double, 's1', 't1'))).toMatchObject({
+      code: 'game-master-busy',
+      params: { nickname: 'Élodie', rank: 2 },
+    });
+  });
+
+  it('refuse une table prise sur le second créneau', () => {
+    const convention = withThreeSlots();
+    convention.declareAvailability('g2', 's2');
+    convention.schedule('p1', brumes, 's2', 't1');
+
+    expect(refusalOf(() => convention.schedule('p2', double, 's1', 't1'))).toMatchObject({
+      code: 'table-taken',
+      params: { table: 'Table 1', rank: 2 },
+    });
+  });
+
+  it('refuse un MJ indisponible sur le second créneau', () => {
+    const convention = withThreeSlots();
+    convention.withdrawAvailability('g1', 's2');
+
+    expect(refusalOf(() => convention.schedule('p1', double, 's1', 't1'))).toMatchObject({
+      code: 'game-master-unavailable',
+      params: { nickname: 'Élodie', rank: 2 },
+    });
+  });
+
+  it("donne pour chaque case le refus même de l'écriture", () => {
+    const verdicts = withThreeSlots()
+      .placementsOf(double)
+      .map(({ timeSlotId, tableId, refusal }) => [timeSlotId, tableId, refusal?.code ?? null]);
+
+    expect(verdicts).toEqual([
+      ['s1', 't1', null],
+      ['s1', 't2', null],
+      ['s2', 't1', null],
+      ['s2', 't2', null],
+      ['s3', 't1', 'no-next-time-slot'],
+      ['s3', 't2', 'no-next-time-slot'],
+    ]);
+  });
+});
+
+describe('Créneau inséré dans une partie double (PR-11)', () => {
+  /** « p1 » double sur s1 (9 h – 11 h 30) et s2 (14 h – 16 h 30), à la table t1. */
+  const withDouble = () => {
+    const convention = aConvention();
+    convention.schedule('p1', aScenario('d', 'g1', 2), 's1', 't1');
+    return convention;
+  };
+
+  it("refuse d'ajouter un créneau dans la pause", () => {
+    const convention = withDouble();
+
+    expect(refusalOf(() => convention.addTimeSlot('s3', at('12:00'), at('13:00')))).toMatchObject({
+      code: 'time-slot-splits-two-slot-game',
+      params: { rank: 1 },
+    });
+    expect(convention.timeSlots.map(({ id }) => id)).toEqual(['s1', 's2']);
+  });
+
+  it("refuse d'y déplacer un créneau par ses heures", () => {
+    const convention = withDouble();
+    convention.addTimeSlot('s3', at('17:00'), at('19:30'));
+
+    expect(
+      refusalOf(() => convention.changeTimeSlotHours('s3', at('12:00'), at('13:00'))),
+    ).toMatchObject({ code: 'time-slot-splits-two-slot-game', params: { rank: 1 } });
+  });
+
+  it('accepte un créneau avant ou après la partie double', () => {
+    const convention = withDouble();
+
+    convention.addTimeSlot('s0', at('07:00'), at('08:30'));
+    convention.addTimeSlot('s3', at('17:00'), at('19:30'));
+
+    expect(convention.timeSlots.map(({ id }) => id)).toEqual(['s0', 's1', 's2', 's3']);
   });
 });
 
@@ -442,11 +550,12 @@ describe('Réserve (PR-6)', () => {
         ]),
     );
 
-  it("rend, pour chaque scénario d'un créneau, les créneaux où son MJ est disponible", () => {
+  it('rend, pour chaque scénario, les créneaux où son MJ est disponible', () => {
     expect(placesOf(aConvention())).toEqual({
       a: ['réserve', 'réserve'],
       b: ['réserve', 'réserve'],
       c: ['réserve', '-'],
+      d: ['réserve', '-'],
     });
     expect(aConvention().reserve(catalogue)[0]).toEqual({
       scenarioId: 'a',
@@ -466,6 +575,7 @@ describe('Réserve (PR-6)', () => {
       a: ['programmé', 'réserve'],
       b: ['-', 'réserve'],
       c: ['réserve', '-'],
+      d: ['-', '-'],
     });
   });
 
@@ -478,6 +588,7 @@ describe('Réserve (PR-6)', () => {
       a: ['programmé', 'réserve'],
       b: ['-', 'réserve'],
       c: ['programmé', '-'],
+      d: ['-', '-'],
     });
   });
 
@@ -512,5 +623,54 @@ describe('Réserve (PR-6)', () => {
     });
     // Programmé, un scénario n'est pas oublié : il n'est pas grisé.
     expect(brumesReserve!.unschedulable).toBeNull();
+  });
+
+  describe('un scénario double', () => {
+    const double = aScenario('e', 'g2', 2);
+    const withDouble = ScenarioCatalogue.restore([
+      { id: double.id, gameMasterId: 'g2', duration: 2 },
+    ]);
+    /** Kaïros (g2) disponible sur s1 et s2, puis s3 (17 h – 19 h 30), sans disponibilité. */
+    const withThreeSlots = () => {
+      const convention = aConvention();
+      convention.addTimeSlot('s3', at('17:00'), at('19:30'));
+      convention.declareAvailability('g2', 's2');
+      return convention;
+    };
+
+    it("n'est en réserve que si son MJ est aussi disponible et libre sur le créneau suivant", () => {
+      const convention = withThreeSlots();
+      convention.declareAvailability('g2', 's3');
+      expect(placesOf(convention, withDouble)).toEqual({ e: ['réserve', 'réserve', '-'] });
+
+      convention.schedule('p1', brumes, 's2', 't1');
+      expect(placesOf(convention, withDouble)).toEqual({ e: ['-', '-', '-'] });
+    });
+
+    it('est programmé sur ses deux créneaux', () => {
+      const convention = withThreeSlots();
+      convention.schedule('p1', double, 's1', 't1');
+
+      expect(placesOf(convention, withDouble)).toEqual({ e: ['programmé', 'programmé', '-'] });
+    });
+
+    it("dit pourquoi il n'a aucun créneau possible : son MJ n'a pas deux créneaux consécutifs", () => {
+      const convention = aConvention();
+
+      expect(convention.reserve(withDouble)[0]!.unschedulable).toMatchObject({
+        code: 'game-master-without-consecutive-availabilities',
+        params: { nickname: 'Kaïros' },
+      });
+    });
+
+    it('… ou son MJ mène déjà une partie sur chacune de ses paires de créneaux consécutifs', () => {
+      const convention = withThreeSlots();
+      convention.schedule('p1', brumes, 's1', 't1');
+
+      expect(convention.reserve(withDouble)[0]!.unschedulable).toMatchObject({
+        code: 'game-master-busy-everywhere',
+        params: { nickname: 'Kaïros' },
+      });
+    });
   });
 });

@@ -27,6 +27,23 @@ async function post(page: Page, url: string, data: object) {
   return response.json();
 }
 
+/** Par l'API : un scénario du MJ, d'un ou deux créneaux. */
+function proposeScenario(
+  page: Page,
+  gameMasterId: string,
+  title: string,
+  duration: 1 | 2 = 1,
+): Promise<ScenarioDto> {
+  return post(page, apiUrl(scenarioEndpoints.propose, { gameMasterId }), {
+    title,
+    system: 'Cthulhu',
+    presentation: 'Une enquête.',
+    contentWarnings: '',
+    seats: { min: 3, max: 5 },
+    duration,
+  });
+}
+
 /**
  * Par l'API : créneaux 1 (9 h – 11 h 30) et 2 (14 h – 16 h 30), sans table ni MJ.
  */
@@ -62,20 +79,20 @@ async function prepare(page: Page) {
     );
     expect(response.ok()).toBe(true);
   }
-  const propose = (gameMasterId: string, title: string): Promise<ScenarioDto> =>
-    post(page, apiUrl(scenarioEndpoints.propose, { gameMasterId }), {
-      title,
-      system: 'Cthulhu',
-      presentation: 'Une enquête.',
-      contentWarnings: '',
-      seats: { min: 3, max: 5 },
-      duration: 1,
-    });
+  const propose = (gameMasterId: string, title: string) =>
+    proposeScenario(page, gameMasterId, title);
   const neons = await propose(elodie, 'Néons');
   await propose(elodie, 'Ruines');
   const brumes = await propose(kairos, 'Brumes');
   const tableId = (name: string) => convention!.tables.find((t) => t.name === name)!.id;
-  return { slot1, slot2, neons, brumes, tableId };
+  return { slot1, slot2, elodie, neons, brumes, tableId };
+}
+
+/** Par l'API, en plus de `prepare` : « Abysses », scénario double d'Élodie. */
+async function prepareDouble(page: Page) {
+  const prepared = await prepare(page);
+  const abysses = await proposeScenario(page, prepared.elodie, 'Abysses', 2);
+  return { ...prepared, abysses };
 }
 
 const reserve = (page: Page) => page.getByRole('region', { name: 'Réserve' });
@@ -524,4 +541,86 @@ test('déplacer puis déprogrammer au clavier seul', async ({ page }) => {
   await page.keyboard.press('Enter');
   await expect(page.getByRole('article').filter({ hasText: 'Néons' })).toHaveCount(0);
   await expect(reserve(page).getByRole('heading', { level: 2 })).toBeFocused();
+});
+
+test('programmer une partie double : une seule carte, sur ses deux créneaux et la pause (PR-5, PR-8)', async ({
+  page,
+}) => {
+  await prepareDouble(page);
+  await page.goto('/gestion/');
+
+  await reserveCard(page, 'Abysses').getByRole('button', { name: 'Programmer sur…' }).click();
+  await placementDialog(page)
+    .getByRole('button', { name: cell(1, 9, 'Table 1') })
+    .click();
+
+  await expect(placementDialog(page)).toHaveCount(0);
+  const game = page.getByRole('article').filter({ hasText: 'Abysses' });
+  await expect(game).toHaveCount(1);
+  await expect(game).toContainText('double');
+  await expect(gameButton(page, 'Abysses')).toBeFocused();
+  const box = (await game.boundingBox())!;
+  const headers = timeline(page).getByRole('columnheader');
+  const first = (await headers.filter({ hasText: 'Créneau 1' }).boundingBox())!;
+  const pause = (await headers.filter({ hasText: 'Pause' }).boundingBox())!;
+  const second = (await headers.filter({ hasText: 'Créneau 2' }).boundingBox())!;
+  expect(box.x).toBeLessThanOrEqual(first.x + 1);
+  expect(box.x + box.width).toBeGreaterThan(pause.x + pause.width);
+  expect(box.x + box.width).toBeGreaterThanOrEqual(second.x + second.width - 1);
+  await gameButton(page, 'Abysses').click();
+  await expect(sheet(page)).toContainText('Créneaux');
+  await expect(sheet(page)).toContainText(`Créneau 2 · 14${NBSP}h${NBSP}00`);
+});
+
+test('le dialogue de placement d’un scénario double dit « Pas de créneau suivant » (PR-8)', async ({
+  page,
+}) => {
+  await prepareDouble(page);
+  await page.goto('/gestion/');
+
+  await reserveCard(page, 'Abysses').getByRole('button', { name: 'Programmer sur…' }).click();
+
+  const dialog = placementDialog(page);
+  await expect(dialog.getByText('Pas de créneau suivant')).toHaveCount(2);
+  await expect(dialog.getByRole('button', { name: /^Choisir Créneau 1/ })).toHaveCount(2);
+  await expect(dialog.getByRole('button', { name: /^Choisir Créneau 2/ })).toHaveCount(0);
+});
+
+test('un scénario double n’est pas dans la réserve du dernier créneau (PR-6)', async ({ page }) => {
+  await prepareDouble(page);
+  await page.goto('/gestion/');
+
+  await expect(reserve(page).getByRole('heading', { level: 3 })).toHaveText([
+    'Abysses',
+    'Brumes',
+    'Néons',
+    'Ruines',
+  ]);
+  await expect(reserveCard(page, 'Abysses')).toContainText('double');
+  await expect(reserveCard(page, 'Brumes')).not.toContainText('double');
+  await reserve(page)
+    .getByRole('button', { name: /^Créneau 2 / })
+    .click();
+  await expect(reserve(page).getByRole('heading', { level: 3 })).toHaveText(['Néons', 'Ruines']);
+});
+
+test('un créneau ajouté entre les deux créneaux d’une partie double est refusé (PR-11)', async ({
+  page,
+}) => {
+  const { abysses, slot1, tableId } = await prepareDouble(page);
+  await scheduleByApi(page, abysses.id, slot1, tableId('Table 1'));
+  await page.goto('/gestion/creneaux-et-tables');
+  const section = page.getByRole('region', { name: 'Créneaux' });
+  const start = section.locator('article.editing').getByLabel('Début');
+
+  await section.getByRole('button', { name: 'Ajouter un créneau', exact: true }).click();
+  // 11 h 30 – 14 h 00 : bout à bout avec les deux créneaux, dans la pause qui les sépare.
+  await start.fill('11:30');
+  await page.keyboard.press('Enter');
+
+  await expect(start).toHaveAccessibleDescription(
+    `Ce créneau tomberait entre les créneaux 1 et 2, qu'occupe une partie double${NBSP}: choisis d'autres heures.`,
+  );
+  await page.reload();
+  await expect(section.getByRole('heading', { name: /^Créneau \d/ })).toHaveCount(2);
 });

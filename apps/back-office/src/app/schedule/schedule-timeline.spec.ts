@@ -3,7 +3,6 @@ import type { GameDto, TableDto, TimeSlotDto } from '@chimeres/contract';
 import { NBSP, THIN_NBSP } from '../typography/french';
 import { ScheduleTimeline } from './schedule-timeline';
 
-
 /** Créneau 1 de 2 h 30, pause de 1 h, créneau 2 de 3 h, puis créneau 3 collé au 2. */
 const TIME_SLOTS: TimeSlotDto[] = [
   { id: 's1', rank: 1, start: '09:00', end: '11:30', availabilityCount: 0 },
@@ -86,6 +85,30 @@ describe('ScheduleTimeline', () => {
       `3 à 5${NBSP}places`,
     ]);
     expect(card.querySelector('app-scenario-illustration')).not.toBeNull();
+  });
+
+  it('étend la carte d’une partie double sur ses deux créneaux, par-dessus la pause, avec « double »', async () => {
+    const double: GameDto = {
+      ...GAME,
+      id: 'p2',
+      tableId: 't1',
+      timeSlotIds: ['s1', 's2'],
+      scenario: { ...GAME.scenario, duration: 2 },
+    };
+    const { host, text } = await render([GAME, double]);
+
+    const [doubleRow, singleRow] = [...host.querySelectorAll('[role="row"]')].slice(1);
+    const cells = [...doubleRow!.querySelectorAll('[role="cell"]')];
+    expect(cells.map((cell) => cell.querySelector('.game button')?.id ?? '')).toEqual([
+      'game-p2',
+      '',
+    ]);
+    expect(cells[0]!.getAttribute('aria-colspan')).toBe('3');
+    expect((cells[0] as HTMLElement).style.gridColumn).toBe('span 3');
+    expect(text(cells[0]!.querySelector('app-two-slot-badge'))).toBe('double');
+    const single = singleRow!.querySelector('[role="cell"]:has(#game-p1)')!;
+    expect(single.getAttribute('aria-colspan')).toBeNull();
+    expect(single.querySelector('app-two-slot-badge')).toBeNull();
   });
 
   it('ouvre la fiche d’une partie au clic, et marque la partie ouverte', async () => {
