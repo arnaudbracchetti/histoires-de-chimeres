@@ -89,6 +89,10 @@ _Avoid_: Login, nom d'utilisateur, compte, Username
 Téléphone sur lequel une personne s'est identifiée par un pseudo, et qui agit en son nom (inscriptions, notifications) jusqu'à ce que le lien soit coupé. On le relie à un pseudo (`link`) ; on coupe le lien (`unlink`).
 _Avoid_: Session, appareil, connexion
 
+**Notification** · `Notification`:
+Message envoyé aux téléphones reliés à un pseudo, que le téléphone affiche même quand l'application est fermée.
+_Avoid_: Push, alerte (réservé au message d'erreur affiché dans une page)
+
 **Fusionner** · `merge`:
 Geste d'un Organisateur qui fait passer les inscriptions et le résultat des tirages d'un pseudo de participant sur un autre pseudo, puis supprime le premier.
 _Avoid_: Report, transfert, regrouper

@@ -22,7 +22,7 @@ Aucune couleur n'est écrite en TypeScript ni en dur dans un SVG : le SVG réfé
 
 ## Composants
 
-- Chaque composant d'interface s'écrit à la main : bouton, champ, tableau triable, pastille, badge, notification, menu, dialogue.
+- Chaque composant d'interface s'écrit à la main : bouton, champ, tableau triable, pastille, badge, alerte, menu, dialogue.
 - Comportement et accessibilité viennent du CDK (`drag-drop`, `dialog`, `overlay`, `a11y`) et d'Angular Aria (motif Menu), jamais d'un ARIA réécrit à la main quand un motif existe.
 - Les composants qui enveloppent `design` (champ, illustration, icône) sont **minces et dupliqués dans chaque front**, comme `api-resource.ts`. Pas de bibliothèque Angular partagée.
 - Une icône s'affiche par `<svg><use href="icons.svg#nom"/></svg>`. Décorative, elle porte `aria-hidden="true"` ; seule dans un bouton, c'est le bouton qui porte le nom accessible.

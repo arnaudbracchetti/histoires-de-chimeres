@@ -95,7 +95,7 @@ De `--space-xxs` à `--space-xxl` (`xxs`, `xs`, `s`, `m`, `l`, `xl`, `xxl`). Auc
 | Jeton | Pour |
 |---|---|
 | `--radius-card` | cartes, parties, dialogues, fiche latérale |
-| `--radius-control` | boutons, champs, menus, notifications |
+| `--radius-control` | boutons, champs, menus, alertes |
 | `--radius-thumb` | vignettes |
 
 Pastilles et badges sont en pilule (`999px`).

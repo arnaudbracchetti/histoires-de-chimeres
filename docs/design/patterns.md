@@ -93,7 +93,7 @@ Une carte de créneau ou de table s'ouvre sur son icône : une icône Lucide ora
 - **Une erreur locale** (obligatoire, longueur, 1 ≤ minimum ≤ maximum) s'affiche quand on **quitte le champ**, puis se met à jour à chaque frappe. Ses messages sont écrits côté front.
 - Le bouton « Enregistrer » n'est **jamais désactivé**. S'il reste des erreurs, l'envoi est bloqué et le focus va au premier champ en erreur.
 - **Une erreur de l'API rattachée à un champ** s'affiche sous ce champ (le `field` du Problem Details, avec des points pour l'imbrication : `seats.min`).
-- **Une erreur de l'API sans champ** (422 hors champ, 409, 500, coupure réseau) s'affiche en notification (voir [Erreur hors formulaire](#erreur-hors-formulaire)), avec son `title` et son `detail`. Pour un 500 : « Une erreur est survenue, réessaie. » La saisie est conservée.
+- **Une erreur de l'API sans champ** (422 hors champ, 409, 500, coupure réseau) s'affiche en alerte (voir [Erreur hors formulaire](#erreur-hors-formulaire)), avec son `title` et son `detail`. Pour un 500 : « Une erreur est survenue, réessaie. » La saisie est conservée.
 - Dans une ligne en édition, l'erreur s'affiche sous la cellule concernée. Une valeur manquante n'y est signalée qu'à la tentative d'enregistrement : quitter un champ vide pour cliquer « Annuler », « Enregistrer » ou « ⋯ » n'affiche rien. Une valeur mal écrite (« 25:00 ») l'est dès qu'on quitte le champ.
 
 ### Une erreur ne décale rien
@@ -106,7 +106,7 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
   - toutes les lignes ont la même hauteur, ligne en édition comprise ;
   - les colonnes ont une largeur fixe, assez large pour les champs de la ligne en édition et pour « Nouveau … » ;
   - l'erreur s'écrit dans le bas de sa ligne, par-dessus. Elle peut déborder sur les cellules voisines de sa ligne, jamais sur la ligne suivante.
-- **Pas de bandeau** en haut d'un formulaire : une erreur sans place réservée passe en notification, par-dessus la page.
+- **Pas de bandeau** en haut d'un formulaire : une erreur sans place réservée passe en alerte, par-dessus la page.
 - Un test Playwright vérifie, pour chaque écran à formulaire, que les boutons et les colonnes restent en place quand une erreur apparaît.
 
 ### Enregistrement
@@ -179,7 +179,7 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 
 ### Succès
 
-- **Pas de notification de succès** : le résultat se voit (la ligne apparaît, la partie change de case). Seul un formulaire de page affiche « Enregistré ».
+- **Pas d'alerte de succès** : le résultat se voit (la ligne apparaît, la partie change de case). Seul un formulaire de page affiche « Enregistré ».
 - Chaque écriture réussie est **annoncée aux lecteurs d'écran** par une région `aria-live="polite"` commune à la coquille : « Partie déplacée : créneau 2, table Dragon. »
 - **Pendant une écriture déclenchée par un geste** (glisser-déposer, case à cocher), l'élément prend tout de suite son nouvel état, atténué, jusqu'à la réponse. Refusé, il revient à son état précédent.
 
@@ -187,8 +187,8 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 
 Un geste de programmation refusé après une course, une déprogrammation qui échoue, un 500, une coupure réseau, et toute erreur d'un formulaire qui n'est rattachée à aucun champ.
 
-- Une **notification** en bas à droite, `role="alert"` : le `title` en gras, le `detail` dessous, un bouton ✕.
-- Une erreur **reste affichée jusqu'à ce qu'on la ferme**. Les notifications s'empilent, trois au plus : au-delà, la plus ancienne se ferme.
+- Une **alerte** en bas à droite, `role="alert"` : le `title` en gras, le `detail` dessous, un bouton ✕.
+- Une erreur **reste affichée jusqu'à ce qu'on la ferme**. Les alertes s'empilent, trois au plus : au-delà, la plus ancienne se ferme.
 - Après un refus 422 ou un conflit 409, l'écran **recharge la convention**. Pour le 409 : « La convention a changé entre-temps : l'écran est à jour. »
 - Coupure réseau : « Pas de connexion : rien n'a été enregistré. »
 - Les fronts ne lisent le `code` d'un Problem Details que pour décider d'un comportement (409 → recharger), jamais pour écrire un message ([ADR 0008](../adr/0008-le-domaine-donne-un-code-l-api-ecrit-le-message.md)).
