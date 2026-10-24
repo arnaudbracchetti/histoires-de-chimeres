@@ -31,7 +31,8 @@ describe('GameMasterPage', () => {
   });
 
   async function render(
-    response: (Omit<GameMasterDto, 'id' | 'scenarios'> & Partial<GameMasterDto>) | 'not-found' = {
+    response:
+      (Omit<GameMasterDto, 'id' | 'scenarios' | 'games'> & Partial<GameMasterDto>) | 'not-found' = {
       nickname: 'Élodie',
       availabilities: [],
     },
@@ -42,7 +43,7 @@ describe('GameMasterPage', () => {
     fixture.detectChanges();
     const read = http.expectOne(apiUrl(gameMasterEndpoints.read, { gameMasterId: 'g1' }));
     if (response === 'not-found') read.flush(null, { status: 404, statusText: 'Introuvable' });
-    else read.flush({ id: 'g1', scenarios: [], ...response });
+    else read.flush({ id: 'g1', scenarios: [], games: [], ...response });
     http
       .expectOne(apiUrl(conventionEndpoints.read))
       .flush({ id: 'c1', name: 'Histoires de Chimères', date: null, tables: [], timeSlots: [] });
@@ -140,7 +141,13 @@ describe('GameMasterPage', () => {
     await press('Enter');
     const request = http.expectOne(apiUrl(gameMasterEndpoints.rename, { gameMasterId: 'g1' }));
     expect(request.request.body).toEqual({ nickname: 'Élodie la Rouge' });
-    request.flush({ id: 'g1', nickname: 'Élodie la Rouge', availabilities: [], scenarios: [] });
+    request.flush({
+      id: 'g1',
+      nickname: 'Élodie la Rouge',
+      availabilities: [],
+      scenarios: [],
+      games: [],
+    });
     await settle();
 
     expect(input()).toBeNull();

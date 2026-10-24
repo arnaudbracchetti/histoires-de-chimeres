@@ -20,6 +20,7 @@ const THIN_NBSP = '\u202f';
  * prend son nouvel état, atténué ; refusé, il revient à son état, le refus s'affiche en
  * notification, et `refused` demande de relire l'écran (Erreur hors formulaire). Le texte d'un
  * bloc suit sa largeur : plus petit, sur plusieurs lignes, puis réduit au rang et à l'icône.
+ * Un créneau où le MJ mène une partie le dit, avec le scénario et la table.
  *
  * La grille a une colonne par segment de la journée, créneau ou pause, large de sa durée en `fr` ;
  * une heure pleine se place dans son segment, à proportion.
@@ -54,6 +55,7 @@ const THIN_NBSP = '\u202f';
               type="checkbox"
               class="visually-hidden"
               [attr.aria-label]="block.label"
+              [attr.aria-describedby]="block.game ? 'game-' + block.slot.id : null"
               [checked]="isChecked(block.slot.id)"
               (change)="onChange(block.slot, $any($event.target))"
             />
@@ -71,6 +73,12 @@ const THIN_NBSP = '\u202f';
                   isChecked(block.slot.id) ? 'Je peux mener une partie' : 'Pas disponible'
                 }}</span>
               </span>
+              @if (block.game; as game) {
+                <span class="game" [id]="'game-' + block.slot.id">
+                  <span>Mène « {{ game.scenario.title }} »</span>
+                  <span class="table">{{ game.table.name }}</span>
+                </span>
+              }
             </span>
           </label>
         }
@@ -212,6 +220,18 @@ const THIN_NBSP = '\u202f';
         margin-top: 0.1em;
       }
 
+      /* Un titre long se coupe où il faut plutôt que de déborder du bloc. */
+      .game {
+        display: flex;
+        flex-direction: column;
+        color: var(--text);
+        overflow-wrap: anywhere;
+      }
+
+      .table {
+        color: var(--text-muted);
+      }
+
       /* Bloc étroit : le rang seul. */
       @container (width < 7rem) {
         .word {
@@ -308,6 +328,11 @@ export class AvailabilityTimeline {
     return hours;
   });
 
+  /** La partie que le MJ mène sur chaque créneau, s'il en mène une. */
+  private readonly games = computed(
+    () => new Map(this.gameMaster().games.map((game) => [game.timeSlotId, game])),
+  );
+
   protected readonly blocks = computed(() =>
     this.segments().flatMap(({ slot }, index) =>
       slot
@@ -318,6 +343,7 @@ export class AvailabilityTimeline {
               start: `${formatTime(slot.start)}${THIN_NBSP}–`,
               end: `${THIN_NBSP}${formatTime(slot.end)}`,
               column: `${index + 1} / ${index + 2}`,
+              game: this.games().get(slot.id),
             },
           ]
         : [],

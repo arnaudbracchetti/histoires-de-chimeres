@@ -22,6 +22,7 @@ const gameMasters = (...nicknames: string[]): GameMasterDto[] =>
     nickname,
     availabilities: [],
     scenarios: [],
+    games: [],
   }));
 
 describe('GameMasterList', () => {
@@ -98,8 +99,8 @@ describe('GameMasterList', () => {
   it('montre les disponibilités en pastilles, une par créneau, et les dit aux lecteurs d’écran', async () => {
     const { host, text } = await render(
       [
-        { id: 'g1', nickname: 'Élodie', availabilities: ['s1', 's3'], scenarios: [] },
-        { id: 'g2', nickname: 'Kaïros', availabilities: [], scenarios: [] },
+        { id: 'g1', nickname: 'Élodie', availabilities: ['s1', 's3'], scenarios: [], games: [] },
+        { id: 'g2', nickname: 'Kaïros', availabilities: [], scenarios: [], games: [] },
       ],
       [
         { id: 's1', rank: 1, start: '09:00', end: '11:30', availabilityCount: 1 },
@@ -138,8 +139,9 @@ describe('GameMasterList', () => {
         nickname: 'Élodie',
         availabilities: [],
         scenarios: [scenario, { ...scenario, id: 's2' }],
+        games: [],
       },
-      { id: 'g2', nickname: 'Kaïros', availabilities: [], scenarios: [] },
+      { id: 'g2', nickname: 'Kaïros', availabilities: [], scenarios: [], games: [] },
     ]);
 
     expect([...host.querySelectorAll('tbody td.scenarios')].map(text)).toEqual(['2', '0']);

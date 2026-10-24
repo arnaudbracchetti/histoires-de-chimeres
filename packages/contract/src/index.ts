@@ -19,6 +19,7 @@ export {
   NICKNAME_MAX_LENGTH,
   gameMasterEndpoints,
   type GameMasterDto,
+  type GameMasterGameDto,
   type GameMasterNicknameBody,
   type GameMasterParams,
 } from './game-master.js';

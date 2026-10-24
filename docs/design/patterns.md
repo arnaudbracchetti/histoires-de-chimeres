@@ -280,4 +280,4 @@ Sur la fiche du MJ, la **frise de la journée** : un bloc par créneau, à sa pl
 
 - **Chaque bloc s'enregistre dès qu'on clique dessus** : c'est un geste, une case à cocher (« Créneau 1 · 9 h 00 – 12 h 30 ») sous son dessin. Pendant l'écriture, le bloc est atténué ; refusé, il revient à son état.
 - **Un créneau court reste lisible** : il garde une largeur minimale, prise sur les pauses. Son texte rétrécit (de 13 à 11 px), la plage passe à la ligne entre début et fin, sans couper une heure, puis « Créneau » se réduit au rang et l'état à son icône.
-- Une disponibilité sur laquelle le MJ mène une partie (PR-15) est **cochée et verrouillée**, avec son motif : « Mène « Néons sur Neo-Paris » ». Ce verdict vient de la lecture de la fiche, calculé par le domaine ; le front ne recode pas la règle.
+- Une disponibilité sur laquelle le MJ mène une partie (PR-15) est **cochée et verrouillée**, avec son motif : « Mène « Néons sur Neo-Paris » », et la table en dessous. Ce verdict vient de la lecture de la fiche, calculé par le domaine ; le front ne recode pas la règle.

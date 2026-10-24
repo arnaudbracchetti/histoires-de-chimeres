@@ -11,7 +11,7 @@ import {
   toScenarioSummary,
 } from '../../scenario/persistence/scenario-summary.js';
 
-/** Le pseudo, les disponibilités dans l'ordre de la journée, et les scénarios. */
+/** Le pseudo, les disponibilités et les parties dans l'ordre de la journée, et les scénarios. */
 const SELECT = {
   id: true,
   nickname: true,
@@ -20,6 +20,15 @@ const SELECT = {
     orderBy: { timeSlot: { startMinute: 'asc' } },
   },
   scenarios: { select: SCENARIO_SUMMARY_SELECT },
+  games: {
+    select: {
+      gameId: true,
+      timeSlotId: true,
+      table: { select: { id: true, name: true } },
+      game: { select: { scenario: { select: { id: true, title: true } } } },
+    },
+    orderBy: { timeSlot: { startMinute: 'asc' } },
+  },
 } satisfies Prisma.GameMasterSelect;
 
 type GameMasterRow = Prisma.GameMasterGetPayload<{ select: typeof SELECT }>;
@@ -46,11 +55,17 @@ export class PrismaGameMasterReader implements GameMasterReader {
   }
 }
 
-function toDto({ id, nickname, availabilities, scenarios }: GameMasterRow): GameMasterDto {
+function toDto({ id, nickname, availabilities, scenarios, games }: GameMasterRow): GameMasterDto {
   return {
     id,
     nickname,
     availabilities: availabilities.map(({ timeSlotId }) => timeSlotId),
     scenarios: scenarios.map(toScenarioSummary).sort(byTitle),
+    games: games.map(({ gameId, timeSlotId, table, game }) => ({
+      gameId,
+      timeSlotId,
+      table,
+      scenario: game.scenario,
+    })),
   };
 }

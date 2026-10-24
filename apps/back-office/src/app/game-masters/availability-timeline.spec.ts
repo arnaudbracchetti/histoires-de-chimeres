@@ -5,6 +5,7 @@ import {
   apiUrl,
   availabilityEndpoints,
   type GameMasterDto,
+  type GameMasterGameDto,
   type ProblemDto,
   type TimeSlotDto,
 } from '@chimeres/contract';
@@ -26,13 +27,14 @@ describe('AvailabilityTimeline', () => {
     });
   });
 
-  async function render(availabilities: string[]) {
+  async function render(availabilities: string[], games: GameMasterGameDto[] = []) {
     const fixture = TestBed.createComponent(AvailabilityTimeline);
     const gameMaster: GameMasterDto = {
       id: 'g1',
       nickname: 'Élodie',
       availabilities,
       scenarios: [],
+      games,
     };
     fixture.componentRef.setInput('gameMaster', gameMaster);
     fixture.componentRef.setInput('timeSlots', TIME_SLOTS);
@@ -70,6 +72,29 @@ describe('AvailabilityTimeline', () => {
       `Créneau 1 · 9${NBSP}h${NBSP}00${THIN}–${THIN}12${NBSP}h${NBSP}30 ☑ Je peux mener une partie`,
       `Créneau 2 · 14${NBSP}h${NBSP}00${THIN}–${THIN}16${NBSP}h${NBSP}30 ☐ Pas disponible`,
     ]);
+  });
+
+  it('un créneau où le MJ mène une partie dit le scénario et la table', async () => {
+    const { blocks } = await render(
+      ['s1', 's2'],
+      [
+        {
+          gameId: 'p1',
+          timeSlotId: 's2',
+          table: { id: 't1', name: 'Table verte' },
+          scenario: { id: 'sc1', title: 'Néons sur Neo-Paris' },
+        },
+      ],
+    );
+
+    const [first, second] = blocks();
+    expect(first!.querySelector('.game')).toBeNull();
+    const game = second!.querySelector('.game')!;
+    expect([...game.children].map((line) => line.textContent)).toEqual([
+      'Mène « Néons sur Neo-Paris »',
+      'Table verte',
+    ]);
+    expect(second!.querySelector('input')!.getAttribute('aria-describedby')).toBe(game.id);
   });
 
   it('découpe la journée de 9 h à 17 h en créneaux et pauses, chacun large de sa durée', async () => {

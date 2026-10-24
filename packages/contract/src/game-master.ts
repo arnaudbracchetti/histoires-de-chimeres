@@ -4,6 +4,14 @@ import type { ScenarioSummaryDto } from './scenario.js';
 /** Longueur maximale d'un pseudo. Le domaine reprend cette borne. */
 export const NICKNAME_MAX_LENGTH = 30;
 
+/** Une partie que le MJ mène, sur l'un de ses créneaux : une partie double en donne deux. */
+export type GameMasterGameDto = {
+  gameId: string;
+  timeSlotId: string;
+  table: { id: string; name: string };
+  scenario: { id: string; title: string };
+};
+
 /** Un MJ, dans la liste comme sur sa fiche. */
 export type GameMasterDto = {
   id: string;
@@ -13,6 +21,8 @@ export type GameMasterDto = {
   availabilities: string[];
   /** Ses scénarios, dans l'ordre naturel de leur titre. */
   scenarios: ScenarioSummaryDto[];
+  /** Les parties qu'il mène, une par créneau, dans l'ordre de la journée. */
+  games: GameMasterGameDto[];
 };
 
 /** Pseudo d'un MJ. Corps de la création et du changement de pseudo. */

@@ -222,6 +222,38 @@ describe('Programme', () => {
     },
   );
 
+  it('la fiche du MJ donne les parties qu’il mène, avec leur scénario et leur table', async () => {
+    await schedule({
+      scenarioId: ruines.id,
+      timeSlotId: slot(2),
+      tableId: table('Table 2'),
+    }).expect(201);
+    await schedule({ scenarioId: neons.id, timeSlotId: slot(1), tableId: table('Table 1') }).expect(
+      201,
+    );
+    const games = (await read()).games;
+    const gameOf = (title: string) => games.find(({ scenario }) => scenario.title === title)!.id;
+
+    const response = await server()
+      .get(apiUrl(gameMasterEndpoints.read, { gameMasterId: elodie.id }))
+      .expect(200);
+
+    expect((response.body as GameMasterDto).games).toEqual([
+      {
+        gameId: gameOf('Néons'),
+        timeSlotId: slot(1),
+        table: { id: table('Table 1'), name: 'Table 1' },
+        scenario: { id: neons.id, title: 'Néons' },
+      },
+      {
+        gameId: gameOf('Ruines'),
+        timeSlotId: slot(2),
+        table: { id: table('Table 2'), name: 'Table 2' },
+        scenario: { id: ruines.id, title: 'Ruines' },
+      },
+    ]);
+  });
+
   it('répond 404 à un scénario, un créneau ou une table inconnus', async () => {
     const base = { scenarioId: neons.id, timeSlotId: slot(1), tableId: table('Table 1') };
 
