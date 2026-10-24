@@ -85,6 +85,14 @@ _Avoid_: Utilisateur, inscrit, User
 Nom sous lequel un participant apparaît dans la convention. Celui d'un MJ est défini avant la convention.
 _Avoid_: Login, nom d'utilisateur, compte, Username
 
+**Téléphone relié** · `LinkedPhone`:
+Téléphone sur lequel une personne s'est identifiée par un pseudo, et qui agit en son nom (inscriptions, notifications) jusqu'à ce que le lien soit coupé. On le relie à un pseudo (`link`) ; on coupe le lien (`unlink`).
+_Avoid_: Session, appareil, connexion
+
+**Fusionner** · `merge`:
+Geste d'un Organisateur qui fait passer les inscriptions et le résultat des tirages d'un pseudo de participant sur un autre pseudo, puis supprime le premier.
+_Avoid_: Report, transfert, regrouper
+
 **Code de présence** · `PresenceCode`:
 Code unique de la convention, fixé à sa création, que le QR code affiché sur place transmet au téléphone. Sans lui, on ne peut pas s'identifier dans le front office. Il n'identifie personne.
 _Avoid_: Code de salle, code d'accès, mot de passe

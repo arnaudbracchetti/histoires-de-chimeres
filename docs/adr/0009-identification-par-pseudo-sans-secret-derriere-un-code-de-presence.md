@@ -13,12 +13,13 @@ Remplace l'[ADR 0001](0001-identification-par-pseudo-et-code-de-recuperation.md)
 - **Plusieurs pseudos sur un même téléphone, chacun notifié** : utile à deux personnes qui partagent un téléphone, mais le besoin est seulement de pouvoir les inscrire toutes deux. Un téléphone est relié à un seul pseudo à la fois.
 - **Code MJ** : un code personnel, demandé en plus quand on saisit le pseudo d'un MJ, aurait protégé ces pseudos publics. Écarté en V1 : l'enjeu reste faible, et le code peut s'ajouter plus tard sans toucher au reste.
 - **Pseudo attaché au téléphone qui l'a créé** : le reprendre depuis un autre téléphone passerait par un Organisateur. Une page web ne lit aucun identifiant matériel ; le seul possible est un cookie, perdu en même temps que la session, et sur iPhone, Safari et la web app de l'écran d'accueil comptent pour deux téléphones. Chaque session perdue mènerait à un Organisateur, qui ne peut pas reconnaître un participant qu'il ne connaît pas.
+- **Verrouiller un pseudo après une usurpation** : plus aucune liaison, sauf par un geste d'un Organisateur. Écarté : ce serait un code sous un autre nom, pour un enjeu qui reste faible.
 - **Badges QR, passkeys, code MJ** : restent des pistes d'évolution (PRD §7).
 
 ## Consequences
 
 - La session est un cookie `HttpOnly` posé par le serveur, qui relie le téléphone à un pseudo, sans expiration propre : la plage d'accès fait foi. Elle désigne le participant par son identifiant interne ; un badge QR remplacerait la saisie du pseudo sans toucher au reste.
-- Un pseudo peut être relié à plusieurs téléphones. « Changer de pseudo » coupe le lien du téléphone ; l'ancien pseudo reste, avec ses inscriptions. Les notifications vont au pseudo relié au téléphone au moment de l'envoi.
-- Deux personnes de bonne foi qui veulent le même pseudo ne fusionnent pas : la seconde répond « non » à la confirmation et en choisit un autre. Une personne de mauvaise foi peut reprendre un pseudo, y compris celui d'un MJ ; un Organisateur corrige sur place.
+- Un pseudo peut être relié à plusieurs téléphones. « Changer de pseudo » coupe le lien du téléphone ; l'ancien pseudo reste, avec ses inscriptions, qui ne passent sur un autre pseudo que par une fusion décidée par un Organisateur. Les notifications vont au pseudo relié au téléphone au moment de l'envoi.
+- Deux personnes de bonne foi qui veulent le même pseudo ne se retrouvent pas dessus : la seconde répond « non » à la confirmation et en choisit un autre. Une personne de mauvaise foi peut reprendre un pseudo, y compris celui d'un MJ. Un Organisateur corrige sur place : il coupe tous les liens du pseudo, sans le verrouiller, et règle la suite avec les personnes (PRD ID-5).
 - Le pseudo d'un MJ est unique dans toute la convention : un participant qui le saisit est relié au MJ, et un Organisateur ne peut pas donner à un MJ un pseudo déjà pris par un participant.
 - Le code de présence est fixé à la création de la convention et ne change pas : s'il fuit, on l'accepte. Il ne remplace ni la plage d'accès ni le code d'accès anticipé.

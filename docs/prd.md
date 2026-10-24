@@ -95,14 +95,22 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 - **ID-3** Quand le pseudo saisi est celui d'un MJ, l'application demande au participant de confirmer qu'il est ce MJ, et ne relie le téléphone à ce MJ qu'après un « oui ». Aucun code n'est demandé. Le téléphone suit alors les mêmes règles que celui d'un participant (ID-8, ID-9, IN-4), et reçoit en plus les notifications propres au MJ (§5.6). Il ne donne accès à aucune fonction du back office.
 - **ID-4** Le pseudo d'un MJ ne devient jamais celui d'un participant : le saisir relie le téléphone à ce MJ (ID-3). Un MJ ne peut pas recevoir un pseudo déjà pris par un participant (PR-12).
 - **ID-5** Dans le back office, un Organisateur peut :
-  - retrouver un participant par son pseudo et le lui redire ;
-  - supprimer un pseudo (doublon, abus).
+  - retrouver un pseudo par une partie de son nom (selon ID-7) ou par le titre d'une partie où il est inscrit, et le redire au participant ;
+  - voir, pour chaque pseudo, de participant ou de MJ, ses inscriptions, son résultat dans chaque tirage lancé (une partie, ou non placé) et ses téléphones reliés, avec l'heure de chaque liaison, sans rien sur l'appareil ;
+  - couper tous les liens d'un pseudo, de participant ou de MJ, en un seul geste : rien n'empêche ensuite de le relier de nouveau ;
+  - supprimer un pseudo de participant (ID-10), par exemple un doublon ou un abus ;
+  - fusionner un pseudo de participant dans un autre (ID-11).
 
-  Les inscriptions d'un pseudo ne passent jamais sur un autre : un MJ qui s'est d'abord inscrit sous un autre pseudo se réinscrit sous le sien.
+  Les inscriptions d'un pseudo ne passent sur un autre que par une fusion : un MJ qui s'est d'abord inscrit sous un autre pseudo se réinscrit sous le sien, ou demande une fusion. Un Organisateur ne renomme pas un pseudo de participant et ne désinscrit personne avant le tirage. Ces gestes n'envoient aucune notification et ne sont pas journalisés.
 - **ID-6** MJ et Organisateurs se connectent au back office par lien magique envoyé par email.
 - **ID-7** Deux pseudos sont le même pseudo quand ils ne diffèrent que par la casse, les accents ou les espaces (au début, à la fin, ou plusieurs à la suite) : « Élodie » et « elodie » sont le même pseudo. La ponctuation compte : « Jean-Luc » et « Jean Luc » sont deux pseudos distincts. Un pseudo s'affiche tel qu'il a été saisi.
-- **ID-8** Un téléphone est relié à un seul pseudo à la fois ; un pseudo peut être relié à plusieurs téléphones. Le relier à un nouveau téléphone ne coupe rien sur les autres ; un pseudo supprimé (ID-5) perd tous ses liens. Les notifications vont aux téléphones reliés au pseudo au moment de l'envoi.
+- **ID-8** Un téléphone est relié à un seul pseudo à la fois ; un pseudo peut être relié à plusieurs téléphones. Le relier à un nouveau téléphone ne coupe rien sur les autres ; un pseudo supprimé ou fusionné (ID-10, ID-11) perd tous ses liens, et un Organisateur peut les couper (ID-5). Un téléphone dont le lien est coupé revient à l'identification à son prochain échange avec le serveur, et oublie sa copie hors ligne. Les notifications vont aux téléphones reliés au pseudo au moment de l'envoi. Le participant ne voit pas les autres téléphones reliés à son pseudo.
 - **ID-9** « Changer de pseudo » coupe le lien du téléphone et ramène à l'identification : pour corriger une erreur, ou pour inscrire plusieurs personnes depuis un même téléphone. L'ancien pseudo reste, avec ses inscriptions. Un participant ne peut pas modifier son pseudo.
+- **ID-10** Supprimer un pseudo de participant est toujours possible, même après la publication d'un tirage. Le pseudo perd ses liens, ses inscriptions et son résultat dans les tirages, provisoires ou publiés, puis redevient libre. Après la publication, sa partie compte simplement un joueur de moins : la place n'est proposée à personne (§7). Un MJ ne se supprime que par PR-12.
+- **ID-11** Fusionner un pseudo de participant (la source) dans un autre pseudo, de participant ou de MJ (la destination), fait passer sur la destination les inscriptions de la source et son résultat dans les tirages, provisoires ou publiés, puis supprime la source (ID-10) : ses liens sont coupés, pas transférés. La destination garde une seule inscription par partie, et une seule table par créneau ; une partie double compte sur ses deux créneaux :
+  - sur un créneau où la destination mène une partie (IN-4) ou est déjà placée par un tirage, les inscriptions et le résultat de la source sont perdus ;
+  - sur un créneau où la source est placée et la destination non placée, la destination prend la partie de la source ;
+  - ailleurs, les inscriptions et le résultat de la source passent à la destination.
 
 ### 5.2 Programme
 
@@ -130,7 +138,7 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 - **PR-9** Le nom d'une table est unique dans la convention, selon la même règle de comparaison que les pseudos (ID-7).
 - **PR-10** On ne peut pas supprimer un créneau ou une table qui porte des parties. Supprimer un créneau supprime les disponibilités qui s'y rattachent.
 - **PR-11** Les heures d'un créneau ne se modifient plus dès qu'une partie ou une disponibilité s'y rattache. Aucun créneau ne peut être ajouté ou déplacé entre les deux créneaux d'une partie double.
-- **PR-12** Un Organisateur crée les MJ, chacun avec un pseudo unique dans la convention, parmi les MJ comme parmi les participants (ID-4, ID-7), et modifiable à tout moment. On ne peut pas supprimer un MJ qui a au moins un scénario. Supprimer un MJ supprime ses disponibilités.
+- **PR-12** Un Organisateur crée les MJ, chacun avec un pseudo unique dans la convention, parmi les MJ comme parmi les participants (ID-4, ID-7), et modifiable à tout moment. On ne peut pas supprimer un MJ qui a au moins un scénario. Supprimer un MJ supprime ses disponibilités, coupe ses liens, et efface ses inscriptions et son résultat dans les tirages, comme pour un pseudo de participant (ID-10). Renommer un MJ ne coupe pas ses liens.
 - **PR-13** Un Organisateur a, sur les scénarios et les disponibilités de chaque MJ, les mêmes droits que ce MJ.
 - **PR-14** Le contenu d'un scénario reste modifiable à tout moment. Sa durée ne se modifie plus dès qu'une partie en est programmée, et on ne peut pas supprimer un scénario qui a des parties.
 - **PR-15** Une disponibilité porte sur un créneau entier, pour le MJ, pas pour un scénario. On ne peut pas retirer une disponibilité sur laquelle le MJ mène une partie.
@@ -165,7 +173,7 @@ Titre, jeu, pseudo du MJ, présentation, image, table, créneau (mention « doub
   - maintenir ou annuler une partie sous son minimum ;
   - relancer le tirage autant de fois que souhaité ;
   - programmer une partie depuis la réserve : cela **annule le tirage provisoire et rouvre les inscriptions du créneau**, les inscrits du créneau sont notifiés, puis l'Organisateur relance le tirage.
-- **TI-7** La publication rend le tirage définitif. Aucune partie ne peut plus être programmée sur ce créneau, et le résultat n'est plus modifiable en V1.
+- **TI-7** La publication rend le tirage définitif. Aucune partie ne peut plus être programmée sur ce créneau, et le résultat n'est plus modifiable en V1, sauf par la suppression ou la fusion d'un pseudo (ID-10, ID-11).
 
 ### 5.6 Notifications
 
@@ -208,6 +216,7 @@ Pour les participants sans notifications :
 - MJ désigné à la volée le jour J : toutes les parties viennent de scénarios enregistrés à l'avance.
 - Espace Organisateur sur mobile, alertes push aux Organisateurs.
 - Badges QR, passkeys, code MJ ou autre identification plus robuste (pistes d'évolution, cf. ADR 0009).
+- Verrou d'un pseudo après une usurpation, journal des gestes des Organisateurs.
 - Site public du programme avant la convention : une troisième interface, distincte du front office et du back office.
 - Reprise des données d'une convention à la suivante (comptes MJ, scénarios, tables) : chaque convention repart d'une base vide.
 
