@@ -6,6 +6,7 @@ import {
   inject,
   Injector,
   signal,
+  viewChild,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { gameMasterEndpoints, type GameMasterDto } from '@chimeres/contract';
@@ -14,55 +15,42 @@ import { ConventionStore } from '../convention/convention-store';
 import { formatTimeRange } from '../time-slots/time-format';
 import { Loadable } from '../shell/loadable';
 import { Button } from '../ui/button';
-import { Icon } from '../ui/icon';
+import { EmptyState } from '../ui/empty-state';
+import { SortableHeader } from '../ui/sortable-header';
+import { TableFilter } from '../ui/table-filter';
+import { tableView } from '../ui/table-view';
 import { NewGameMaster } from './new-game-master';
-import { searchKey } from './nickname';
 
 /**
  * Les MJ, en tableau (docs/design/patterns.md, Tableaux et MJ) : chaque pseudo mène à la fiche,
  * suivi de son nombre de scénarios ; ses disponibilités s'affichent en ronds numérotés, un par
  * créneau, de même taille : plein si le MJ peut y mener une partie, cerclé sinon.
- * Tri et filtre sont des signaux, sur la liste que l'API renvoie dans l'ordre naturel. « Ajouter
- * un MJ », sous le tableau, ouvre une ligne « Nouveau MJ » en dernier ; après chaque ajout, une
- * ligne vide s'ouvre aussitôt. Quitter la page pendant une saisie l'abandonne sans rien demander.
+ * Le filtre et le tri, sur le pseudo, viennent de `tableView()`. « Ajouter un MJ », sous le
+ * tableau, ouvre une ligne « Nouveau MJ » en dernier ; après chaque ajout, une ligne vide s'ouvre
+ * aussitôt. Quitter la page pendant une saisie l'abandonne sans rien demander.
  */
 @Component({
   selector: 'app-game-master-list',
-  imports: [Button, Icon, Loadable, NewGameMaster, RouterLink],
+  imports: [Button, EmptyState, Loadable, NewGameMaster, RouterLink, SortableHeader, TableFilter],
   template: `
     <app-loadable [resource]="gameMasters" failure="Impossible de charger les MJ.">
       @if (gameMasters.hasValue()) {
         @if (!gameMasters.value().length && !adding()) {
-          <div class="empty">
-            <svg class="engraving" aria-hidden="true" focusable="false">
-              <use href="illustration.svg#engraving" />
-            </svg>
+          <app-empty-state>
             <p>Aucun MJ pour l'instant : la convention attend ses conteurs.</p>
             <button type="button" appButton="primary" (click)="openNew()">
               Créer le premier MJ
             </button>
-          </div>
+          </app-empty-state>
         } @else {
-          <input
-            type="search"
-            class="filter"
-            placeholder="Filtrer les MJ"
-            aria-label="Filtrer les MJ"
-            [value]="filter()"
-            (input)="filter.set($any($event.target).value)"
-          />
+          <app-table-filter label="Filtrer les MJ" [(value)]="view.filter" />
           <table>
             <caption class="visually-hidden">
               MJ de la convention
             </caption>
             <thead>
               <tr>
-                <th scope="col" [attr.aria-sort]="descending() ? 'descending' : 'ascending'">
-                  <button type="button" class="sort" (click)="descending.set(!descending())">
-                    Pseudo
-                    <app-icon [name]="descending() ? 'arrow-down' : 'arrow-up'" />
-                  </button>
-                </th>
+                <th appSortable="nickname" [view]="view">Pseudo</th>
                 <th scope="col" class="number">Scénarios</th>
                 <th scope="col">Disponibilités</th>
               </tr>
@@ -86,7 +74,7 @@ import { searchKey } from './nickname';
                   </td>
                 </tr>
               } @empty {
-                @if (filter()) {
+                @if (view.filter()) {
                   <tr>
                     <td class="none" colspan="3">
                       Aucun MJ ne correspond
@@ -126,10 +114,6 @@ import { searchKey } from './nickname';
         flex-direction: column;
         gap: var(--space-m);
         align-items: flex-start;
-      }
-
-      .filter {
-        width: 16rem;
       }
 
       /* Largeur fixe : assez pour la ligne « Nouveau MJ », son champ et ses boutons. */
@@ -189,64 +173,34 @@ import { searchKey } from './nickname';
         }
       }
 
-      .sort {
-        display: inline-flex;
-        gap: var(--space-xs);
-        align-items: center;
-        padding: 0;
-        border: 0;
-        background: none;
-        color: inherit;
-        font: inherit;
-        cursor: pointer;
-      }
-
       .none {
         color: var(--text-muted);
-      }
-
-      .empty {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-m);
-        align-items: center;
-        width: 32rem;
-        padding: var(--space-xxl);
-        color: var(--text-muted);
-        text-align: center;
-      }
-
-      .engraving {
-        width: 160px;
-        height: 160px;
-        color: var(--engraving);
       }
     }
   `,
 })
 export class GameMasterList {
   protected readonly gameMasters = apiResource(gameMasterEndpoints.list);
-  protected readonly filter = signal('');
-  protected readonly descending = signal(false);
+  protected readonly view = tableView({
+    items: () => (this.gameMasters.hasValue() ? this.gameMasters.value() : []),
+    searchIn: ({ nickname }) => [nickname],
+    sortKeys: { nickname: ({ nickname }: GameMasterDto) => nickname },
+    initialSort: 'nickname',
+  });
   /** La ligne d'ajout : une clé neuve à chaque ligne ouverte (pour la recréer vide), ou aucune. */
   protected readonly newKeys = signal<number[]>([]);
   protected readonly adding = computed(() => this.newKeys().length > 0);
   private nextKey = 0;
 
   private readonly store = inject(ConventionStore);
+  private readonly filter = viewChild(TableFilter);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
 
-  /**
-   * Les MJ affichés : filtrés sans casse ni accent, dans l'ordre naturel ou son inverse, avec un
-   * rond par créneau.
-   */
+  /** Les MJ affichés (filtrés et triés par `view`), chacun avec un rond par créneau. */
   protected readonly rows = computed(() => {
-    const all = this.gameMasters.hasValue() ? this.gameMasters.value() : [];
     const timeSlots = this.store.timeSlots();
-    const key = searchKey(this.filter());
-    const shown = all.filter(({ nickname }) => searchKey(nickname).includes(key));
-    return (this.descending() ? shown.reverse() : shown).map((gameMaster) => {
+    return this.view.rows().map((gameMaster) => {
       const pips = timeSlots.map(({ id, rank, start, end }) => {
         const available = gameMaster.availabilities.includes(id);
         const state = available ? 'disponible' : 'pas disponible';
@@ -262,7 +216,7 @@ export class GameMasterList {
 
   /** Ouvre une ligne d'ajout vide, en dernier ; le filtre s'efface pour montrer tous les MJ. */
   protected openNew(): void {
-    this.filter.set('');
+    this.view.clear();
     this.newKeys.set([this.nextKey++]);
   }
 
@@ -278,9 +232,10 @@ export class GameMasterList {
     this.focusAfterRender('.add, .empty button');
   }
 
+  /** Toutes les lignes reviennent, et le focus retourne au filtre. */
   protected clearFilter(): void {
-    this.filter.set('');
-    this.focusAfterRender('.filter');
+    this.view.clear();
+    this.filter()?.focus();
   }
 
   private focusAfterRender(selector: string): void {

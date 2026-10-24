@@ -27,6 +27,11 @@ Aucune couleur n'est écrite en TypeScript ni en dur dans un SVG : le SVG réfé
 - Les composants qui enveloppent `design` (champ, illustration, icône) sont **minces et dupliqués dans chaque front**, comme `api-resource.ts`. Pas de bibliothèque Angular partagée.
 - Une icône s'affiche par `<svg><use href="icons.svg#nom"/></svg>`. Décorative, elle porte `aria-hidden="true"` ; seule dans un bouton, c'est le bouton qui porte le nom accessible.
 - Formulaires : Signal Forms, `[formField]` sur des contrôles natifs. Un formulaire s'envoie par `submitWith()` (`forms/`), et une carte en saisie ajoute la directive `CardForm` par `hostDirectives`.
+- Tableaux (back office, `ui/`) : chaque liste garde son `<table>` et ses cellules. Le reste vient de quatre briques :
+  - `tableView()` : le filtre (sans casse ni accent) et le tri (ordre naturel, inversé au second clic), en signaux et sans DOM. La liste lit `view.rows()` ;
+  - `th[appSortable]` : l'en-tête triable, avec `aria-sort` et la flèche sur la seule colonne triée ;
+  - `app-table-filter` : le champ de filtre lié à `view.filter`, dont `focus()` sert après « Effacer le filtre ». La ligne « Aucun … ne correspond » reste dans la liste, qui seule connaît son `colspan` ;
+  - `app-empty-state` : le motif gravé, avec la phrase et l'invitation projetées. Il sert aux listes comme aux pages.
 
 ## CSS
 

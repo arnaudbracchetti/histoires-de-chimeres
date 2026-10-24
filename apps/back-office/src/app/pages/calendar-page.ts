@@ -5,6 +5,7 @@ import { ScheduleBoard } from '../schedule/schedule-board';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
 import { Button } from '../ui/button';
+import { EmptyState } from '../ui/empty-state';
 
 /**
  * Le Calendrier, écran d'accueil : la frise du programme, et le bac de réserve dessous
@@ -12,28 +13,22 @@ import { Button } from '../ui/button';
  */
 @Component({
   selector: 'app-calendar-page',
-  imports: [Button, Loadable, PageHeader, RouterLink, ScheduleBoard],
+  imports: [Button, EmptyState, Loadable, PageHeader, RouterLink, ScheduleBoard],
   template: `
     <app-page-header title="Calendrier" />
     <app-loadable [resource]="store.convention" failure="Impossible de charger la convention.">
       @if (convention(); as convention) {
         @if (!convention.timeSlots.length) {
-          <div class="empty">
-            <svg class="engraving" aria-hidden="true" focusable="false">
-              <use href="illustration.svg#engraving" />
-            </svg>
+          <app-empty-state>
             <p>Aucun créneau pour l'instant : la frise attend la journée.</p>
             <a appButton="primary" routerLink="/creneaux-et-tables">Créer les créneaux</a>
             <a appButton="quiet" routerLink="/mj">Ou commencer par les MJ</a>
-          </div>
+          </app-empty-state>
         } @else if (!convention.tables.length) {
-          <div class="empty">
-            <svg class="engraving" aria-hidden="true" focusable="false">
-              <use href="illustration.svg#engraving" />
-            </svg>
+          <app-empty-state>
             <p>Aucune table pour l'instant : la frise a une ligne par table.</p>
             <a appButton="primary" routerLink="/creneaux-et-tables">Ajouter les tables</a>
-          </div>
+          </app-empty-state>
         } @else {
           <app-schedule-board [convention]="convention" />
         }
@@ -45,23 +40,6 @@ import { Button } from '../ui/button';
       :host > app-loadable {
         display: block;
         padding: var(--space-l) var(--space-xl);
-      }
-
-      .empty {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-m);
-        align-items: center;
-        width: 32rem;
-        padding: var(--space-xxl);
-        color: var(--text-muted);
-        text-align: center;
-      }
-
-      .engraving {
-        width: 160px;
-        height: 160px;
-        color: var(--engraving);
       }
     }
   `,

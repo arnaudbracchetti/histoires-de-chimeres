@@ -12,8 +12,3 @@ export function nicknameRules(path: SchemaPath<string>): void {
     tooLong: `Un pseudo fait ${NICKNAME_MAX_LENGTH} caractères au plus : raccourcis-le.`,
   });
 }
-
-/** Forme de recherche d'un pseudo : sans casse, sans accent, espaces réduits (ID-7). */
-export function searchKey(text: string): string {
-  return text.trim().normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ');
-}
