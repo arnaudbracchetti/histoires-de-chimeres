@@ -1,5 +1,5 @@
 import { endpoint } from './endpoint.js';
-import type { RefusalCode } from './problem.js';
+import type { VerdictRefusalDto } from './problem.js';
 import type {
   ScenarioGameMasterDto,
   ScenarioParams,
@@ -20,9 +20,6 @@ export type GameDto = {
   seats: SeatsDto;
   scenario: ScheduleScenarioDto;
 };
-
-/** Un refus du domaine, avec son motif court et sa phrase. */
-export type VerdictRefusalDto = { code: RefusalCode; title: string; detail: string };
 
 /**
  * Un scénario dans la réserve (PR-6). Sur chaque créneau, dans l'ordre de la journée : s'il y est en

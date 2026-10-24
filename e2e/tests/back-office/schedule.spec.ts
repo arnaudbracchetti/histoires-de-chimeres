@@ -372,6 +372,92 @@ test('un créneau ou une table qui porte une partie ne se supprime pas : le dial
   await page.reload();
   await expect(page.getByRole('button', { name: 'Supprimer le créneau 1' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Supprimer la table Table 1' })).toBeVisible();
+
+  const tables = page.getByRole('region', { name: 'Tables' });
+  await tables.getByRole('button', { name: 'Modifier la table Table 1', exact: true }).click();
+  await tables.getByRole('textbox').fill('Dragon');
+  await tables.getByRole('button', { name: 'Enregistrer', exact: true }).click();
+  await expect(tables.getByRole('article', { name: 'Dragon', exact: true })).toBeVisible();
+  await page.goto('/gestion/');
+  await expect(timelineRow(page, 'Dragon')).toContainText('Néons');
+});
+
+test('les heures d’un créneau qui porte une partie sont refusées (PR-11)', async ({ page }) => {
+  const { neons, slot1, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
+  await page.goto('/gestion/creneaux-et-tables');
+  const section = page.getByRole('region', { name: 'Créneaux' });
+
+  await section.getByRole('button', { name: 'Modifier le créneau 1', exact: true }).click();
+  await section.getByLabel('Début').fill('08:00');
+  await section.getByLabel('Fin').fill('10:30');
+  await section.getByRole('button', { name: 'Enregistrer', exact: true }).click();
+
+  await expect(page.getByRole('alert').filter({ hasText: 'Heures figées' })).toContainText(
+    `Le créneau 1 porte une partie${NBSP}: ses heures ne changent plus.`,
+  );
+});
+
+test('la durée d’un scénario programmé est refusée sous son champ (PR-14)', async ({ page }) => {
+  const { neons, slot1, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
+  await page.goto(`/gestion/scenarios/${neons.id}`);
+
+  await page.getByRole('radio', { name: '2 créneaux' }).check();
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+
+  await expect(page.getByRole('group', { name: 'Durée' })).toHaveAccessibleDescription(
+    `Ce scénario est programmé${NBSP}: sa durée ne change plus. Déprogramme d'abord ses parties.`,
+  );
+  await page.reload();
+  await expect(page.getByRole('radio', { name: '1 créneau' })).toBeChecked();
+});
+
+test('un scénario programmé ne se supprime pas : le dialogue dit pourquoi (PR-14)', async ({
+  page,
+}) => {
+  const { neons, slot1, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
+  await page.goto(`/gestion/scenarios/${neons.id}`);
+
+  await page.getByRole('button', { name: 'Autres actions sur le scénario' }).click();
+  await page.getByRole('menuitem', { name: 'Supprimer le scénario' }).click();
+  const dialog = page.getByRole('alertdialog', { name: /^Supprimer le scénario/ });
+  await dialog.getByRole('button', { name: 'Supprimer le scénario' }).click();
+
+  await expect(dialog.getByRole('alert')).toHaveText(
+    `Ce scénario est programmé${NBSP}: déprogramme d'abord ses parties.`,
+  );
+  await dialog.getByRole('button', { name: 'Fermer' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Néons' })).toBeVisible();
+});
+
+test('une disponibilité où le MJ mène une partie est verrouillée, puis libre après la déprogrammation (PR-15)', async ({
+  page,
+}) => {
+  const { neons, slot1, elodie, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
+  await page.goto(`/gestion/mj/${elodie}`);
+  const first = page.getByRole('checkbox', {
+    name: `Créneau 1 · 9${NBSP}h${NBSP}00${THIN}–${THIN}11${NBSP}h${NBSP}30`,
+  });
+
+  await expect(first).toBeChecked();
+  await expect(first).toBeDisabled();
+  await expect(first).toHaveAccessibleDescription(`Mène «${NBSP}Néons${NBSP}» Table 1`);
+
+  await page.goto('/gestion/');
+  await gameButton(page, 'Néons').click();
+  await sheet(page).getByRole('button', { name: 'Déprogrammer' }).click();
+  await expect(sheet(page)).toHaveCount(0);
+  await page.goto(`/gestion/mj/${elodie}`);
+
+  await expect(first).toBeEnabled();
+  await page.locator('label.block').filter({ has: first }).click();
+  await expect(first).not.toBeChecked();
+  await expect(page.locator('label.pending')).toHaveCount(0);
+  await page.reload();
+  await expect(first).not.toBeChecked();
 });
 
 /** Programme le scénario par l'API, sur le créneau et la table donnés. */

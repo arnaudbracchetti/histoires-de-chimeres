@@ -1,5 +1,5 @@
 import { endpoint } from './endpoint.js';
-import type { GameMasterDto } from './game-master.js';
+import type { GameMasterSheetDto } from './game-master.js';
 
 export type AvailabilityParams = { gameMasterId: string; timeSlotId: string };
 
@@ -8,11 +8,11 @@ export type AvailabilityParams = { gameMasterId: string; timeSlotId: string };
  * absente, ne change rien. Chaque écriture renvoie la fiche du MJ.
  */
 export const availabilityEndpoints = {
-  declare: endpoint<GameMasterDto, AvailabilityParams>(
+  declare: endpoint<GameMasterSheetDto, AvailabilityParams>(
     'PUT',
     'game-masters/:gameMasterId/availabilities/:timeSlotId',
   ),
-  withdraw: endpoint<GameMasterDto, AvailabilityParams>(
+  withdraw: endpoint<GameMasterSheetDto, AvailabilityParams>(
     'DELETE',
     'game-masters/:gameMasterId/availabilities/:timeSlotId',
   ),

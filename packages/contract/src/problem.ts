@@ -13,6 +13,8 @@ export type RefusalParams = {
   /** `rank` : le rang du créneau ; `availabilities` : le nombre de MJ disponibles dessus. */
   'time-slot-hours-locked': { rank: number; availabilities: number };
   /** `rank` : le rang du créneau ; `games` : le nombre de parties qu'il porte. */
+  'time-slot-hours-locked-by-games': { rank: number; games: number };
+  /** `rank` : le rang du créneau ; `games` : le nombre de parties qu'il porte. */
   'time-slot-has-games': { rank: number; games: number };
   'table-not-found': Record<string, never>;
   'table-name-required': Record<string, never>;
@@ -31,6 +33,8 @@ export type RefusalParams = {
   /** `nickname` : le pseudo du MJ ; `rank` : le rang du créneau. */
   'game-master-unavailable': { nickname: string; rank: number };
   'game-master-busy': { nickname: string; rank: number };
+  /** `nickname` : le pseudo du MJ ; `rank` : le rang du créneau où il mène une partie (PR-15). */
+  'availability-has-game': { nickname: string; rank: number };
   /** `nickname` : le pseudo du MJ, dont un scénario n'est en réserve sur aucun créneau (PR-6). */
   'game-master-without-availability': { nickname: string };
   'game-master-busy-everywhere': { nickname: string };
@@ -44,6 +48,9 @@ export type RefusalParams = {
   'time-slot-splits-two-slot-game': { rank: number };
   'game-not-found': Record<string, never>;
   'scenario-not-found': Record<string, never>;
+  /** Le scénario a des parties : sa durée ne change plus (PR-14). */
+  'scenario-duration-locked': Record<string, never>;
+  'scenario-has-games': Record<string, never>;
   'scenario-title-required': Record<string, never>;
   'scenario-title-too-long': { max: number };
   'system-required': Record<string, never>;
@@ -57,6 +64,9 @@ export type RefusalParams = {
 };
 
 export type RefusalCode = keyof RefusalParams;
+
+/** Un refus du domaine rendu comme verdict d'une lecture, avec son motif court et sa phrase. */
+export type VerdictRefusalDto = { code: RefusalCode; title: string; detail: string };
 
 /** Codes que seule l'API produit. */
 export type ApiErrorCode =

@@ -4,8 +4,8 @@ import { TestBed } from '@angular/core/testing';
 import {
   apiUrl,
   availabilityEndpoints,
-  type GameMasterDto,
   type GameMasterGameDto,
+  type GameMasterSheetDto,
   type ProblemDto,
   type TimeSlotDto,
 } from '@chimeres/contract';
@@ -25,18 +25,29 @@ describe('AvailabilityTimeline', () => {
     });
   });
 
+  /** Les disponibilités du MJ ; chacune se retire, sauf sous une partie de `games`. */
   async function render(availabilities: string[], games: GameMasterGameDto[] = []) {
     const fixture = TestBed.createComponent(AvailabilityTimeline);
-    const gameMaster: GameMasterDto = {
+    const gameMaster: GameMasterSheetDto = {
       id: 'g1',
       nickname: 'Élodie',
       availabilities,
       scenarios: [],
       games,
+      withdrawals: availabilities.map((timeSlotId) => ({
+        timeSlotId,
+        refusal: games.some((game) => game.timeSlotId === timeSlotId)
+          ? {
+              code: 'availability-has-game',
+              title: 'Disponibilité programmée',
+              detail: "Élodie mène une partie sur le créneau 2 : déprogramme-la d'abord.",
+            }
+          : null,
+      })),
     };
     fixture.componentRef.setInput('gameMaster', gameMaster);
     fixture.componentRef.setInput('timeSlots', TIME_SLOTS);
-    const changed: GameMasterDto[] = [];
+    const changed: GameMasterSheetDto[] = [];
     fixture.componentInstance.changed.subscribe((value) => changed.push(value));
     let refusals = 0;
     fixture.componentInstance.refused.subscribe(() => refusals++);
@@ -60,7 +71,17 @@ describe('AvailabilityTimeline', () => {
       box(rank).click();
       await fixture.whenStable();
     };
-    return { fixture, http, blocks, state, click, button, changed, refusals: () => refusals };
+    return {
+      fixture,
+      http,
+      blocks,
+      box,
+      state,
+      click,
+      button,
+      changed,
+      refusals: () => refusals,
+    };
   }
 
   it('un bloc par créneau, « Créneau 1 · 9 h 00 – 12 h 30 », coché là où le MJ peut mener une partie', async () => {
@@ -72,8 +93,8 @@ describe('AvailabilityTimeline', () => {
     ]);
   });
 
-  it('un créneau où le MJ mène une partie dit le scénario et la table', async () => {
-    const { blocks } = await render(
+  it('une disponibilité où le MJ mène une partie est cochée et verrouillée, avec son motif et sa table (PR-15)', async () => {
+    const { http, blocks, box, click, button } = await render(
       ['s1', 's2'],
       [
         {
@@ -87,12 +108,27 @@ describe('AvailabilityTimeline', () => {
 
     const [first, second] = blocks();
     expect(first!.querySelector('.game')).toBeNull();
+    expect(box(1).disabled).toBe(false);
     const game = second!.querySelector('.game')!;
     expect([...game.children].map((line) => line.textContent)).toEqual([
       `Mène «${NBSP}Néons sur Neo-Paris${NBSP}»`,
       'Table verte',
     ]);
-    expect(second!.querySelector('input')!.getAttribute('aria-describedby')).toBe(game.id);
+    expect(box(2).checked).toBe(true);
+    expect(box(2).disabled).toBe(true);
+    expect(second!.classList).toContain('locked');
+    expect(second!.title).toBe("Élodie mène une partie sur le créneau 2 : déprogramme-la d'abord.");
+    expect(box(2).getAttribute('aria-describedby')).toBe(game.id);
+
+    await click(2);
+    button('Aucun créneau').click();
+    await new Promise((resolve) => setTimeout(resolve));
+    http.expectOne(
+      apiUrl(availabilityEndpoints.withdraw, { gameMasterId: 'g1', timeSlotId: 's1' }),
+    );
+    http.expectNone(
+      apiUrl(availabilityEndpoints.withdraw, { gameMasterId: 'g1', timeSlotId: 's2' }),
+    );
   });
 
   it('découpe la journée de 9 h à 17 h en créneaux et pauses, chacun large de sa durée', async () => {

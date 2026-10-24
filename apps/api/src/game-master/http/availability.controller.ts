@@ -1,18 +1,13 @@
 import { Controller, Delete, Inject, Param, Put } from '@nestjs/common';
-import {
-  DeclareAvailability,
-  WithdrawAvailability,
-  type GameMasterReader,
-} from '@chimeres/application';
+import { DeclareAvailability, ReadGameMaster, WithdrawAvailability } from '@chimeres/application';
 import { availabilityEndpoints, type ResponseOf } from '@chimeres/contract';
-import { Refusal } from '@chimeres/domain';
-import { GAME_MASTER_READER } from '../game-master-reader.token.js';
+import { readSheetOrRefuse } from './game-master-sheet.js';
 
 /** Chaque écriture renvoie la fiche du MJ relue. */
 @Controller()
 export class AvailabilityController {
   constructor(
-    @Inject(GAME_MASTER_READER) private readonly reader: GameMasterReader,
+    @Inject(ReadGameMaster) private readonly readGameMaster: ReadGameMaster,
     @Inject(DeclareAvailability) private readonly declareAvailability: DeclareAvailability,
     @Inject(WithdrawAvailability) private readonly withdrawAvailability: WithdrawAvailability,
   ) {}
@@ -23,7 +18,7 @@ export class AvailabilityController {
     @Param('timeSlotId') timeSlotId: string,
   ): Promise<ResponseOf<typeof availabilityEndpoints.declare>> {
     await this.declareAvailability.execute(gameMasterId, timeSlotId);
-    return this.readOrRefuse(gameMasterId);
+    return readSheetOrRefuse(this.readGameMaster, gameMasterId);
   }
 
   @Delete(availabilityEndpoints.withdraw.path)
@@ -32,13 +27,6 @@ export class AvailabilityController {
     @Param('timeSlotId') timeSlotId: string,
   ): Promise<ResponseOf<typeof availabilityEndpoints.withdraw>> {
     await this.withdrawAvailability.execute(gameMasterId, timeSlotId);
-    return this.readOrRefuse(gameMasterId);
-  }
-
-  /** Le MJ a pu être supprimé entre l'écriture et la relecture. */
-  private async readOrRefuse(gameMasterId: string) {
-    const gameMaster = await this.reader.read(gameMasterId);
-    if (!gameMaster) throw new Refusal('game-master-not-found', {});
-    return gameMaster;
+    return readSheetOrRefuse(this.readGameMaster, gameMasterId);
   }
 }

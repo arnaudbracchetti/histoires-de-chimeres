@@ -90,11 +90,15 @@ export class Convention {
     this.state.timeSlots.push(this.verifyFits(new TimeSlot(id, start, end)));
   }
 
-  /** Les heures d'un créneau qui porte une disponibilité ne se modifient plus (PR-11). */
+  /** Les heures d'un créneau qui porte une partie ou une disponibilité ne se modifient plus (PR-11). */
   changeTimeSlotHours(id: string, start: TimeOfDay, end: TimeOfDay): void {
     const index = this.indexOf(id);
     const current = this.state.timeSlots[index]!;
     if (current.start.equals(start) && current.end.equals(end)) return;
+    const games = this.gameCountOn(id);
+    if (games > 0) {
+      throw new Refusal('time-slot-hours-locked-by-games', { rank: this.rankOf(id), games });
+    }
     const availabilities = this.availabilityCountOf(id);
     if (availabilities > 0) {
       throw new Refusal('time-slot-hours-locked', { rank: this.rankOf(id), availabilities });
@@ -108,7 +112,7 @@ export class Convention {
    */
   removeTimeSlot(id: string): void {
     const index = this.indexOf(id);
-    const games = this.state.games.filter((game) => game.isOn(id)).length;
+    const games = this.gameCountOn(id);
     if (games > 0) throw new Refusal('time-slot-has-games', { rank: this.rankOf(id), games });
     this.state.timeSlots.splice(index, 1);
     this.state.gameMasters = this.state.gameMasters.map((gameMaster) =>
@@ -184,12 +188,31 @@ export class Convention {
     this.state.gameMasters[index] = this.state.gameMasters[index]!.withAvailabilityOn(timeSlotId);
   }
 
-  /** Retire la disponibilité du MJ sur un créneau existant. Retirer une absente ne change rien. */
+  /**
+   * Retire la disponibilité du MJ sur un créneau existant, sauf s'il y mène une partie (PR-15).
+   * Retirer une absente ne change rien.
+   */
   withdrawAvailability(gameMasterId: string, timeSlotId: string): void {
     const index = this.indexOfGameMaster(gameMasterId);
     this.verifyTimeSlotExists(timeSlotId);
+    const refusal = this.withdrawalRefusalOf(gameMasterId, timeSlotId);
+    if (refusal) throw refusal;
     this.state.gameMasters[index] =
       this.state.gameMasters[index]!.withoutAvailabilityOn(timeSlotId);
+  }
+
+  /**
+   * Le verdict de retrait de chaque disponibilité du MJ, dans l'ordre de la journée : le refus que
+   * `withdrawAvailability()` y lèverait, ou `null`.
+   */
+  withdrawalsOf(gameMasterId: string): Withdrawal[] {
+    const gameMaster = this.gameMasterOf(gameMasterId);
+    return this.timeSlots
+      .filter((slot) => gameMaster.isAvailableOn(slot.id))
+      .map((slot) => ({
+        timeSlotId: slot.id,
+        refusal: this.withdrawalRefusalOf(gameMasterId, slot.id),
+      }));
   }
 
   /**
@@ -199,6 +222,11 @@ export class Convention {
   proposeScenario(id: string, gameMasterId: string, details: ScenarioDetails): Scenario {
     this.indexOfGameMaster(gameMasterId);
     return Scenario.propose(id, gameMasterId, details);
+  }
+
+  /** Le scénario a au moins une partie programmée (PR-14). */
+  hasGamesOf(scenarioId: string): boolean {
+    return this.state.games.some((game) => game.scenarioId === scenarioId);
   }
 
   /** Le programme : les parties, dans l'ordre de leur programmation. */
@@ -398,6 +426,19 @@ export class Convention {
       : new Refusal('game-master-without-consecutive-availabilities', { nickname });
   }
 
+  /** La règle PR-15 du retrait d'une disponibilité, la même pour l'écriture et pour le verdict. */
+  private withdrawalRefusalOf(gameMasterId: string, timeSlotId: string): Refusal | null {
+    if (!this.runsGameOn(gameMasterId, timeSlotId)) return null;
+    return new Refusal('availability-has-game', {
+      nickname: this.gameMasterOf(gameMasterId).nickname.text,
+      rank: this.rankOf(timeSlotId),
+    });
+  }
+
+  private gameCountOn(timeSlotId: string): number {
+    return this.state.games.filter((game) => game.isOn(timeSlotId)).length;
+  }
+
   private isScheduledOn(scenarioId: string, timeSlotId: string): boolean {
     return this.state.games.some((game) => game.scenarioId === scenarioId && game.isOn(timeSlotId));
   }
@@ -505,6 +546,9 @@ export class Convention {
 
 /** Le verdict d'une case créneau × table pour un scénario : le refus d'écriture, ou `null`. */
 export type Placement = { timeSlotId: string; tableId: string; refusal: Refusal | null };
+
+/** Le verdict de retrait d'une disponibilité : le refus d'écriture, ou `null`. */
+export type Withdrawal = { timeSlotId: string; refusal: Refusal | null };
 
 /**
  * La place d'un scénario dans la réserve : sur chaque créneau, dans l'ordre de la journée, s'il y

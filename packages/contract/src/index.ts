@@ -22,6 +22,8 @@ export {
   type GameMasterGameDto,
   type GameMasterNicknameBody,
   type GameMasterParams,
+  type GameMasterSheetDto,
+  type WithdrawalDto,
 } from './game-master.js';
 export { healthEndpoints, type HealthDto } from './health.js';
 export type {
@@ -31,6 +33,7 @@ export type {
   ProblemDto,
   RefusalCode,
   RefusalParams,
+  VerdictRefusalDto,
 } from './problem.js';
 export {
   CONTENT_WARNINGS_MAX_LENGTH,
@@ -59,7 +62,6 @@ export {
   type ScheduleDto,
   type ScheduleGameBody,
   type ScheduleScenarioDto,
-  type VerdictRefusalDto,
 } from './schedule.js';
 export {
   TABLE_NAME_MAX_LENGTH,

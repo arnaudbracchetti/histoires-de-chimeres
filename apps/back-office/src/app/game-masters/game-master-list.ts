@@ -25,7 +25,8 @@ import { NewGameMaster } from './new-game-master';
 /**
  * Les MJ, en tableau (docs/design/patterns.md, Tableaux et MJ) : chaque pseudo mène à la fiche,
  * suivi de son nombre de scénarios ; ses disponibilités s'affichent en ronds numérotés, un par
- * créneau, de même taille : plein si le MJ peut y mener une partie, cerclé sinon.
+ * créneau, de même taille : plein si le MJ peut y mener une partie, cerclé sinon. La dernière
+ * colonne compte les parties qu'il mène, une partie double une seule fois.
  * Le filtre et le tri, sur le pseudo, viennent de `tableView()`. « Ajouter un MJ », sous le
  * tableau, ouvre une ligne « Nouveau MJ » en dernier ; après chaque ajout, une ligne vide s'ouvre
  * aussitôt. Quitter la page pendant une saisie l'abandonne sans rien demander.
@@ -54,6 +55,7 @@ import { NewGameMaster } from './new-game-master';
                 <th appSortable="nickname" [view]="view">Pseudo</th>
                 <th scope="col" class="number">Scénarios</th>
                 <th scope="col">Disponibilités</th>
+                <th scope="col" class="number">Parties</th>
               </tr>
             </thead>
             <tbody>
@@ -73,11 +75,12 @@ import { NewGameMaster } from './new-game-master';
                       }
                     </span>
                   </td>
+                  <td class="games number">{{ row.games }}</td>
                 </tr>
               } @empty {
                 @if (view.filter()) {
                   <tr>
-                    <td class="none" colspan="3">
+                    <td class="none" colspan="4">
                       Aucun MJ ne correspond
                       <button type="button" appButton="quiet" (click)="clearFilter()">
                         Effacer le filtre
@@ -88,7 +91,7 @@ import { NewGameMaster } from './new-game-master';
               }
               @for (key of newKeys(); track key) {
                 <tr class="new">
-                  <td colspan="3">
+                  <td colspan="4">
                     <app-new-game-master (added)="onAdded($event)" (cancelled)="closeNew()" />
                   </td>
                 </tr>
@@ -119,7 +122,7 @@ import { NewGameMaster } from './new-game-master';
 
       /* Largeur fixe : assez pour la ligne « Nouveau MJ », son champ et ses boutons. */
       table {
-        width: 40rem;
+        width: 46rem;
       }
 
       .number {
@@ -212,7 +215,8 @@ export class GameMasterList {
           title: fr`Créneau ${rank} · ${formatTimeRange(start, end)} : ${state}`,
         };
       });
-      return { gameMaster, pips, summary: availabilitySummary(pips) };
+      const games = new Set(gameMaster.games.map(({ gameId }) => gameId)).size;
+      return { gameMaster, pips, summary: availabilitySummary(pips), games };
     });
   });
 

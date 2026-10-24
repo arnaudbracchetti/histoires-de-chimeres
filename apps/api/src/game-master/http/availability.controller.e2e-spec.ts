@@ -64,6 +64,10 @@ describe('Disponibilités des MJ (PR-2)', () => {
       availabilities: [slot1, slot2],
       scenarios: [],
       games: [],
+      withdrawals: [
+        { timeSlotId: slot1, refusal: null },
+        { timeSlotId: slot2, refusal: null },
+      ],
     });
     expect((await readGameMaster(elodie).expect(200)).body).toEqual(response.body);
   });

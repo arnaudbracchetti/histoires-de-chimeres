@@ -13,10 +13,9 @@ import {
   type MoveGameBody,
   type ResponseOf,
   type ScheduleGameBody,
-  type VerdictRefusalDto,
 } from '@chimeres/contract';
 import { Refusal, type Placement } from '@chimeres/domain';
-import { messageOf } from '../../http/problem-catalogue.js';
+import { verdictOf } from '../../http/problem-catalogue.js';
 import { ZodBody } from '../../http/zod-body.pipe.js';
 import { moveGameBodySchema, scheduleGameBodySchema } from './schedule-game-body.schema.js';
 
@@ -96,8 +95,4 @@ function toDto({ games, reserve }: Schedule): ResponseOf<typeof scheduleEndpoint
       unschedulable: unschedulable && verdictOf(unschedulable),
     })),
   };
-}
-
-function verdictOf({ code, params }: Refusal): VerdictRefusalDto {
-  return { code, ...messageOf(code, params) };
 }

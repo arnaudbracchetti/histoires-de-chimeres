@@ -4,6 +4,7 @@ export {
   type ConventionState,
   type Placement,
   type ReserveOfScenario,
+  type Withdrawal,
 } from './convention/convention.js';
 export { Game } from './convention/game.js';
 export { GameMaster } from './convention/game-master.js';

@@ -114,11 +114,17 @@ function seatsRules(path: SchemaPath<number | null>, missing: string): void {
           <input type="number" step="1" [formField]="form.seats.max" />
         </app-field>
       </div>
-      <fieldset>
-        <legend>Durée</legend>
-        <label><input type="radio" value="1" [formField]="form.duration" /> 1&nbsp;créneau</label>
-        <label><input type="radio" value="2" [formField]="form.duration" /> 2&nbsp;créneaux</label>
-      </fieldset>
+      <div class="duration">
+        <fieldset [attr.aria-describedby]="durationError() ? 'duration-error' : null">
+          <legend>Durée</legend>
+          <label><input type="radio" value="1" [formField]="form.duration" /> 1&nbsp;créneau</label>
+          <label
+            ><input type="radio" value="2" [formField]="form.duration" /> 2&nbsp;créneaux</label
+          >
+        </fieldset>
+        <!-- Ligne réservée, vide sans erreur : le refus de l'API n'y décale rien. -->
+        <p class="error" id="duration-error">{{ durationError() }}</p>
+      </div>
       <app-save-button [submitting]="form().submitting()" [savedAt]="savedAt()" />
     </form>
   `,
@@ -177,12 +183,24 @@ function seatsRules(path: SchemaPath<number | null>, missing: string): void {
         gap: var(--space-m);
       }
 
+      .duration {
+        margin-bottom: var(--space-m);
+      }
+
       fieldset {
         display: flex;
         gap: var(--space-l);
-        margin: 0 0 var(--space-m);
+        margin: 0;
         padding: 0;
         border: none;
+      }
+
+      .error {
+        min-height: calc(var(--font-size-meta) * 1.4);
+        margin-top: var(--space-xxs);
+        color: var(--danger);
+        font-size: var(--font-size-meta);
+        line-height: 1.4;
       }
 
       legend {
@@ -270,6 +288,9 @@ export class ScenarioForm {
       submission: submitWith(() => this.write(), { beforeFocus: () => this.previewing.set(false) }),
     },
   );
+
+  /** Le refus de la durée, que seule l'API donne : un scénario programmé la garde (PR-14). */
+  protected readonly durationError = computed(() => this.form.duration().errors()[0]?.message);
 
   /** Vrai tant que la saisie diffère de ce qui est enregistré. */
   hasUnsavedChanges(): boolean {

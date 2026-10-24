@@ -13,7 +13,6 @@ import {
 import { NBSP } from '../typography/french';
 import { GameMasterList } from './game-master-list';
 
-
 /** Les MJ, dans l'ordre donné : celui que renvoie l'API. */
 const gameMasters = (...nicknames: string[]): GameMasterDto[] =>
   nicknames.map((nickname) => ({
@@ -144,6 +143,28 @@ describe('GameMasterList', () => {
     ]);
 
     expect([...host.querySelectorAll('tbody td.scenarios')].map(text)).toEqual(['2', '0']);
+  });
+
+  it('montre le nombre de parties que mène chaque MJ : une partie double compte une fois', async () => {
+    const game = (gameId: string, timeSlotId: string) => ({
+      gameId,
+      timeSlotId,
+      table: { id: 't1', name: 'Table 1' },
+      scenario: { id: 'sc1', title: 'Néons' },
+    });
+    const { host, text } = await render([
+      {
+        id: 'g1',
+        nickname: 'Élodie',
+        availabilities: ['s1', 's2', 's3'],
+        scenarios: [],
+        games: [game('p1', 's1'), game('p2', 's2'), game('p2', 's3')],
+      },
+      { id: 'g2', nickname: 'Kaïros', availabilities: [], scenarios: [], games: [] },
+    ]);
+
+    expect([...host.querySelectorAll('thead th')].map(text)).toContain('Parties');
+    expect([...host.querySelectorAll('tbody td.games')].map(text)).toEqual(['2', '0']);
   });
 
   it('trie par pseudo, dans un sens puis dans l’autre, et l’indique par aria-sort', async () => {

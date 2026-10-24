@@ -43,8 +43,9 @@ import { SCENARIO_REPOSITORY } from './scenario-repository.token.js';
     },
     {
       provide: UpdateScenario,
-      useFactory: (scenarios: ScenarioRepository) => new UpdateScenario(scenarios),
-      inject: [SCENARIO_REPOSITORY],
+      useFactory: (conventions: ConventionRepository, scenarios: ScenarioRepository) =>
+        new UpdateScenario(conventions, scenarios),
+      inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY],
     },
     {
       provide: RemoveScenario,

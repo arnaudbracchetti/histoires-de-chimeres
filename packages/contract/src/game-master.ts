@@ -1,4 +1,5 @@
 import { endpoint } from './endpoint.js';
+import type { VerdictRefusalDto } from './problem.js';
 import type { ScenarioSummaryDto } from './scenario.js';
 
 /** Longueur maximale d'un pseudo. Le domaine reprend cette borne. */
@@ -12,7 +13,7 @@ export type GameMasterGameDto = {
   scenario: { id: string; title: string };
 };
 
-/** Un MJ, dans la liste comme sur sa fiche. */
+/** Un MJ, dans la liste. */
 export type GameMasterDto = {
   id: string;
   /** Le pseudo tel qu'il a été saisi. */
@@ -24,6 +25,15 @@ export type GameMasterDto = {
   /** Les parties qu'il mène, une par créneau, dans l'ordre de la journée. */
   games: GameMasterGameDto[];
 };
+
+/**
+ * Le verdict de retrait d'une disponibilité (PR-15) : `refusal` est `null` si on peut la retirer,
+ * sinon le refus que l'écriture lèverait.
+ */
+export type WithdrawalDto = { timeSlotId: string; refusal: VerdictRefusalDto | null };
+
+/** Un MJ, sur sa fiche : en plus, le verdict de retrait de chaque disponibilité, dans l'ordre de la journée. */
+export type GameMasterSheetDto = GameMasterDto & { withdrawals: WithdrawalDto[] };
 
 /** Pseudo d'un MJ. Corps de la création et du changement de pseudo. */
 export type GameMasterNicknameBody = {
@@ -38,9 +48,9 @@ export type GameMasterParams = { gameMasterId: string };
  */
 export const gameMasterEndpoints = {
   list: endpoint<GameMasterDto[]>('GET', 'game-masters'),
-  read: endpoint<GameMasterDto, GameMasterParams>('GET', 'game-masters/:gameMasterId'),
+  read: endpoint<GameMasterSheetDto, GameMasterParams>('GET', 'game-masters/:gameMasterId'),
   add: endpoint<GameMasterDto[], never, GameMasterNicknameBody>('POST', 'game-masters'),
-  rename: endpoint<GameMasterDto, GameMasterParams, GameMasterNicknameBody>(
+  rename: endpoint<GameMasterSheetDto, GameMasterParams, GameMasterNicknameBody>(
     'PUT',
     'game-masters/:gameMasterId',
   ),

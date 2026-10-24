@@ -1,6 +1,6 @@
 import { Component, inject, input, linkedSignal, output } from '@angular/core';
 import { form, FormField } from '@angular/forms/signals';
-import { gameMasterEndpoints, type GameMasterDto } from '@chimeres/contract';
+import { gameMasterEndpoints, type GameMasterSheetDto } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { CardForm } from '../forms/card-form';
 import { submitWith } from '../forms/submit-with';
@@ -49,9 +49,9 @@ import { nicknameRules } from './nickname';
   `,
 })
 export class NicknameEditor {
-  readonly gameMaster = input.required<GameMasterDto>();
+  readonly gameMaster = input.required<GameMasterSheetDto>();
   /** Le pseudo est enregistré : la fiche relue. */
-  readonly saved = output<GameMasterDto>();
+  readonly saved = output<GameMasterSheetDto>();
 
   private readonly apiCall = injectApiCall();
   private readonly announcer = inject(Announcer);

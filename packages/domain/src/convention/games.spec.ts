@@ -138,17 +138,13 @@ describe('Contraintes de programmation (PR-5)', () => {
     });
   });
 
-  it("donne d'abord l'indisponibilité, puis le MJ occupé, puis la table prise", () => {
+  it('donne le MJ occupé avant la table prise', () => {
     const convention = aConvention();
     convention.schedule('p1', neons, 's1', 't1');
     convention.schedule('p2', brumes, 's1', 't2');
 
     expect(refusalOf(() => convention.schedule('p3', ruines, 's1', 't2')).code).toBe(
       'game-master-busy',
-    );
-    convention.withdrawAvailability('g1', 's1');
-    expect(refusalOf(() => convention.schedule('p3', ruines, 's1', 't1')).code).toBe(
-      'game-master-unavailable',
     );
   });
 
@@ -289,6 +285,10 @@ describe('Ce qui porte des parties (PR-10)', () => {
     });
     convention.removeTimeSlot('s2');
     expect(convention.timeSlots.map(({ id }) => id)).toEqual(['s1']);
+    convention.unschedule('p1');
+    convention.unschedule('p2');
+    convention.removeTimeSlot('s1');
+    expect(convention.timeSlots).toEqual([]);
   });
 
   it('refuse de supprimer une table qui porte des parties, avec leur nombre', () => {
@@ -301,6 +301,107 @@ describe('Ce qui porte des parties (PR-10)', () => {
     });
     convention.removeTable('t2');
     expect(convention.tables.map(({ id }) => id)).toEqual(['t1']);
+    convention.renameTable('t1', 'Dragon');
+    expect(convention.tables[0]!.name.text).toBe('Dragon');
+    convention.unschedule('p1');
+    convention.removeTable('t1');
+    expect(convention.tables).toEqual([]);
+  });
+});
+
+describe('Une disponibilité qui porte une partie (PR-15)', () => {
+  it('refuse de la retirer, puis accepte après la déprogrammation', () => {
+    const convention = aConvention();
+    convention.schedule('p1', neons, 's1', 't1');
+
+    expect(refusalOf(() => convention.withdrawAvailability('g1', 's1'))).toMatchObject({
+      code: 'availability-has-game',
+      params: { nickname: 'Élodie', rank: 1 },
+    });
+    convention.unschedule('p1');
+    convention.withdrawAvailability('g1', 's1');
+    expect(convention.gameMasters[0]!.isAvailableOn('s1')).toBe(false);
+  });
+
+  it('refuse de retirer le second créneau d’une partie double', () => {
+    const convention = aConvention();
+    convention.schedule('p1', aScenario('d', 'g1', 2), 's1', 't1');
+
+    expect(refusalOf(() => convention.withdrawAvailability('g1', 's2'))).toMatchObject({
+      code: 'availability-has-game',
+      params: { rank: 2 },
+    });
+  });
+
+  it('donne, pour chaque disponibilité du MJ, le refus même du retrait, ou rien', () => {
+    const convention = aConvention();
+    convention.schedule('p1', neons, 's2', 't1');
+
+    const withdrawals = convention.withdrawalsOf('g1');
+
+    expect(
+      withdrawals.map(({ timeSlotId, refusal }) => [timeSlotId, refusal?.code ?? null]),
+    ).toEqual([
+      ['s1', null],
+      ['s2', 'availability-has-game'],
+    ]);
+    expect(withdrawals[1]!.refusal).toEqual(
+      refusalOf(() => convention.withdrawAvailability('g1', 's2')),
+    );
+    expect(convention.withdrawalsOf('g2')).toEqual([{ timeSlotId: 's1', refusal: null }]);
+  });
+});
+
+describe('Heures d’un créneau qui porte une partie (PR-11)', () => {
+  it('refuse de les changer, avec le nombre de parties', () => {
+    const convention = aConvention();
+    convention.schedule('p1', neons, 's1', 't1');
+    convention.schedule('p2', brumes, 's1', 't2');
+
+    expect(
+      refusalOf(() => convention.changeTimeSlotHours('s1', at('08:00'), at('10:30'))),
+    ).toMatchObject({ code: 'time-slot-hours-locked-by-games', params: { rank: 1, games: 2 } });
+  });
+
+  it('les accepte une fois les parties déprogrammées et les disponibilités retirées', () => {
+    const convention = aConvention();
+    convention.schedule('p1', neons, 's1', 't1');
+    convention.unschedule('p1');
+    convention.withdrawAvailability('g1', 's1');
+    convention.withdrawAvailability('g2', 's1');
+
+    convention.changeTimeSlotHours('s1', at('08:00'), at('10:30'));
+
+    expect(convention.timeSlots[0]!.start.equals(at('08:00'))).toBe(true);
+  });
+});
+
+describe('Scénario qui a des parties (PR-14)', () => {
+  it('refuse de changer sa durée, puis accepte après la déprogrammation', () => {
+    const convention = aConvention();
+    const scenario = aScenario('e', 'g1');
+    convention.schedule('p1', scenario, 's1', 't1');
+
+    expect(refusalOf(() => scenario.changeDuration(2, convention))).toMatchObject({
+      code: 'scenario-duration-locked',
+    });
+    scenario.changeDuration(1, convention);
+    convention.unschedule('p1');
+    scenario.changeDuration(2, convention);
+    expect(scenario.duration).toBe(2);
+  });
+
+  it('refuse de le supprimer, puis accepte après la déprogrammation', () => {
+    const convention = aConvention();
+    convention.schedule('p1', neons, 's1', 't1');
+
+    expect(refusalOf(() => neons.remove(convention))).toMatchObject({
+      code: 'scenario-has-games',
+    });
+    expect(convention.hasGamesOf('a')).toBe(true);
+    expect(convention.hasGamesOf('b')).toBe(false);
+    convention.unschedule('p1');
+    expect(() => neons.remove(convention)).not.toThrow();
   });
 });
 

@@ -109,8 +109,10 @@ export class Scenario {
     this.state.seats = Seats.of(min, max);
   }
 
-  /** Le refus d'un scénario qui a des parties arrivera avec la programmation (PR-14). */
-  changeDuration(duration: Duration): void {
+  /** La durée ne change plus dès qu'une partie du scénario est programmée (PR-14). */
+  changeDuration(duration: Duration, convention: Convention): void {
+    if (duration === this.state.duration) return;
+    if (convention.hasGamesOf(this.id)) throw new Refusal('scenario-duration-locked', {});
     this.state.duration = duration;
   }
 
@@ -124,10 +126,12 @@ export class Scenario {
   }
 
   /**
-   * Vérifie que le scénario peut être supprimé ; le repository le supprime ensuite. La convention
-   * dira s'il a des parties, refusées avec la programmation (PR-14).
+   * Vérifie que le scénario peut être supprimé : il n'a aucune partie (PR-14). Le repository le
+   * supprime ensuite.
    */
-  remove(_convention: Convention): void {}
+  remove(convention: Convention): void {
+    if (convention.hasGamesOf(this.id)) throw new Refusal('scenario-has-games', {});
+  }
 }
 
 /** Vérifie le contenu, champ par champ dans l'ordre de la saisie, et le renvoie sans les espaces autour. */

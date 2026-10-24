@@ -15,6 +15,7 @@ export { UnscheduleGame } from './game/unschedule-game.js';
 export { AddGameMaster } from './game-master/add-game-master.js';
 export { DeclareAvailability } from './game-master/declare-availability.js';
 export type { GameMasterReader } from './game-master/game-master-reader.js';
+export { ReadGameMaster, type GameMasterSheet } from './game-master/read-game-master.js';
 export { RemoveGameMaster } from './game-master/remove-game-master.js';
 export { RenameGameMaster } from './game-master/rename-game-master.js';
 export { WithdrawAvailability } from './game-master/withdraw-availability.js';

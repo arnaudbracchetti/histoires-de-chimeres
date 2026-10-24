@@ -61,6 +61,7 @@ describe('MJ', () => {
       availabilities: [],
       scenarios: [],
       games: [],
+      withdrawals: [],
     });
   });
 
@@ -121,6 +122,7 @@ describe('MJ', () => {
       availabilities: [],
       scenarios: [],
       games: [],
+      withdrawals: [],
     });
     expect((await read(id).expect(200)).body).toEqual(response.body);
   });

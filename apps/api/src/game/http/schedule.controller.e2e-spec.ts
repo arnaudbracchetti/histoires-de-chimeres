@@ -11,6 +11,7 @@ import {
   timeSlotEndpoints,
   type ConventionDto,
   type GameMasterDto,
+  type GameMasterSheetDto,
   type PlacementDto,
   type ScenarioDto,
   type ScheduleDto,
@@ -263,10 +264,22 @@ describe('Programme', () => {
     await schedule({ scenarioId: neons.id }).expect(400);
   });
 
-  it('refuse de supprimer un créneau ou une table qui porte une partie : 422 (PR-10)', async () => {
-    await schedule({ scenarioId: neons.id, timeSlotId: slot(1), tableId: table('Table 1') }).expect(
-      201,
-    );
+  /** Programme « Néons » sur le créneau 1, Table 1, et renvoie l'identifiant de la partie. */
+  const scheduleNeons = async () => {
+    const dto = (
+      await schedule({
+        scenarioId: neons.id,
+        timeSlotId: slot(1),
+        tableId: table('Table 1'),
+      }).expect(201)
+    ).body as ScheduleDto;
+    return dto.games[0]!.id;
+  };
+  const unschedule = (gameId: string) =>
+    server().delete(apiUrl(scheduleEndpoints.unschedule, { gameId })).expect(200);
+
+  it('refuse de supprimer un créneau ou une table qui porte une partie, puis accepte après la déprogrammation : 422 (PR-10)', async () => {
+    const gameId = await scheduleNeons();
 
     const timeSlot = await server()
       .delete(apiUrl(timeSlotEndpoints.remove, { timeSlotId: slot(1) }))
@@ -285,11 +298,117 @@ describe('Programme', () => {
       detail: "La table « Table 1 » porte une partie : déprogramme-la d'abord.",
     });
     await server()
-      .delete(apiUrl(timeSlotEndpoints.remove, { timeSlotId: slot(2) }))
+      .put(apiUrl(tableEndpoints.rename, { tableId: table('Table 1') }))
+      .send({ name: 'Dragon' })
+      .expect(200);
+
+    await unschedule(gameId);
+    await server()
+      .delete(apiUrl(timeSlotEndpoints.remove, { timeSlotId: slot(1) }))
       .expect(200);
     await server()
-      .delete(apiUrl(tableEndpoints.remove, { tableId: table('Table 2') }))
+      .delete(apiUrl(tableEndpoints.remove, { tableId: table('Table 1') }))
       .expect(200);
+  });
+
+  it('refuse de changer les heures d’un créneau qui porte une partie : 422 (PR-11)', async () => {
+    await scheduleNeons();
+
+    const response = await server()
+      .put(apiUrl(timeSlotEndpoints.changeHours, { timeSlotId: slot(1) }))
+      .send({ start: '08:00', end: '10:30' })
+      .expect(422);
+
+    expect(response.body).toMatchObject({
+      code: 'time-slot-hours-locked-by-games',
+      title: 'Heures figées',
+      detail:
+        'Le créneau 1 porte une partie : ses heures ne changent plus. Pour les changer, déprogramme-la, supprime le créneau, puis recrée-le.',
+    });
+  });
+
+  it('refuse de changer la durée ou de supprimer un scénario qui a une partie, puis accepte après la déprogrammation : 422 (PR-14)', async () => {
+    const gameId = await scheduleNeons();
+    const update = (duration: 1 | 2) =>
+      server()
+        .put(apiUrl(scenarioEndpoints.update, { scenarioId: neons.id }))
+        .send({
+          title: 'Néons',
+          system: 'Cthulhu',
+          presentation: 'Une enquête.',
+          contentWarnings: '',
+          seats: { min: 3, max: 6 },
+          duration,
+        });
+    const remove = () =>
+      server().delete(apiUrl(scenarioEndpoints.remove, { scenarioId: neons.id }));
+
+    const duration = await update(2).expect(422);
+    expect(duration.body).toMatchObject({
+      code: 'scenario-duration-locked',
+      title: 'Durée figée',
+      errors: [
+        {
+          field: 'duration',
+          message:
+            "Ce scénario est programmé : sa durée ne change plus. Déprogramme d'abord ses parties.",
+        },
+      ],
+    });
+    await update(1).expect(200);
+    const removal = await remove().expect(422);
+    expect(removal.body).toMatchObject({
+      code: 'scenario-has-games',
+      title: 'Scénario programmé',
+      detail: "Ce scénario est programmé : déprogramme d'abord ses parties.",
+    });
+
+    await unschedule(gameId);
+    await update(2).expect(200);
+    await remove().expect(204);
+  });
+
+  it('refuse de retirer une disponibilité sur laquelle le MJ mène une partie, puis accepte après la déprogrammation : 422 (PR-15)', async () => {
+    const gameId = await scheduleNeons();
+    const withdraw = () =>
+      server().delete(
+        apiUrl(availabilityEndpoints.withdraw, { gameMasterId: elodie.id, timeSlotId: slot(1) }),
+      );
+
+    const response = await withdraw().expect(422);
+    expect(response.body).toMatchObject({
+      code: 'availability-has-game',
+      title: 'Disponibilité programmée',
+      detail: "Élodie mène une partie sur le créneau 1 : déprogramme-la d'abord.",
+    });
+
+    await unschedule(gameId);
+    expect((await withdraw().expect(200)).body.availabilities).toEqual([slot(2)]);
+  });
+
+  it('la fiche du MJ donne le verdict de retrait de chaque disponibilité, égal au refus de l’écriture (PR-15)', async () => {
+    await scheduleNeons();
+
+    const sheet = (
+      await server()
+        .get(apiUrl(gameMasterEndpoints.read, { gameMasterId: elodie.id }))
+        .expect(200)
+    ).body as GameMasterSheetDto;
+
+    expect(sheet.withdrawals).toEqual([
+      {
+        timeSlotId: slot(1),
+        refusal: {
+          code: 'availability-has-game',
+          title: 'Disponibilité programmée',
+          detail: "Élodie mène une partie sur le créneau 1 : déprogramme-la d'abord.",
+        },
+      },
+      { timeSlotId: slot(2), refusal: null },
+    ]);
+    expect(sheet.games).toEqual([
+      expect.objectContaining({ timeSlotId: slot(1), scenario: { id: neons.id, title: 'Néons' } }),
+    ]);
   });
 
   it('donne la grille des verdicts, égale aux refus de l’écriture', async () => {

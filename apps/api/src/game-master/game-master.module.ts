@@ -3,10 +3,12 @@ import { Module } from '@nestjs/common';
 import {
   AddGameMaster,
   DeclareAvailability,
+  ReadGameMaster,
   RemoveGameMaster,
   RenameGameMaster,
   WithdrawAvailability,
   type ConventionRepository,
+  type GameMasterReader,
   type ScenarioRepository,
 } from '@chimeres/application';
 import { CONVENTION_REPOSITORY } from '../convention/convention-repository.token.js';
@@ -23,6 +25,12 @@ import { PrismaGameMasterReader } from './persistence/prisma-game-master-reader.
   controllers: [GameMasterController, AvailabilityController],
   providers: [
     { provide: GAME_MASTER_READER, useClass: PrismaGameMasterReader },
+    {
+      provide: ReadGameMaster,
+      useFactory: (conventions: ConventionRepository, reader: GameMasterReader) =>
+        new ReadGameMaster(conventions, reader),
+      inject: [CONVENTION_REPOSITORY, GAME_MASTER_READER],
+    },
     {
       provide: AddGameMaster,
       useFactory: (repository: ConventionRepository) => new AddGameMaster(repository, randomUUID),

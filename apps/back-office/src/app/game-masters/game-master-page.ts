@@ -8,7 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { gameMasterEndpoints, type GameMasterDto } from '@chimeres/contract';
+import { gameMasterEndpoints, type GameMasterSheetDto } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { apiResource, currentValue } from '../api-resource';
 import { ConventionStore } from '../convention/convention-store';
@@ -218,7 +218,7 @@ export class GameMasterPage {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
 
-  protected onRenamed(gameMaster: GameMasterDto): void {
+  protected onRenamed(gameMaster: GameMasterSheetDto): void {
     this.resource.set(gameMaster);
     this.closeEditor();
   }
@@ -232,7 +232,7 @@ export class GameMasterPage {
   }
 
   /** Le nombre de disponibilités de chaque créneau a changé : la convention partagée est relue. */
-  protected onAvailabilitiesChanged(gameMaster: GameMasterDto): void {
+  protected onAvailabilitiesChanged(gameMaster: GameMasterSheetDto): void {
     this.resource.set(gameMaster);
     this.store.convention.reload();
   }
@@ -243,11 +243,11 @@ export class GameMasterPage {
     this.store.convention.reload();
   }
 
-  protected onMenu(value: string, gameMaster: GameMasterDto): void {
+  protected onMenu(value: string, gameMaster: GameMasterSheetDto): void {
     if (value === 'remove') void this.remove(gameMaster);
   }
 
-  private async remove({ id, nickname, availabilities }: GameMasterDto) {
+  private async remove({ id, nickname, availabilities }: GameMasterSheetDto) {
     const removed = await this.confirmation.ask({
       question: fr`Supprimer le MJ « ${nickname} » ?`,
       consequence: availabilitiesConsequence(availabilities.length),

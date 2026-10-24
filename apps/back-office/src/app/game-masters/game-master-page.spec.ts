@@ -7,12 +7,11 @@ import {
   apiUrl,
   conventionEndpoints,
   gameMasterEndpoints,
-  type GameMasterDto,
+  type GameMasterSheetDto,
   type ProblemDto,
 } from '@chimeres/contract';
 import { NBSP, THIN_NBSP } from '../typography/french';
 import { GameMasterPage } from './game-master-page';
-
 
 @Component({ template: '' })
 class Empty {}
@@ -30,7 +29,9 @@ describe('GameMasterPage', () => {
 
   async function render(
     response:
-      (Omit<GameMasterDto, 'id' | 'scenarios' | 'games'> & Partial<GameMasterDto>) | 'not-found' = {
+      | (Omit<GameMasterSheetDto, 'id' | 'scenarios' | 'games' | 'withdrawals'> &
+          Partial<GameMasterSheetDto>)
+      | 'not-found' = {
       nickname: 'Élodie',
       availabilities: [],
     },
@@ -41,7 +42,7 @@ describe('GameMasterPage', () => {
     fixture.detectChanges();
     const read = http.expectOne(apiUrl(gameMasterEndpoints.read, { gameMasterId: 'g1' }));
     if (response === 'not-found') read.flush(null, { status: 404, statusText: 'Introuvable' });
-    else read.flush({ id: 'g1', scenarios: [], games: [], ...response });
+    else read.flush({ id: 'g1', scenarios: [], games: [], withdrawals: [], ...response });
     http
       .expectOne(apiUrl(conventionEndpoints.read))
       .flush({ id: 'c1', name: 'Histoires de Chimères', date: null, tables: [], timeSlots: [] });

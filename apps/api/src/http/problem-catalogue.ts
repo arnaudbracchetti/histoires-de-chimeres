@@ -1,4 +1,10 @@
-import type { ProblemCode, RefusalCode, RefusalParams } from '@chimeres/contract';
+import type {
+  ProblemCode,
+  RefusalCode,
+  RefusalParams,
+  VerdictRefusalDto,
+} from '@chimeres/contract';
+import type { Refusal } from '@chimeres/domain';
 
 type ParamsOf<C extends ProblemCode> = C extends RefusalCode
   ? RefusalParams[C]
@@ -61,6 +67,11 @@ export const problemCatalogue: Catalogue = {
     title: 'Heures figées',
     detail: ({ rank, availabilities }) =>
       `${availabilities > 1 ? `${availabilities} MJ sont disponibles` : 'Un MJ est disponible'} sur le créneau ${rank} : ses heures ne changent plus. Pour les changer, supprime le créneau, puis recrée-le.`,
+  },
+  'time-slot-hours-locked-by-games': {
+    title: 'Heures figées',
+    detail: ({ rank, games }) =>
+      `Le créneau ${rank} porte ${games > 1 ? `${games} parties` : 'une partie'} : ses heures ne changent plus. Pour les changer, déprogramme-${games > 1 ? 'les' : 'la'}, supprime le créneau, puis recrée-le.`,
   },
   'time-slot-has-games': {
     title: 'Créneau programmé',
@@ -129,6 +140,11 @@ export const problemCatalogue: Catalogue = {
     detail: ({ nickname, rank }) =>
       `${nickname} mène déjà une partie sur le créneau ${rank} : choisis un autre créneau.`,
   },
+  'availability-has-game': {
+    title: 'Disponibilité programmée',
+    detail: ({ nickname, rank }) =>
+      `${nickname} mène une partie sur le créneau ${rank} : déprogramme-la d'abord.`,
+  },
   'game-master-without-availability': {
     title: 'MJ sans disponibilité',
     detail: ({ nickname }) =>
@@ -169,6 +185,16 @@ export const problemCatalogue: Catalogue = {
     title: 'Scénario introuvable',
     detail: () => "Ce scénario n'existe plus : recharge la page.",
     status: 404,
+  },
+  'scenario-duration-locked': {
+    title: 'Durée figée',
+    detail: () =>
+      "Ce scénario est programmé : sa durée ne change plus. Déprogramme d'abord ses parties.",
+    field: 'duration',
+  },
+  'scenario-has-games': {
+    title: 'Scénario programmé',
+    detail: () => "Ce scénario est programmé : déprogramme d'abord ses parties.",
   },
   'scenario-title-required': {
     title: 'Titre obligatoire',
@@ -263,4 +289,9 @@ export function messageOf<C extends RefusalCode>(
 ): { title: string; detail: string } {
   const message = problemCatalogue[code] as Message<RefusalParams[C]>;
   return { title: message.title, detail: message.detail(params) };
+}
+
+/** Un refus du domaine rendu comme verdict d'une lecture, avec son motif et sa phrase. */
+export function verdictOf({ code, params }: Refusal): VerdictRefusalDto {
+  return { code, ...messageOf(code, params) };
 }

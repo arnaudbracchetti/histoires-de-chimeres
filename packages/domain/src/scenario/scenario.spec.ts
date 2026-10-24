@@ -187,7 +187,7 @@ describe('Modifier un scénario (PR-14)', () => {
   it('modifie la durée', () => {
     const scenario = aScenario();
 
-    scenario.changeDuration(2);
+    scenario.changeDuration(2, aConvention());
 
     expect(scenario.duration).toBe(2);
   });

@@ -1,5 +1,9 @@
 import { Component, computed, inject, input, output } from '@angular/core';
-import { availabilityEndpoints, type GameMasterDto, type TimeSlotDto } from '@chimeres/contract';
+import {
+  availabilityEndpoints,
+  type GameMasterSheetDto,
+  type TimeSlotDto,
+} from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { injectGesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
@@ -11,7 +15,6 @@ import { Icon } from '../ui/icon';
 /** Un morceau de la journée, en minutes : un créneau, ou une pause sans `slot`. */
 type Segment = { start: number; end: number; slot?: TimeSlotDto };
 
-
 /**
  * Les disponibilités d'un MJ (docs/design/patterns.md, Disponibilités) : la journée en frise, à
  * l'échelle ; chaque créneau est un bloc à sa place et à sa durée, qui porte une case à cocher.
@@ -19,7 +22,9 @@ type Segment = { start: number; end: number; slot?: TimeSlotDto };
  * prend son nouvel état, atténué ; refusé, il revient à son état, le refus s'affiche en
  * notification, et `refused` demande de relire l'écran (Erreur hors formulaire). Le texte d'un
  * bloc suit sa largeur : plus petit, sur plusieurs lignes, puis réduit au rang et à l'icône.
- * Un créneau où le MJ mène une partie le dit, avec le scénario et la table.
+ * Un créneau où le MJ mène une partie le dit, avec le scénario et la table. Une disponibilité que
+ * la fiche dit impossible à retirer (PR-15) est cochée et verrouillée : la case est désactivée, et
+ * le refus du domaine s'affiche au survol.
  *
  * La grille a une colonne par segment de la journée, créneau ou pause, large de sa durée en `fr` ;
  * une heure pleine se place dans son segment, à proportion.
@@ -48,7 +53,9 @@ type Segment = { start: number; end: number; slot?: TimeSlotDto };
             class="block"
             [class.on]="isChecked(block.slot.id)"
             [class.pending]="writes.isRunning(block.slot.id)"
+            [class.locked]="block.locked"
             [style.grid-column]="block.column"
+            [attr.title]="block.locked?.detail ?? null"
           >
             <input
               type="checkbox"
@@ -56,6 +63,7 @@ type Segment = { start: number; end: number; slot?: TimeSlotDto };
               [attr.aria-label]="block.label"
               [attr.aria-describedby]="block.game ? 'game-' + block.slot.id : null"
               [checked]="isChecked(block.slot.id)"
+              [disabled]="!!block.locked"
               (change)="onChange(block.slot, $any($event.target))"
             />
             <span class="content">
@@ -176,6 +184,11 @@ type Segment = { start: number; end: number; slot?: TimeSlotDto };
         &.pending {
           opacity: 0.45;
         }
+
+        /* Verrouillé : le bloc reste coché, et ne se clique pas. */
+        &.locked {
+          cursor: default;
+        }
       }
 
       /* La taille du texte suit la largeur du bloc, entre 11 et 13 px. */
@@ -263,11 +276,11 @@ type Segment = { start: number; end: number; slot?: TimeSlotDto };
   `,
 })
 export class AvailabilityTimeline {
-  readonly gameMaster = input.required<GameMasterDto>();
+  readonly gameMaster = input.required<GameMasterSheetDto>();
   /** Les créneaux de la journée, dans l'ordre ; au moins un. */
   readonly timeSlots = input.required<readonly TimeSlotDto[]>();
   /** Une disponibilité est enregistrée : la fiche relue du MJ. */
-  readonly changed = output<GameMasterDto>();
+  readonly changed = output<GameMasterSheetDto>();
   /** Une écriture est refusée (404, 409, 422) : le bloc est revenu à son état, l'écran est à relire. */
   readonly refused = output<void>();
 
@@ -332,6 +345,16 @@ export class AvailabilityTimeline {
     () => new Map(this.gameMaster().games.map((game) => [game.timeSlotId, game])),
   );
 
+  /** Le refus de retrait de chaque disponibilité verrouillée, que la fiche donne (PR-15). */
+  private readonly locks = computed(
+    () =>
+      new Map(
+        this.gameMaster().withdrawals.flatMap(({ timeSlotId, refusal }) =>
+          refusal ? [[timeSlotId, refusal] as const] : [],
+        ),
+      ),
+  );
+
   protected readonly blocks = computed(() =>
     this.segments().flatMap(({ slot }, index) =>
       slot
@@ -343,6 +366,7 @@ export class AvailabilityTimeline {
               end: `${THIN_NBSP}${formatTime(slot.end)}`,
               column: `${index + 1} / ${index + 2}`,
               game: this.games().get(slot.id),
+              locked: this.locks().get(slot.id),
             },
           ]
         : [],
@@ -364,10 +388,14 @@ export class AvailabilityTimeline {
     void this.write(slot, box.checked);
   }
 
-  /** Tous les créneaux d'un geste, un par un : les écritures simultanées se gêneraient. */
+  /**
+   * Tous les créneaux d'un geste, un par un : les écritures simultanées se gêneraient. Une
+   * disponibilité verrouillée reste.
+   */
   protected async setAll(available: boolean): Promise<void> {
     const slots = this.timeSlots().filter(
-      ({ id }) => this.isChecked(id) !== available && !this.writes.isRunning(id),
+      ({ id }) =>
+        this.isChecked(id) !== available && !this.writes.isRunning(id) && !this.locks().has(id),
     );
     for (const slot of slots) {
       if (!(await this.write(slot, available))) return;
