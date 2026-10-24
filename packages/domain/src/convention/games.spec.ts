@@ -570,6 +570,170 @@ describe('Déplacer une partie (PR-17)', () => {
   });
 });
 
+describe('Échanger deux parties (PR-17)', () => {
+  const placeOf = (convention: Convention, gameId: string) => {
+    const game = convention.games.find(({ id }) => id === gameId)!;
+    return [game.tableId, game.timeSlotIds];
+  };
+
+  it('échange deux parties sur deux tables', () => {
+    const convention = aConvention();
+    convention.schedule('p1', neons, 's1', 't1');
+    convention.schedule('p2', brumes, 's1', 't2');
+
+    convention.swapGames('p1', 'p2');
+
+    expect(placeOf(convention, 'p1')).toEqual(['t2', ['s1']]);
+    expect(placeOf(convention, 'p2')).toEqual(['t1', ['s1']]);
+  });
+
+  it('échange deux parties sur deux créneaux, en gardant leur identité, leurs places et leur rang', () => {
+    const seats = Seats.of(2, 6);
+    const convention = Convention.restore({
+      id: 'c1',
+      name: 'Histoires de Chimères',
+      date: null,
+      timeSlots: [
+        new TimeSlot('s1', at('09:00'), at('11:30')),
+        new TimeSlot('s2', at('14:00'), at('16:30')),
+      ],
+      tables: [new Table('t1', ComparableName.of('Table 1'))],
+      gameMasters: [
+        new GameMaster('g1', ComparableName.of('Élodie'), ['s1', 's2']),
+        new GameMaster('g2', ComparableName.of('Kaïros'), ['s1', 's2']),
+      ],
+      games: [
+        new Game('p1', 'a', 'g1', 't1', ['s1'], seats),
+        new Game('p2', 'c', 'g2', 't1', ['s2']),
+      ],
+      version: 0,
+    });
+
+    convention.swapGames('p2', 'p1');
+
+    expect(convention.games).toEqual([
+      new Game('p1', 'a', 'g1', 't1', ['s2'], seats),
+      new Game('p2', 'c', 'g2', 't1', ['s1']),
+    ]);
+  });
+
+  it("refuse si l'une des deux ne peut pas prendre la place de l'autre, sans rien changer", () => {
+    const convention = aConvention();
+    convention.schedule('p1', neons, 's2', 't1');
+    convention.schedule('p2', brumes, 's1', 't2');
+
+    for (const [a, b] of [
+      ['p1', 'p2'],
+      ['p2', 'p1'],
+    ] as const) {
+      expect(refusalOf(() => convention.swapGames(a, b))).toMatchObject({
+        code: 'game-master-unavailable',
+        params: { nickname: 'Kaïros', rank: 2 },
+      });
+    }
+    expect(placeOf(convention, 'p1')).toEqual(['t1', ['s2']]);
+    expect(placeOf(convention, 'p2')).toEqual(['t2', ['s1']]);
+  });
+
+  it('refuse une partie avec elle-même, ou une partie inconnue', () => {
+    const convention = aConvention();
+    convention.schedule('p1', neons, 's1', 't1');
+
+    expect(refusalOf(() => convention.swapGames('p1', 'p1')).code).toBe('game-swapped-with-itself');
+    expect(refusalOf(() => convention.swapGames('p1', 'x')).code).toBe('game-not-found');
+    expect(refusalOf(() => convention.swapGames('x', 'p1')).code).toBe('game-not-found');
+  });
+
+  describe('une partie double avec une partie simple', () => {
+    /**
+     * Créneaux s1, s2 et s3, tables t1 et t2. « p1 », double d'Élodie (g1), sur s1 et s2 à la
+     * table 1 ; « p2 », simple de Kaïros (g2), sur s2 à la table 2. Élodie est disponible sur
+     * `elodie`, Kaïros sur s1 et s2.
+     */
+    const withDouble = (elodie = ['s1', 's2', 's3']) =>
+      Convention.restore({
+        id: 'c1',
+        name: 'Histoires de Chimères',
+        date: null,
+        timeSlots: [
+          new TimeSlot('s1', at('09:00'), at('11:30')),
+          new TimeSlot('s2', at('14:00'), at('16:30')),
+          new TimeSlot('s3', at('17:00'), at('19:30')),
+        ],
+        tables: [
+          new Table('t1', ComparableName.of('Table 1')),
+          new Table('t2', ComparableName.of('Table 2')),
+        ],
+        gameMasters: [
+          new GameMaster('g1', ComparableName.of('Élodie'), elodie),
+          new GameMaster('g2', ComparableName.of('Kaïros'), ['s1', 's2']),
+          new GameMaster('g3', ComparableName.of('Moïra'), ['s3']),
+        ],
+        games: [
+          new Game('p1', 'd', 'g1', 't1', ['s1', 's2']),
+          new Game('p2', 'c', 'g2', 't2', ['s2']),
+        ],
+        version: 0,
+      });
+
+    it('la partie double prend le premier créneau de l’autre, et le suivant avec lui', () => {
+      const convention = withDouble();
+
+      convention.swapGames('p1', 'p2');
+
+      expect(placeOf(convention, 'p1')).toEqual(['t2', ['s2', 's3']]);
+      expect(placeOf(convention, 'p2')).toEqual(['t1', ['s1']]);
+    });
+
+    it('refuse une table prise sur le créneau suivant', () => {
+      const convention = withDouble();
+      convention.schedule('p3', aScenario('m', 'g3'), 's3', 't2');
+
+      expect(refusalOf(() => convention.swapGames('p2', 'p1'))).toMatchObject({
+        code: 'table-taken',
+        params: { table: 'Table 2', rank: 3 },
+      });
+    });
+
+    it('refuse un MJ indisponible sur le créneau suivant', () => {
+      expect(refusalOf(() => withDouble(['s1', 's2']).swapGames('p1', 'p2'))).toMatchObject({
+        code: 'game-master-unavailable',
+        params: { nickname: 'Élodie', rank: 3 },
+      });
+    });
+
+    it('vérifie les deux nouvelles places ensemble : elles ne se chevauchent pas', () => {
+      // « p1 », double, sur s2 et s3 ; « p2 » sur s1, à la même table : p1 prendrait s1 et s2, où
+      // p2 arriverait.
+      const convention = Convention.restore({
+        id: 'c1',
+        name: 'Histoires de Chimères',
+        date: null,
+        timeSlots: [
+          new TimeSlot('s1', at('09:00'), at('11:30')),
+          new TimeSlot('s2', at('14:00'), at('16:30')),
+          new TimeSlot('s3', at('17:00'), at('19:30')),
+        ],
+        tables: [new Table('t1', ComparableName.of('Table 1'))],
+        gameMasters: [
+          new GameMaster('g1', ComparableName.of('Élodie'), ['s1', 's2', 's3']),
+          new GameMaster('g2', ComparableName.of('Kaïros'), ['s1', 's2']),
+        ],
+        games: [
+          new Game('p1', 'd', 'g1', 't1', ['s2', 's3']),
+          new Game('p2', 'c', 'g2', 't1', ['s1']),
+        ],
+        version: 0,
+      });
+
+      expect(refusalOf(() => convention.swapGames('p1', 'p2'))).toMatchObject({
+        code: 'table-taken',
+        params: { table: 'Table 1', rank: 2 },
+      });
+    });
+  });
+});
+
 describe('Déprogrammer une partie (PR-17)', () => {
   it('retire la partie du programme : son scénario revient dans la réserve', () => {
     const convention = aConvention();
@@ -605,23 +769,92 @@ describe('Verdicts de déplacement', () => {
     const verdicts = withTwoGames().movePlacementsOf('p2');
 
     expect(
-      verdicts.map(({ timeSlotId, tableId, refusal }) => [
-        timeSlotId,
-        tableId,
-        refusal?.code ?? null,
-      ]),
+      verdicts
+        .filter(({ swapWith }) => !swapWith)
+        .map(({ timeSlotId, tableId, refusal }) => [timeSlotId, tableId, refusal?.code ?? null]),
     ).toEqual([
-      ['s1', 't1', 'table-taken'],
       ['s1', 't2', null],
       ['s2', 't1', 'game-master-unavailable'],
       ['s2', 't2', 'game-master-unavailable'],
     ]);
-    for (const { timeSlotId, tableId, refusal } of verdicts) {
+    for (const { timeSlotId, tableId, swapWith, refusal } of verdicts) {
+      if (swapWith) continue;
       const copy = withTwoGames();
       if (refusal)
         expect(refusalOf(() => copy.moveGame('p2', timeSlotId, tableId))).toEqual(refusal);
       else expect(() => copy.moveGame('p2', timeSlotId, tableId)).not.toThrow();
     }
+  });
+
+  it("propose d'échanger sur la première case d'une autre partie, avec le refus même de l'échange", () => {
+    /**
+     * « p1 » d'Élodie sur s1, table 1 ; « p2 » de Kaïros sur s1, table 2 ; « p3 » d'Élodie sur s2,
+     * table 2.
+     */
+    const withThreeGames = () => {
+      const convention = aConvention();
+      convention.schedule('p1', neons, 's1', 't1');
+      convention.schedule('p2', brumes, 's1', 't2');
+      convention.schedule('p3', ruines, 's2', 't2');
+      return convention;
+    };
+
+    const verdicts = withThreeGames().movePlacementsOf('p2');
+
+    expect(
+      verdicts.map(({ timeSlotId, tableId, swapWith, refusal }) => [
+        timeSlotId,
+        tableId,
+        swapWith,
+        refusal?.code ?? null,
+      ]),
+    ).toEqual([
+      ['s1', 't1', 'p1', null],
+      ['s1', 't2', null, null],
+      ['s2', 't1', null, 'game-master-unavailable'],
+      ['s2', 't2', 'p3', 'game-master-unavailable'],
+    ]);
+    for (const { swapWith, refusal } of verdicts) {
+      if (!swapWith) continue;
+      const copy = withThreeGames();
+      if (refusal) expect(refusalOf(() => copy.swapGames('p2', swapWith))).toEqual(refusal);
+      else expect(() => copy.swapGames('p2', swapWith)).not.toThrow();
+    }
+  });
+
+  it("ne propose pas d'échanger sur le second créneau d'une partie double", () => {
+    const convention = Convention.restore({
+      id: 'c1',
+      name: 'Histoires de Chimères',
+      date: null,
+      timeSlots: [
+        new TimeSlot('s1', at('09:00'), at('11:30')),
+        new TimeSlot('s2', at('14:00'), at('16:30')),
+      ],
+      tables: [
+        new Table('t1', ComparableName.of('Table 1')),
+        new Table('t2', ComparableName.of('Table 2')),
+      ],
+      gameMasters: [
+        new GameMaster('g1', ComparableName.of('Élodie'), ['s1', 's2']),
+        new GameMaster('g2', ComparableName.of('Kaïros'), ['s1', 's2']),
+      ],
+      games: [
+        new Game('p1', 'd', 'g1', 't1', ['s1', 's2']),
+        new Game('p2', 'c', 'g2', 't2', ['s1']),
+      ],
+      version: 0,
+    });
+
+    expect(
+      convention
+        .movePlacementsOf('p2')
+        .filter(({ tableId }) => tableId === 't1')
+        .map(({ swapWith, refusal }) => [swapWith, refusal?.code ?? null]),
+    ).toEqual([
+      ['p1', null],
+      [null, 'table-taken'],
+    ]);
   });
 
   it('refuse une partie inconnue', () => {

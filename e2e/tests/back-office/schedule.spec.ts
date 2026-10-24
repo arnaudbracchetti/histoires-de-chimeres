@@ -17,9 +17,12 @@ import { expect, test } from '../../fixtures.js';
 const NBSP = ' ';
 const THIN = ' ';
 
-/** « Créneau 2 · 14 h 00 – 16 h 30, Table 1 » : le nom accessible d'un « Choisir ». */
-const cell = (rank: number, start: number, table: string) =>
-  `Choisir Créneau ${rank} · ${start}${NBSP}h${NBSP}00${THIN}–${THIN}${start + 2}${NBSP}h${NBSP}30, ${table}`;
+/**
+ * « Choisir Créneau 2 · 14 h 00 – 16 h 30, Table 1 » : le nom accessible d'un « Choisir », ou d'un
+ * « Échanger » avec `action`.
+ */
+const cell = (rank: number, start: number, table: string, action = 'Choisir') =>
+  `${action} Créneau ${rank} · ${start}${NBSP}h${NBSP}00${THIN}–${THIN}${start + 2}${NBSP}h${NBSP}30, ${table}`;
 
 async function post(page: Page, url: string, data: object) {
   const response = await page.request.post(url, { data });
@@ -82,10 +85,10 @@ async function prepare(page: Page) {
   const propose = (gameMasterId: string, title: string) =>
     proposeScenario(page, gameMasterId, title);
   const neons = await propose(elodie, 'Néons');
-  await propose(elodie, 'Ruines');
+  const ruines = await propose(elodie, 'Ruines');
   const brumes = await propose(kairos, 'Brumes');
   const tableId = (name: string) => convention!.tables.find((t) => t.name === name)!.id;
-  return { slot1, slot2, elodie, neons, brumes, tableId };
+  return { slot1, slot2, elodie, neons, ruines, brumes, tableId };
 }
 
 /** Par l'API, en plus de `prepare` : « Abysses », scénario double d'Élodie. */
@@ -550,10 +553,102 @@ test('le dialogue « Déplacer vers… » éteint les cases refusées, avec leur
 
   const dialog = placementDialog(page);
   const rowOf = (table: string) => dialog.getByRole('row', { name: new RegExp(`^${table}`) });
-  await expect(rowOf('Table 1')).toContainText('Table prise');
+  await expect(rowOf('Table 1').getByRole('button', { name: 'Échanger' })).toBeVisible();
   await expect(rowOf('Table 2')).toContainText('Sa place');
   await expect(dialog.getByText('MJ indisponible')).toHaveCount(2);
   await expect(dialog.getByRole('button', { name: /^Choisir/ })).toHaveCount(0);
+});
+
+test('échanger deux parties par « Déplacer vers… » (PR-17)', async ({ page }) => {
+  const { neons, ruines, slot1, slot2, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot2, tableId('Table 1'));
+  await scheduleByApi(page, ruines.id, slot1, tableId('Table 2'));
+  await page.goto('/gestion/');
+
+  await gameButton(page, 'Néons').click();
+  await sheet(page).getByRole('button', { name: 'Déplacer vers…' }).click();
+  await placementDialog(page)
+    .getByRole('button', { name: cell(1, 9, 'Table 2', 'Échanger') })
+    .click();
+
+  await expect(placementDialog(page)).toHaveCount(0);
+  await expect(gameButton(page, 'Néons')).toBeFocused();
+  await expect(page.locator('[aria-live="polite"]')).toHaveText(
+    `Parties «${NBSP}Néons${NBSP}» et «${NBSP}Ruines${NBSP}» échangées.`,
+  );
+  await expect(sheet(page)).toContainText(`Créneau 1 · 9${NBSP}h${NBSP}00`);
+  await page.reload();
+  await expect(timelineRow(page, 'Table 2')).toContainText('Néons');
+  await expect(timelineRow(page, 'Table 1')).toContainText('Ruines');
+});
+
+test('échanger une partie double avec une partie simple, puis le refus avec son motif (PR-5, PR-17)', async ({
+  page,
+}) => {
+  const { abysses, brumes, slot1, slot2, tableId } = await prepareDouble(page);
+  await scheduleByApi(page, abysses.id, slot1, tableId('Table 1'));
+  await scheduleByApi(page, brumes.id, slot1, tableId('Table 2'));
+  await page.goto('/gestion/');
+
+  await gameButton(page, 'Abysses').click();
+  await sheet(page).getByRole('button', { name: 'Déplacer vers…' }).click();
+  await placementDialog(page)
+    .getByRole('button', { name: cell(1, 9, 'Table 2', 'Échanger') })
+    .click();
+
+  await expect(placementDialog(page)).toHaveCount(0);
+  await expect(timelineRow(page, 'Table 2')).toContainText('Abysses');
+  await expect(timelineRow(page, 'Table 1')).toContainText('Brumes');
+
+  // Une partie de Moïra prend la table 1 au créneau 2 : Abysses n'y revient plus.
+  const [moira] = (
+    (await post(page, apiUrl(gameMasterEndpoints.add), { nickname: 'Moïra' })) as GameMasterDto[]
+  ).filter(({ nickname }) => nickname === 'Moïra');
+  const declared = await page.request.put(
+    apiUrl(availabilityEndpoints.declare, { gameMasterId: moira!.id, timeSlotId: slot2 }),
+  );
+  expect(declared.ok()).toBe(true);
+  const marees = await proposeScenario(page, moira!.id, 'Marées');
+  await scheduleByApi(page, marees.id, slot2, tableId('Table 1'));
+  await page.reload();
+  await gameButton(page, 'Abysses').click();
+  await sheet(page).getByRole('button', { name: 'Déplacer vers…' }).click();
+
+  const refused = placementDialog(page)
+    .getByRole('row', { name: /^Table 1/ })
+    .getByRole('cell')
+    .first();
+  await expect(refused).toContainText('Table prise');
+  await expect(refused.locator('.off')).toHaveAttribute(
+    'title',
+    'La table « Table 1 » accueille déjà une partie sur le créneau 2 : choisis une autre table.',
+  );
+  await expect(placementDialog(page).getByRole('button', { name: /^Échanger/ })).toHaveCount(0);
+});
+
+test('échanger au clavier seul (PR-17)', async ({ page }) => {
+  const { neons, ruines, slot1, slot2, tableId } = await prepare(page);
+  await scheduleByApi(page, neons.id, slot2, tableId('Table 1'));
+  await scheduleByApi(page, ruines.id, slot1, tableId('Table 2'));
+  await page.goto('/gestion/');
+  await gameButton(page, 'Néons').focus();
+
+  await page.keyboard.press('Enter');
+  await expect(sheet(page).getByRole('heading', { name: 'Néons' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  await expect(sheet(page).getByRole('button', { name: 'Déplacer vers…' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  // Élodie mène Ruines au créneau 1 : la seule case possible est l'échange avec elle.
+  await expect(
+    placementDialog(page).getByRole('button', { name: cell(1, 9, 'Table 2', 'Échanger') }),
+  ).toBeFocused();
+  await page.keyboard.press('Enter');
+
+  await expect(placementDialog(page)).toHaveCount(0);
+  await expect(gameButton(page, 'Néons')).toBeFocused();
+  await expect(timelineRow(page, 'Table 2')).toContainText('Néons');
+  await expect(timelineRow(page, 'Table 1')).toContainText('Ruines');
 });
 
 test('« Déprogrammer » dans la fiche : le scénario revient dans la réserve (PR-17)', async ({

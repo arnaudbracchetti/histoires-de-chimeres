@@ -154,19 +154,27 @@ export class ScheduleBoard {
   }
 
   /**
-   * Ouvre le dialogue de placement de la partie. Une fois déplacée, le focus va à sa carte, à sa
-   * nouvelle place, et la région `aria-live` l'annonce. La fiche reste ouverte.
+   * Ouvre le dialogue de placement de la partie. Une fois déplacée ou échangée, le focus va à sa
+   * carte, à sa nouvelle place, et la région `aria-live` l'annonce. La fiche reste ouverte.
    */
   protected async move(game: GameDto) {
     const { timeSlots, tables } = this.convention();
-    const schedule = await this.placements.moveTo({ game, timeSlots, tables });
-    if (!schedule) return;
+    const outcome = await this.placements.moveTo({ game, timeSlots, tables });
+    if (!outcome) return;
+    const { schedule, swappedWith } = outcome;
     this.schedule.set(schedule);
     const moved = schedule.games.find(({ id }) => id === game.id);
     if (!moved) return;
-    const slot = timeSlots.find(({ id }) => id === moved.timeSlotIds[0]);
-    const table = tables.find(({ id }) => id === moved.tableId);
-    this.announcer.announce(fr`Partie déplacée : créneau ${slot?.rank}, table ${table?.name}.`);
+    const other = schedule.games.find(({ id }) => id === swappedWith);
+    if (other) {
+      this.announcer.announce(
+        fr`Parties « ${moved.scenario.title} » et « ${other.scenario.title} » échangées.`,
+      );
+    } else {
+      const slot = timeSlots.find(({ id }) => id === moved.timeSlotIds[0]);
+      const table = tables.find(({ id }) => id === moved.tableId);
+      this.announcer.announce(fr`Partie déplacée : créneau ${slot?.rank}, table ${table?.name}.`);
+    }
     this.focusGame(moved);
   }
 

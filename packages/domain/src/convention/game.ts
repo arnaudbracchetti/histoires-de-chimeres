@@ -22,6 +22,11 @@ export class Game {
     return this.timeSlotIds.includes(timeSlotId);
   }
 
+  /** Elle commence sur ce créneau, à cette table : c'est sa première case. */
+  startsAt(timeSlotId: string, tableId: string): boolean {
+    return this.timeSlotIds[0] === timeSlotId && this.tableId === tableId;
+  }
+
   /**
    * Ses créneaux se suivent dans la journée, donnée par les ids de ses créneaux dans l'ordre : aucun
    * autre ne s'est glissé entre eux (PR-11).

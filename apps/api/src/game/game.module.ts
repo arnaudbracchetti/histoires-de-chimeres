@@ -6,6 +6,7 @@ import {
   ReadPlacements,
   ReadSchedule,
   ScheduleGame,
+  SwapGames,
   UnscheduleGame,
   type ConventionRepository,
   type ScenarioRepository,
@@ -53,6 +54,11 @@ import { SCHEDULE_READER } from './schedule-reader.token.js';
     {
       provide: MoveGame,
       useFactory: (conventions: ConventionRepository) => new MoveGame(conventions),
+      inject: [CONVENTION_REPOSITORY],
+    },
+    {
+      provide: SwapGames,
+      useFactory: (conventions: ConventionRepository) => new SwapGames(conventions),
       inject: [CONVENTION_REPOSITORY],
     },
     {

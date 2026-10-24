@@ -181,6 +181,10 @@ export const problemCatalogue: Catalogue = {
     detail: () => "Cette partie n'existe plus : recharge la page.",
     status: 404,
   },
+  'game-swapped-with-itself': {
+    title: 'Même partie',
+    detail: () => "Une partie ne s'échange pas avec elle-même : choisis une autre partie.",
+  },
   'scenario-not-found': {
     title: 'Scénario introuvable',
     detail: () => "Ce scénario n'existe plus : recharge la page.",

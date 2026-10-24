@@ -262,7 +262,7 @@ Le glisser-déposer (`@angular/cdk/drag-drop`) sert la souris et le tactile. Cha
 | Déprogrammer | partie → bac de réserve | fiche → « Déprogrammer » |
 | Modifier les places | — | fiche |
 
-- **« Programmer sur… » et « Déplacer vers… »** ouvrent un dialogue de placement : une grille créneaux × tables. Chaque case est soit « Choisir » (ou « Échanger »), soit éteinte avec son motif.
+- **« Programmer sur… » et « Déplacer vers… »** ouvrent un dialogue de placement : une grille créneaux × tables. Chaque case est soit « Choisir » (ou « Échanger »), soit éteinte avec son motif. « Échanger » n'apparaît que sur la première case d'une autre partie : la seconde case d'une partie double reste « Table prise ».
 - **« Programmer ici »** ouvre la liste des scénarios programmables sur cette case, puis, en dessous, ceux qui ne le sont pas, chacun avec sa raison.
 - **Pas d'annulation** après un geste : on refait le geste inverse.
 

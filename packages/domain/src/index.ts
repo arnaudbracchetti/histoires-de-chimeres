@@ -2,6 +2,7 @@ export { ComparableName } from './comparable-name.js';
 export {
   Convention,
   type ConventionState,
+  type MovePlacement,
   type Placement,
   type ReserveOfScenario,
   type Withdrawal,

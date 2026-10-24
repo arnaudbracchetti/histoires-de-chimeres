@@ -12,12 +12,14 @@ import {
   type ConventionDto,
   type GameMasterDto,
   type GameMasterSheetDto,
+  type MovePlacementDto,
   type PlacementDto,
   type ScenarioDto,
   type ScheduleDto,
   type MoveGameBody,
   type ScheduleGameBody,
   type ScenarioListItemDto,
+  type SwapGamesBody,
 } from '@chimeres/contract';
 import { startApp } from '../../../test/app.js';
 
@@ -542,6 +544,8 @@ describe('Programme', () => {
     };
     const move = (gameId: string, body: MoveGameBody | object) =>
       server().put(apiUrl(scheduleEndpoints.move, { gameId })).send(body);
+    const swap = (gameId: string, body: SwapGamesBody | object) =>
+      server().post(apiUrl(scheduleEndpoints.swap, { gameId })).send(body);
     const unschedule = (gameId: string) =>
       server().delete(apiUrl(scheduleEndpoints.unschedule, { gameId }));
 
@@ -613,8 +617,8 @@ describe('Programme', () => {
       });
     });
 
-    it('donne la grille des verdicts de déplacement, sa propre case permise', async () => {
-      await scheduled(neons.id, 1, 'Table 1');
+    it("donne la grille des verdicts de déplacement, sa propre case permise, et l'échange sur la case d'une autre partie", async () => {
+      const neonsGameId = await scheduled(neons.id, 1, 'Table 1');
       const gameId = await scheduled(brumes.id, 1, 'Table 2');
 
       const response = await server()
@@ -622,8 +626,172 @@ describe('Programme', () => {
         .expect(200);
 
       expect(
-        (response.body as PlacementDto[]).map(({ refusal }) => refusal?.title ?? null),
-      ).toEqual(['Table prise', null, 'MJ indisponible', 'MJ indisponible']);
+        (response.body as MovePlacementDto[]).map(({ swapWith, refusal }) => [
+          swapWith,
+          refusal?.title ?? null,
+        ]),
+      ).toEqual([
+        [neonsGameId, null],
+        [null, null],
+        [null, 'MJ indisponible'],
+        [null, 'MJ indisponible'],
+      ]);
+    });
+
+    describe('Échanger deux parties', () => {
+      it('échange deux parties, chacune avec ses places, et renvoie le programme relu', async () => {
+        const neonsGameId = await scheduled(neons.id, 2, 'Table 1');
+        const ruinesGameId = await scheduled(ruines.id, 1, 'Table 2');
+
+        const response = await swap(neonsGameId, { otherGameId: ruinesGameId }).expect(200);
+
+        const dto = response.body as ScheduleDto;
+        expect(dto).toEqual(await read());
+        expect(dto.games).toEqual([
+          expect.objectContaining({
+            id: neonsGameId,
+            tableId: table('Table 2'),
+            timeSlotIds: [slot(1)],
+            seats: { min: 3, max: 5 },
+          }),
+          expect.objectContaining({
+            id: ruinesGameId,
+            tableId: table('Table 1'),
+            timeSlotIds: [slot(2)],
+          }),
+        ]);
+      });
+
+      it("refuse si l'une des deux ne peut pas prendre la place de l'autre : 422, sans rien changer (PR-5)", async () => {
+        const neonsGameId = await scheduled(neons.id, 2, 'Table 1');
+        const brumesGameId = await scheduled(brumes.id, 1, 'Table 2');
+        const before = await read();
+
+        const response = await swap(brumesGameId, { otherGameId: neonsGameId })
+          .expect(422)
+          .expect('Content-Type', /application\/problem\+json/);
+
+        expect(response.body).toMatchObject({
+          code: 'game-master-unavailable',
+          title: 'MJ indisponible',
+          detail:
+            "Kaïros n'est pas disponible sur le créneau 2 : coche d'abord sa disponibilité sur sa fiche.",
+        });
+        expect(await read()).toEqual(before);
+      });
+
+      it('refuse une partie avec elle-même : 422', async () => {
+        const gameId = await scheduled(neons.id, 1, 'Table 1');
+
+        const response = await swap(gameId, { otherGameId: gameId }).expect(422);
+
+        expect(response.body).toMatchObject({
+          code: 'game-swapped-with-itself',
+          title: 'Même partie',
+          detail: "Une partie ne s'échange pas avec elle-même : choisis une autre partie.",
+        });
+      });
+
+      it('répond 404 à une partie inconnue, et 400 à un corps mal formé', async () => {
+        const gameId = await scheduled(neons.id, 1, 'Table 1');
+
+        await swap(UNKNOWN_ID, { otherGameId: gameId }).expect(404);
+        await swap(gameId, { otherGameId: UNKNOWN_ID }).expect(404);
+        await swap(gameId, {}).expect(400);
+      });
+    });
+
+    describe('Échanger une partie double avec une partie simple', () => {
+      const declare = (gameMasterId: string, rank: number) =>
+        server()
+          .put(apiUrl(availabilityEndpoints.declare, { gameMasterId, timeSlotId: slot(rank) }))
+          .expect(200);
+
+      /**
+       * Un créneau 3 (17 h), sauf si `third` vaut `'none'`. « Abysses », double d'Élodie, sur
+       * les créneaux 1 et 2 à la table 1 ; « Brumes » de Kaïros, disponible aussi sur le créneau 2,
+       * sur le créneau 2 à la table 2. Élodie est disponible sur le créneau 3 si `third` vaut
+       * `'available'`.
+       */
+      const withDoubleAndSimple = async (
+        third: 'available' | 'unavailable' | 'none' = 'available',
+      ) => {
+        if (third !== 'none') {
+          convention = (
+            await server()
+              .post(apiUrl(timeSlotEndpoints.add))
+              .send({ start: '17:00', end: '19:30' })
+              .expect(201)
+          ).body as ConventionDto;
+        }
+        if (third === 'available') await declare(elodie.id, 3);
+        await declare(kairos.id, 2);
+        const abysses = await proposeScenario(elodie.id, 'Abysses', 2);
+        return {
+          doubleId: await scheduled(abysses.id, 1, 'Table 1'),
+          simpleId: await scheduled(brumes.id, 2, 'Table 2'),
+        };
+      };
+
+      it('accepte : la partie double prend le créneau de l’autre, et le suivant', async () => {
+        const { doubleId, simpleId } = await withDoubleAndSimple();
+
+        const dto = (await swap(doubleId, { otherGameId: simpleId }).expect(200))
+          .body as ScheduleDto;
+
+        expect(dto.games.find(({ id }) => id === doubleId)).toMatchObject({
+          tableId: table('Table 2'),
+          timeSlotIds: [slot(2), slot(3)],
+        });
+        expect(dto.games.find(({ id }) => id === simpleId)).toMatchObject({
+          tableId: table('Table 1'),
+          timeSlotIds: [slot(1)],
+        });
+      });
+
+      it('refuse « Table prise » sur le créneau suivant : 422', async () => {
+        const { doubleId, simpleId } = await withDoubleAndSimple();
+        await server()
+          .post(apiUrl(gameMasterEndpoints.add))
+          .send({ nickname: 'Moïra' })
+          .expect(201);
+        const moira = (
+          (await server().get(apiUrl(gameMasterEndpoints.list)).expect(200)).body as GameMasterDto[]
+        ).find(({ nickname }) => nickname === 'Moïra')!;
+        await declare(moira.id, 3);
+        await scheduled((await proposeScenario(moira.id, 'Marées')).id, 3, 'Table 2');
+
+        const response = await swap(simpleId, { otherGameId: doubleId }).expect(422);
+
+        expect(response.body).toMatchObject({
+          code: 'table-taken',
+          detail:
+            'La table « Table 2 » accueille déjà une partie sur le créneau 3 : choisis une autre table.',
+        });
+      });
+
+      it('refuse « MJ indisponible » sur le créneau suivant : 422', async () => {
+        const { doubleId, simpleId } = await withDoubleAndSimple('unavailable');
+
+        const response = await swap(doubleId, { otherGameId: simpleId }).expect(422);
+
+        expect(response.body).toMatchObject({
+          code: 'game-master-unavailable',
+          detail:
+            "Élodie n'est pas disponible sur le créneau 3 : coche d'abord sa disponibilité sur sa fiche.",
+        });
+      });
+
+      it('refuse « Pas de créneau suivant » : 422', async () => {
+        const { doubleId, simpleId } = await withDoubleAndSimple('none');
+
+        const response = await swap(doubleId, { otherGameId: simpleId }).expect(422);
+
+        expect(response.body).toMatchObject({
+          code: 'no-next-time-slot',
+          title: 'Pas de créneau suivant',
+        });
+      });
     });
 
     it('déprogramme une partie : son scénario revient dans la réserve', async () => {

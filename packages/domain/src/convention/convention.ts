@@ -262,10 +262,23 @@ export class Convention {
     const game = this.state.games[index]!;
     const refusal = this.moveRefusalOf(game, timeSlotId, tableId);
     if (refusal) throw refusal;
-    this.state.games[index] = game.movedTo(
-      tableId,
-      this.consecutiveFrom(timeSlotId, game.timeSlotIds.length)!,
-    );
+    this.state.games[index] = this.placed(game, timeSlotId, tableId);
+  }
+
+  /**
+   * Échange deux parties (PR-17) : chacune prend le premier créneau et la table de l'autre, en un
+   * seul geste. Les deux places sont vérifiées ensemble contre PR-5, sans compter les deux parties à
+   * leur ancienne place. Chacune reste la même partie, avec ses places, à son rang dans le programme.
+   */
+  swapGames(gameId: string, otherGameId: string): void {
+    const index = this.indexOfGame(gameId);
+    const otherIndex = this.indexOfGame(otherGameId);
+    const game = this.state.games[index]!;
+    const other = this.state.games[otherIndex]!;
+    const refusal = this.swapRefusalOf(game, other);
+    if (refusal) throw refusal;
+    this.state.games[index] = this.placed(game, other.timeSlotIds[0]!, other.tableId);
+    this.state.games[otherIndex] = this.placed(other, game.timeSlotIds[0]!, game.tableId);
   }
 
   /** Déprogramme la partie (PR-17) : son scénario reste proposé, et revient dans la réserve. */
@@ -288,17 +301,27 @@ export class Convention {
   }
 
   /**
-   * Le verdict de chaque case créneaux × tables pour déplacer la partie : le refus que `moveGame()`
-   * y lèverait, ou `null`. Sa propre case est permise. Dans l'ordre des créneaux, puis des tables.
+   * Le verdict de chaque case créneaux × tables pour déplacer la partie, dans l'ordre des créneaux,
+   * puis des tables. La première case d'une autre partie propose de l'échanger avec elle
+   * (`swapWith`), avec le refus que `swapGames()` lèverait ; toute autre case, le refus que
+   * `moveGame()` y lèverait. Sa propre case est permise.
    */
-  movePlacementsOf(gameId: string): Placement[] {
+  movePlacementsOf(gameId: string): MovePlacement[] {
     const game = this.state.games[this.indexOfGame(gameId)]!;
     return this.timeSlots.flatMap((slot) =>
-      this.tables.map((table) => ({
-        timeSlotId: slot.id,
-        tableId: table.id,
-        refusal: this.moveRefusalOf(game, slot.id, table.id),
-      })),
+      this.tables.map((table) => {
+        const other = this.state.games.find(
+          (candidate) => candidate !== game && candidate.startsAt(slot.id, table.id),
+        );
+        return {
+          timeSlotId: slot.id,
+          tableId: table.id,
+          swapWith: other?.id ?? null,
+          refusal: other
+            ? this.swapRefusalOf(game, other)
+            : this.moveRefusalOf(game, slot.id, table.id),
+        };
+      }),
     );
   }
 
@@ -340,25 +363,52 @@ export class Convention {
       scenario.duration,
       timeSlotId,
       tableId,
-      null,
+      this.state.games,
     );
   }
 
-  /** La règle PR-5 d'une case pour déplacer la partie, sans la compter elle-même. */
-  private moveRefusalOf(game: Game, timeSlotId: string, tableId: string): Refusal | null {
+  /**
+   * La règle PR-5 d'une case pour déplacer la partie parmi `others`, par défaut toutes les autres
+   * parties.
+   */
+  private moveRefusalOf(
+    game: Game,
+    timeSlotId: string,
+    tableId: string,
+    others: readonly Game[] = this.state.games.filter((other) => other !== game),
+  ): Refusal | null {
     return this.placementRefusalOf(
       game.gameMasterId,
       game.timeSlotIds.length,
       timeSlotId,
       tableId,
-      game,
+      others,
     );
   }
 
   /**
+   * La règle PR-5 de l'échange de deux parties : chacune à la place de l'autre, sans compter les deux
+   * à leur ancienne place. La seconde se vérifie avec la première déjà à sa nouvelle place.
+   */
+  private swapRefusalOf(game: Game, other: Game): Refusal | null {
+    if (game === other) return new Refusal('game-swapped-with-itself', {});
+    const rest = this.state.games.filter((candidate) => candidate !== game && candidate !== other);
+    const moved = this.placed(game, other.timeSlotIds[0]!, other.tableId);
+    return (
+      this.moveRefusalOf(game, other.timeSlotIds[0]!, other.tableId, rest) ??
+      this.moveRefusalOf(other, game.timeSlotIds[0]!, game.tableId, [...rest, moved])
+    );
+  }
+
+  /** La même partie, sur la table et à partir du créneau donnés, qui permettent sa durée. */
+  private placed(game: Game, timeSlotId: string, tableId: string): Game {
+    return game.movedTo(tableId, this.consecutiveFrom(timeSlotId, game.timeSlotIds.length)!);
+  }
+
+  /**
    * La règle PR-5 d'une case, la même pour l'écriture et pour le verdict : une partie de `length`
-   * créneaux du MJ, à partir de `timeSlotId`, sans compter `moving`, la partie qu'on déplace. Il
-   * faut assez de créneaux consécutifs, puis, sur chacun, les motifs s'excluent dans cet ordre : MJ
+   * créneaux du MJ, à partir de `timeSlotId`, parmi `others`, les parties déjà placées. Il faut
+   * assez de créneaux consécutifs, puis, sur chacun, les motifs s'excluent dans cet ordre : MJ
    * indisponible, MJ déjà occupé, table prise.
    */
   private placementRefusalOf(
@@ -366,14 +416,13 @@ export class Convention {
     length: number,
     timeSlotId: string,
     tableId: string,
-    moving: Game | null,
+    others: readonly Game[],
   ): Refusal | null {
     this.verifyTimeSlotExists(timeSlotId);
     const table = this.state.tables[this.indexOfTable(tableId)]!;
     const gameMaster = this.gameMasterOf(gameMasterId);
     const timeSlotIds = this.consecutiveFrom(timeSlotId, length);
     if (!timeSlotIds) return new Refusal('no-next-time-slot', { rank: this.rankOf(timeSlotId) });
-    const others = this.state.games.filter((game) => game !== moving);
     const nickname = gameMaster.nickname.text;
     for (const slotId of timeSlotIds) {
       const rank = this.rankOf(slotId);
@@ -546,6 +595,12 @@ export class Convention {
 
 /** Le verdict d'une case créneau × table pour un scénario : le refus d'écriture, ou `null`. */
 export type Placement = { timeSlotId: string; tableId: string; refusal: Refusal | null };
+
+/**
+ * Le verdict d'une case créneau × table pour déplacer une partie : `swapWith`, l'id de la partie
+ * avec laquelle l'échanger, ou `null` pour un déplacement ; le refus d'écriture, ou `null`.
+ */
+export type MovePlacement = Placement & { swapWith: string | null };
 
 /** Le verdict de retrait d'une disponibilité : le refus d'écriture, ou `null`. */
 export type Withdrawal = { timeSlotId: string; refusal: Refusal | null };

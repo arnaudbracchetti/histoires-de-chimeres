@@ -6,6 +6,7 @@ import {
   apiUrl,
   scheduleEndpoints,
   type GameDto,
+  type MovePlacementDto,
   type PlacementDto,
   type ProblemDto,
   type ScheduleDto,
@@ -184,7 +185,13 @@ describe('PlacementDialog', () => {
       scenario: SCENARIO,
     };
 
-    async function openMove(placements = PLACEMENTS) {
+    /** Les verdicts de PLACEMENTS : un déplacement sur chaque case. */
+    const MOVE_PLACEMENTS: MovePlacementDto[] = PLACEMENTS.map((verdict) => ({
+      ...verdict,
+      swapWith: null,
+    }));
+
+    async function openMove(placements = MOVE_PLACEMENTS) {
       const http = TestBed.inject(HttpTestingController);
       const closed = TestBed.inject(Placements).moveTo({
         game: GAME,
@@ -200,7 +207,9 @@ describe('PlacementDialog', () => {
     it('lit les verdicts de la partie, et marque sa place', async () => {
       const { dialog } = await openMove();
 
-      expect(dialog().querySelector('h2')?.textContent).toBe(`Déplacer «${NBSP}Brumes${NBSP}» vers…`);
+      expect(dialog().querySelector('h2')?.textContent).toBe(
+        `Déplacer «${NBSP}Brumes${NBSP}» vers…`,
+      );
       const cell = dialog().querySelectorAll('tbody tr')[1]!.querySelectorAll('td')[0]!;
       expect(cell.textContent?.trim()).toBe('Sa place');
       expect(dialog().querySelectorAll('button[aria-label^="Choisir"]')).toHaveLength(0);
@@ -208,7 +217,7 @@ describe('PlacementDialog', () => {
 
     it('déplace la partie sur la case choisie, et se ferme sur le programme relu', async () => {
       const { http, closed, dialog } = await openMove(
-        PLACEMENTS.map((verdict) =>
+        MOVE_PLACEMENTS.map((verdict) =>
           verdict.timeSlotId === 's2' && verdict.tableId === 't1'
             ? { ...verdict, refusal: null }
             : verdict,
@@ -221,7 +230,49 @@ describe('PlacementDialog', () => {
       expect(request.request.body).toEqual({ timeSlotId: 's2', tableId: 't1' });
       request.flush(SCHEDULE);
 
-      expect(await closed).toEqual(SCHEDULE);
+      expect(await closed).toEqual({ schedule: SCHEDULE, swappedWith: null });
+    });
+
+    it("propose « Échanger » sur la case d'une autre partie, et l'éteint avec le motif de son refus", async () => {
+      const { dialog } = await openMove(
+        MOVE_PLACEMENTS.map((verdict) =>
+          verdict.timeSlotId === 's1' && verdict.tableId === 't1'
+            ? { ...verdict, swapWith: 'p2', refusal: null }
+            : verdict.timeSlotId === 's2' && verdict.tableId === 't2'
+              ? { ...verdict, swapWith: 'p3' }
+              : verdict,
+        ),
+      );
+
+      const swap = dialog().querySelector<HTMLButtonElement>('button[aria-label^="Échanger"]')!;
+      expect(swap.textContent?.trim()).toBe('Échanger');
+      expect(swap.getAttribute('aria-label')).toBe(
+        'Échanger Créneau 1 · 9\u00a0h\u00a000\u202f–\u202f11\u00a0h\u00a030, Table 1',
+      );
+      expect(document.activeElement).toBe(swap);
+      expect(dialog().querySelectorAll('button[aria-label^="Échanger"]')).toHaveLength(1);
+      const refusedSwap = dialog().querySelectorAll('tbody tr')[1]!.querySelectorAll('td')[1]!;
+      expect(refusedSwap.querySelector('.off')?.getAttribute('title')).toBe(
+        'Kaïros mène déjà une partie sur le créneau 2.',
+      );
+    });
+
+    it('échange les deux parties, et se ferme sur le programme relu', async () => {
+      const { http, closed, dialog } = await openMove(
+        MOVE_PLACEMENTS.map((verdict) =>
+          verdict.timeSlotId === 's1' && verdict.tableId === 't1'
+            ? { ...verdict, swapWith: 'p2', refusal: null }
+            : verdict,
+        ),
+      );
+
+      dialog().querySelector<HTMLButtonElement>('button[aria-label^="Échanger"]')!.click();
+      const request = http.expectOne(apiUrl(scheduleEndpoints.swap, { gameId: 'p1' }));
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toEqual({ otherGameId: 'p2' });
+      request.flush(SCHEDULE);
+
+      expect(await closed).toEqual({ schedule: SCHEDULE, swappedWith: 'p2' });
     });
   });
 });

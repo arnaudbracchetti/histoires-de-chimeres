@@ -47,6 +47,8 @@ export type RefusalParams = {
   /** `rank` : le rang du premier créneau de la partie double qu'un créneau couperait (PR-11). */
   'time-slot-splits-two-slot-game': { rank: number };
   'game-not-found': Record<string, never>;
+  /** Une partie ne s'échange pas avec elle-même (PR-17). */
+  'game-swapped-with-itself': Record<string, never>;
   'scenario-not-found': Record<string, never>;
   /** Le scénario a des parties : sa durée ne change plus (PR-14). */
   'scenario-duration-locked': Record<string, never>;

@@ -11,6 +11,7 @@ export { ReadPlacements } from './game/read-placements.js';
 export { ReadSchedule, type ReserveScenario, type Schedule } from './game/read-schedule.js';
 export { ScheduleGame } from './game/schedule-game.js';
 export type { ScheduleReader } from './game/schedule-reader.js';
+export { SwapGames } from './game/swap-games.js';
 export { UnscheduleGame } from './game/unschedule-game.js';
 export { AddGameMaster } from './game-master/add-game-master.js';
 export { DeclareAvailability } from './game-master/declare-availability.js';

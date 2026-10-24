@@ -1,10 +1,22 @@
-import { Body, Controller, Delete, Get, Inject, Param, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
 import {
   MoveGame,
   ReadMovePlacements,
   ReadPlacements,
   ReadSchedule,
   ScheduleGame,
+  SwapGames,
   UnscheduleGame,
   type Schedule,
 } from '@chimeres/application';
@@ -13,11 +25,16 @@ import {
   type MoveGameBody,
   type ResponseOf,
   type ScheduleGameBody,
+  type SwapGamesBody,
 } from '@chimeres/contract';
-import { Refusal, type Placement } from '@chimeres/domain';
+import { Refusal, type MovePlacement, type Placement } from '@chimeres/domain';
 import { verdictOf } from '../../http/problem-catalogue.js';
 import { ZodBody } from '../../http/zod-body.pipe.js';
-import { moveGameBodySchema, scheduleGameBodySchema } from './schedule-game-body.schema.js';
+import {
+  moveGameBodySchema,
+  scheduleGameBodySchema,
+  swapGamesBodySchema,
+} from './schedule-game-body.schema.js';
 
 @Controller()
 export class ScheduleController {
@@ -27,6 +44,7 @@ export class ScheduleController {
     @Inject(ScheduleGame) private readonly scheduleGame: ScheduleGame,
     @Inject(ReadMovePlacements) private readonly readMovePlacements: ReadMovePlacements,
     @Inject(MoveGame) private readonly moveGame: MoveGame,
+    @Inject(SwapGames) private readonly swapGames: SwapGames,
     @Inject(UnscheduleGame) private readonly unscheduleGame: UnscheduleGame,
   ) {}
 
@@ -54,12 +72,12 @@ export class ScheduleController {
     return toDto(await this.readSchedule.execute());
   }
 
-  /** Les verdicts de déplacement de la partie, comme ceux de la programmation. */
+  /** Les verdicts de déplacement ou d'échange de la partie, comme ceux de la programmation. */
   @Get(scheduleEndpoints.movePlacements.path)
   async movePlacements(
     @Param('gameId') gameId: string,
   ): Promise<ResponseOf<typeof scheduleEndpoints.movePlacements>> {
-    return (await this.readMovePlacements.execute(gameId)).map(toPlacementDto);
+    return (await this.readMovePlacements.execute(gameId)).map(toMovePlacementDto);
   }
 
   /** Renvoie le programme relu. */
@@ -69,6 +87,17 @@ export class ScheduleController {
     @Body(new ZodBody(moveGameBodySchema)) body: MoveGameBody,
   ): Promise<ResponseOf<typeof scheduleEndpoints.move>> {
     await this.moveGame.execute(gameId, body);
+    return toDto(await this.readSchedule.execute());
+  }
+
+  /** Renvoie le programme relu : rien n'est créé, d'où 200. */
+  @Post(scheduleEndpoints.swap.path)
+  @HttpCode(HttpStatus.OK)
+  async swap(
+    @Param('gameId') gameId: string,
+    @Body(new ZodBody(swapGamesBodySchema)) body: SwapGamesBody,
+  ): Promise<ResponseOf<typeof scheduleEndpoints.swap>> {
+    await this.swapGames.execute(gameId, body);
     return toDto(await this.readSchedule.execute());
   }
 
@@ -84,6 +113,10 @@ export class ScheduleController {
 
 function toPlacementDto({ timeSlotId, tableId, refusal }: Placement) {
   return { timeSlotId, tableId, refusal: refusal && verdictOf(refusal) };
+}
+
+function toMovePlacementDto({ swapWith, ...placement }: MovePlacement) {
+  return { ...toPlacementDto(placement), swapWith };
 }
 
 /** Un scénario sans créneau possible porte le motif et la phrase de son refus. */

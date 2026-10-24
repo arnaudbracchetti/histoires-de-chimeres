@@ -57,11 +57,13 @@ export {
   type GameDto,
   type GameParams,
   type MoveGameBody,
+  type MovePlacementDto,
   type PlacementDto,
   type ReserveScenarioDto,
   type ScheduleDto,
   type ScheduleGameBody,
   type ScheduleScenarioDto,
+  type SwapGamesBody,
 } from './schedule.js';
 export {
   TABLE_NAME_MAX_LENGTH,

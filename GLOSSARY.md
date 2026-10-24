@@ -61,7 +61,7 @@ _Avoid_: DoubleGame
 Les scénarios qui pourraient être programmés sur un créneau : leur MJ y est disponible et n'y mène aucune partie (sur ce créneau et le suivant pour un scénario double). Un scénario déjà programmé sur un autre créneau en fait partie. L'Organisateur y puise pour soulager un créneau surchargé.
 
 **Verdict de placement** · `Placement`:
-Pour une case du programme (un créneau et une table), ce que donnerait le geste de programmer un scénario ou de déplacer une partie : permis, ou refusé avec son motif. Il obéit à la même règle que le geste lui-même.
+Pour une case du programme (un créneau et une table), ce que donnerait le geste de programmer un scénario ou de déplacer une partie : permis, ou refusé avec son motif. Il obéit à la même règle que le geste lui-même. Pour déplacer une partie, la première case d'une autre partie propose de l'échanger avec elle (`MovePlacement`, `swapWith`).
 
 **Table** · `Table`:
 L'emplacement physique où se joue une partie.
