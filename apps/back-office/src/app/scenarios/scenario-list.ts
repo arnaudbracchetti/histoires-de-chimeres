@@ -1,7 +1,7 @@
 import { Component, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { scenarioEndpoints, type ScenarioListItemDto } from '@chimeres/contract';
-import { apiResource } from '../api-resource';
+import { apiResource, currentValue } from '../api-resource';
 import { Loadable } from '../shell/loadable';
 import { Button } from '../ui/button';
 import { EmptyState } from '../ui/empty-state';
@@ -160,8 +160,9 @@ const SORT_KEYS = {
 })
 export class ScenarioList {
   protected readonly scenarios = apiResource(scenarioEndpoints.list);
+  private readonly loaded = currentValue(this.scenarios);
   protected readonly view = tableView({
-    items: () => (this.scenarios.hasValue() ? this.scenarios.value() : []),
+    items: () => this.loaded() ?? [],
     searchIn: ({ title, system, gameMaster }) => [title, system, gameMaster.nickname],
     sortKeys: SORT_KEYS,
     initialSort: 'title',

@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ConventionStore } from '../convention/convention-store';
 import { ScheduleBoard } from './schedule-board';
@@ -46,7 +46,5 @@ import { EmptyState } from '../ui/empty-state';
 })
 export class CalendarPage {
   protected readonly store = inject(ConventionStore);
-  protected readonly convention = computed(() =>
-    this.store.convention.hasValue() ? this.store.convention.value() : undefined,
-  );
+  protected readonly convention = this.store.value;
 }

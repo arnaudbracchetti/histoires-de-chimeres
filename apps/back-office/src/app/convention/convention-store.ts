@@ -1,16 +1,16 @@
 import { computed, Injectable } from '@angular/core';
 import { conventionEndpoints, type ConventionDto, type Endpoint } from '@chimeres/contract';
-import { apiResource } from '../api-resource';
+import { apiResource, currentValue } from '../api-resource';
 import { injectApiCall, type CallOptions } from '../api-call';
 
 /** La convention, lue une fois et partagée : le rail suit aussitôt ce que la page enregistre. */
 @Injectable({ providedIn: 'root' })
 export class ConventionStore {
   readonly convention = apiResource(conventionEndpoints.read);
+  /** La convention lue, ou rien tant qu'elle ne l'est pas. */
+  readonly value = currentValue(this.convention);
   /** Les créneaux, dans l'ordre de la journée ; aucun tant que la convention n'est pas lue. */
-  readonly timeSlots = computed(() =>
-    this.convention.hasValue() ? this.convention.value().timeSlots : [],
-  );
+  readonly timeSlots = computed(() => this.value()?.timeSlots ?? []);
   private readonly apiCall = injectApiCall();
 
   /**

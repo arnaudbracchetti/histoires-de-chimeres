@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Loadable, type LoadableResource } from './loadable';
@@ -16,20 +17,25 @@ class FakeRead implements LoadableResource {
 
 @Component({
   imports: [Loadable],
-  template: `<app-loadable [resource]="read" failure="Impossible de charger les scénarios."
+  template: `<app-loadable
+    [resource]="read"
+    failure="Impossible de charger les scénarios."
+    [notFound]="notFound()"
     ><p>Contenu</p></app-loadable
   >`,
 })
 class Host {
   readonly read = new FakeRead();
+  readonly notFound = signal<string | undefined>(undefined);
 }
 
 describe('Loadable', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  function render() {
+  function render(notFound?: string) {
     const fixture = TestBed.createComponent(Host);
+    fixture.componentInstance.notFound.set(notFound);
     fixture.detectChanges();
     const zone = (fixture.nativeElement as HTMLElement).querySelector('app-loadable')!;
     const wait = (ms: number) => {
@@ -72,8 +78,33 @@ describe('Loadable', () => {
 
     expect(zone.textContent).toContain('Impossible de charger les scénarios.');
     expect(zone.textContent).not.toContain('Contenu');
-    const retry = [...zone.querySelectorAll('button')].find((b) => b.textContent?.includes('Réessayer'));
+    const retry = [...zone.querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Réessayer'),
+    );
     retry!.click();
     expect(read.reloads).toBe(1);
+  });
+
+  it("affiche « n'existe pas, ou plus » sur un 404, sans « Réessayer »", () => {
+    const { fixture, read, zone } = render("Ce scénario n'existe pas, ou plus.");
+
+    read.isLoading.set(false);
+    read.error.set(new HttpErrorResponse({ status: 404 }));
+    fixture.detectChanges();
+
+    expect(zone.textContent).toContain("Ce scénario n'existe pas, ou plus.");
+    expect(zone.textContent).not.toContain('Impossible de charger les scénarios.');
+    expect(zone.querySelector('button')).toBeNull();
+  });
+
+  it("garde le message d'échec sur un 404 quand la zone ne prévoit pas de ressource absente", () => {
+    const { fixture, read, zone } = render();
+
+    read.isLoading.set(false);
+    read.error.set(new HttpErrorResponse({ status: 404 }));
+    fixture.detectChanges();
+
+    expect(zone.textContent).toContain('Impossible de charger les scénarios.');
+    expect(zone.textContent).toContain('Réessayer');
   });
 });

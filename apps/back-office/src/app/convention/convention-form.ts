@@ -62,7 +62,7 @@ export class ConventionForm {
 
   /** Repart de la convention lue, et de celle que renvoie chaque enregistrement. */
   private readonly model = linkedSignal<ConventionModel>(() => {
-    const convention = this.store.convention.hasValue() ? this.store.convention.value() : undefined;
+    const convention = this.store.value();
     return { name: convention?.name ?? '', date: convention?.date ?? '' };
   });
 

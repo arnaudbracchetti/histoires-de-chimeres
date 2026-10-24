@@ -1,8 +1,6 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import {
   afterNextRender,
   Component,
-  computed,
   ElementRef,
   inject,
   Injector,
@@ -12,7 +10,7 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import { gameMasterEndpoints, type GameMasterDto } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
-import { apiResource } from '../api-resource';
+import { apiResource, currentValue } from '../api-resource';
 import { ConventionStore } from '../convention/convention-store';
 import { availabilitiesConsequence } from './availabilities-consequence';
 import { AvailabilityTimeline } from './availability-timeline';
@@ -91,7 +89,11 @@ const MENU: readonly MoreMenuItem[] = [{ value: 'remove', label: 'Supprimer le M
         </div>
       }
     </app-page-header>
-    <app-loadable [resource]="resource" [failure]="failure()">
+    <app-loadable
+      [resource]="resource"
+      failure="Impossible de charger le MJ."
+      notFound="Ce MJ n'existe pas, ou plus."
+    >
       @if (gameMaster(); as gameMaster) {
         <section aria-labelledby="availabilities-title">
           <h2 id="availabilities-title">Disponibilités</h2>
@@ -200,20 +202,11 @@ export class GameMasterPage {
   protected readonly resource = apiResource(gameMasterEndpoints.read, () => ({
     gameMasterId: this.id(),
   }));
-  protected readonly gameMaster = computed(() =>
-    this.resource.hasValue() ? this.resource.value() : undefined,
-  );
+  protected readonly gameMaster = currentValue(this.resource);
   protected readonly editing = signal(false);
   protected readonly menu = MENU;
   protected readonly formatSeats = formatSeats;
   protected readonly formatScenarioDuration = formatScenarioDuration;
-
-  protected readonly failure = computed(() => {
-    const error = this.resource.error();
-    return error instanceof HttpErrorResponse && error.status === 404
-      ? "Ce MJ n'existe pas, ou plus."
-      : 'Impossible de charger le MJ.';
-  });
 
   private readonly store = inject(ConventionStore);
   protected readonly timeSlots = this.store.timeSlots;

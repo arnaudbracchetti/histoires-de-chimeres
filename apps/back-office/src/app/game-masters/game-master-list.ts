@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { gameMasterEndpoints, type GameMasterDto } from '@chimeres/contract';
-import { apiResource } from '../api-resource';
+import { apiResource, currentValue } from '../api-resource';
 import { ConventionStore } from '../convention/convention-store';
 import { Loadable } from '../shell/loadable';
 import { fr } from '../typography/french';
@@ -182,8 +182,9 @@ import { NewGameMaster } from './new-game-master';
 })
 export class GameMasterList {
   protected readonly gameMasters = apiResource(gameMasterEndpoints.list);
+  private readonly loaded = currentValue(this.gameMasters);
   protected readonly view = tableView({
-    items: () => (this.gameMasters.hasValue() ? this.gameMasters.value() : []),
+    items: () => this.loaded() ?? [],
     searchIn: ({ nickname }) => [nickname],
     sortKeys: { nickname: ({ nickname }: GameMasterDto) => nickname },
     initialSort: 'nickname',

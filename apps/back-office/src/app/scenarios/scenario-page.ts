@@ -1,9 +1,8 @@
-import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, input, linkedSignal, viewChild } from '@angular/core';
+import { Component, inject, input, linkedSignal, viewChild } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { scenarioEndpoints, type ScenarioBody, type ScenarioDto } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
-import { apiResource } from '../api-resource';
+import { apiResource, currentValue } from '../api-resource';
 import type { UnsavedChanges } from '../shell/leave-unsaved';
 import { ScenarioForm } from './scenario-form';
 import { ScenarioImage } from './scenario-image';
@@ -39,7 +38,11 @@ const MENU: readonly MoreMenuItem[] = [
         />
       }
     </app-page-header>
-    <app-loadable [resource]="resource" [failure]="failure()">
+    <app-loadable
+      [resource]="resource"
+      failure="Impossible de charger le scénario."
+      notFound="Ce scénario n'existe pas, ou plus."
+    >
       @if (scenario(); as scenario) {
         <p class="game-master">
           Proposé par
@@ -77,22 +80,13 @@ export class ScenarioPage implements UnsavedChanges {
   protected readonly resource = apiResource(scenarioEndpoints.read, () => ({
     scenarioId: this.id(),
   }));
-  protected readonly scenario = computed(() =>
-    this.resource.hasValue() ? this.resource.value() : undefined,
-  );
+  protected readonly scenario = currentValue(this.resource);
 
   /**
    * À part du scénario : changer l'image ne passe pas par le formulaire, dont la saisie en cours
    * repartirait de zéro avec un nouveau scénario.
    */
   protected readonly imageUrl = linkedSignal(() => this.scenario()?.imageUrl ?? null);
-
-  protected readonly failure = computed(() => {
-    const error = this.resource.error();
-    return error instanceof HttpErrorResponse && error.status === 404
-      ? "Ce scénario n'existe pas, ou plus."
-      : 'Impossible de charger le scénario.';
-  });
 
   private readonly form = viewChild(ScenarioForm);
   private readonly apiCall = injectApiCall();

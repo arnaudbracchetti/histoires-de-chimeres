@@ -140,9 +140,7 @@ export class TableList {
   private readonly announcer = inject(Announcer);
   protected readonly cards = new CardEditing();
 
-  protected readonly tables = computed(() =>
-    this.store.convention.hasValue() ? this.store.convention.value().tables : [],
-  );
+  protected readonly tables = computed(() => this.store.value()?.tables ?? []);
 
   protected async remove(table: TableDto) {
     const index = this.tables().findIndex(({ id }) => id === table.id);

@@ -1,4 +1,3 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, input, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import {
@@ -8,7 +7,7 @@ import {
   type ScenarioDto,
 } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
-import { apiResource } from '../api-resource';
+import { apiResource, currentValue } from '../api-resource';
 import type { UnsavedChanges } from '../shell/leave-unsaved';
 import { ScenarioForm } from './scenario-form';
 import { Announcer } from '../shell/announcer';
@@ -25,7 +24,11 @@ import { fr } from '../typography/french';
   imports: [Loadable, PageHeader, ScenarioForm],
   template: `
     <app-page-header title="Nouveau scénario" [trail]="trail()" />
-    <app-loadable [resource]="gameMaster" [failure]="failure()">
+    <app-loadable
+      [resource]="gameMaster"
+      failure="Impossible de charger le MJ."
+      notFound="Ce MJ n'existe pas, ou plus."
+    >
       @if (gameMaster.hasValue()) {
         <p class="image-zone">Tu pourras ajouter une image après l'enregistrement.</p>
         <app-scenario-form [save]="propose" (saved)="onProposed($event)" />
@@ -60,21 +63,15 @@ export class NewScenarioPage implements UnsavedChanges {
   protected readonly gameMaster = apiResource(gameMasterEndpoints.read, () => ({
     gameMasterId: this.id(),
   }));
+  private readonly loaded = currentValue(this.gameMaster);
 
   protected readonly trail = computed(() => [
     { label: 'MJ', link: '/mj' },
     {
-      label: this.gameMaster.hasValue() ? this.gameMaster.value().nickname : 'Fiche du MJ',
+      label: this.loaded()?.nickname ?? 'Fiche du MJ',
       link: `/mj/${this.id()}`,
     },
   ]);
-
-  protected readonly failure = computed(() => {
-    const error = this.gameMaster.error();
-    return error instanceof HttpErrorResponse && error.status === 404
-      ? "Ce MJ n'existe pas, ou plus."
-      : 'Impossible de charger le MJ.';
-  });
 
   private readonly form = viewChild(ScenarioForm);
   private readonly apiCall = injectApiCall();

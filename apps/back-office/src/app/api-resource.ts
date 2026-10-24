@@ -1,4 +1,5 @@
 import { httpResource, type HttpResourceRef } from '@angular/common/http';
+import { computed, type Resource, type Signal } from '@angular/core';
 import {
   apiUrl,
   type Endpoint,
@@ -16,4 +17,12 @@ export function apiResource<E extends Endpoint<unknown, unknown, never>>(
   ...[params]: [ParamsOf<E>] extends [never] ? [] : [params: () => ParamsOf<E>]
 ): HttpResourceRef<ResponseOf<E> | undefined> {
   return httpResource<ResponseOf<E>>(() => apiUrl(endpoint, ...([params?.()] as ParamsArgs<E>)));
+}
+
+/**
+ * La valeur lue d'une ressource, ou `undefined` tant qu'il n'y en a pas : lecture en cours, ou
+ * échec, où `value()` lèverait une erreur. À créer dans un champ.
+ */
+export function currentValue<T>(resource: Resource<T | undefined>): Signal<T | undefined> {
+  return computed(() => (resource.hasValue() ? resource.value() : undefined));
 }

@@ -1,4 +1,5 @@
-import { Component, effect, input, signal, type Resource } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, computed, effect, input, signal, type Resource } from '@angular/core';
 import { Button } from '../ui/button';
 
 /** Ce que la zone lit d'une ressource (`apiResource()`, `httpResource()`). */
@@ -12,7 +13,8 @@ const PROGRESS_DELAY_MS = 300;
 /**
  * Zone de contenu d'une lecture (docs/design/patterns.md, Chargement) : rien pendant 300 ms, puis
  * une barre de progression, `aria-busy` pendant toute la lecture ; en cas d'échec, `failure` et
- * « Réessayer » à la place du contenu.
+ * « Réessayer » à la place du contenu. Une ressource absente (404) affiche `notFound`, s'il est
+ * donné, sans « Réessayer » : relire n'y changerait rien.
  */
 @Component({
   selector: 'app-loadable',
@@ -24,8 +26,14 @@ const PROGRESS_DELAY_MS = 300;
     }
     @if (resource().error() && !resource().isLoading()) {
       <div class="failure">
-        <p>{{ failure() }}</p>
-        <button type="button" appButton="secondary" (click)="resource().reload()">Réessayer</button>
+        @if (missing(); as message) {
+          <p>{{ message }}</p>
+        } @else {
+          <p>{{ failure() }}</p>
+          <button type="button" appButton="secondary" (click)="resource().reload()">
+            Réessayer
+          </button>
+        }
       </div>
     } @else {
       <ng-content />
@@ -85,6 +93,14 @@ export class Loadable {
   readonly resource = input.required<LoadableResource>();
   /** Message sobre de l'échec : « Impossible de charger les scénarios. » */
   readonly failure = input.required<string>();
+  /** Message d'une ressource absente (404) : « Ce MJ n'existe pas, ou plus. » */
+  readonly notFound = input<string>();
+
+  /** `notFound`, si la lecture a échoué parce que la ressource n'existe pas. */
+  protected readonly missing = computed(() => {
+    const error = this.resource().error();
+    return error instanceof HttpErrorResponse && error.status === 404 ? this.notFound() : undefined;
+  });
 
   protected readonly slow = signal(false);
 
