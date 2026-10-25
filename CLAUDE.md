@@ -82,6 +82,7 @@ Points structurants, répartis entre plusieurs documents :
 - **Cycle de vie d'un créneau** : inscriptions ouvertes → tirage lancé (inscriptions fermées) → résultat provisoire, ajustable → publication (résultat figé). Programmer une partie depuis la réserve annule le tirage provisoire et rouvre les inscriptions du créneau (TI-6).
 - **Le tirage** est le cœur du métier. Il obéit à un ordre de priorités strict (TI-4), et une partie double est tirée avec son premier créneau (TI-3).
 - **Pas de donnée nominative côté participant** : seuls les emails des MJ et des Organisateurs sont stockés, et ils ne servent qu'aux liens magiques du back office.
+- **Notifications** (ADR 0010) : le geste du domaine les produit (un code, des paramètres, des pseudos destinataires), la commande les passe au port `NotificationSender` après la sauvegarde, et l'API écrit le texte puis envoie sans file.
 
 ## Agent skills
 

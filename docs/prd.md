@@ -201,7 +201,7 @@ Notifications push web. Chaque notification se suffit à elle-même : son titre 
   - une partie double se désigne par ses deux créneaux : « Créneaux 2 et 3 : table *T* ».
 - **NO-3** Une notification que le téléphone n'a pas encore reçue n'est plus livrée après la fin du créneau qu'elle concerne (le second, pour une partie double).
 - **NO-4** Ne sont pas notifiés : le lancement d'un tirage, le changement de table d'une partie et l'échange de deux parties d'un même créneau, les gestes de ID-5. Pas de rappel avant un créneau (§7).
-- **NO-5** Le téléphone affiche la notification même quand l'application est ouverte. Sur iPhone, les notifications successives s'empilent : elles ne se remplacent pas.
+- **NO-5** Le téléphone affiche la notification même quand l'application est ouverte. Les notifications « nouvelle partie » d'un même créneau se remplacent, sans nouveau son : un téléphone resté hors ligne ne reçoit que la dernière. Sur iPhone, celles déjà affichées restent empilées. Les autres notifications s'empilent.
 - **NO-6** Sur un téléphone qui ne reçoit pas les notifications, chaque écran porte un bandeau qu'on ne peut pas fermer. Sauf dans le dernier cas, un tap ouvre le guide d'activation (§4.2) :
 
   | Cas | Bandeau |
@@ -223,6 +223,7 @@ Notifications push web. Chaque notification se suffit à elle-même : son titre 
 - **Données personnelles** : aucun email ni donnée nominative côté participant ; seuls les emails des MJ et Organisateurs sont stockés.
 - **Envoi d'emails** : nécessaire uniquement pour les liens magiques du back office.
 - **Langue** : français.
+- **Heure** : la date et les heures de la convention s'entendent à l'heure de Paris.
 - **Pile technique** : Angular (front office PWA et back office), NestJS, Prisma / PostgreSQL, Docker sur VPS derrière Caddy.
 
 ## 7. Hors V1
