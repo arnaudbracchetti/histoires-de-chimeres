@@ -10,8 +10,8 @@ Chaque terme est suivi du terme anglais qui le désigne dans le code (ADR 0003).
 L'événement dans son ensemble, sur une journée, découpé en créneaux.
 
 **Plage d'accès** · `AccessWindow`:
-Période, fixée par un Organisateur (un début et une fin, en date et heure), pendant laquelle les participants peuvent entrer dans le front office. Hors de cette période, le front office reste fermé.
-_Avoid_: Ouverture ou fermeture de l'application (« ouverture » est réservé aux inscriptions)
+Période, fixée par un Organisateur (un début et une fin, en date et heure), pendant laquelle les participants peuvent entrer dans le front office. Les inscriptions s'ouvrent à son début. Hors de cette période, le front office reste fermé.
+_Avoid_: Ouverture ou fermeture de l'application (« ouvrir » est réservé aux inscriptions)
 
 **Créneau** · `TimeSlot`:
 Plage horaire de la journée, habituellement de 2h30, pendant laquelle se jouent les parties en parallèle. Les créneaux ne se chevauchent pas ; deux créneaux sont consécutifs quand aucun autre ne se place entre eux, même s'ils sont séparés par une pause (repas, etc.).
@@ -45,7 +45,7 @@ _Avoid_: Session, jeu, table
 
 **Programmer** · `schedule`:
 Action d'un Organisateur qui fait d'un scénario une partie, en lui attribuant un créneau et une table.
-_Avoid_: Ouvrir (réservé à l'ouverture des inscriptions), planifier
+_Avoid_: Ouvrir (réservé aux inscriptions), planifier
 
 **Déprogrammer** · `unschedule`:
 Action d'un Organisateur qui retire une partie du programme ; son scénario reste proposé.
@@ -110,13 +110,10 @@ Personne connue des Organisateurs avant la convention, qui mène des parties ; e
 _Avoid_: Meneur, GM, animateur, Gm (abrégé)
 
 **Organisateur** · `Organizer`:
-Personne connue avant la convention, qui programme les scénarios sur les créneaux et les tables, ouvre les inscriptions et lance les tirages.
+Personne connue avant la convention, qui programme les scénarios sur les créneaux et les tables, fixe la plage d'accès et lance les tirages.
 _Avoid_: Admin, staff
 
 ## Répartition
-
-**Ouverture des inscriptions** · `openSignUps`:
-Moment, le jour de la convention, où un Organisateur permet aux participants de commencer à s'inscrire.
 
 **Inscription** · `SignUp`:
 Le fait, pour un participant, de se déclarer intéressé par une partie. Un participant peut s'inscrire à plusieurs parties d'un même créneau ; l'inscription n'est pas une garantie de jouer.
