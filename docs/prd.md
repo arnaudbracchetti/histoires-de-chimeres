@@ -49,12 +49,11 @@ Choix d'identification : voir [ADR 0009](adr/0009-identification-par-pseudo-sans
 2. Il crée les MJ, chacun avec son **pseudo** (PR-12), puis les comptes MJ et Organisateurs (email).
 3. Le MJ se connecte au back office par lien magique, puis propose ses **scénarios** et ses **disponibilités** (les créneaux où il peut mener). Il peut modifier ses scénarios à tout moment ; il n'y a pas de validation par les Organisateurs. Un Organisateur peut aussi les saisir et les modifier à sa place (PR-13).
 4. Les Organisateurs **programment** des scénarios sur un créneau et une table, dès avant la convention, ce qui crée des **parties**, ou les laissent en **réserve**. Le jour J, ils peuvent encore programmer une partie depuis la réserve (TI-6).
-5. Un Organisateur fixe la **plage d'accès** du front office (début et fin, en date et heure) et le **code d'accès anticipé**. Les inscriptions s'ouvrent au début de la plage d'accès.
-6. Les Organisateurs affichent sur place le QR code qui porte le **code de présence** de la convention. Ce code est fixé à la création de la convention, ne change pas et se lit dans le back office.
+5. Les Organisateurs affichent sur place le QR code qui porte le **code de présence** de la convention. Ce code est fixé à la création de la convention, ne change pas et se lit dans le back office.
 
-Avant la plage d'accès, le front office est fermé : il affiche seulement « L'application sera accessible le *date* à *heure* », et le programme ne s'y lit pas. Le code d'accès anticipé permet d'entrer quand même, par exemple pour que les Organisateurs testent le parcours sur leur téléphone : tout y fonctionne, inscriptions comprises, et les pseudos de test se suppriment ensuite (ID-10). Après la plage, l'application affiche « La convention est terminée » et plus rien n'y est consultable.
+Sans le code de présence, le front office est fermé : il ne fait que demander ce code, et le programme ne s'y lit pas. Avec lui, tout fonctionne, inscriptions comprises, à toute heure : le jour J pour ceux qui scannent l'affiche, avant pour ceux à qui un Organisateur le donne, par exemple pour tester le parcours sur leur téléphone. Les pseudos de test se suppriment ensuite (ID-10). Si le code fuit avant la convention, on l'accepte (ID-2).
 
-Tant qu'aucune plage d'accès n'est fixée, le front office reste fermé ; la seule contrainte est que le début précède la fin. Hors de la plage et sans le code d'accès anticipé, le serveur refuse aussi de créer un pseudo, de relier un téléphone et de servir le programme. Changer le code d'accès anticipé renvoie à l'écran d'attente les téléphones entrés avec l'ancien.
+La convention se termine à la fin de son dernier créneau. L'application affiche alors « La convention est terminée », à tous, et plus rien n'y est consultable. Tant que la date ou les créneaux manquent, elle ne ferme pas. Le serveur refuse de créer un pseudo ou de relier un téléphone sans le code de présence, et de servir le programme à un téléphone relié à aucun pseudo. Après la fin de la convention, il refuse tout.
 
 ### 4.2 Arrivée sur place
 
@@ -69,7 +68,7 @@ Les inscriptions sont déjà ouvertes : il n'y a pas d'état où l'on lit le pro
 
 ### 4.3 Inscriptions
 
-1. Les inscriptions s'ouvrent avec la plage d'accès (§4.1), sans geste d'un Organisateur. Les Organisateurs l'annoncent à voix haute.
+1. Les inscriptions sont ouvertes dès qu'on entre dans l'application (§4.1), sans geste d'un Organisateur.
 2. Le participant parcourt les parties par créneau et consulte leur fiche (§5.3).
 3. Il s'**inscrit** à autant de parties qu'il veut, y compris plusieurs sur le même créneau, et peut se désinscrire librement tant que le tirage du créneau n'est pas lancé.
 4. S'il s'inscrit à une **partie très demandée**, l'application le prévient qu'il risque de ne pas être pris et l'incite à s'inscrire aussi à d'autres parties du créneau.
@@ -151,7 +150,7 @@ Titre, jeu, pseudo du MJ, présentation, image, table, créneau (mention « doub
 
 ### 5.4 Inscriptions
 
-- **IN-1** Les inscriptions s'ouvrent au début de la plage d'accès, ou dès l'entrée d'un téléphone par le code d'accès anticipé (§4.1). Le début de la plage n'est pas notifié (NO-4).
+- **IN-1** Les inscriptions sont ouvertes dès qu'on entre dans l'application avec le code de présence (§4.1), sans heure d'ouverture.
 - **IN-2** Un participant peut s'inscrire à plusieurs parties d'un même créneau et se désinscrire librement tant que le tirage de ce créneau n'est pas lancé.
 - **IN-3** S'inscrire à une partie double revient à se déclarer disponible sur ses deux créneaux.
 - **IN-4** Un MJ ne peut pas s'inscrire comme joueur sur un créneau où il mène une partie. Si une partie de son scénario est programmée sur un créneau où il était inscrit comme joueur, ses inscriptions sur ce créneau sont retirées et il est notifié (NO-2).
@@ -180,7 +179,7 @@ Titre, jeu, pseudo du MJ, présentation, image, table, créneau (mention « doub
 
 Notifications push web. Chaque notification se suffit à elle-même : son titre commence par le créneau, car il tient sur une ligne et se coupe selon l'écran ; son corps donne la partie et la table. Un tap ouvre l'application sur le détail.
 
-- **NO-1** Une notification part vers les téléphones reliés au destinataire au moment de l'envoi (ID-8). Rien ne part avant le début de la plage d'accès. Un même geste envoie au plus une notification à une même personne, la plus précise : les inscrits d'une partie déplacée reçoivent « partie déplacée », pas « nouvelle partie ».
+- **NO-1** Une notification part vers les téléphones reliés au destinataire au moment de l'envoi (ID-8), y compris avant le jour J. Un même geste envoie au plus une notification à une même personne, la plus précise : les inscrits d'une partie déplacée reçoivent « partie déplacée », pas « nouvelle partie ».
 - **NO-2** Événements notifiés :
 
   | Événement | Destinataires | Titre | Corps | Le tap ouvre |
@@ -201,7 +200,7 @@ Notifications push web. Chaque notification se suffit à elle-même : son titre 
   - quand aucune table n'a de place, « Toutes les parties du créneau sont complètes. » remplace le corps du non placé, et la phrase « Il reste de la place… » de la partie annulée ;
   - une partie double se désigne par ses deux créneaux : « Créneaux 2 et 3 : table *T* ».
 - **NO-3** Une notification que le téléphone n'a pas encore reçue n'est plus livrée après la fin du créneau qu'elle concerne (le second, pour une partie double).
-- **NO-4** Ne sont pas notifiés : le début de la plage d'accès, le lancement d'un tirage, le changement de table d'une partie et l'échange de deux parties d'un même créneau, les gestes de ID-5. Pas de rappel avant un créneau (§7).
+- **NO-4** Ne sont pas notifiés : le lancement d'un tirage, le changement de table d'une partie et l'échange de deux parties d'un même créneau, les gestes de ID-5. Pas de rappel avant un créneau (§7).
 - **NO-5** Le téléphone affiche la notification même quand l'application est ouverte. Sur iPhone, les notifications successives s'empilent : elles ne se remplacent pas.
 - **NO-6** Sur un téléphone qui ne reçoit pas les notifications, chaque écran porte un bandeau qu'on ne peut pas fermer. Sauf dans le dernier cas, un tap ouvre le guide d'activation (§4.2) :
 
@@ -220,7 +219,7 @@ Notifications push web. Chaque notification se suffit à elle-même : son titre 
 - **PWA avec push web** (service worker, clés VAPID). Sur iPhone, le push n'est possible qu'une fois l'application ajoutée à l'écran d'accueil (iOS 16.4+) : le parcours d'accueil doit l'expliquer pas à pas.
 - **Réseau mobile uniquement** : pages légères, images compressées, programme et affectations mis en cache pour rester consultables sans réseau.
 - **Charge** : jusqu'à ~80 personnes qui consultent et s'inscrivent en même temps, avec un pic à chaque publication.
-- **Session** : un cookie posé par le serveur, illisible par les scripts de la page, relie le téléphone à son pseudo. Il n'a pas d'expiration propre : la plage d'accès fait foi. L'application garde à côté une copie non secrète pour l'affichage hors ligne.
+- **Session** : un cookie posé par le serveur, illisible par les scripts de la page, relie le téléphone à son pseudo. Il n'a pas d'expiration propre : la fin de la convention fait foi (§4.1). L'application garde à côté une copie non secrète pour l'affichage hors ligne.
 - **Données personnelles** : aucun email ni donnée nominative côté participant ; seuls les emails des MJ et Organisateurs sont stockés.
 - **Envoi d'emails** : nécessaire uniquement pour les liens magiques du back office.
 - **Langue** : français.

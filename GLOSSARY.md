@@ -7,11 +7,7 @@ Chaque terme est suivi du terme anglais qui le désigne dans le code (ADR 0003).
 ## Programme
 
 **Convention** · `Convention`:
-L'événement dans son ensemble, sur une journée, découpé en créneaux.
-
-**Plage d'accès** · `AccessWindow`:
-Période, fixée par un Organisateur (un début et une fin, en date et heure), pendant laquelle les participants peuvent entrer dans le front office. Les inscriptions s'ouvrent à son début. Hors de cette période, le front office reste fermé.
-_Avoid_: Ouverture ou fermeture de l'application (« ouvrir » est réservé aux inscriptions)
+L'événement dans son ensemble, sur une journée, découpé en créneaux. Elle se termine à la fin de son dernier créneau.
 
 **Créneau** · `TimeSlot`:
 Plage horaire de la journée, habituellement de 2h30, pendant laquelle se jouent les parties en parallèle. Les créneaux ne se chevauchent pas ; deux créneaux sont consécutifs quand aucun autre ne se place entre eux, même s'ils sont séparés par une pause (repas, etc.).
@@ -98,19 +94,15 @@ Geste d'un Organisateur qui fait passer les inscriptions et le résultat des tir
 _Avoid_: Report, transfert, regrouper
 
 **Code de présence** · `PresenceCode`:
-Code unique de la convention, fixé à sa création, que le QR code affiché sur place transmet au téléphone. Sans lui, on ne peut pas s'identifier dans le front office. Il n'identifie personne.
-_Avoid_: Code de salle, code d'accès, mot de passe
-
-**Code d'accès anticipé** · `EarlyAccessCode`:
-Code unique de la convention, choisi par un Organisateur, qui laisse entrer un téléphone dans le front office hors de la plage d'accès. Il n'identifie personne.
-_Avoid_: Code organisateur, mot de passe
+Code unique de la convention, fixé à sa création, que le QR code affiché sur place transmet au téléphone. Sans lui, on ne peut pas s'identifier, donc pas entrer dans le front office ; avec lui, on entre à toute heure, jusqu'à la fin de la convention. Il n'identifie personne.
+_Avoid_: Code de salle, code d'accès, code d'accès anticipé, mot de passe
 
 **MJ** · `GameMaster`:
 Personne connue des Organisateurs avant la convention, qui mène des parties ; elle ne joue pas sur le ou les créneaux où elle mène une partie, et peut jouer sur les autres.
 _Avoid_: Meneur, GM, animateur, Gm (abrégé)
 
 **Organisateur** · `Organizer`:
-Personne connue avant la convention, qui programme les scénarios sur les créneaux et les tables, fixe la plage d'accès et lance les tirages.
+Personne connue avant la convention, qui programme les scénarios sur les créneaux et les tables, et lance les tirages.
 _Avoid_: Admin, staff
 
 ## Répartition
