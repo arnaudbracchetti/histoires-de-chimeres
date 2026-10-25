@@ -1,0 +1,42 @@
+{
+  "name": "labo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PROTOTYPE jetable (#59) : mini application de test pour iPhone et Android. Branche jamais fusionnée.",
+  "scripts": {
+    "dev:web": "ng serve",
+    "dev:server": "tsc -p server/tsconfig.json && node --env-file-if-exists=.env server/dist/main.js",
+    "build": "ng build && tsc -p server/tsconfig.json",
+    "start": "node --env-file-if-exists=.env server/dist/main.js"
+  },
+  "dependencies": {
+    "@nestjs/common": "^12.0.1",
+    "@nestjs/core": "^12.0.1",
+    "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/serve-static": "^12.0.0",
+    "qrcode": "1.5.4",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "~7.8.0",
+    "web-push": "3.6.7"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.2.3",
+    "@angular/cli": "^22.2.3",
+    "@angular/common": "^22.2.0",
+    "@angular/compiler": "^22.2.0",
+    "@angular/compiler-cli": "^22.2.0",
+    "@angular/core": "^22.2.0",
+    "@angular/forms": "^22.2.0",
+    "@angular/platform-browser": "^22.2.0",
+    "@angular/router": "^22.2.0",
+    "@angular/service-worker": "^22.2.0",
+    "@chimeres/design": "workspace:*",
+    "@types/express": "^5.0.0",
+    "@types/node": "catalog:",
+    "@types/qrcode": "1.5.6",
+    "@types/web-push": "3.6.4",
+    "tslib": "^2.3.0",
+    "typescript": "catalog:"
+  }
+}

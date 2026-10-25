@@ -1,0 +1,10 @@
+# PROTOTYPE (#59) : bloc de site pour le Caddy « edge » (/opt/edge/sites/chimeres-labo.caddy).
+# Sans `encode` : la compression retiendrait les messages du flux SSE.
+test.nekbet.fr {
+    header {
+        X-Content-Type-Options "nosniff"
+        -Server
+    }
+
+    reverse_proxy chimeres-labo:3000
+}

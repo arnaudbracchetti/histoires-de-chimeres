@@ -1,0 +1,27 @@
+# PROTOTYPE (#59) : posé dans ~/chimeres-labo/ du compte deploy, à côté de son .env.
+# L'image arrive par `docker save | ssh ovh docker load` : rien n'est tiré d'un registre.
+name: chimeres-labo
+
+services:
+  labo:
+    image: chimeres-labo:latest
+    env_file: .env
+    volumes:
+      - labo_data:/data
+    networks:
+      edge_net:
+        aliases:
+          - chimeres-labo
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    restart: unless-stopped
+
+networks:
+  edge_net:
+    external: true
+
+volumes:
+  labo_data:
