@@ -57,12 +57,16 @@ La convention se termine à la fin de son dernier créneau. L'application affich
 
 ### 4.2 Arrivée sur place
 
-1. Le participant scanne le QR code affiché sur place : il ouvre l'application, qui reçoit le **code de présence**.
-2. Le premier écran est l'identification : on ne peut rien faire dans l'application sans elle. L'application demande un pseudo.
+1. Le participant scanne le QR code affiché sur place : il ouvre l'application, qui reçoit le **code de présence**. Quand le code lui manque, l'application le demande (ID-2) et dit où le trouver : sur l'affiche, en clair sous le QR code.
+2. **Sur iPhone**, Safari ne sert qu'à installer l'application. Le premier écran dit à quoi servent les notifications, guide pas à pas l'ajout à l'écran d'accueil et montre le code de présence à retenir. L'application installée ne reçoit pas le code : elle le demande, puis passe à l'identification. On peut continuer dans Safari, sans notifications, après une confirmation.
+3. Vient ensuite l'identification : on ne peut rien faire dans l'application sans elle. L'application demande un pseudo.
    - **Pseudo nouveau** : il est créé et relié au téléphone.
-   - **Pseudo existant** : l'application demande « Ce pseudo existe déjà. Est-ce bien toi qui l'as créé ? ». Sur un « oui », le téléphone y est relié ; sinon, le participant en choisit un autre.
-   - **Pseudo d'un MJ** : l'application demande au participant de confirmer qu'il est ce MJ. Sur un « oui », le téléphone est relié à ce MJ ; sinon, le participant choisit un autre pseudo.
-3. L'application le guide pour l'ajouter à l'écran d'accueil (indispensable sur iPhone) et accepter les notifications.
+   - **Pseudo existant** : l'application demande « Ce pseudo existe déjà. Est-ce bien toi qui l'as créé ? ». Elle précise que c'est le cas si on l'a déjà tapé plus tôt : dans Safari avant d'installer l'application, sur un autre téléphone, ou avant la convention. En cas de doute, elle renvoie à un Organisateur. Sur un « oui », le téléphone y est relié ; sinon, le participant en choisit un autre.
+   - **Pseudo d'un MJ** : l'application demande au participant de confirmer qu'il est ce MJ, et renvoie à un Organisateur en cas de doute. Sur un « oui », le téléphone est relié à ce MJ ; sinon, le participant choisit un autre pseudo.
+4. L'application demande d'activer les notifications. Elle dit ce qu'elles apportent : sa table à la publication de chaque tirage, les nouvelles parties, ses parties déplacées ou retirées du programme et, pour un MJ, les parties qu'il mène. La demande du téléphone ne vient qu'après un tap. Passer outre demande une confirmation ; après un refus, l'application montre le chemin des réglages propre au téléphone.
+5. **Sur Android**, l'application propose ensuite de s'installer. Une fois installée, elle invite à quitter Chrome pour l'ouvrir.
+
+Tant que le téléphone ne reçoit pas les notifications, chaque écran porte le bandeau de NO-6. Un tap ouvre le **guide d'activation**, propre au cas et au système. Un téléphone qui ne peut pas les recevoir (iPhone sous iOS 16.3 ou moins) passe directement de l'identification à l'Accueil.
 
 Les inscriptions sont déjà ouvertes : il n'y a pas d'état où l'on lit le programme sans pouvoir s'inscrire.
 
@@ -104,7 +108,7 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 - **ID-6** MJ et Organisateurs se connectent au back office par lien magique envoyé par email.
 - **ID-7** Deux pseudos sont le même pseudo quand ils ne diffèrent que par la casse, les accents ou les espaces (au début, à la fin, ou plusieurs à la suite) : « Élodie » et « elodie » sont le même pseudo. La ponctuation compte : « Jean-Luc » et « Jean Luc » sont deux pseudos distincts. Un pseudo s'affiche tel qu'il a été saisi.
 - **ID-8** Un téléphone est relié à un seul pseudo à la fois ; un pseudo peut être relié à plusieurs téléphones. Le relier à un nouveau téléphone ne coupe rien sur les autres ; un pseudo supprimé ou fusionné (ID-10, ID-11) perd tous ses liens, et un Organisateur peut les couper (ID-5). Un téléphone dont le lien est coupé revient à l'identification à son prochain échange avec le serveur, et oublie sa copie hors ligne. Les notifications vont aux téléphones reliés au pseudo au moment de l'envoi. Le participant ne voit pas les autres téléphones reliés à son pseudo.
-- **ID-9** « Changer de pseudo » coupe le lien du téléphone et ramène à l'identification : pour corriger une erreur, ou pour inscrire plusieurs personnes depuis un même téléphone. L'ancien pseudo reste, avec ses inscriptions. Un participant ne peut pas modifier son pseudo.
+- **ID-9** « Changer de pseudo », après une confirmation, coupe le lien du téléphone et ramène à l'identification : pour corriger une erreur, ou pour inscrire plusieurs personnes depuis un même téléphone. L'ancien pseudo reste, avec ses inscriptions. Un participant ne peut pas modifier son pseudo.
 - **ID-10** Supprimer un pseudo de participant est toujours possible, même après la publication d'un tirage. Le pseudo perd ses liens, ses inscriptions et son résultat dans les tirages, provisoires ou publiés, puis redevient libre. Après la publication, sa partie compte simplement un joueur de moins : la place n'est proposée à personne (§7). Un MJ ne se supprime que par PR-12.
 - **ID-11** Fusionner un pseudo de participant (la source) dans un autre pseudo, de participant ou de MJ (la destination), fait passer sur la destination les inscriptions de la source et son résultat dans les tirages, provisoires ou publiés, puis supprime la source (ID-10) : ses liens sont coupés, pas transférés. La destination garde une seule inscription par partie, et une seule table par créneau ; une partie double compte sur ses deux créneaux :
   - sur un créneau où la destination mène une partie (IN-4) ou est déjà placée par un tirage, les inscriptions et le résultat de la source sont perdus ;
