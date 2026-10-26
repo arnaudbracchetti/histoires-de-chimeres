@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="fr">
+<!--
+  PROTOTYPE JETABLE : ne pas reprendre ce code en production.
+  Question : dans quel ordre, et avec quels écrans, se fait le premier usage sur le téléphone ?
+  Scan du QR code (code de présence), pseudo et ses confirmations (pseudo existant, pseudo d'un MJ),
+  repli quand le code manque, ajout à l'écran d'accueil sur iPhone (où l'on retape son pseudo),
+  notifications, « Changer de pseudo », « La convention est terminée ».
+  Ticket « Parcours d'accueil : QR code, pseudo, installation, notifications » (#50).
+
+  Trois variantes, basculables par ?variant=A|B|C et par les flèches ← → du clavier :
+    A « Tout d'un trait »    : pseudo, puis chaque étape à la suite (installation sur iPhone, notifications).
+    B « Installer d'abord »  : sur iPhone, Safari ne sert qu'à installer ; le pseudo se tape une seule fois, dans l'application.
+    C « Accueil d'abord »    : pseudo, puis l'Accueil ; une carte « Pour connaître ta table » et le bandeau mènent aux étapes.
+  Retenue : B, avec l'insistance sur les notifications, la confirmation « Continuer sans notifications ? »,
+  l'installation sur Android et le passage de Chrome à l'application. A et C n'ont pas reçu ces retouches.
+
+  ?phone=iphone|android|ancien (iOS 16.3 ou moins, sans notifications). ?fin=1 : la convention est terminée.
+  Le téléphone est simulé : écran d'accueil, appareil photo, Safari ou Chrome, dialogues du système.
+  Hypothèses iPhone, sur le pire cas (à confirmer par le test sur iPhone, #60) : la web app a son propre stockage,
+  ne reçoit pas le code du QR code, et n'a pas de geste de retour.
+  Rien n'est enregistré : tout vit en mémoire.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Parcours d'accueil</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Aldrich&display=swap">
+<style>
+/* Jetons repris de packages/design/tokens.css. Échelle typographique du mobile : provisoire, pour le prototype. */
+:root {
+  color-scheme: dark;
+  --surface-0: #151717; --surface-1: #1b1e1e; --surface-2: #222525; --surface-3: #2a2d2d;
+  --border: #313535; --text: #eceae6; --text-muted: #a9a49e;
+  --accent: #fc9203; --on-accent: #161818; --focus: #7cc4e4;
+  --success: #6cc08b; --warning: #e8d25c; --danger: #f07f63;
+  --engraving: #3a3e3e; --engraving-strong: #626767; --initial: #8c837c;
+  --emblem-1: #4e4944; --emblem-2: #5e5852; --emblem-3: #6e6862;
+  --emblem-4: #7d766f; --emblem-5: #8c837c; --emblem-6: #a39a92;
+  --font-display: 'Uncial Antiqua', serif;
+  --font-caps: 'Aldrich', sans-serif;
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --fs-hero: 2rem; --fs-title: 1.625rem; --fs-section: 1.25rem; --fs-block: 1.0625rem;
+  --fs-body: .9375rem; --fs-meta: .8125rem; --fs-over: .6875rem;
+  --space-xxs: 2px; --space-xs: 4px; --space-s: 8px; --space-m: 12px;
+  --space-l: 16px; --space-xl: 24px; --space-xxl: 32px;
+  --radius-card: 12px; --radius-control: 8px; --radius-thumb: 6px;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: #0b0c0c; color: var(--text); font: 400 var(--fs-body)/1.4 var(--font-ui); -webkit-font-smoothing: antialiased; }
+h1, h2, h3, p, ul, ol { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+svg.i { width: 20px; height: 20px; flex: none; }
+.over { font-family: var(--font-caps); text-transform: uppercase; letter-spacing: .12em; font-size: var(--fs-over); color: var(--text-muted); }
+.meta { color: var(--text-muted); font-size: var(--fs-meta); }
+.stack { display: grid; gap: var(--space-s); }
+.stack-l { display: grid; gap: var(--space-l); }
+.pad { padding: var(--space-l); }
+
+/* ---------- Scène : téléphone sur ordinateur, plein écran sur téléphone ---------- */
+.stage { min-height: 100vh; display: flex; align-items: center; justify-content: center; gap: 40px; padding: 16px 16px 96px; }
+.notes { width: 340px; flex: none; color: #c9c4be; font: 13px/1.55 system-ui, sans-serif; display: none; max-height: calc(100vh - 120px); overflow-y: auto; }
+.notes h2 { font: 600 15px/1.3 system-ui, sans-serif; color: #f1efec; margin: 0 0 6px; }
+.notes h3 { font: 600 12px/1.3 system-ui, sans-serif; text-transform: uppercase; letter-spacing: .08em; color: #8f8a85; margin: 18px 0 6px; }
+.notes p { margin: 0 0 8px; }
+.notes dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; }
+.notes dt { color: #8f8a85; }
+.notes dd { margin: 0; color: #f1efec; }
+.notes .changed { color: #fc9203; }
+.notes code { color: #f1efec; }
+@media (min-width: 1000px) { .notes { display: block; } }
+.phone { position: relative; width: 390px; height: min(844px, calc(100vh - 120px)); min-height: 640px; border-radius: 46px; overflow: hidden; background: var(--surface-0); display: flex; flex-direction: column; box-shadow: 0 0 0 10px #1c1d1d, 0 0 0 11px #333; }
+.statusbar { flex: none; height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 6px 30px 0; font: 600 15px system-ui, sans-serif; background: var(--surface-1); }
+.statusbar.on-home { background: transparent; position: absolute; inset: 0 0 auto; z-index: 5; }
+.statusbar .sb-right { font-size: 12px; letter-spacing: .04em; }
+.app { position: relative; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.scroll { flex: 1; overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
+@media (max-width: 520px) {
+  .stage { padding: 0; }
+  .phone { width: 100vw; height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); min-height: 0; border-radius: 0; box-shadow: none; }
+}
+
+/* ---------- Système simulé : hors du design évalué ---------- */
+.home { flex: 1; position: relative; padding: 70px 22px 20px; background: radial-gradient(120% 80% at 30% 10%, #3b4a63, #1d2433 55%, #10131a); display: grid; grid-template-columns: repeat(4, 1fr); align-content: start; gap: 22px 10px; font-family: -apple-system, system-ui, sans-serif; }
+.app-icon { display: grid; justify-items: center; gap: 6px; font-size: 11px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+.app-icon .ic { width: 60px; height: 60px; border-radius: 15px; display: grid; place-items: center; background: #5a6170; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+.app-icon .ic svg { width: 30px; height: 30px; color: #fff; }
+.app-icon .ic.chim { background: #151717; }
+.app-icon .ic.chim svg { width: 50px; height: 50px; }
+.app-icon.new .ic { box-shadow: 0 0 0 3px #fc9203, 0 2px 6px rgba(0,0,0,.35); }
+.app-icon[disabled] { cursor: default; opacity: .85; }
+.home-hint { grid-column: 1 / -1; margin-top: 8px; padding: 10px 12px; border-radius: 14px; background: rgba(0,0,0,.35); color: #e8ecf3; font-size: 12px; line-height: 1.4; }
+.ios-indicator { flex: none; height: 26px; display: grid; place-items: center; background: inherit; }
+.ios-indicator button { width: 134px; height: 18px; display: grid; place-items: center; }
+.ios-indicator button::before { content: ''; width: 134px; height: 5px; border-radius: 3px; background: #e9e9e9; }
+.android-nav { flex: none; height: 44px; display: grid; grid-template-columns: repeat(3, 1fr); background: #000; color: #e8e8e8; font: 18px system-ui, sans-serif; }
+.android-nav button { display: grid; place-items: center; }
+.safari-bar { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 12px 4px; background: #1c1c1e; font-family: -apple-system, system-ui, sans-serif; }
+.safari-bar .url { flex: 1; height: 40px; border-radius: 20px; background: #2c2c2e; display: grid; place-items: center; font-size: 15px; color: #f2f2f7; }
+.safari-bar button { width: 40px; height: 40px; border-radius: 20px; display: grid; place-items: center; color: #0a84ff; background: #2c2c2e; }
+.chrome-bar { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 12px; background: #202124; font-family: Roboto, system-ui, sans-serif; }
+.chrome-bar .url { flex: 1; height: 36px; border-radius: 18px; background: #303134; display: flex; align-items: center; gap: 8px; padding: 0 14px; font-size: 14px; color: #e8eaed; }
+.chrome-bar button { width: 40px; height: 40px; display: grid; place-items: center; color: #e8eaed; }
+.sys-scrim { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.45); }
+.ios-alert { position: absolute; z-index: 61; left: 50%; top: 50%; translate: -50% -50%; width: 270px; border-radius: 14px; background: rgba(44,44,46,.97); text-align: center; font-family: -apple-system, system-ui, sans-serif; color: #fff; overflow: hidden; }
+.ios-alert .t { padding: 18px 16px 4px; font-weight: 600; font-size: 16px; }
+.ios-alert .d { padding: 0 16px 18px; font-size: 13px; color: #d1d1d6; }
+.ios-alert .bs { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #48484a; }
+.ios-alert .bs button { padding: 12px; color: #0a84ff; font-size: 16px; text-align: center; }
+.ios-alert .bs button + button { border-left: 1px solid #48484a; font-weight: 600; }
+.ios-sheet { position: absolute; z-index: 61; left: 0; right: 0; bottom: 0; max-height: 80%; overflow-y: auto; border-radius: 14px 14px 0 0; background: #1c1c1e; color: #fff; font-family: -apple-system, system-ui, sans-serif; padding: 14px 14px 30px; display: grid; gap: 12px; }
+.ios-sheet .head { display: flex; align-items: center; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid #38383a; }
+.ios-sheet .head .ic { width: 44px; height: 44px; border-radius: 10px; background: #151717; display: grid; place-items: center; }
+.ios-sheet .head .ic svg { width: 36px; height: 36px; }
+.ios-group { border-radius: 10px; background: #2c2c2e; overflow: hidden; }
+.ios-group button, .ios-group div.r { display: flex; width: 100%; align-items: center; justify-content: space-between; padding: 12px 14px; font-size: 16px; color: #fff; }
+.ios-group > * + * { border-top: 1px solid #3a3a3c; }
+.ios-group svg { width: 20px; height: 20px; color: #f2f2f7; }
+.ios-nav { display: flex; justify-content: space-between; align-items: center; font-size: 16px; }
+.ios-nav button { color: #0a84ff; }
+.ios-nav strong { font-weight: 600; }
+.ios-toggle { width: 50px; height: 30px; border-radius: 15px; background: #30d158; position: relative; }
+.ios-toggle::after { content: ''; position: absolute; right: 2px; top: 2px; width: 26px; height: 26px; border-radius: 50%; background: #fff; }
+.ios-menu { position: absolute; z-index: 61; right: 12px; bottom: 86px; width: 240px; border-radius: 14px; background: rgba(44,44,46,.98); font-family: -apple-system, system-ui, sans-serif; overflow: hidden; }
+.ios-menu button { display: flex; width: 100%; justify-content: space-between; align-items: center; padding: 12px 16px; font-size: 16px; color: #fff; }
+.ios-menu button + button { border-top: 1px solid #3a3a3c; }
+.ios-menu svg { width: 20px; height: 20px; }
+.md-dialog { position: absolute; z-index: 61; left: 24px; right: 24px; top: 50%; translate: 0 -50%; border-radius: 28px; background: #2b2930; color: #e6e0e9; font-family: Roboto, system-ui, sans-serif; padding: 24px; display: grid; gap: 16px; }
+.md-dialog .ttl { font-size: 20px; text-align: center; }
+.md-dialog .ico { justify-self: center; color: #d0bcff; }
+.md-dialog .ico svg { width: 26px; height: 26px; }
+.md-dialog .bs { display: flex; justify-content: flex-end; gap: 8px; }
+.md-dialog .bs.col { flex-direction: column; }
+.md-dialog .bs button { padding: 10px 14px; border-radius: 20px; color: #d0bcff; font-weight: 500; }
+.md-dialog .bs.col button { background: #4a4458; color: #e8def8; text-align: center; }
+.md-dialog .app { flex: none; display: flex; flex-direction: row; align-items: center; gap: 12px; }
+.md-dialog .app .ic { width: 44px; height: 44px; border-radius: 12px; background: #151717; display: grid; place-items: center; }
+.md-dialog .app .ic svg { width: 36px; height: 36px; }
+.md-menu { position: absolute; z-index: 61; right: 6px; top: 96px; width: 250px; border-radius: 6px; background: #2d2e31; color: #e8eaed; font-family: Roboto, system-ui, sans-serif; padding: 8px 0; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
+.md-menu button { display: block; width: 100%; padding: 12px 18px; font-size: 15px; }
+.sys-toast { position: absolute; z-index: 62; left: 16px; right: 16px; bottom: 60px; padding: 12px 16px; border-radius: 10px; background: #e8eaed; color: #202124; font: 14px Roboto, system-ui, sans-serif; }
+
+/* ---------- Application : éléments communs ---------- */
+.hdr { flex: none; display: flex; align-items: center; gap: var(--space-s); padding: var(--space-xs) var(--space-s) var(--space-xs) var(--space-l); min-height: 56px; background: var(--surface-1); border-bottom: 1px solid var(--border); }
+.brand { display: flex; align-items: center; gap: var(--space-s); min-width: 0; flex: 1; }
+.emblem { width: 28px; height: 28px; flex: none; }
+.brand-name { font-family: var(--font-display); font-size: .9375rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pseudo { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px 0 10px; border-radius: 999px; background: var(--surface-3); border: 1px solid var(--border); font-weight: 600; font-size: var(--fs-meta); flex: none; max-width: 150px; }
+.pseudo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pseudo svg { width: 18px; height: 18px; color: var(--text-muted); }
+.pseudo[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+.icon-btn { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 999px; flex: none; }
+.icon-btn:hover { background: var(--surface-3); }
+.bandeau { flex: none; display: flex; gap: var(--space-s); align-items: flex-start; width: 100%; min-height: 44px; padding: var(--space-s) var(--space-l); background: color-mix(in srgb, var(--warning) 14%, var(--surface-1)); border-bottom: 1px solid var(--border); font-size: var(--fs-meta); font-weight: 600; text-align: left; }
+.bandeau svg { width: 18px; height: 18px; color: var(--warning); margin-top: 1px; }
+.bandeau .chev { margin-left: auto; color: var(--text-muted); }
+.tabbar { flex: none; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--surface-1); border-top: 1px solid var(--border); }
+.tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 56px; color: var(--text-muted); font-size: .75rem; font-weight: 600; text-align: center; }
+.tab svg { width: 24px; height: 24px; }
+.tab[aria-current="page"] { color: var(--accent); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 18px; border-radius: var(--radius-control); font-weight: 600; font-size: var(--fs-body); border: 1px solid transparent; text-align: center; }
+.btn-primary { background: var(--accent); color: var(--on-accent); }
+.btn-secondary { background: var(--surface-3); border-color: var(--border); }
+.btn-ghost { color: var(--accent); padding: 0 var(--space-s); }
+.btn-block { width: 100%; }
+.btn svg { width: 18px; height: 18px; }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px 3px 7px; border-radius: 999px; font-size: .75rem; font-weight: 600; white-space: nowrap; background: var(--surface-3); color: var(--text-muted); }
+.badge svg { width: 14px; height: 14px; }
+.t-ok { color: var(--success); background: color-mix(in srgb, var(--success) 14%, var(--surface-2)); }
+.t-accent { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); }
+.card { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-card); }
+.section-title { font-size: var(--fs-section); font-weight: 600; }
+.row { position: relative; display: flex; gap: var(--space-m); align-items: center; padding: var(--space-m) var(--space-l); border-bottom: 1px solid var(--border); width: 100%; text-align: left; }
+.row-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.status { display: flex; gap: var(--space-s); align-items: flex-start; }
+.status svg { width: 18px; height: 18px; margin-top: 1px; }
+.tone-ok { color: var(--success); } .tone-accent { color: var(--accent); } .tone-muted { color: var(--text-muted); } .tone-warn { color: var(--warning); } .tone-danger { color: var(--danger); }
+.hero { position: relative; overflow: hidden; display: grid; gap: var(--space-s); padding: var(--space-l); }
+.hero .eng-bg { position: absolute; right: -60px; top: -60px; width: 220px; height: 220px; pointer-events: none; }
+.hero > * { position: relative; }
+.hero-title { font-family: var(--font-display); font-weight: normal; font-size: var(--fs-title); line-height: 1.15; }
+
+/* ---------- Écrans du parcours ---------- */
+.ob { flex: 1; display: flex; flex-direction: column; min-height: 0; background: var(--surface-0); }
+.ob-top { flex: none; display: flex; align-items: center; gap: var(--space-s); min-height: 56px; padding: var(--space-xs) var(--space-s); }
+.ob-top .brand { padding-left: var(--space-s); }
+.ob-body { display: grid; gap: var(--space-l); padding: var(--space-s) var(--space-xl) var(--space-xl); }
+.ob-title { font-family: var(--font-display); font-weight: normal; font-size: var(--fs-title); line-height: 1.15; }
+.ob-actions { flex: none; display: grid; gap: var(--space-s); padding: var(--space-m) var(--space-xl) var(--space-l); }
+.field { display: grid; gap: var(--space-xs); }
+.field label { font-weight: 600; font-size: var(--fs-meta); }
+.field input { font: 400 17px/1.3 var(--font-ui); color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-control); min-height: 52px; padding: 0 var(--space-m); width: 100%; }
+.field input:focus { outline: 2px solid var(--focus); outline-offset: 0; border-color: transparent; }
+.field input.code { font-family: var(--font-caps); font-size: 24px; letter-spacing: .3em; text-transform: uppercase; text-align: center; }
+.field .err { display: flex; gap: var(--space-xs); color: var(--danger); font-size: var(--fs-meta); font-weight: 600; }
+.field .err svg { width: 16px; height: 16px; margin-top: 1px; }
+.field input[aria-invalid="true"] { border-color: var(--danger); }
+.big-pseudo { font-family: var(--font-display); font-size: var(--fs-hero); line-height: 1.1; color: var(--accent); word-break: break-word; }
+.steps { display: grid; gap: var(--space-m); counter-reset: step; }
+.steps li { display: grid; grid-template-columns: 32px 1fr; gap: var(--space-m); align-items: start; counter-increment: step; }
+.steps li::before { content: counter(step); display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--surface-3); border: 1px solid var(--border); font-weight: 700; color: var(--accent); }
+.steps li > div { padding-top: 5px; }
+.kbd { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 6px; background: var(--surface-3); border: 1px solid var(--border); font-weight: 600; white-space: nowrap; vertical-align: 1px; }
+.kbd svg { width: 15px; height: 15px; }
+.recap { display: grid; gap: var(--space-xs); padding: var(--space-m) var(--space-l); border-radius: var(--radius-control); background: var(--surface-2); border: 1px dashed var(--engraving-strong); }
+.recap dl { display: grid; grid-template-columns: auto 1fr; gap: 2px var(--space-m); margin: 0; align-items: baseline; }
+.recap dt { color: var(--text-muted); font-size: var(--fs-meta); }
+.recap dd { margin: 0; font-weight: 700; }
+.recap dd.code { font-family: var(--font-caps); letter-spacing: .2em; font-size: 1.25rem; color: var(--accent); }
+.notif-mock { display: grid; grid-template-columns: 36px 1fr; gap: var(--space-s) var(--space-m); padding: var(--space-m); border-radius: 16px; background: #2c2c2e; font-family: -apple-system, system-ui, sans-serif; }
+.notif-mock .ic { width: 36px; height: 36px; border-radius: 8px; background: #151717; display: grid; place-items: center; }
+.notif-mock .ic svg { width: 30px; height: 30px; }
+.notif-mock strong { display: block; font-size: 14px; }
+.notif-mock span { font-size: 13px; color: #d1d1d6; }
+.closed { position: relative; flex: 1; display: grid; align-content: center; justify-items: center; gap: var(--space-l); padding: var(--space-xxl) var(--space-xl); text-align: center; overflow: hidden; }
+.closed > * { position: relative; }
+.closed .eng-closed { position: absolute; width: 520px; height: 520px; top: 50%; left: 50%; translate: -50% -50%; }
+.emblem-big { width: 96px; height: 96px; }
+.closed-title { font-family: var(--font-display); font-weight: normal; font-size: var(--fs-title); }
+.why { display: grid; gap: var(--space-s); padding: var(--space-m) var(--space-l); border-radius: var(--radius-control); background: var(--surface-2); border-left: 4px solid var(--accent); }
+.why strong { font-weight: 700; }
+.slot-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; min-height: 44px; padding: var(--space-s) var(--space-l); background: var(--surface-1); border-bottom: 1px solid var(--border); }
+.slot-head .over { color: var(--text); }
+.settings { flex: 1; overflow-y: auto; background: #000; color: #fff; font-family: -apple-system, system-ui, sans-serif; padding: 8px 16px 24px; display: grid; align-content: start; gap: 16px; }
+.settings.md { background: #141218; font-family: Roboto, system-ui, sans-serif; }
+.settings .crumbs { display: flex; align-items: center; gap: 6px; color: #0a84ff; font-size: 16px; min-height: 44px; }
+.settings.md .crumbs { color: #d0bcff; }
+.settings h1 { font-size: 30px; font-weight: 700; }
+.settings .note { font-size: 13px; color: #98989d; padding: 0 4px; }
+.settings .ios-group { background: #1c1c1e; }
+.settings.md .ios-group { background: #2b2930; border-radius: 20px; }
+.sw { width: 50px; height: 30px; border-radius: 15px; background: #39393d; position: relative; flex: none; }
+.sw::after { content: ''; position: absolute; left: 2px; top: 2px; width: 26px; height: 26px; border-radius: 50%; background: #fff; transition: left 120ms; }
+.sw[aria-checked="true"] { background: #30d158; }
+.sw[aria-checked="true"]::after { left: 22px; }
+.md .sw[aria-checked="true"] { background: #d0bcff; }
+.activate { display: grid; gap: var(--space-m); padding: var(--space-l); border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); }
+.activate-item { display: grid; grid-template-columns: 28px 1fr; gap: var(--space-s); align-items: start; }
+.activate-item .n { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--surface-3); font-weight: 700; font-size: var(--fs-meta); color: var(--accent); }
+.activate-item .n.done { background: color-mix(in srgb, var(--success) 20%, var(--surface-3)); color: var(--success); }
+.activate-item .btn { justify-self: start; min-height: 40px; margin-top: var(--space-xs); }
+
+/* Superpositions de l'application */
+.scrim { position: absolute; inset: 0; z-index: 29; background: color-mix(in srgb, var(--surface-0) 72%, transparent); }
+.menu { --menu-edge: color-mix(in srgb, var(--accent) 60%, var(--border)); position: absolute; z-index: 30; top: 62px; right: var(--space-s); width: 264px; padding: var(--space-l); display: grid; gap: var(--space-s); background: var(--surface-3); border: 1px solid var(--menu-edge); border-radius: var(--radius-card); }
+.menu::before { content: ''; position: absolute; top: -7px; right: 52px; width: 12px; height: 12px; background: var(--surface-3); border-left: 1px solid var(--menu-edge); border-top: 1px solid var(--menu-edge); rotate: 45deg; }
+.menu .btn-secondary { background: var(--surface-2); }
+.dialog { position: absolute; z-index: 30; left: var(--space-l); right: var(--space-l); top: 50%; translate: 0 -50%; padding: var(--space-xl) var(--space-l) var(--space-l); display: grid; gap: var(--space-m); background: var(--surface-3); border: 1px solid var(--border); border-radius: var(--radius-card); }
+.dialog h2 { font-size: var(--fs-section); font-weight: 600; }
+.sheet { position: absolute; z-index: 30; left: 0; right: 0; bottom: 0; max-height: 88%; display: flex; flex-direction: column; background: var(--surface-1); border-top: 1px solid var(--border); border-radius: 16px 16px 0 0; }
+.sheet .ob-body { padding-top: var(--space-l); }
+.toast { position: absolute; z-index: 40; left: var(--space-l); right: var(--space-l); bottom: 84px; padding: var(--space-m) var(--space-l); background: var(--surface-3); border: 1px solid var(--border); border-radius: var(--radius-control); font-size: var(--fs-meta); }
+.toast strong { display: block; color: var(--text); font-size: var(--fs-body); }
+
+/* ---------- Barre du prototype : hors du design évalué ---------- */
+.switcher { position: fixed; left: 50%; bottom: 14px; translate: -50% 0; z-index: 100; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; padding: 6px; max-width: calc(100vw - 16px); background: #f4f4f4; color: #111; border-radius: 24px; box-shadow: 0 8px 28px rgba(0, 0, 0, .55); font: 600 13px/1 system-ui, sans-serif; }
+.switcher button, .switcher select { font: inherit; color: #111; background: #e2e2e2; border: 0; border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+.switcher .label { padding: 0 6px; min-width: 190px; text-align: center; }
+.switcher label { display: inline-flex; align-items: center; gap: 6px; padding: 0 4px; }
+.switcher .sep { width: 1px; height: 22px; background: #c8c8c8; }
+.switcher :focus-visible { outline: 2px solid #1a6bb0; outline-offset: 2px; }
+.switcher .sw-toggle { display: none; }
+@media (max-width: 520px) {
+  .switcher { top: calc(6px + env(safe-area-inset-top, 0px)); bottom: auto; border-radius: 16px; }
+  .switcher .sw-toggle { display: inline-block; }
+  .switcher.collapsed { padding: 4px; }
+  .switcher.collapsed > :not(.sw-toggle) { display: none; }
+}
+</style>
+
+<svg width="0" height="0" style="position: absolute" aria-hidden="true">
+  <defs>
+    <symbol id="emblem" viewBox="-100 -100 200 200"><circle r="96" style="fill: var(--surface-0)"/><path d="M3.76 -93.92A94 94 0 0 1 43.71 -83.22L33.48 -63.74A72 72 0 0 0 2.88 -71.94Z" style="fill: var(--accent)"/><path d="M50.22 -79.46A94 94 0 0 1 79.46 -50.22L60.86 -38.46A72 72 0 0 0 38.46 -60.86Z" style="fill: var(--emblem-5)"/><path d="M83.22 -43.71A94 94 0 0 1 93.92 -3.76L71.94 -2.88A72 72 0 0 0 63.74 -33.48Z" style="fill: var(--emblem-2)"/><path d="M93.92 3.76A94 94 0 0 1 83.22 43.71L63.74 33.48A72 72 0 0 0 71.94 2.88Z" style="fill: var(--emblem-6)"/><path d="M79.46 50.22A94 94 0 0 1 50.22 79.46L38.46 60.86A72 72 0 0 0 60.86 38.46Z" style="fill: var(--accent)"/><path d="M43.71 83.22A94 94 0 0 1 3.76 93.92L2.88 71.94A72 72 0 0 0 33.48 63.74Z" style="fill: var(--emblem-3)"/><path d="M-3.76 93.92A94 94 0 0 1 -43.71 83.22L-33.48 63.74A72 72 0 0 0 -2.88 71.94Z" style="fill: var(--emblem-5)"/><path d="M-50.22 79.46A94 94 0 0 1 -79.46 50.22L-60.86 38.46A72 72 0 0 0 -38.46 60.86Z" style="fill: var(--emblem-1)"/><path d="M-83.22 43.71A94 94 0 0 1 -93.92 3.76L-71.94 2.88A72 72 0 0 0 -63.74 33.48Z" style="fill: var(--accent)"/><path d="M-93.92 -3.76A94 94 0 0 1 -83.22 -43.71L-63.74 -33.48A72 72 0 0 0 -71.94 -2.88Z" style="fill: var(--emblem-6)"/><path d="M-79.46 -50.22A94 94 0 0 1 -50.22 -79.46L-38.46 -60.86A72 72 0 0 0 -60.86 -38.46Z" style="fill: var(--emblem-2)"/><path d="M-43.71 -83.22A94 94 0 0 1 -3.76 -93.92L-2.88 -71.94A72 72 0 0 0 -33.48 -63.74Z" style="fill: var(--emblem-4)"/><circle r="68" style="fill: var(--surface-1)"/><g style="fill: none; stroke: var(--accent)" stroke-linecap="round" stroke-linejoin="round"><path d="M0 0L25.26 -60.98M0 0L60.98 -25.26M0 0L60.98 25.26M0 0L25.26 60.98M0 0L-25.26 60.98M0 0L-60.98 25.26M0 0L-60.98 -25.26M0 0L-25.26 -60.98M5.36 -12.93Q8.12 -8.12 12.93 -5.36Q11.48 0 12.93 5.36Q8.12 8.12 5.36 12.93Q0 11.48 -5.36 12.93Q-8.12 8.12 -12.93 5.36Q-11.48 0 -12.93 -5.36Q-8.12 -8.12 -5.36 -12.93Q0 -11.48 5.36 -12.93M9.95 -24.02Q15.08 -15.08 24.02 -9.95Q21.32 0 24.02 9.95Q15.08 15.08 9.95 24.02Q0 21.32 -9.95 24.02Q-15.08 15.08 -24.02 9.95Q-21.32 0 -24.02 -9.95Q-15.08 -15.08 -9.95 -24.02Q0 -21.32 9.95 -24.02M14.54 -35.11Q22.03 -22.03 35.11 -14.54Q31.16 0 35.11 14.54Q22.03 22.03 14.54 35.11Q0 31.16 -14.54 35.11Q-22.03 22.03 -35.11 14.54Q-31.16 0 -35.11 -14.54Q-22.03 -22.03 -14.54 -35.11Q0 -31.16 14.54 -35.11M19.13 -46.19Q28.99 -28.99 46.19 -19.13Q41 0 46.19 19.13Q28.99 28.99 19.13 46.19Q0 41 -19.13 46.19Q-28.99 28.99 -46.19 19.13Q-41 0 -46.19 -19.13Q-28.99 -28.99 -19.13 -46.19Q0 -41 19.13 -46.19M23.34 -56.36Q35.37 -35.37 56.36 -23.34Q50.02 0 56.36 23.34Q35.37 35.37 23.34 56.36Q0 50.02 -23.34 56.36Q-35.37 35.37 -56.36 23.34Q-50.02 0 -56.36 -23.34Q-35.37 -35.37 -23.34 -56.36Q0 -50.02 23.34 -56.36" stroke-width="2.2"/><path d="M0.8 0L0.92 0.14L1.02 0.32L1.09 0.52L1.11 0.76L1.08 1.01L1 1.26L0.87 1.51L0.68 1.75L0.44 1.97L0.15 2.14L-0.18 2.28L-0.55 2.36L-0.95 2.37L-1.36 2.32L-1.77 2.2L-2.18 2L-2.57 1.73L-2.92 1.38L-3.22 0.97L-3.46 0.49L-3.63 -0.03L-3.72 -0.59L-3.72 -1.19L-3.62 -1.79L-3.43 -2.39L-3.13 -2.96L-2.73 -3.5L-2.25 -3.99L-1.67 -4.41L-1.02 -4.74L-0.31 -4.98L0.45 -5.1L1.24 -5.11L2.04 -4.99L2.83 -4.75L3.59 -4.37L4.31 -3.88L4.95 -3.27L5.5 -2.55L5.95 -1.73L6.28 -0.84L6.47 0.11L6.51 1.1L6.4 2.1L6.14 3.09L5.72 4.05L5.15 4.96L4.43 5.78L3.58 6.49L2.62 7.08L1.56 7.53L0.42 7.81L-0.76 7.92L-1.97 7.85L-3.17 7.59L-4.34 7.14L-5.45 6.52L-6.46 5.72L-7.36 4.77L-8.11 3.67L-8.7 2.45L-9.1 1.14" stroke-width="1.76"/></g></symbol>
+    <symbol id="emblem-small" viewBox="-100 -100 200 200"><circle r="96" style="fill: var(--surface-0)"/><path d="M6.57 -93.77A94 94 0 0 1 41.19 -84.49L31.55 -64.72A72 72 0 0 0 5.04 -71.82Z" style="fill: var(--accent)"/><path d="M52.58 -77.92A94 94 0 0 1 77.92 -52.58L59.68 -40.27A72 72 0 0 0 40.27 -59.68Z" style="fill: var(--emblem-5)"/><path d="M84.49 -41.19A94 94 0 0 1 93.77 -6.57L71.82 -5.04A72 72 0 0 0 64.72 -31.55Z" style="fill: var(--emblem-2)"/><path d="M93.77 6.57A94 94 0 0 1 84.49 41.19L64.72 31.55A72 72 0 0 0 71.82 5.04Z" style="fill: var(--emblem-6)"/><path d="M77.92 52.58A94 94 0 0 1 52.58 77.92L40.27 59.68A72 72 0 0 0 59.68 40.27Z" style="fill: var(--accent)"/><path d="M41.19 84.49A94 94 0 0 1 6.57 93.77L5.04 71.82A72 72 0 0 0 31.55 64.72Z" style="fill: var(--emblem-3)"/><path d="M-6.57 93.77A94 94 0 0 1 -41.19 84.49L-31.55 64.72A72 72 0 0 0 -5.04 71.82Z" style="fill: var(--emblem-5)"/><path d="M-52.58 77.92A94 94 0 0 1 -77.92 52.58L-59.68 40.27A72 72 0 0 0 -40.27 59.68Z" style="fill: var(--emblem-1)"/><path d="M-84.49 41.19A94 94 0 0 1 -93.77 6.57L-71.82 5.04A72 72 0 0 0 -64.72 31.55Z" style="fill: var(--accent)"/><path d="M-93.77 -6.57A94 94 0 0 1 -84.49 -41.19L-64.72 -31.55A72 72 0 0 0 -71.82 -5.04Z" style="fill: var(--emblem-6)"/><path d="M-77.92 -52.58A94 94 0 0 1 -52.58 -77.92L-40.27 -59.68A72 72 0 0 0 -59.68 -40.27Z" style="fill: var(--emblem-2)"/><path d="M-41.19 -84.49A94 94 0 0 1 -6.57 -93.77L-5.04 -71.82A72 72 0 0 0 -31.55 -64.72Z" style="fill: var(--emblem-4)"/><circle r="68" style="fill: var(--surface-1)"/><g style="fill: none; stroke: var(--accent)" stroke-linecap="round" stroke-linejoin="round"><path d="M0 0L33 -57.16M0 0L66 0M0 0L33 57.16M0 0L-33 57.16M0 0L-66 0M0 0L-33 -57.16M11 -19.05Q15.62 -9.02 22 0Q15.62 9.02 11 19.05Q0 18.04 -11 19.05Q-15.62 9.02 -22 0Q-15.62 -9.02 -11 -19.05Q0 -18.04 11 -19.05M21 -36.37Q29.83 -17.22 42 0Q29.83 17.22 21 36.37Q0 34.44 -21 36.37Q-29.83 17.22 -42 0Q-29.83 -17.22 -21 -36.37Q0 -34.44 21 -36.37M30 -51.96Q42.61 -24.6 60 0Q42.61 24.6 30 51.96Q0 49.2 -30 51.96Q-42.61 24.6 -60 0Q-42.61 -24.6 -30 -51.96Q0 -49.2 30 -51.96" stroke-width="4"/></g></symbol>
+    <symbol id="engraving" viewBox="-100 -100 200 200"><g style="fill: none; stroke: var(--engraving)"><circle r="18" stroke-width="1.2"/><circle r="34" stroke-width="1.2" stroke-dasharray="5.67 2.43"/><circle r="52" stroke-width="1.2"/><circle r="70" stroke-width="1.2" stroke-dasharray="11.67 5"/><circle r="88" stroke-width="2.4"/><path d="M74 0L86 0M73.72 6.45L79.7 6.97M72.88 12.85L78.78 13.89M71.48 19.15L77.27 20.71M69.54 25.31L75.18 27.36M67.07 31.27L72.5 33.81M64.09 37L74.48 43M60.62 42.44L65.53 45.89M56.69 47.57L61.28 51.42M52.33 52.33L56.57 56.57M47.57 56.69L51.42 61.28M42.44 60.62L45.89 65.53M37 64.09L43 74.48M31.27 67.07L33.81 72.5M25.31 69.54L27.36 75.18M19.15 71.48L20.71 77.27M12.85 72.88L13.89 78.78M6.45 73.72L6.97 79.7M0 74L0 86M-6.45 73.72L-6.97 79.7M-12.85 72.88L-13.89 78.78M-19.15 71.48L-20.71 77.27M-25.31 69.54L-27.36 75.18M-31.27 67.07L-33.81 72.5M-37 64.09L-43 74.48M-42.44 60.62L-45.89 65.53M-47.57 56.69L-51.42 61.28M-52.33 52.33L-56.57 56.57M-56.69 47.57L-61.28 51.42M-60.62 42.44L-65.53 45.89M-64.09 37L-74.48 43M-67.07 31.27L-72.5 33.81M-69.54 25.31L-75.18 27.36M-71.48 19.15L-77.27 20.71M-72.88 12.85L-78.78 13.89M-73.72 6.45L-79.7 6.97M-74 0L-86 0M-73.72 -6.45L-79.7 -6.97M-72.88 -12.85L-78.78 -13.89M-71.48 -19.15L-77.27 -20.71M-69.54 -25.31L-75.18 -27.36M-67.07 -31.27L-72.5 -33.81M-64.09 -37L-74.48 -43M-60.62 -42.44L-65.53 -45.89M-56.69 -47.57L-61.28 -51.42M-52.33 -52.33L-56.57 -56.57M-47.57 -56.69L-51.42 -61.28M-42.44 -60.62L-45.89 -65.53M-37 -64.09L-43 -74.48M-31.27 -67.07L-33.81 -72.5M-25.31 -69.54L-27.36 -75.18M-19.15 -71.48L-20.71 -77.27M-12.85 -72.88L-13.89 -78.78M-6.45 -73.72L-6.97 -79.7M0 -74L0 -86M6.45 -73.72L6.97 -79.7M12.85 -72.88L13.89 -78.78M19.15 -71.48L20.71 -77.27M25.31 -69.54L27.36 -75.18M31.27 -67.07L33.81 -72.5M37 -64.09L43 -74.48M42.44 -60.62L45.89 -65.53M47.57 -56.69L51.42 -61.28M52.33 -52.33L56.57 -56.57M56.69 -47.57L61.28 -51.42M60.62 -42.44L65.53 -45.89M64.09 -37L74.48 -43M67.07 -31.27L72.5 -33.81M69.54 -25.31L75.18 -27.36M71.48 -19.15L77.27 -20.71M72.88 -12.85L78.78 -13.89M73.72 -6.45L79.7 -6.97" stroke-width="1"/><path d="M2 0L2.18 0.17L2.34 0.38L2.48 0.61L2.6 0.86L2.69 1.14L2.75 1.43L2.79 1.75L2.78 2.07L2.75 2.41L2.68 2.75L2.56 3.1L2.41 3.45L2.22 3.79L1.99 4.12L1.72 4.44L1.42 4.74L1.07 5.01L0.69 5.27L0.28 5.49L-0.17 5.68L-0.64 5.83L-1.14 5.94L-1.66 6.01L-2.2 6.03L-2.75 6L-3.31 5.92L-3.87 5.79L-4.44 5.61L-5 5.37L-5.55 5.08L-6.08 4.73L-6.59 4.33L-7.08 3.88L-7.53 3.38L-7.95 2.83L-8.33 2.23L-8.66 1.59L-8.95 0.91L-9.17 0.2L-9.34 -0.55L-9.45 -1.32L-9.5 -2.11L-9.47 -2.91L-9.38 -3.73L-9.22 -4.55L-8.98 -5.37L-8.68 -6.17L-8.3 -6.96L-7.84 -7.73L-7.32 -8.48L-6.73 -9.18L-6.07 -9.85L-5.35 -10.46L-4.56 -11.03L-3.72 -11.53L-2.83 -11.97L-1.9 -12.34L-0.92 -12.64L0.1 -12.86L1.14 -12.99L2.21 -13.04L3.29 -13L4.37 -12.87L5.46 -12.65L6.54 -12.33L7.6 -11.93L8.64 -11.43L9.65 -10.84L10.62 -10.16L11.54 -9.39L12.41 -8.55L13.21 -7.62L13.94 -6.62L14.6 -5.55L15.17 -4.41L15.66 -3.23L16.05 -1.99L16.34 -0.71L16.52 0.61L16.61 1.95L16.58 3.31L16.44 4.67L16.18 6.03L15.82 7.38L15.34 8.72L14.74 10.02L14.04 11.28L13.23 12.49L12.31 13.64L11.29 14.73L10.18 15.74L8.97 16.67L7.69 17.5L6.33 18.23L4.89 18.86L3.4 19.37L1.86 19.76L0.28 20.03L-1.33 20.17L-2.97 20.18L-4.61 20.06L-6.26 19.8L-7.89 19.41L-9.5 18.88L-11.07 18.22L-12.6 17.43L-14.07 16.5L-15.48 15.46L-16.8 14.29L-18.04 13.01L-19.18 11.62L-20.21 10.13L-21.13 8.56L-21.92 6.89L-22.58 5.16L-23.1 3.37L-23.48 1.52L-23.71 -0.36L-23.79 -2.27L-23.71 -4.2L-23.48 -6.13L-23.09 -8.04L-22.54 -9.94L-21.83 -11.79L-20.98 -13.6L-19.97 -15.35L-18.81 -17.02L-17.52 -18.6L-16.09 -20.08L-14.54 -21.46L-12.87 -22.71L-11.09 -23.83L-9.22 -24.82L-7.25 -25.65L-5.22 -26.33L-3.12 -26.84L-0.97 -27.19L1.22 -27.36L3.42 -27.36L5.64 -27.18L7.84 -26.82L10.03 -26.28L12.17 -25.56L14.27 -24.67L16.3 -23.6L18.25 -22.36L20.1 -20.97L21.85 -19.41L23.48 -17.72L24.98 -15.88L26.33 -13.92L27.53 -11.85L28.56 -9.67L29.42 -7.4L30.1 -5.05L30.59 -2.65L30.89 -0.2L30.99 2.29L30.89 4.78L30.59 7.28L30.08 9.76L29.38 12.2L28.47 14.59L27.37 16.92L26.08 19.16L24.6 21.3L22.95 23.33L21.13 25.23L19.15 26.99L17.03 28.59L14.77 30.03L12.39 31.28L9.91 32.35L7.33 33.22L4.68 33.88L1.96 34.33L-0.79 34.56L-3.57 34.57L-6.35 34.35L-9.12 33.91L-11.87 33.25L-14.56 32.36L-17.19 31.26L-19.73 29.94L-22.18 28.41L-24.5 26.68L-26.69 24.76L-28.73 22.66L-30.6 20.4L-32.29 17.98L-33.79 15.42L-35.09 12.73L-36.17 9.93L-37.03 7.04L-37.66 4.08L-38.05 1.06L-38.2 -1.99L-38.1 -5.06L-37.75 -8.13L-37.16 -11.17L-36.32 -14.17L-35.23 -17.11L-33.91 -19.96L-32.36 -22.71L-30.58 -25.35L-28.59 -27.84L-26.4 -30.17L-24.01 -32.33L-21.45 -34.3L-18.72 -36.07L-15.85 -37.62L-12.85 -38.94L-9.74 -40.02L-6.54 -40.86L-3.27 -41.43L0.05 -41.74L3.4 -41.79L6.76 -41.57L10.1 -41.07L13.41 -40.31L16.66 -39.28L19.83 -37.98L22.9 -36.43L25.85 -34.63L28.66 -32.59L31.3 -30.33L33.77 -27.84L36.04 -25.16L38.09 -22.3L39.92 -19.26L41.5 -16.07L42.83 -12.76L43.89 -9.33L44.68 -5.82L45.18 -2.24L45.4 1.38L45.33 5.03L44.96 8.67L44.3 12.28L43.35 15.85L42.12 19.34L40.6 22.73L38.8 26.01L36.75 29.14L34.43 32.11L31.88 34.89L29.1 37.47L26.12 39.83L22.94 41.95L19.59 43.82L16.08 45.42L12.45 46.74L8.71 47.76L4.88 48.49L1 48.91L-2.93 49.02L-6.86 48.81L-10.78 48.28L-14.66 47.44L-18.47 46.29L-22.19 44.83L-25.8 43.07L-29.27 41.02L-32.57 38.69L-35.69 36.1L-38.6 33.25L-41.28 30.17L-43.71 26.87L-45.89 23.37L-47.78 19.7L-49.37 15.88L-50.66 11.92L-51.64 7.86L-52.28 3.73" stroke-width="1.4"/></g></symbol>
+    <symbol id="i-house" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+    <symbol id="i-bell-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742"/><path d="m2 2 20 20"/><path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></symbol>
+    <symbol id="i-circle-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-triangle-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></symbol>
+    <symbol id="i-book-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></symbol>
+    <symbol id="i-user-round" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></symbol>
+    <symbol id="i-dices" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="12" height="12" x="2" y="10" rx="2" ry="2"/><path d="m17.92 14 3.5-3.5a2.240 2.240 0 0 0 0-3l-5-4.92a2.240 2.240 0 0 0-3 0L10 6"/><path d="M6 18h.01"/><path d="M10 14h.01"/><path d="M15 6h.01"/><path d="M18 9h.01"/></symbol>
+    <symbol id="i-hourglass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v13"/><path d="m16 6-4-4-4 4"/><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/></symbol>
+    <symbol id="i-square-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/></symbol>
+    <symbol id="i-ellipsis" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+    <symbol id="i-ellipsis-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/></symbol>
+    <symbol id="i-message" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+  </defs>
+</svg>
+
+<div class="stage">
+  <aside class="notes" id="notes" aria-label="Notes du prototype"></aside>
+  <div class="phone" id="phone"></div>
+</div>
+
+<div class="switcher" id="switcher" role="group" aria-label="Variantes du prototype">
+  <button type="button" class="sw-toggle" id="sw-toggle" aria-expanded="false">Prototype ▾</button>
+  <button type="button" id="prev" aria-label="Variante précédente">←</button>
+  <span class="label" id="sw-label" aria-live="polite"></span>
+  <button type="button" id="next" aria-label="Variante suivante">→</button>
+  <span class="sep"></span>
+  <select id="device" aria-label="Téléphone"><option value="iphone">iPhone</option><option value="android">Android</option><option value="ancien">iPhone ancien (iOS 16.3 ou moins)</option></select>
+  <label><input type="checkbox" id="fin"> Convention terminée</label>
+  <button type="button" id="reset">Recommencer</button>
+</div>
+
+<script>
+/* ================= Données fictives ================= */
+const CODE = 'K7M4PX';
+const HOST = 'chimeres.example';
+const VARIANTS = {
+  A: { name: "Tout d'un trait", pitch: "Après le pseudo, chaque étape vient à la suite, et chacune a son « Plus tard ». Sur iPhone, dans Safari : pseudo, puis le guide d'ajout à l'écran d'accueil, avec un pense-bête (code et pseudo) ; dans l'application : code, pseudo (« Ce pseudo existe déjà… » → « Oui »), notifications. Sur Android : pseudo, notifications, puis l'installation, facultative." },
+  B: { name: 'Installer d\'abord', pitch: "Retenue. Sur iPhone, Safari ne sert qu'à installer : le premier écran dit à quoi servent les notifications, puis guide l'ajout à l'écran d'accueil, avec le code de présence à retenir. Le pseudo se tape une seule fois, dans l'application, suivi des notifications. Continuer sans notifications (dans Safari, ou par « Plus tard ») demande une confirmation qui redit ce qu'on perd. Sur Android : pseudo, notifications, puis l'installation ; tant qu'elle n'est pas faite, une carte y incite en tête de l'Accueil. Sur un iPhone ancien, sans notifications : pseudo, puis l'Accueil, avec le bandeau." },
+  C: { name: 'Accueil d\'abord', pitch: "Le pseudo, puis tout de suite l'Accueil. En tête de l'Accueil, une carte « Pour connaître ta table » liste ce qui manque (écran d'accueil, notifications, installation sur Android) ; le bandeau de NO-6 mène au même guide. Rien n'est imposé dans la foulée du pseudo." },
+};
+const KEYS = Object.keys(VARIANTS);
+const SLOTS = [
+  { n: 1, start: '9 h 30' }, { n: 2, start: '13 h 30' }, { n: 3, start: '16 h 30' }, { n: 4, start: '20 h 30' },
+];
+const SERVER0 = () => [
+  { name: 'Mélusine', mj: false, phones: 1 },
+  { name: 'Kaïros', mj: true, phones: 0, leads: { slot: 2, title: "La Tour d'ébène", table: 'Dragon' } },
+  { name: 'Morgane', mj: true, phones: 0, leads: { slot: 1, title: "Les Brumes d'Innsmouth", table: 'Dragon' } },
+];
+
+/* ================= État ================= */
+const params = new URLSearchParams(location.search);
+const S = {
+  variant: KEYS.includes(params.get('variant')) ? params.get('variant') : 'B',
+  device: ['android', 'ancien'].includes(params.get('phone')) ? params.get('phone') : 'iphone',
+  ended: params.get('fin') === '1',
+};
+function reset() {
+  Object.assign(S, {
+    where: 'home',          // home : écran d'accueil du téléphone ; browser : Safari ou Chrome ; app : application installée
+    installed: false,
+    justInstalled: false,
+    installDismissed: false,
+    stores: { browser: { code: null, pseudo: null }, app: { code: null, pseudo: null } },
+    perm: { browser: 'default', app: 'default' },
+    nav: { browser: [], app: [] },
+    tabs: { browser: 'accueil', app: 'accueil' },
+    from: 'home',           // d'où l'on vient quand on ouvre les réglages du téléphone
+    overlay: null,          // de l'application : menu, change, guide, skip ; du système : perm, ios-menu, share, addhome, md-menu, install, site
+    input: '', error: '',
+    pending: null,          // pseudo saisi, en attente de confirmation
+    toast: null, sysToast: null,
+    server: SERVER0(),
+    last: null,
+  });
+}
+reset();
+
+const ios = () => S.device !== 'android';
+// iPhone ancien : iOS 16.3 ou moins, sans push, même dans l'application installée.
+const old = () => S.device === 'ancien';
+// Sur Android, la PWA partage le stockage et la permission de Chrome ; sur iPhone, la web app a les siens.
+const key = (w = S.where) => (ios() ? w : 'browser');
+const store = (w) => S.stores[key(w)];
+const perm = (w) => S.perm[key(w)];
+const pushSupported = (w = S.where) => !old() && !(ios() && w === 'browser');
+const needsInstall = (w = S.where) => ios() && !old() && w === 'browser';
+const nav = () => S.nav[S.where];
+const screen = () => nav()[nav().length - 1];
+const norm = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+const findPseudo = (s) => S.server.find((p) => norm(p.name) === norm(s));
+const me = () => findPseudo(store().pseudo ?? '');
+const browserName = () => (ios() ? 'Safari' : 'Chrome');
+
+// Cas du bandeau de NO-6 (null : le téléphone reçoit les notifications).
+function bandeauCase(w = S.where) {
+  if (old()) return 'non-pris';
+  if (needsInstall(w)) return 'ecran';
+  if (perm(w) === 'granted') return null;
+  return perm(w) === 'denied' ? 'refusee' : 'permission';
+}
+const BANDEAU = {
+  ecran: "Ajoute l'application à l'écran d'accueil pour connaître ta table",
+  permission: 'Active les notifications pour connaître ta table',
+  refusee: 'Notifications bloquées : réactive-les dans les réglages pour connaître ta table',
+  'non-pris': 'Ce téléphone ne reçoit pas les notifications : reviens voir ta table ici après chaque tirage',
+};
+
+/* ================= Enchaînement des écrans ================= */
+// Premier écran quand on ouvre l'application dans un contexte.
+function boot() {
+  if (S.ended) return 'fin';
+  const st = store();
+  if (st.pseudo) return 'accueil';
+  if (!st.code) return 'code';
+  if (S.variant === 'B' && needsInstall()) return 'install-first';
+  return 'pseudo';
+}
+// Après la liaison du téléphone à un pseudo. Les écrans d'identification sortent de l'historique.
+function afterLink() {
+  S.tabs[S.where] = 'accueil';
+  if (S.variant === 'C') return 'accueil';
+  if (S.variant === 'A' && needsInstall()) return 'install';
+  if (pushSupported() && perm() === 'default') return 'notif';
+  return afterNotif();
+}
+const androidInstallStep = () => S.variant !== 'C' && !ios() && !S.installed;
+function afterNotif() {
+  return androidInstallStep() ? 'android-install' : 'accueil';
+}
+function go(sc) { nav().push(sc); S.input = ''; S.error = ''; }
+function replaceAll(sc) { S.nav[S.where] = [sc]; S.input = ''; S.error = ''; }
+function back() {
+  if (nav().length > 1) { nav().pop(); S.error = ''; S.input = screen() === 'pseudo' && S.pending ? S.pending.name : ''; S.pending = null; return true; }
+  return false;
+}
+function link(p) {
+  const st = store();
+  if (!p) { p = { name: S.input.trim(), mj: false, phones: 0 }; S.server.push(p); S.last = `Pseudo « ${p.name} » créé et relié à ce téléphone.`; }
+  else S.last = `Téléphone relié à « ${p.name} »${p.mj ? ' (MJ)' : ''}.`;
+  p.phones++;
+  st.pseudo = p.name;
+  S.pending = null;
+  replaceAll(afterLink());
+}
+
+/* ================= Morceaux communs ================= */
+const icon = (id, cls = 'i') => `<svg class="${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+const kbd = (ic, label = '') => `<span class="kbd">${ic ? icon(ic) : ''}${label}</span>`;
+const emblem = (cls = 'emblem', id = 'emblem-small') => `<svg class="${cls}" aria-hidden="true"><use href="#${id}"/></svg>`;
+const engraving = (cls) => `<svg class="${cls}" viewBox="-100 -100 200 200" aria-hidden="true"><use href="#engraving" x="-100" y="-100" width="200" height="200"/></svg>`;
+const brand = () => `<div class="brand">${emblem()}<span class="brand-name">Histoires de Chimères</span></div>`;
+const backBtn = (act = 'back', label = 'Retour') => `<button class="icon-btn" data-act="${act}" aria-label="${label}">${icon('chevron-left')}</button>`;
+
+function ob({ top = '', body, actions = '' }) {
+  return `<div class="ob"><div class="ob-top">${top}</div>
+    <div class="scroll"><div class="ob-body">${body}</div></div>
+    ${actions ? `<div class="ob-actions">${actions}</div>` : ''}</div>`;
+}
+function field({ label, code = false, hint = '' }) {
+  const err = S.error ? `<p class="err" id="f-err">${icon('triangle-alert')}<span>${S.error}</span></p>` : '';
+  return `<form class="field" data-form>
+    <label for="f">${label}</label>
+    <input id="f" class="${code ? 'code' : ''}" value="${S.input.replace(/"/g, '&quot;')}" autocomplete="off" autocorrect="off" spellcheck="false"
+      ${code ? 'maxlength="8" autocapitalize="characters"' : 'maxlength="30" autocapitalize="words"'} ${S.error ? 'aria-invalid="true" aria-describedby="f-err"' : ''} enterkeyhint="go">
+    ${hint ? `<p class="meta">${hint}</p>` : ''}${err}</form>`;
+}
+
+// Le guide d'ajout à l'écran d'accueil, sur iPhone. Libellés de Safari à relever sur l'iPhone (#60).
+const iosSteps = () => `<ol class="steps">
+  <li><div>Touche ${kbd('ellipsis')} en bas à droite de Safari, puis ${kbd('share', 'Partager')}.</div></li>
+  <li><div>Touche ${kbd('square-plus', "Sur l'écran d'accueil")}. Fais défiler la liste si tu ne le vois pas.</div></li>
+  <li><div>Touche ${kbd('', 'Ajouter')}, en haut à droite.</div></li>
+  <li><div>Ouvre ${kbd('', 'Chimères')} depuis l'écran d'accueil du téléphone.</div></li></ol>`;
+function blockedSteps(w = S.where) {
+  if (ios()) return `<ol class="steps"><li><div>Ouvre les ${kbd('settings', 'Réglages')} du téléphone.</div></li>
+    <li><div>Touche ${kbd('', 'Notifications')}, puis ${kbd('', 'Chimères')}.</div></li>
+    <li><div>Active ${kbd('', 'Autoriser les notifications')}.</div></li></ol>`;
+  if (w === 'app') return `<ol class="steps"><li><div>Appuie longuement sur l'icône ${kbd('', 'Chimères')} de l'écran d'accueil, puis touche ${kbd('info')}.</div></li>
+    <li><div>Touche ${kbd('', 'Notifications')} et active-les.</div></li></ol>`;
+  return `<ol class="steps"><li><div>Touche l'icône ${kbd('settings')} à gauche de l'adresse, en haut de Chrome.</div></li>
+    <li><div>Touche ${kbd('', 'Autorisations')}, puis active ${kbd('', 'Notifications')}.</div></li></ol>`;
+}
+function recap({ pseudo = true } = {}) {
+  const p = store().pseudo;
+  return `<div class="recap"><span class="over">${pseudo && p ? "Dans l'application, tu retaperas" : "L'application te demandera ce code"}</span>
+    <dl><dt>Code de présence</dt><dd class="code">${CODE}</dd>${pseudo && p ? `<dt>Ton pseudo</dt><dd>${p}</dd>` : ''}</dl>
+    <p class="meta">Si tu l'oublies, le code est écrit sous le QR code, sur l'affiche de l'accueil.</p></div>`;
+}
+const notifMock = (mj) => `<figure class="stack" style="margin:0"><figcaption class="over">Exemple de notification</figcaption>
+  <div class="notif-mock"><span class="ic">${emblem('', 'emblem-small')}</span>
+  <div>${mj ? `<strong>Créneau ${mj.slot} : tu mènes à la table ${mj.table}</strong><span>${mj.title}, avec 5 joueurs.</span>` : '<strong>Créneau 1 : table Griffon</strong><span>Tu joues à Opération Nébuleuse, avec Brann.</span>'}</div></div></figure>`;
+// Ce que les notifications apportent (NO-2), redit à chaque étape qui les concerne.
+function why() {
+  const p = me();
+  const li = (ic, t) => `<li class="status">${icon(ic, 'i tone-accent')}<span>${t}</span></li>`;
+  return `<ul class="why">
+    ${li('circle-check', '<strong>Ta table</strong>, dès la publication du tirage de chaque créneau, ou les tables où il reste de la place')}
+    ${li('sparkles', '<strong>Les nouvelles parties</strong> programmées pendant la journée')}
+    ${li('triangle-alert', '<strong>Tes parties déplacées ou retirées</strong> du programme')}
+    ${p?.mj ? li('book-open', '<strong>Les parties que tu mènes</strong> : programmées, déplacées, annulées') : ''}</ul>`;
+}
+const withoutNotif = 'Sans elles, tu ne sauras ni ta table ni les changements du programme, sauf en revenant voir l\'application après chaque tirage.';
+
+/* ================= Écrans du parcours ================= */
+const SCREENS = {
+  code() {
+    const inApp = ios() && S.where === 'app';
+    return ob({ top: brand(), body: `
+      <h1 class="ob-title">Code de présence</h1>
+      <p>${inApp ? "L'application installée ne reçoit pas le code du QR code : tape-le une fois ici." : "Pour entrer dans l'application, il faut le code de présence de la convention."}</p>
+      <p>Tu le trouves sur l'affiche du QR code, à l'accueil de la convention : il est écrit en clair sous le QR code.</p>
+      ${field({ label: 'Code', code: true, hint: '6 caractères, lettres et chiffres.' })}`,
+      actions: `<button class="btn btn-primary btn-block" data-act="submit">Continuer</button>` });
+  },
+  pseudo() {
+    const inApp = ios() && S.where === 'app';
+    return ob({ top: brand(), body: `
+      <h1 class="ob-title">Ton pseudo</h1>
+      <p>C'est ton nom pour toute la convention : les MJ le voient à leur table.${inApp ? " Si tu en as déjà choisi un dans Safari, tape le même." : ' Si tu en as déjà un, tape-le.'}</p>
+      ${field({ label: 'Pseudo' })}`,
+      actions: `<button class="btn btn-primary btn-block" data-act="submit">Continuer</button>` });
+  },
+  confirm() {
+    const p = S.pending;
+    if (p.mj) return ob({ top: backBtn(), body: `
+      <span class="over">Pseudo d'un MJ</span>
+      <p class="big-pseudo">${p.name}</p>
+      <h1 class="ob-title">Es-tu bien ce MJ ?</h1>
+      <p>${p.name} mène des parties à cette convention. Si c'est toi, ce téléphone est relié à ce MJ : tu y vois les parties que tu mènes, et tu reçois leurs notifications.</p>
+      <p class="meta">Si ce n'est pas toi, choisis un autre pseudo. En cas de doute, demande à un Organisateur, à l'accueil.</p>`,
+      actions: `<button class="btn btn-primary btn-block" data-act="yes">Oui, je suis ${p.name}</button>
+        <button class="btn btn-secondary btn-block" data-act="no">Non, choisir un autre pseudo</button>` });
+    return ob({ top: backBtn(), body: `
+      <p class="big-pseudo">${p.name}</p>
+      <h1 class="ob-title">Ce pseudo existe déjà</h1>
+      <p>Est-ce bien toi qui l'as créé ?</p>
+      <p>C'est toi si tu as déjà tapé ce pseudo plus tôt : ${ios() ? "dans Safari avant d'installer l'application, " : ''}sur un autre téléphone, ou avant la convention. Tu retrouves alors tes inscriptions.</p>
+      <p class="meta">Si quelqu'un d'autre l'a choisi, prends-en un autre : sinon, tu t'inscrirais à sa place. En cas de doute, demande à un Organisateur, à l'accueil : il retrouve les pseudos et leurs inscriptions.</p>`,
+      actions: `<button class="btn btn-primary btn-block" data-act="yes">Oui, c'est moi</button>
+        <button class="btn btn-secondary btn-block" data-act="no">Non, choisir un autre pseudo</button>` });
+  },
+  'install-first'() {
+    return ob({ top: brand(), body: `
+      <h1 class="ob-title">Installe l'application pour recevoir les notifications</h1>
+      <p>Pendant la convention, l'application te prévient par notification :</p>
+      ${why()}
+      <p>Sur iPhone, les notifications ne marchent que dans l'application ajoutée à l'écran d'accueil. Ajoute-la maintenant : tu choisiras ton pseudo dedans.</p>
+      ${iosSteps()}${recap({ pseudo: false })}`,
+      actions: `<button class="btn btn-ghost btn-block" data-act="skip">Continuer dans Safari, sans notifications</button>` });
+  },
+  install() {
+    return ob({ top: '', body: `
+      <span class="over">Étape suivante</span>
+      <h1 class="ob-title">Ajoute l'application à ton écran d'accueil</h1>
+      <p>Sur iPhone, c'est le seul moyen de recevoir les notifications :</p>${why()}
+      ${iosSteps()}${recap()}`,
+      actions: `<button class="btn btn-secondary btn-block" data-act="later">Plus tard</button>` });
+  },
+  notif() {
+    const p = me();
+    return ob({ top: '', body: `
+      <span class="over">${androidInstallStep() ? 'Étape suivante' : 'Dernière étape'}</span>
+      <h1 class="ob-title">Active les notifications</h1>
+      <p>C'est par elles que l'application te tient au courant :</p>
+      ${why()}
+      ${notifMock(p?.leads)}
+      <p class="meta">Ton téléphone va te demander l'autorisation : touche « Autoriser ».</p>`,
+      actions: `<button class="btn btn-primary btn-block" data-act="ask-perm">${icon('bell')}Activer les notifications</button>
+        <button class="btn btn-ghost btn-block" data-act="${S.variant === 'B' ? 'skip' : 'later'}">Plus tard</button>` });
+  },
+  blocked() {
+    return ob({ top: '', body: `
+      <h1 class="ob-title">Notifications bloquées</h1>
+      <p>Tu ne recevras ni ta table ni les changements du programme. Pour réactiver les notifications :</p>
+      ${blockedSteps()}
+      <p class="meta">Sinon, reviens voir l'application après chaque tirage : ta table s'y affiche en premier. Un bandeau te le rappellera sur chaque écran.</p>`,
+      actions: `<button class="btn btn-secondary btn-block" data-act="continue">Continuer</button>` });
+  },
+  'android-install'() {
+    return ob({ top: '', body: `
+      <span class="over">Dernière étape</span>
+      <h1 class="ob-title">Installe l'application</h1>
+      <p>Elle s'ouvre d'un tap depuis l'écran d'accueil du téléphone, en plein écran, sans passer par Chrome :</p>
+      <ul class="why">
+        <li class="status">${icon('circle-check', 'i tone-accent')}<span><strong>Ta table</strong> en premier, dès l'ouverture</span></li>
+        <li class="status">${icon('bell', 'i tone-accent')}<span><strong>Les notifications</strong> l'ouvrent directement</span></li>
+        <li class="status">${icon('house', 'i tone-accent')}<span><strong>Plus besoin</strong> de retrouver l'onglet dans Chrome</span></li></ul>
+      <p class="meta">Si rien ne s'ouvre, touche ${kbd('ellipsis-vertical')} en haut à droite de Chrome, puis ${kbd('', "Ajouter à l'écran d'accueil")}.</p>`,
+      actions: `<button class="btn btn-primary btn-block" data-act="bip">${icon('download')}Installer</button>
+        <button class="btn btn-ghost btn-block" data-act="later">Plus tard</button>` });
+  },
+  // Android : Chrome reste ouvert après l'installation ; on invite à passer dans l'application.
+  'android-installed'() {
+    return ob({ top: brand(), body: `
+      <span class="over">C'est fait</span>
+      <h1 class="ob-title">L'application est installée</h1>
+      <p>Continue dans l'application plutôt que dans Chrome : c'est elle que les notifications ouvrent, avec ta table en premier.</p>
+      <p>Tu la retrouves sur l'écran d'accueil du téléphone : ${kbd('', 'Chimères')}.</p>`,
+      actions: `<button class="btn btn-primary btn-block" data-act="open-installed">Ouvrir l'application</button>
+        <button class="btn btn-ghost btn-block" data-act="stay-chrome">Rester dans Chrome</button>` });
+  },
+  accueil() { return accueil(); },
+  fin() {
+    return `<div class="closed">${engraving('eng-closed')}${emblem('emblem-big', 'emblem')}
+      <h1 class="closed-title">Histoires de Chimères</h1>
+      <p>La convention est terminée. Merci d'être venu jouer, et à la prochaine.</p></div>`;
+  },
+};
+
+/* ---------- Coquille (variante A de la coquille, simplifiée) : le bandeau est sur chaque onglet ---------- */
+const GAMES = [
+  { slot: 1, table: 'Dragon', title: "Les Brumes d'Innsmouth", system: "L'Appel de Cthulhu", mj: 'Morgane' },
+  { slot: 1, table: 'Griffon', title: 'Opération Nébuleuse', system: 'Alien', mj: 'Brann' },
+  { slot: 1, table: 'Licorne', title: 'Le Bal des Ardents', system: 'Vampire : la Mascarade', mj: 'Silas' },
+  { slot: 2, table: 'Dragon', title: "La Tour d'ébène", system: 'Dungeons & Dragons', mj: 'Kaïros' },
+  { slot: 2, table: 'Licorne', title: 'Vacances à Mälaren', system: 'Tales from the Loop', mj: 'Morgane' },
+];
+function bandeau() {
+  const c = bandeauCase();
+  if (!c) return '';
+  if (c === 'non-pris') return `<div class="bandeau" role="status">${icon('triangle-alert')}<span>${BANDEAU[c]}</span></div>`;
+  return `<button class="bandeau" data-act="guide">${icon('bell-off')}<span>${BANDEAU[c]}</span>${icon('chevron-right', 'i chev')}</button>`;
+}
+function accueil() {
+  const p = me();
+  const tab = S.tabs[S.where];
+  const lead = (n) => p?.leads?.slot === n;
+  let body;
+  if (tab === 'programme') {
+    body = `<div class="stack">${[1, 2].map((n) => `<section><div class="slot-head"><span class="over">Créneau ${n} · ${SLOTS[n - 1].start}</span></div>
+      ${GAMES.filter((g) => g.slot === n).map((g) => `<button class="row" data-act="out"><div class="row-main"><span style="font-weight:600">${g.title}</span><span class="meta">${g.system} · avec ${g.mj} · table ${g.table}</span></div>${icon('chevron-right', 'i tone-muted')}</button>`).join('')}</section>`).join('')}</div>`;
+  } else if (tab === 'mes') {
+    body = `<div class="stack">${SLOTS.map((s) => `<section><div class="slot-head"><span class="over">Créneau ${s.n} · ${s.start}</span></div>
+      <div class="pad meta" style="padding-block:var(--space-m)">${lead(s.n) ? `Tu mènes ${p.leads.title}, table ${p.leads.table}.` : 'Aucune inscription sur ce créneau.'}</div></section>`).join('')}</div>`;
+  } else {
+    const lines = SLOTS.map((s) => {
+      const l = lead(s.n)
+        ? `<div class="status tone-accent">${icon('book-open')}<div><div style="font-weight:600">Tu mènes</div><div class="meta">${p.leads.title}, table ${p.leads.table}</div></div></div>`
+        : `<div class="status tone-muted">${icon('plus')}<div><div style="font-weight:600">Aucune inscription</div><div class="meta">Choisir une partie</div></div></div>`;
+      return `<li><button class="row" data-act="tab" data-v="programme"><div class="row-main"><span class="over">Créneau ${s.n} · ${s.start}</span>${l}</div>${icon('chevron-right', 'i tone-muted')}</button></li>`;
+    }).join('');
+    body = `<div class="pad stack-l">
+      ${S.variant === 'C' ? activateCard() : installCard()}
+      <section class="card hero">${engraving('eng-bg')}
+        <span class="over">Inscriptions ouvertes</span>
+        <h2 class="hero-title">Choisis tes parties</h2>
+        <p>Inscris-toi à autant de parties que tu veux, sur chaque créneau. Chaque créneau est tiré au sort peu avant son début.</p>
+        <div><button class="btn btn-primary" data-act="tab" data-v="programme">${icon('calendar')}Voir le programme</button></div></section>
+      <section class="stack"><h2 class="section-title">Ton programme</h2><ul class="card" style="overflow:hidden">${lines}</ul></section></div>`;
+  }
+  const tb = (v, ic, label) => `<button class="tab" data-act="tab" data-v="${v}" ${tab === v ? 'aria-current="page"' : ''}>${icon(ic)}<span>${label}</span></button>`;
+  return `<header class="hdr">${brand()}<button class="pseudo" data-act="menu" aria-haspopup="dialog" aria-expanded="${S.overlay === 'menu'}">${icon('user-round')}<span>${store().pseudo}</span></button></header>
+    ${bandeau()}
+    <div class="scroll">${body}</div>
+    <nav class="tabbar" aria-label="Navigation principale">${tb('accueil', 'house', 'Accueil')}${tb('programme', 'calendar', 'Programme')}${tb('mes', 'dices', 'Mes parties')}</nav>`;
+}
+// Android, variantes A et B : tant que l'application n'est pas installée, une carte y incite en tête de l'Accueil.
+function installCard() {
+  if (ios()) return '';
+  if (S.installed) return S.where !== 'browser' ? '' : `<section class="card activate" style="border-color:color-mix(in srgb, var(--accent) 45%, var(--border))">
+    <span class="over">Tu es dans Chrome</span>
+    <div style="font-weight:600">L'application est installée</div>
+    <p class="meta">Ouvre-la : c'est elle que les notifications ouvrent.</p>
+    <div><button class="btn btn-primary" data-act="open-installed">Ouvrir l'application</button></div></section>`;
+  if (S.installDismissed) return '';
+  return `<section class="card activate" style="border-color:color-mix(in srgb, var(--accent) 45%, var(--border))">
+    <span class="over">Conseil</span>
+    <div style="font-weight:600">Installe l'application</div>
+    <p class="meta">Elle s'ouvre d'un tap depuis l'écran d'accueil, avec ta table en premier, et les notifications l'ouvrent directement.</p>
+    <div style="display:flex;gap:var(--space-s);flex-wrap:wrap"><button class="btn btn-primary" data-act="bip">${icon('download')}Installer</button><button class="btn btn-ghost" data-act="dismiss-install">Plus tard</button></div></section>`;
+}
+// Variante C : ce qui manque pour connaître sa table, en tête de l'Accueil.
+function activateCard() {
+  const items = [];
+  const done = (t) => `<div class="activate-item"><span class="n done">${icon('check')}</span><div>${t}</div></div>`;
+  const todo = (n, t, btn) => `<div class="activate-item"><span class="n">${n}</span><div><div style="font-weight:600">${t}</div>${btn}</div></div>`;
+  if (old()) return '';
+  if (ios()) {
+    if (S.where === 'browser') {
+      items.push(todo(1, "Ajoute l'application à l'écran d'accueil", `<p class="meta">Sur iPhone, les notifications ne marchent que là. Tu y retaperas ton code et ton pseudo.</p><button class="btn btn-secondary" data-act="guide">Voir comment</button>`));
+      items.push(todo(2, "Active les notifications, dans l'application", ''));
+    } else {
+      items.push(done("Application sur l'écran d'accueil"));
+    }
+  }
+  if (pushSupported()) {
+    const n = items.length + 1;
+    if (perm() === 'default') items.push(todo(n, 'Active les notifications', `<button class="btn btn-primary" data-act="ask-perm">${icon('bell')}Activer</button>`));
+    if (perm() === 'denied') items.push(todo(n, 'Notifications bloquées', `<button class="btn btn-secondary" data-act="guide">Voir comment les réactiver</button>`));
+  }
+  if (!ios() && !S.installed && perm() !== 'granted') items.push(todo(items.length + 1, "Installe l'application (facultatif)", `<button class="btn btn-secondary" data-act="bip">${icon('download')}Installer</button>`));
+  if (!bandeauCase()) return '';
+  return `<section class="card activate"><span class="over">Pour connaître ta table</span>${items.join('')}</section>`;
+}
+
+/* ---------- Superpositions de l'application ---------- */
+function appOverlay() {
+  switch (S.overlay) {
+    case 'menu': {
+      const p = me();
+      return `<div class="scrim" data-act="close"></div><section class="menu" role="dialog" aria-label="Ton pseudo">
+        <span class="over">Ton pseudo</span><strong style="font-size:var(--fs-block)">${p.name}</strong>
+        ${p.mj ? `<p class="meta">Ce téléphone est relié au MJ ${p.name}.</p>` : ''}
+        <button class="btn btn-secondary" data-act="change">Changer de pseudo</button></section>`;
+    }
+    case 'change': {
+      const p = store().pseudo;
+      return `<div class="scrim"></div><section class="dialog" role="alertdialog" aria-labelledby="dlg-t">
+        <h2 id="dlg-t">Changer de pseudo ?</h2>
+        <p>Ce téléphone ne sera plus relié à ${p}. Les inscriptions de ${p} restent sous ce pseudo : pour les retrouver, il faudra le retaper.</p>
+        <div class="stack"><button class="btn btn-primary btn-block" data-act="change-ok">Changer de pseudo</button>
+        <button class="btn btn-secondary btn-block" data-act="close">Annuler</button></div></section>`;
+    }
+    case 'skip': {
+      const install = needsInstall();
+      return `<div class="scrim"></div><section class="dialog" role="alertdialog" aria-labelledby="dlg-t">
+        <h2 id="dlg-t">Continuer sans notifications ?</h2>
+        <p>${withoutNotif}</p>
+        <p class="meta">Un bandeau te le rappellera sur chaque écran${install ? ' ; tu pourras installer l\'application plus tard' : ' ; tu pourras les activer plus tard'}.</p>
+        <div class="stack"><button class="btn btn-primary btn-block" data-act="${install ? 'close' : 'ask-perm'}">${install ? "Installer l'application" : `${icon('bell')}Activer les notifications`}</button>
+        <button class="btn btn-secondary btn-block" data-act="skip-ok">Continuer sans</button></div></section>`;
+    }
+    case 'guide': {
+      const c = bandeauCase();
+      let body = '';
+      if (c === 'ecran') body = `<h2 class="ob-title">Ajoute l'application à ton écran d'accueil</h2><p>Sur iPhone, c'est le seul moyen de recevoir les notifications :</p>${why()}${iosSteps()}${recap()}`;
+      if (c === 'permission') body = `<h2 class="ob-title">Active les notifications</h2><p>C'est par elles que l'application te tient au courant :</p>${why()}<p class="meta">Ton téléphone va te demander l'autorisation : touche « Autoriser ».</p><button class="btn btn-primary btn-block" data-act="ask-perm">${icon('bell')}Activer les notifications</button>`;
+      if (c === 'refusee') body = `<h2 class="ob-title">Notifications bloquées</h2><p>${withoutNotif}</p><p>Pour les réactiver :</p>${blockedSteps()}`;
+      return `<div class="scrim" data-act="close"></div><section class="sheet" role="dialog" aria-label="Guide d'activation">
+        <div class="scroll"><div class="ob-body">${body}</div></div>
+        <div class="ob-actions"><button class="btn btn-secondary btn-block" data-act="close">Fermer</button></div></section>`;
+    }
+  }
+  return '';
+}
+
+/* ---------- Système simulé ---------- */
+function sysOverlay() {
+  const chim = `<span class="ic">${emblem('', 'emblem-small')}</span>`;
+  switch (S.overlay) {
+    case 'perm':
+      if (ios()) return `<div class="sys-scrim"></div><div class="ios-alert" role="alertdialog"><div class="t">« Chimères » souhaite vous envoyer des notifications</div>
+        <div class="d">Les notifications peuvent inclure des alertes, des sons et des pastilles d'icônes. Vous pouvez les configurer dans Réglages.</div>
+        <div class="bs"><button data-act="perm-deny">Ne pas autoriser</button><button data-act="perm-allow">Autoriser</button></div></div>`;
+      return `<div class="sys-scrim"></div><div class="md-dialog" role="alertdialog"><span class="ico">${icon('bell')}</span>
+        <div class="ttl">${S.where === 'app' ? 'Autoriser Chimères à vous envoyer des notifications ?' : `${HOST} veut envoyer des notifications`}</div>
+        <div class="bs col"><button data-act="perm-allow">Autoriser</button><button data-act="perm-deny">${S.where === 'app' ? 'Ne pas autoriser' : 'Bloquer'}</button></div></div>`;
+    case 'ios-menu':
+      return `<div class="sys-scrim" data-act="sys-close"></div><div class="ios-menu"><button data-act="sys-none">Nouvel onglet</button><button data-act="sys-none">Ajouter aux favoris ${icon('star')}</button><button data-act="ios-share">Partager ${icon('share')}</button></div>`;
+    case 'share':
+      return `<div class="sys-scrim" data-act="sys-close"></div><div class="ios-sheet"><div class="head">${chim}<div><div style="font-weight:600">Histoires de Chimères</div><div style="font-size:13px;color:#98989d">${HOST}</div></div></div>
+        <div class="ios-group"><button data-act="sys-none">Copier ${icon('copy')}</button><button data-act="sys-none">Ajouter aux favoris ${icon('star')}</button><button data-act="ios-addhome">Sur l'écran d'accueil ${icon('square-plus')}</button><button data-act="sys-none">Imprimer</button></div></div>`;
+    case 'addhome':
+      return `<div class="sys-scrim"></div><div class="ios-sheet"><div class="ios-nav"><button data-act="sys-close">Annuler</button><strong>Sur l'écran d'accueil</strong><button data-act="ios-add" style="font-weight:600">Ajouter</button></div>
+        <div class="ios-group"><div class="r" style="justify-content:flex-start;gap:12px">${chim}<div><div>Chimères</div><div style="font-size:13px;color:#98989d">https://${HOST}/</div></div></div></div>
+        <div class="ios-group"><div class="r">Ouvrir en tant qu'app web <span class="ios-toggle"></span></div></div></div>`;
+    case 'md-menu':
+      return `<div class="sys-scrim" data-act="sys-close" style="background:transparent"></div><div class="md-menu"><button data-act="sys-none">Nouvel onglet</button><button data-act="sys-none">Historique</button><button data-act="bip">${S.installed ? 'Ouvrir dans Chimères' : "Ajouter à l'écran d'accueil"}</button><button data-act="sys-none">Paramètres</button></div>`;
+    case 'site':
+      return `<div class="sys-scrim" data-act="sys-close"></div><div class="ios-sheet settings md" style="padding-bottom:24px"><div style="font-size:18px">${HOST}</div>
+        <div class="ios-group"><button data-act="site-toggle">${icon('bell')} Notifications <span class="sw" role="switch" aria-checked="${S.perm.browser === 'granted'}"></span></button></div>
+        <button class="btn" data-act="sys-close" style="justify-self:end;color:#d0bcff">OK</button></div>`;
+    case 'install':
+      return `<div class="sys-scrim"></div><div class="md-dialog" role="alertdialog"><div class="ttl" style="text-align:left">Installer l'application ?</div>
+        <div class="app">${chim}<div><div>Chimères</div><div style="font-size:13px;color:#cac4d0">${HOST}</div></div></div>
+        <div class="bs"><button data-act="sys-close">Annuler</button><button data-act="install-ok">Installer</button></div></div>`;
+  }
+  return '';
+}
+function homeScreen() {
+  const ic = (cls, inner, label, act = '', extra = '') => `<button class="app-icon ${extra}" ${act ? `data-act="${act}"` : 'disabled'}><span class="ic ${cls}">${inner}</span><span>${label}</span></button>`;
+  const hint = S.installed
+    ? (S.justInstalled ? "L'icône Chimères vient d'être ajoutée. Touche-la pour ouvrir l'application." : "Touche Chimères pour ouvrir l'application, ou l'appareil photo pour scanner de nouveau le QR code.")
+    : "Tu arrives à la convention. Touche l'appareil photo pour scanner le QR code affiché à l'accueil.";
+  return `<div class="home">
+    ${ic('', icon('camera'), 'Appareil photo', 'scan')}
+    ${ic('', icon('compass'), browserName(), 'open-browser')}
+    ${ic('', icon('message'), 'Messages')}
+    ${ic('', icon('settings'), ios() ? 'Réglages' : 'Paramètres', 'open-settings')}
+    ${S.installed ? ic('chim', emblem('', 'emblem-small'), 'Chimères', 'open-app', S.justInstalled ? 'new' : '') : ''}
+    <p class="home-hint">${hint}</p></div>`;
+}
+
+// Réglages du téléphone, ouverts sur la page des notifications de Chimères.
+function settingsScreen() {
+  const sw = (on) => `<span class="sw" role="switch" aria-checked="${on}"></span>`;
+  if (ios()) {
+    let group;
+    if (old()) group = `<p class="note">Cet iPhone ne permet pas les notifications des applications web : il faut iOS 16.4 ou plus.</p>`;
+    else if (!S.installed || S.perm.app === 'default') group = `<p class="note">Chimères n'apparaît ici qu'une fois l'application ajoutée à l'écran d'accueil et les notifications demandées.</p>`;
+    else group = `<div class="ios-group"><button data-act="settings-toggle">Autoriser les notifications ${sw(S.perm.app === 'granted')}</button></div>`;
+    return `<div class="settings"><div class="crumbs">${icon('chevron-left')}Notifications</div><h1>Chimères</h1>${group}</div>`;
+  }
+  const group = S.installed
+    ? `<div class="ios-group"><button data-act="settings-toggle">Notifications ${sw(S.perm.browser === 'granted')}</button></div>`
+    : `<p class="note">Chimères n'est pas installée. Dans Chrome, les notifications du site se règlent depuis l'icône à gauche de l'adresse.</p>`;
+  return `<div class="settings md"><div class="crumbs">${icon('chevron-left')}Applications</div><h1>Chimères</h1>${group}</div>`;
+}
+
+/* ================= Rendu ================= */
+const phone = document.getElementById('phone');
+function frTypography(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (n.parentElement.closest('input')) continue;
+    n.nodeValue = n.nodeValue
+      .replace(/« /g, '« ').replace(/ »/g, ' »')
+      .replace(/ ([;!?])/g, ' $1').replace(/ :/g, ' :')
+      .replace(/(\d) h (\d\d)/g, '$1 h $2')
+      .replace(/(\d) (?=[A-Za-zÀ-ÿ])/g, '$1 ');
+  }
+}
+function render() {
+  const focused = document.activeElement?.id === 'f';
+  let html = `<div class="statusbar ${S.where === 'home' ? 'on-home' : ''}" aria-hidden="true"><span>9:05</span><span class="sb-right">4G ▮▮▮ ▭</span></div>`;
+  if (S.where === 'home') html += `<div class="app">${homeScreen()}</div>`;
+  else if (S.where === 'settings') html += `<div class="app">${settingsScreen()}</div>`;
+  else {
+    if (S.where === 'browser' && !ios()) html += `<div class="chrome-bar"><div class="url"><button data-act="site" aria-label="Paramètres du site" style="width:auto;height:auto">${icon('settings')}</button>${HOST}</div><button data-act="md-more" aria-label="Menu de Chrome">${icon('ellipsis-vertical')}</button></div>`;
+    html += `<div class="app" id="app">${SCREENS[screen()]()}${appOverlay()}${S.toast ? `<div class="toast" role="status">${S.toast}</div>` : ''}</div>`;
+    if (S.where === 'browser' && ios()) html += `<div class="safari-bar"><button data-act="sys-back" aria-label="Page précédente">${icon('chevron-left')}</button><div class="url">${HOST}</div><button data-act="ios-more" aria-label="Menu de Safari">${icon('ellipsis')}</button></div>`;
+  }
+  html += sysOverlay();
+  if (S.sysToast) html += `<div class="sys-toast" role="status">${S.sysToast}</div>`;
+  html += ios()
+    ? `<div class="ios-indicator" style="background:${S.where === 'browser' ? '#1c1c1e' : S.where === 'home' ? '#10131a' : 'var(--surface-1)'}"><button data-act="home" aria-label="Écran d'accueil du téléphone"></button></div>`
+    : `<div class="android-nav"><button data-act="sys-back" aria-label="Retour">◁</button><button data-act="home" aria-label="Écran d'accueil du téléphone">○</button><button disabled aria-hidden="true">▢</button></div>`;
+  phone.innerHTML = html;
+  frTypography(phone);
+  const f = document.getElementById('f');
+  if (f) { f.value = S.input; f.oninput = (e) => { S.input = e.target.value; }; if (focused || S.error) f.focus(); }
+  document.getElementById('sw-label').textContent = `${S.variant} · ${VARIANTS[S.variant].name}`;
+  document.getElementById('device').value = S.device;
+  document.getElementById('fin').checked = S.ended;
+  renderNotes();
+}
+function renderNotes() {
+  const v = VARIANTS[S.variant];
+  const where = { home: "Écran d'accueil du téléphone", settings: 'Réglages du téléphone', browser: browserName(), app: 'Application installée' }[S.where];
+  const inApp = ['browser', 'app'].includes(S.where);
+  const st = (w) => { const s = S.stores[key(w)]; return `code ${s.code ?? '–'} · pseudo ${s.pseudo ?? '–'}`; };
+  const permFr = { default: 'pas encore demandée', granted: 'autorisée', denied: 'refusée' };
+  const c = inApp ? bandeauCase() : null;
+  document.getElementById('notes').innerHTML = `<h2>${S.variant} · ${v.name}</h2><p>${v.pitch}</p>
+    <h3>État du téléphone</h3><dl>
+      <dt>Où</dt><dd>${where}${inApp ? ` · écran <code>${screen()}</code>` : ''}</dd>
+      ${ios() ? `<dt>Safari</dt><dd>${st('browser')}</dd><dt>Application</dt><dd>${S.installed ? st('app') : 'pas installée'}</dd>`
+        : `<dt>Chrome et PWA</dt><dd>${st('browser')} (stockage partagé)</dd><dt>PWA</dt><dd>${S.installed ? 'installée' : 'pas installée'}</dd>`}
+      <dt>Notifications</dt><dd>${old() ? 'non prises en charge (iOS 16.3 ou moins)' : ios() ? `Safari : non prises en charge · application : ${permFr[S.perm.app]}` : permFr[S.perm.browser]}</dd>
+      <dt>Bandeau</dt><dd>${c ? BANDEAU[c] : '–'}</dd></dl>
+    ${S.last ? `<p class="changed" style="margin-top:8px">${S.last}</p>` : ''}
+    <h3>Serveur</h3><dl>${S.server.map((p) => `<dt>${p.name}</dt><dd>${p.mj ? 'MJ · ' : ''}${p.phones} téléphone${p.phones > 1 ? 's' : ''} relié${p.phones > 1 ? 's' : ''}</dd>`).join('')}</dl>
+    <h3>Pour essayer</h3>
+    <p>Code de présence : <code>${CODE}</code>. « Mélusine » existe déjà ; « Kaïros » et « Morgane » sont des MJ ; tout autre pseudo est nouveau.</p>
+    <p>Le téléphone se pilote dans l'écran : appareil photo pour scanner le QR code, menu ${ios() ? '••• de Safari' : '⋮ de Chrome'}, ${ios() ? "barre du bas pour revenir à l'écran d'accueil" : '◁ pour revenir, ○ pour l\'écran d\'accueil'}.</p>
+    <h3>À regarder</h3>
+    <p>Combien de saisies et d'écrans avant l'Accueil, sur iPhone et sur Android ; ce qu'on retape dans l'application sur iPhone ; ce qui se passe si l'on dit « Plus tard » ou « Ne pas autoriser » ; « Changer de pseudo » depuis le pseudo, en haut à droite ; « Convention terminée ».</p>
+    <p>Le bandeau de NO-6 sur chaque onglet, selon le cas : Safari sur iPhone, permission pas encore donnée, refusée, iPhone ancien sans notifications. Un tap ouvre le guide propre au système. Pour réactiver après un refus : ${ios() ? "Réglages, sur l'écran d'accueil du téléphone" : "l'icône à gauche de l'adresse dans Chrome, ou Paramètres pour l'application installée"}.</p>
+    <p style="color:#8f8a85">À vérifier sur iPhone (#60) : après une réactivation dans Réglages, l'application peut-elle s'abonner seule à son retour, ou faut-il un tap ?</p>
+    <p style="color:#8f8a85">À vérifier sur Android, avec le labo : Chrome propose-t-il le bouton « Installer » (beforeinstallprompt) ? Après l'installation, « Ouvrir l'application » peut-il ouvrir l'application depuis Chrome, ou ne reste-t-il que l'icône ?</p>
+    <p style="color:#8f8a85">← → : variante.</p>`;
+}
+
+/* ================= Gestes ================= */
+let toastTimer;
+function toast(msg, sys = false) {
+  S[sys ? 'sysToast' : 'toast'] = msg; render();
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { S.toast = null; S.sysToast = null; render(); }, 2800);
+}
+function openIn(where) {
+  S.where = where; S.overlay = null; S.justInstalled = false;
+  if (!nav().length || S.ended) replaceAll(boot());
+}
+function submit() {
+  const v = S.input.trim();
+  if (screen() === 'code') {
+    if (!v) { S.error = 'Tape le code de présence.'; return; }
+    if (v.replace(/\s/g, '').toUpperCase() !== CODE) { S.error = "Ce code ne correspond pas. Vérifie-le sur l'affiche, sous le QR code."; return; }
+    store().code = CODE;
+    S.last = 'Code de présence gardé par le téléphone.';
+    replaceAll(boot());
+    return;
+  }
+  if (!v) { S.error = 'Tape ton pseudo.'; return; }
+  const p = findPseudo(v);
+  if (!p) return link(null);
+  S.pending = p;
+  go('confirm');
+}
+function permAnswer(granted) {
+  S.perm[key()] = granted ? 'granted' : 'denied';
+  S.overlay = null;
+  S.last = granted ? 'Notifications autorisées : abonnement rangé avec le téléphone relié.' : 'Notifications refusées : seul le réglage du téléphone peut les rouvrir.';
+  if (screen() === 'notif') return replaceAll(granted ? afterNotif() : 'blocked');
+  if (granted) toast('<strong>Notifications activées</strong>Ta table arrivera par notification.');
+}
+
+phone.addEventListener('submit', (e) => { e.preventDefault(); submit(); render(); });
+phone.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-act]');
+  if (!t) return;
+  const act = t.dataset.act;
+  switch (act) {
+    // Téléphone
+    case 'scan':
+      // L'URL du QR code porte le code. Sur Android, un lien ouvre la PWA installée (constaté, #53) ; sur iPhone, Safari.
+      S.where = !ios() && S.installed ? 'app' : 'browser';
+      store().code = CODE; S.overlay = null; S.justInstalled = false;
+      S.last = `QR code scanné : ${S.where === 'app' ? 'la PWA' : browserName()} s'ouvre sur https://${HOST}/?code=${CODE}.`;
+      if (!nav().length || S.ended || !store().pseudo) replaceAll(boot());
+      break;
+    case 'open-browser': openIn('browser'); if (!store().code && !nav().length) S.last = `${browserName()} ouvert sans le QR code : le code manque.`; break;
+    case 'open-app': openIn('app'); break;
+    case 'home': S.where = 'home'; S.overlay = null; break;
+    case 'sys-back':
+      if (S.overlay) S.overlay = null;
+      else if (S.where === 'home' || S.where === 'settings') S.where = 'home';
+      else if (!back()) { if (S.where === 'app' || !ios()) S.where = 'home'; else return toast('Pas de page précédente.', true); }
+      break;
+    case 'ios-more': S.overlay = 'ios-menu'; break;
+    case 'ios-share': S.overlay = 'share'; break;
+    case 'ios-addhome': S.overlay = 'addhome'; break;
+    case 'ios-add': S.installed = true; S.justInstalled = true; S.overlay = null; S.where = 'home'; S.last = "Icône ajoutée à l'écran d'accueil. La web app a son propre stockage, vide."; break;
+    case 'md-more': S.overlay = 'md-menu'; break;
+    case 'bip':
+      if (S.installed) { openIn('app'); break; }
+      S.overlay = 'install'; break;
+    case 'install-ok':
+      S.installed = true; S.overlay = null; S.last = "PWA installée : elle partage le stockage et la permission de Chrome. Chrome reste ouvert : l'application reçoit appinstalled et invite à passer dans l'application.";
+      if (S.where === 'browser' && store().pseudo) replaceAll('android-installed');
+      render(); return toast('Chimères a été ajoutée à l\'écran d\'accueil.', true);
+    case 'open-installed':
+      // Mécanisme à essayer avec le labo : lien vers l'application depuis Chrome, ou seulement l'icône.
+      openIn('app'); S.last = "Passage de Chrome à l'application installée."; break;
+    case 'stay-chrome': replaceAll('accueil'); break;
+    case 'sys-close': S.overlay = null; break;
+    case 'sys-none': S.overlay = null; break;
+    case 'perm-allow': permAnswer(true); break;
+    case 'perm-deny': permAnswer(false); break;
+    // Application
+    case 'submit': submit(); break;
+    case 'back': back(); break;
+    case 'yes': link(S.pending); break;
+    case 'no': nav().pop(); S.pending = null; S.input = ''; S.error = ''; break;
+    case 'skip': S.overlay = 'skip'; break;
+    case 'skip-ok':
+      S.overlay = null;
+      if (screen() === 'install-first') go('pseudo');
+      else replaceAll(afterNotif());
+      break;
+    case 'tab': S.tabs[S.where] = t.dataset.v; break;
+    case 'dismiss-install': S.installDismissed = true; break;
+    case 'open-settings': S.where = 'settings'; S.overlay = null; S.justInstalled = false; break;
+    case 'settings-toggle': {
+      const k = ios() ? 'app' : 'browser';
+      S.perm[k] = S.perm[k] === 'granted' ? 'denied' : 'granted';
+      S.last = `Réglages du téléphone : notifications ${S.perm[k] === 'granted' ? 'autorisées' : 'refusées'} pour Chimères.`;
+      break;
+    }
+    case 'site': S.overlay = 'site'; break;
+    case 'site-toggle':
+      S.perm.browser = S.perm.browser === 'granted' ? 'denied' : 'granted';
+      S.last = `Paramètres du site dans Chrome : notifications ${S.perm.browser === 'granted' ? 'autorisées' : 'bloquées'}.`;
+      break;
+    case 'later': replaceAll(screen() === 'notif' ? afterNotif() : 'accueil'); break;
+    case 'continue': replaceAll(afterNotif()); break;
+    case 'ask-perm': S.overlay = 'perm'; break;
+    case 'menu': S.overlay = S.overlay === 'menu' ? null : 'menu'; break;
+    case 'change': S.overlay = 'change'; break;
+    case 'change-ok': {
+      const p = me(); p.phones = Math.max(0, p.phones - 1);
+      S.last = `Lien coupé avec « ${p.name} » ; le pseudo reste, avec ses inscriptions.`;
+      store().pseudo = null; S.overlay = null; replaceAll('pseudo'); break;
+    }
+    case 'guide': S.overlay = 'guide'; break;
+    case 'close': S.overlay = null; break;
+    case 'out': return toast('<strong>Hors du parcours</strong>Le programme et les fiches sont dans le prototype de la coquille.');
+  }
+  render();
+});
+
+/* ---------- Barre du prototype ---------- */
+function syncUrl() {
+  const u = new URL(location.href);
+  u.searchParams.set('variant', S.variant);
+  u.searchParams.set('phone', S.device);
+  if (S.ended) u.searchParams.set('fin', '1'); else u.searchParams.delete('fin');
+  try { history.replaceState(null, '', u); } catch { /* page intégrée */ }
+}
+function restart() { reset(); syncUrl(); render(); }
+const cycle = (dir) => { S.variant = KEYS[(KEYS.indexOf(S.variant) + dir + KEYS.length) % KEYS.length]; restart(); };
+document.getElementById('prev').onclick = () => cycle(-1);
+document.getElementById('next').onclick = () => cycle(1);
+document.getElementById('device').onchange = (e) => { S.device = e.target.value; restart(); };
+document.getElementById('fin').onchange = (e) => {
+  S.ended = e.target.checked; syncUrl();
+  if (['browser', 'app'].includes(S.where)) replaceAll(boot());
+  else { S.nav = { browser: [], app: [] }; }
+  render();
+};
+document.getElementById('reset').onclick = restart;
+const sw = document.getElementById('switcher');
+if (matchMedia('(max-width: 520px)').matches) sw.classList.add('collapsed');
+document.getElementById('sw-toggle').onclick = (e) => { const c = sw.classList.toggle('collapsed'); e.target.setAttribute('aria-expanded', String(!c)); };
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') cycle(-1);
+  else if (e.key === 'ArrowRight') cycle(1);
+  else if (e.key === 'Escape' && S.overlay) { S.overlay = null; render(); }
+});
+
+syncUrl();
+render();
+</script>
+</html>
