@@ -38,7 +38,7 @@ Choix d'identification : voir [ADR 0009](adr/0009-identification-par-pseudo-sans
 
 ## 3. Les deux applications
 
-- **Front office participants** — mobile d'abord, installable (PWA) pour recevoir les notifications. Utilisé par les participants et par les MJ (pour jouer, et pour savoir à quelle table ils mènent). Aucune fonction d'Organisateur. Un créneau terminé n'y apparaît plus.
+- **Front office participants** — mobile d'abord, installable (PWA) pour recevoir les notifications. Utilisé par les participants et par les MJ (pour jouer, et pour retrouver les parties qu'ils mènent et leurs joueurs, §5.7). Aucune fonction d'Organisateur. Un créneau terminé n'y apparaît plus.
 - **Back office** — orienté ordinateur. Utilisé par les MJ pour proposer leurs scénarios avant la convention, et par les Organisateurs pour tout le reste, **y compris le pilotage du jour J** (surcharge, tirage, ajustements, publication).
 
 ## 4. Parcours
@@ -189,13 +189,13 @@ Notifications push web. Chaque notification se suffit à elle-même : son titre 
   | Événement | Destinataires | Titre | Corps | Le tap ouvre |
   |---|---|---|---|---|
   | Partie programmée sur un créneau, avant sa publication (y compris par un déplacement) | Tous, sauf ceux qui ne peuvent pas s'inscrire sur ce créneau : les MJ qui y mènent, les joueurs d'une partie double publiée qui l'occupe | Créneau *N* : nouvelle partie | *Titre* · *Jeu*, table *T*. Tu peux t'y inscrire. | La fiche de la partie |
-  | Partie programmée, ou déplacée sur un autre créneau | Son MJ | Créneau *N* : tu mènes une partie | *Titre*, table *T*, *début* – *fin*. | La vue du MJ |
+  | Partie programmée, ou déplacée sur un autre créneau | Son MJ | Créneau *N* : tu mènes une partie | *Titre*, table *T*, *début* – *fin*. | Mes parties, sur ce créneau (§5.7) |
   | Partie déprogrammée, avant le tirage de son créneau | Ses inscrits | Créneau *N* : partie retirée du programme | *Titre* est retirée : ton inscription est supprimée. | Les parties du créneau |
   | Partie déprogrammée, avant le tirage de son créneau | Son MJ | Créneau *N* : partie retirée du programme | *Titre* est retirée : tu peux t'inscrire sur ce créneau. | Les parties du créneau |
   | Partie déplacée sur un autre créneau, avant le tirage (IN-6) | Ses inscrits | Créneau *N* : partie déplacée | *Titre* passe au créneau *M* : ton inscription est retirée. Réinscris-toi si l'horaire te va. | La fiche de la partie |
   | Publication — affecté | Le participant | Créneau *N* : table *T* | Tu joues à *Titre*, avec *pseudo du MJ*. | La fiche de la partie |
   | Publication — non placé | Le participant | Créneau *N* : pas de place pour toi | Les parties que tu avais choisies sont complètes. Il reste de la place aux tables *T1* et *T3* : va voir leur MJ. | Les parties du créneau où il reste de la place |
-  | Publication — MJ | Le MJ | Créneau *N* : tu mènes à la table *T* | *Titre*, avec *K* joueurs. | La vue du MJ |
+  | Publication — MJ | Le MJ | Créneau *N* : tu mènes à la table *T* | *Titre*, avec *K* joueurs. | Mes parties, sur ce créneau (§5.7) |
   | Publication — partie annulée (TI-6) | Son MJ | Créneau *N* : ta partie est annulée | *Titre* n'a pas atteint son minimum. Il reste de la place aux tables *T1* et *T3* : va voir leur MJ. | Les parties du créneau où il reste de la place |
 
   Variantes :
@@ -205,7 +205,7 @@ Notifications push web. Chaque notification se suffit à elle-même : son titre 
   - une partie double se désigne par ses deux créneaux : « Créneaux 2 et 3 : table *T* ».
 - **NO-3** Une notification que le téléphone n'a pas encore reçue n'est plus livrée après la fin du créneau qu'elle concerne (le second, pour une partie double).
 - **NO-4** Ne sont pas notifiés : le lancement d'un tirage, le changement de table d'une partie et l'échange de deux parties d'un même créneau, les gestes de ID-5. Pas de rappel avant un créneau (§7).
-- **NO-5** Quand l'application est ouverte, le téléphone range la notification sans l'afficher en grand : sur Android, elle va dans le volet, avec son, sans fenêtre en haut de l'écran, et l'iPhone n'affiche probablement pas de bannière. L'application montre donc elle-même, par une alerte, ce qui change pour le participant sans geste de sa part : tirage publié qui le concerne, inscription retirée, et pour un MJ, partie à mener ajoutée ou retirée. Elle le voit en relisant ses données (§6, Fraîcheur), pas par le push : cela marche aussi sans notifications. Pas d'alerte pour « nouvelle partie », que le programme montre déjà. L'alerte porte « Voir », qui ouvre l'Accueil pour un tirage publié, les parties du créneau pour une inscription retirée, la vue du MJ pour une partie à mener. Elle reste jusqu'à ce qu'on la ferme ou qu'on touche « Voir ». Les notifications « nouvelle partie » d'un même créneau se remplacent, sans nouveau son : un téléphone resté hors ligne ne reçoit que la dernière. Sur iPhone, celles déjà affichées restent empilées. Les autres notifications s'empilent.
+- **NO-5** Quand l'application est ouverte, le téléphone range la notification sans l'afficher en grand : sur Android, elle va dans le volet, avec son, sans fenêtre en haut de l'écran, et l'iPhone n'affiche probablement pas de bannière. L'application montre donc elle-même, par une alerte, ce qui change pour le participant sans geste de sa part : tirage publié qui le concerne, inscription retirée, et pour un MJ, partie à mener ajoutée ou retirée. Elle le voit en relisant ses données (§6, Fraîcheur), pas par le push : cela marche aussi sans notifications. Pas d'alerte pour « nouvelle partie », que le programme montre déjà. L'alerte porte « Voir », qui ouvre l'Accueil pour un tirage publié, les parties du créneau pour une inscription retirée, Mes parties sur ce créneau pour une partie à mener (§5.7). Elle reste jusqu'à ce qu'on la ferme ou qu'on touche « Voir ». Les notifications « nouvelle partie » d'un même créneau se remplacent, sans nouveau son : un téléphone resté hors ligne ne reçoit que la dernière. Sur iPhone, celles déjà affichées restent empilées. Les autres notifications s'empilent.
 - **NO-6** Sur un téléphone qui ne reçoit pas les notifications, chaque écran porte un bandeau qu'on ne peut pas fermer. Sauf dans le dernier cas, un tap ouvre le guide d'activation (§4.2) :
 
   | Cas | Bandeau |
@@ -217,11 +217,23 @@ Notifications push web. Chaque notification se suffit à elle-même : son titre 
 
   À chaque ouverture, l'application affiche en premier la dernière affectation publiée, tant que son créneau n'est pas terminé. Les Organisateurs annoncent aussi chaque publication à voix haute.
 
+### 5.7 Parties à mener (front office)
+
+Un téléphone relié à un MJ n'a pas d'écran à part. L'onglet Mes parties suit sa journée créneau par créneau, dans ses deux rôles : sur un créneau où il mène, sa partie s'y déplie en entier.
+
+- Table, titre, jeu, et l'heure de début, ou « Maintenant » pendant le créneau.
+- Avant le tirage : le nombre d'inscrits (« 7 inscrits · 4 à 5 places »), avec « Très demandée » au-delà du maximum, mais pas leurs pseudos.
+- Tirage lancé : « Tirage en cours ». Le résultat provisoire reste invisible.
+- À la publication : les pseudos de ses joueurs, dans l'ordre alphabétique.
+- Partie annulée (TI-6) : « Partie annulée », et les tables où il reste de la place.
+
+Les notifications propres au MJ (NO-2), l'alerte d'une partie à mener (NO-5) et « Voir tes joueurs » sur l'Accueil ouvrent Mes parties sur ce créneau. La fiche de sa partie (§5.3) est celle que lisent les joueurs, avec « Tu mènes cette partie » et un lien vers Mes parties. Pendant le tirage de son créneau, l'Accueil montre « Tirage en cours » avec la partie qu'il mène. Le programme signale les créneaux où il mène, et dit pourquoi il ne peut pas s'y inscrire (IN-4).
+
 ## 6. Exigences non fonctionnelles
 
 - **Mobile d'abord** pour le front office ; le back office vise un écran d'ordinateur.
 - **PWA avec push web** (service worker, clés VAPID). Sur iPhone, le push n'est possible qu'une fois l'application ajoutée à l'écran d'accueil (iOS 16.4+) : le parcours d'accueil doit l'expliquer pas à pas.
-- **Réseau mobile uniquement** : pages légères, images compressées. Le programme, avec le contenu de toutes ses fiches, et la situation du participant (inscriptions, affectations, parties qu'il mène) restent consultables sans réseau, jusqu'à 30 jours après leur dernière lecture. Les images déjà vues aussi ; les autres prennent l'illustration par défaut (PR-7). Hors ligne aussi, un créneau terminé disparaît, et l'application affiche « La convention est terminée » à la fin du dernier créneau, selon l'heure du téléphone. Sans réseau ni copie (premier lancement), l'application dit qu'il lui faut du réseau.
+- **Réseau mobile uniquement** : pages légères, images compressées. Le programme, avec le contenu de toutes ses fiches, et la situation du participant (inscriptions, affectations, parties qu'il mène et leurs joueurs) restent consultables sans réseau, jusqu'à 30 jours après leur dernière lecture. Les images déjà vues aussi ; les autres prennent l'illustration par défaut (PR-7). Hors ligne aussi, un créneau terminé disparaît, et l'application affiche « La convention est terminée » à la fin du dernier créneau, selon l'heure du téléphone. Sans réseau ni copie (premier lancement), l'application dit qu'il lui faut du réseau.
 - **Fraîcheur** : l'application relit ses données à son ouverture et à celle de chaque écran, au retour au premier plan, après chaque geste, à la réception d'une notification quand le téléphone la lui transmet, et toutes les 30 s tant qu'elle est visible. Une lecture qui échoue garde la dernière donnée à l'écran. Si la donnée a plus de 2 minutes, une ligne sous l'en-tête l'indique : « Pas de connexion · à jour à 14 h 05 », ou « Pas de connexion · à jour le 26 octobre à 18 h 05 » un autre jour ; un tap sur la ligne relance la lecture. Pas de bouton « Actualiser ».
 - **Écritures sans réseau** : refusées, sans file d'attente. Le bouton reste actif ; en cas d'échec, une alerte dit « Pas de connexion : rien n'a été enregistré. » Après 10 s sans réponse : « Le réseau ne répond pas : vérifie ton inscription. », puis l'application relit (IN-2). Un geste refusé parce que la donnée affichée était périmée (tirage lancé entre-temps) donne le message de l'API, puis l'application relit.
 - **Mise à jour de l'application** : elle est cherchée au lancement, au retour au premier plan et toutes les 5 minutes. Une version prête s'installe sans rien demander, à la navigation suivante (onglet, fiche), ou à défaut au retour au premier plan suivant.
