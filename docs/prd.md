@@ -75,7 +75,7 @@ Les inscriptions sont déjà ouvertes : il n'y a pas d'état où l'on lit le pro
 1. Les inscriptions sont ouvertes dès qu'on entre dans l'application (§4.1), sans geste d'un Organisateur.
 2. Le participant parcourt les parties par créneau et consulte leur fiche (§5.3).
 3. Il s'**inscrit** à autant de parties qu'il veut, y compris plusieurs sur le même créneau, et peut se désinscrire librement tant que le tirage du créneau n'est pas lancé.
-4. S'il s'inscrit à une **partie très demandée**, l'application le prévient qu'il risque de ne pas être pris et l'incite à s'inscrire aussi à d'autres parties du créneau.
+4. Avant qu'il s'inscrive à une **partie très demandée**, l'application lui demande une confirmation et l'incite à s'inscrire aussi à d'autres parties du créneau (IN-5). Quand une partie devient très demandée, ceux dont c'est la seule inscription sur le créneau sont notifiés (NO-2).
 
 ### 4.4 Pilotage d'un créneau (Organisateur, back office)
 
@@ -150,15 +150,28 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 
 ### 5.3 Fiche d'une partie (front office)
 
-Titre, jeu, pseudo du MJ, présentation, image, table, créneau (mention « double » le cas échéant), avertissements de contenu, compteur « *N* inscrits · *M* places », badge « Très demandée » quand les inscrits dépassent les places maximum.
+Dans l'ordre : image, titre, jeu et pseudo du MJ, créneau (« Créneaux 3 et 4 » pour une partie double) et table, compteur « *N* inscrits · *M* places » (*M* : les places maximum ; « *N* joueurs · *M* places » après la publication), badge « Très demandée » quand les inscrits dépassent les places maximum, avertissements de contenu, présentation. Les avertissements de contenu se lisent donc avant la présentation.
+
+Une barre fixée en bas de l'écran porte le geste : « S'inscrire » ou, une fois inscrit, « Inscription enregistrée » et « Se désinscrire ». Pendant l'envoi, le bouton montre qu'il attend ; sans réseau, voir §6. Quand on ne peut pas s'inscrire, la barre dit pourquoi, à la place du bouton :
+
+- sur la fiche de sa propre partie : « Tu mènes cette partie », et « Voir dans Mes parties » (§5.7) ;
+- MJ qui mène une partie sur ce créneau, ou sur le second créneau d'une partie double (IN-4) : « Tu mènes une partie sur ce créneau », avec le titre et la table de sa partie ;
+- joueur d'une partie double publiée qui occupe ce créneau : « Tu joues aux créneaux 3 et 4 », avec « Voir ta partie » ;
+- tirage lancé : « Tirage en cours », les inscriptions du créneau sont fermées ; pour un inscrit, « Ton inscription compte pour ce tirage » ;
+- tirage publié : « Tu joues à cette table », ou sa table sur ce créneau avec « Voir ta partie », ou « Pas de place pour toi », ou « Les inscriptions du créneau sont fermées ».
 
 ### 5.4 Inscriptions
 
 - **IN-1** Les inscriptions sont ouvertes dès qu'on entre dans l'application avec le code de présence (§4.1), sans heure d'ouverture.
-- **IN-2** Un participant peut s'inscrire à plusieurs parties d'un même créneau et se désinscrire librement tant que le tirage de ce créneau n'est pas lancé. S'inscrire à une partie où l'on est déjà inscrit, ou se désinscrire d'une partie où l'on ne l'est pas, ne change rien : un geste répété après une coupure du réseau est sans risque.
-- **IN-3** S'inscrire à une partie double revient à se déclarer disponible sur ses deux créneaux.
+- **IN-2** Un participant peut s'inscrire à plusieurs parties d'un même créneau et se désinscrire librement tant que le tirage de ce créneau n'est pas lancé. S'inscrire à une partie où l'on est déjà inscrit, ou se désinscrire d'une partie où l'on ne l'est pas, ne change rien : un geste répété après une coupure du réseau est sans risque. Se désinscrire se fait d'un tap, sans confirmation.
+- **IN-3** S'inscrire à une partie double revient à se déclarer disponible sur ses deux créneaux. Au programme, elle apparaît sous ses deux créneaux. S'y inscrire garde les inscriptions déjà prises sur son second créneau : elles comptent si l'on n'est pas placé dans la partie double, et le tirage les ignore sinon (TI-3). La fiche n'en dit rien.
 - **IN-4** Un MJ ne peut pas s'inscrire comme joueur sur un créneau où il mène une partie. Si une partie de son scénario est programmée sur un créneau où il était inscrit comme joueur, ses inscriptions sur ce créneau sont retirées et il est notifié (NO-2).
-- **IN-5** Lors d'une inscription sur une partie très demandée, l'application avertit le participant et l'incite à s'inscrire à d'autres parties du créneau.
+- **IN-5** Avant une inscription qui ferait dépasser les places maximum d'une partie, y compris celle qui la fait passer en très demandée, l'application demande une confirmation :
+  - titre : « Partie très demandée » ;
+  - texte : « *Titre* a déjà *K* inscrits pour *M* places : tu risques de ne pas avoir de place. Inscris-toi aussi à d'autres parties du créneau *N*, pour avoir plus de chances de jouer. » ;
+  - boutons : « S'inscrire quand même », « Voir les autres parties » (le programme du créneau, sans inscrire) et « Annuler ».
+
+  Chaque fois qu'une partie devient très demandée, ceux de ses inscrits qui n'ont aucune autre inscription sur le créneau sont notifiés (NO-2). Tant que la seule inscription d'un participant sur un créneau est une partie très demandée, Mes parties et la ligne du créneau dans l'Accueil (« Ton programme ») affichent « Ta seule inscription du créneau *N* est une partie très demandée : inscris-toi aussi à une autre partie. » Une inscription à une partie double ne compte que sur son premier créneau.
 - **IN-6** Tant que le tirage de son créneau n'est pas lancé, une partie déprogrammée perd ses inscriptions, comme une partie déplacée sur un autre créneau, par un déplacement ou un échange. Ses inscrits sont notifiés (NO-2) et se réinscrivent s'ils le veulent. Changer la table d'une partie, ou l'échanger avec une partie du même créneau, garde ses inscriptions.
 
 ### 5.5 Tirage
@@ -193,6 +206,7 @@ Notifications push web. Chaque notification se suffit à elle-même : son titre 
   | Partie déprogrammée, avant le tirage de son créneau | Ses inscrits | Créneau *N* : partie retirée du programme | *Titre* est retirée : ton inscription est supprimée. | Les parties du créneau |
   | Partie déprogrammée, avant le tirage de son créneau | Son MJ | Créneau *N* : partie retirée du programme | *Titre* est retirée : tu peux t'inscrire sur ce créneau. | Les parties du créneau |
   | Partie déplacée sur un autre créneau, avant le tirage (IN-6) | Ses inscrits | Créneau *N* : partie déplacée | *Titre* passe au créneau *M* : ton inscription est retirée. Réinscris-toi si l'horaire te va. | La fiche de la partie |
+  | Partie devenue très demandée, par une inscription ou une baisse de ses places maximum (PR-4), avant le tirage de son créneau (IN-5) | Ses inscrits qui n'ont aucune autre inscription sur le créneau, sauf celui dont l'inscription l'a fait passer en très demandée | Créneau *N* : partie très demandée | *Titre* est une partie très demandée, et c'est ta seule inscription sur ce créneau. Inscris-toi à d'autres parties pour éviter de te retrouver sans table où jouer. | Les parties du créneau |
   | Publication — affecté | Le participant | Créneau *N* : table *T* | Tu joues à *Titre*, avec *pseudo du MJ*. | La fiche de la partie |
   | Publication — non placé | Le participant | Créneau *N* : pas de place pour toi | Les parties que tu avais choisies sont complètes. Il reste de la place aux tables *T1* et *T3* : va voir leur MJ. | Les parties du créneau où il reste de la place |
   | Publication — MJ | Le MJ | Créneau *N* : tu mènes à la table *T* | *Titre*, avec *K* joueurs. | Mes parties, sur ce créneau (§5.7) |
@@ -203,9 +217,11 @@ Notifications push web. Chaque notification se suffit à elle-même : son titre 
   - quand le MJ était inscrit sur ce créneau (IN-4), le corps de « tu mènes une partie » se termine par « Tes inscriptions sur ce créneau sont retirées. » ;
   - quand aucune table n'a de place, « Toutes les parties du créneau sont complètes. » remplace le corps du non placé, et la phrase « Il reste de la place… » de la partie annulée ;
   - une partie double se désigne par ses deux créneaux : « Créneaux 2 et 3 : table *T* ».
+
+  « Partie très demandée » part chaque fois que la partie dépasse ses places maximum, même si elle les a déjà dépassées plus tôt. Une inscription à une partie double ne compte que sur son premier créneau (TI-3).
 - **NO-3** Une notification que le téléphone n'a pas encore reçue n'est plus livrée après la fin du créneau qu'elle concerne (le second, pour une partie double).
-- **NO-4** Ne sont pas notifiés : le lancement d'un tirage, le changement de table d'une partie et l'échange de deux parties d'un même créneau, les gestes de ID-5. Pas de rappel avant un créneau (§7).
-- **NO-5** Quand l'application est ouverte, le téléphone range la notification sans l'afficher en grand : sur Android, elle va dans le volet, avec son, sans fenêtre en haut de l'écran, et l'iPhone n'affiche probablement pas de bannière. L'application montre donc elle-même, par une alerte, ce qui change pour le participant sans geste de sa part : tirage publié qui le concerne, inscription retirée, et pour un MJ, partie à mener ajoutée ou retirée. Elle le voit en relisant ses données (§6, Fraîcheur), pas par le push : cela marche aussi sans notifications. Pas d'alerte pour « nouvelle partie », que le programme montre déjà. L'alerte porte « Voir », qui ouvre l'Accueil pour un tirage publié, les parties du créneau pour une inscription retirée, Mes parties sur ce créneau pour une partie à mener (§5.7). Elle reste jusqu'à ce qu'on la ferme ou qu'on touche « Voir ». Les notifications « nouvelle partie » d'un même créneau se remplacent, sans nouveau son : un téléphone resté hors ligne ne reçoit que la dernière. Sur iPhone, celles déjà affichées restent empilées. Les autres notifications s'empilent.
+- **NO-4** Ne sont pas notifiés : le lancement d'un tirage, le changement de table d'une partie et l'échange de deux parties d'un même créneau, les gestes de ID-5, une partie qui redescend sous ses places maximum. Pas de rappel avant un créneau (§7).
+- **NO-5** Quand l'application est ouverte, le téléphone range la notification sans l'afficher en grand : sur Android, elle va dans le volet, avec son, sans fenêtre en haut de l'écran, et l'iPhone n'affiche probablement pas de bannière. L'application montre donc elle-même, par une alerte, ce qui change pour le participant sans geste de sa part : tirage publié qui le concerne, inscription retirée, et pour un MJ, partie à mener ajoutée ou retirée. Elle le voit en relisant ses données (§6, Fraîcheur), pas par le push : cela marche aussi sans notifications. Pas d'alerte pour « nouvelle partie », que le programme montre déjà, ni pour « partie très demandée », que montrent Mes parties et l'Accueil (IN-5). L'alerte porte « Voir », qui ouvre l'Accueil pour un tirage publié, les parties du créneau pour une inscription retirée, Mes parties sur ce créneau pour une partie à mener (§5.7). Elle reste jusqu'à ce qu'on la ferme ou qu'on touche « Voir ». Les notifications « nouvelle partie » d'un même créneau se remplacent, sans nouveau son : un téléphone resté hors ligne ne reçoit que la dernière. Sur iPhone, celles déjà affichées restent empilées. Les « partie très demandée » d'un même créneau se remplacent de la même façon, mais avec un son. Les autres notifications s'empilent.
 - **NO-6** Sur un téléphone qui ne reçoit pas les notifications, chaque écran porte un bandeau qu'on ne peut pas fermer. Sauf dans le dernier cas, un tap ouvre le guide d'activation (§4.2) :
 
   | Cas | Bandeau |
