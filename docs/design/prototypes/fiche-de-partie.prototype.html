@@ -21,6 +21,8 @@
 
   Verdict : variante A retenue. En plus de la confirmation, une partie qui devient très demandée
   notifie ses inscrits sans autre inscription sur le créneau (NO-2). Détail dans le ticket #63.
+  Cas 14 et 15, et boutons « Quelqu'un s'inscrit » / « Quelqu'un se désinscrit » : la notification
+  et le rappel dans Mes parties et l'Accueil (IN-5).
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -300,6 +302,14 @@ svg.i { width: 20px; height: 20px; flex: none; }
 .alert.danger { border-color: color-mix(in srgb, var(--danger) 70%, var(--border)); }
 .alert.neutral { border-color: var(--engraving-strong); }
 .alert.low { bottom: max(env(safe-area-inset-bottom), var(--space-l)); }
+/* Notification du téléphone : style du système, hors de l'application. */
+.push { position: absolute; z-index: 50; top: 8px; left: 8px; right: 8px; display: flex; gap: 10px; align-items: flex-start; padding: 12px; background: rgba(238, 238, 238, .97); color: #111; border-radius: 18px; box-shadow: 0 8px 24px rgba(0, 0, 0, .55); font: 14px/1.35 system-ui, sans-serif; text-align: left; animation: drop 200ms ease-out; }
+.push .app-ic { width: 38px; height: 38px; flex: none; border-radius: 9px; background: #151717; display: grid; place-items: center; }
+.push .app-ic svg { width: 30px; height: 30px; }
+.push > span:nth-child(2) { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.push small { color: #555; font-size: 12px; }
+@keyframes drop { from { transform: translateY(-12px); opacity: 0; } }
+.toast.proto { border-style: dashed; }
 .notes strong { color: #f1efec; }
 </style>
 <svg width="0" height="0" style="position: absolute" aria-hidden="true">
@@ -352,6 +362,9 @@ svg.i { width: 20px; height: 20px; flex: none; }
   <span class="sep"></span>
   <label>Réseau <select id="net"><option value="ok">bon</option><option value="off">coupé</option><option value="slow">sans réponse</option></select></label>
   <label>Libellés <select id="labels"><option value="inf">S'inscrire</option><option value="je">Je m'inscris</option></select></label>
+  <span class="sep"></span>
+  <button type="button" id="someone-in" title="Une autre personne s'inscrit à la partie de la fiche ouverte, ou à celle du cas">Quelqu'un s'inscrit</button>
+  <button type="button" id="someone-out" title="Une autre personne se désinscrit">Quelqu'un se désinscrit</button>
 </div>
 
 <script>
@@ -418,6 +431,11 @@ const CASES = [
     note: "Pas de réseau, et des données vieilles de plus de 2 minutes. Touche « S'inscrire » : le geste échoue tout de suite, rien n'est mis en file (§6)." },
   { key: 'lent', label: 'Réseau qui ne répond pas (10 s)', clock: 545, signups: ['g33'], fiche: 'g12', net: 'slow',
     note: "Le réseau ne répond pas. Touche « S'inscrire » : au bout de 10 s, « Le réseau ne répond pas », puis l'application relit ses données. Ici, la demande était passée : la fiche montre l'inscription." },
+  // extra : inscrits ajoutés à une partie pour le cas. watch : la partie visée par « Quelqu'un s'inscrit » hors d'une fiche.
+  { key: 'notif-tres', label: 'Notification : la partie devient très demandée', clock: 545, signups: ['g11'], extra: { g11: 1 }, tab: 'accueil', watch: 'g11',
+    note: "Lune Rousse n'a qu'une inscription au créneau 1 : Les Brumes d'Innsmouth, 5 inscrits pour 5 places. Touche « Quelqu'un s'inscrit » dans la barre : la partie passe à 6 pour 5, la notification arrive, et l'Accueil et Mes parties affichent le rappel. Puis « Quelqu'un se désinscrit » et recommence : la notification repart à chaque passage. Inscris-toi d'abord à une autre partie du créneau 1 : plus de notification." },
+  { key: 'rappel', label: 'Rappel : seule inscription très demandée', clock: 545, signups: ['g13', 'g33'], tab: 'mes', watch: 'g13',
+    note: "La seule inscription de Lune Rousse au créneau 1 est Opération Nébuleuse, très demandée. Mes parties et la ligne du créneau dans l'Accueil le rappellent, même sans notifications et hors ligne. Au créneau 3, L'Épice et le Sang est aussi très demandée et seule : même rappel." },
 ];
 const VARIANTS = {
   A: { name: 'Barre en bas',
@@ -439,7 +457,7 @@ const LABELS = {
 /* ================= État ================= */
 const fromHash = () => { const k = location.hash.replace('#variante-', '').toUpperCase(); return KEYS.includes(k) ? k : null; };
 const S = { variant: fromHash() ?? 'A', cas: 0, who: '', tab: 'programme', progSlot: null, fiches: [], target: null, signups: new Set(), results: {},
-  busy: null, confirm: null, alert: null, after: null, net: 'ok', labels: 'inf' };
+  busy: null, confirm: null, alert: null, after: null, net: 'ok', labels: 'inf', extra: {}, push: null, toast: null };
 
 const C = () => CASES[S.cas];
 const G = (id) => GAMES.find((g) => g.id === id);
@@ -466,8 +484,11 @@ function resetCase() {
   S.signups = new Set(c.signups ?? []);
   S.results = c.results ?? {};
   S.net = c.net ?? 'ok';
-  S.busy = null; S.confirm = null; S.alert = null; S.after = null; S.target = null;
-  S.tab = 'programme'; S.progSlot = G(c.fiche).slot; S.fiches = [c.fiche];
+  S.extra = { ...(c.extra ?? {}) };
+  S.busy = null; S.confirm = null; S.alert = null; S.after = null; S.target = null; S.push = null; S.toast = null;
+  clearTimeout(toastTimer);
+  if (c.fiche) { S.tab = 'programme'; S.progSlot = G(c.fiche).slot; S.fiches = [c.fiche]; }
+  else { S.tab = c.tab; S.progSlot = null; S.fiches = []; }
 }
 
 /* ================= Règles (simplifiées) ================= */
@@ -482,7 +503,7 @@ const isMine = (g) => g.mj === S.who;
 const leadOn = (n) => gamesOn(n).find(isMine);
 const slotName = (n, double) => (double ? `Créneaux ${n} et ${n + 1}` : `Créneau ${n}`);
 const slotRange = (n, double) => `${SLOTS[n - 1].start} – ${(double ? SLOTS[n] : SLOTS[n - 1]).end}`;
-const inscrits = (g) => g.others + (S.signups.has(g.id) ? 1 : 0);
+const inscrits = (g) => g.others + (S.extra[g.id] ?? 0) + (S.signups.has(g.id) ? 1 : 0);
 const over = (g) => slotState(g.slot) !== 'published' && inscrits(g) > g.max;
 const placesTxt = (g) => (S.variant === 'B' && g.min < g.max ? `${g.min} à ${g.max} places` : plural(g.max, 'place'));
 function counter(g) {
@@ -491,6 +512,13 @@ function counter(g) {
   return `${k ? plural(k, 'inscrit') : 'Aucun inscrit'} · ${placesTxt(g)}`;
 }
 const tresDemandee = (g) => (over(g) ? badge('warn', 'triangle-alert', 'Très demandée') : '');
+// La seule inscription de la personne sur le créneau n, si c'est une partie très demandée (IN-5).
+// Une partie double ne compte que sur son premier créneau.
+function soleOver(n) {
+  const s = GAMES.filter((g) => g.slot === n && S.signups.has(g.id));
+  return s.length === 1 && slotState(n) === 'open' && over(s[0]) ? s[0] : null;
+}
+const soleText = (n) => `Ta seule inscription du créneau ${n} est une partie très demandée : inscris-toi aussi à une autre partie.`;
 // La partie double publiée où l'on joue, et qui occupe le créneau n, son second créneau.
 const doubleHolding = (n) => GAMES.find((d) => d.double && d.slot + 1 === n && slotState(d.slot) === 'published' && S.results[d.slot] === d.id);
 
@@ -560,7 +588,8 @@ function mineLine(n) {
     case 'assigned': return { tone: 'ok', ic: 'circle-check', label: `Table ${g.table}`, detail: `${g.title}, avec ${g.mj}`, act: 'fiche', id: g.id };
     case 'unassigned': return { tone: 'warn', ic: 'triangle-alert', label: 'Pas de place pour toi', detail: '', act: 'goto-prog', n };
     case 'pending': return { tone: 'neutral', ic: 'hourglass', label: 'Tirage en cours', detail: m.signups.length ? listFr(m.signups.map((x) => x.title)) : 'Aucune inscription', act: 'goto-prog', n };
-    case 'open': return m.signups.length
+    case 'open': if (soleOver(n)) return { tone: 'warn', ic: 'triangle-alert', label: soleOver(n).title, detail: soleText(n), act: 'goto-prog', n };
+      return m.signups.length
       ? { tone: 'accent', ic: 'circle-check', label: plural(m.signups.length, 'inscription'), detail: listFr(m.signups.map((x) => x.title)), act: 'goto-prog', n }
       : { tone: 'muted', ic: 'plus', label: 'Aucune inscription', detail: 'Choisir une partie', act: 'goto-prog', n };
     default: return { tone: 'muted', ic: 'circle-check', label: 'Tirage publié', detail: 'Aucune inscription sur ce créneau', act: 'goto-prog', n };
@@ -636,6 +665,7 @@ function mesParties() {
     else if (m.signups?.length) content = m.signups.map((x) => item(x, `<div style="font-weight:600">${x.title}</div><div class="meta num">Table ${x.table} · ${counter(x)}</div>`, m.kind === 'pending' ? icon('lock', 'i tone-muted') : tresDemandee(x) || icon('chevron-right', 'i tone-muted'))).join('');
     else if (m.kind === 'open') content = `<div class="mine-item" style="justify-content:space-between"><span class="meta">Aucune inscription</span><button class="btn btn-ghost" data-act="goto-prog" data-n="${n}">Choisir une partie</button></div>`;
     else content = `<div class="mine-item"><span class="meta">Aucune inscription sur ce créneau</span></div>`;
+    if (soleOver(n)) content = box('warn', 'triangle-alert', `<p>${soleText(n)}</p><div><button class="btn btn-secondary" data-act="goto-prog" data-n="${n}">Choisir une partie</button></div>`) + content;
     return `<section id="slot-${n}"><div class="slot-head"><span class="over">${slotName(n)} · ${slotRange(n)}</span>${slotBadge(n)}</div><div class="pad stack" style="padding-block:var(--space-s)">${content}</div></section>`;
   }).join('')}</div>`;
 }
@@ -738,6 +768,34 @@ function renderConfirm() {
 const renderAlert = () => { const a = S.alert, low = S.fiches.length && S.variant !== 'A' ? 'low' : ''; return `<div class="alert ${a.tone ?? ''} ${low}" role="alert"><div><strong>${a.title}</strong>${a.text ? `<span>${a.text}</span>` : ''}</div>
   ${a.btn ? `<button class="btn btn-ghost" data-act="${a.btn.act}" data-id="${a.btn.id ?? ''}" data-n="${a.btn.n ?? ''}">${a.btn.label}</button>` : ''}<button class="icon-btn" data-act="alert-close" aria-label="Fermer l'alerte">${icon('x')}</button></div>`; };
 
+/* ================= Notification « partie très demandée » (NO-2) ================= */
+const renderPush = () => `<button class="push" data-act="push-open" data-n="${S.push.n}"><span class="app-ic"><svg aria-hidden="true"><use href="#emblem-small"/></svg></span>
+  <span><small>Histoires de Chimères · maintenant</small><strong>${S.push.title}</strong><span>${S.push.body}</span></span></button>`;
+let toastTimer;
+function toast(msg) {
+  S.toast = msg; render();
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { S.toast = null; render(); }, 4200);
+}
+// Une autre personne s'inscrit (dir 1) ou se désinscrit (dir -1) à la partie de la fiche ouverte, ou à celle du cas.
+function someone(dir) {
+  const g = G(S.fiches.at(-1) ?? C().watch ?? '');
+  if (!g) return toast('Ouvre d\'abord la fiche d\'une partie.');
+  if (slotState(g.slot) !== 'open') return toast(`Les inscriptions du créneau ${g.slot} sont fermées.`);
+  const before = inscrits(g);
+  if (dir < 0 && g.others + (S.extra[g.id] ?? 0) === 0) return toast(`Personne d'autre n'est inscrit à ${g.title}.`);
+  S.extra[g.id] = (S.extra[g.id] ?? 0) + dir;
+  const k = inscrits(g), crossed = dir > 0 && before === g.max;
+  if (!crossed) return toast(`${g.title} : ${plural(k, 'inscrit')} pour ${plural(g.max, 'place')}. ${dir > 0 && before > g.max ? 'Déjà très demandée : pas de nouvelle notification.' : 'Pas de passage au-dessus du maximum : pas de notification.'}`);
+  if (!S.signups.has(g.id)) return toast(`${g.title} devient très demandée. ${S.who} n'a pas d'inscription à cette partie : pas de notification.`);
+  if (soleOver(g.slot)?.id !== g.id) return toast(`${g.title} devient très demandée. ${S.who} a une autre inscription au créneau ${g.slot} : pas de notification.`);
+  // La nouvelle remplace la précédente du même créneau (tag, Topic).
+  clearTimeout(toastTimer); S.toast = null;
+  S.push = { n: g.slot, title: `${slotName(g.slot, g.double)} : partie très demandée`,
+    body: `${g.title} est une partie très demandée, et c'est ta seule inscription sur ce créneau. Inscris-toi à d'autres parties pour éviter de te retrouver sans table où jouer.` };
+  render();
+}
+
 /* ================= Le geste, contre un serveur fictif ================= */
 function send(id, on) {
   S.busy = id; S.alert = null; S.confirm = null; render();
@@ -782,6 +840,8 @@ function render() {
   if (top) { const g = G(top); html += `<section class="sheet" role="dialog" aria-modal="true" aria-label="${g.title}">${{ A: ficheA, B: ficheB, C: ficheC }[S.variant](g)}</section>`; }
   if (S.confirm) html += renderConfirm();
   if (S.alert) html += renderAlert();
+  if (S.push) html += renderPush();
+  else if (S.toast) html += `<div class="toast proto" role="status"><span class="over">Prototype</span>${S.toast}</div>`;
   app.innerHTML = html;
   frTypography(app);
   app.querySelectorAll('[data-sid]').forEach((el) => { if (saved[el.dataset.sid] != null) el.scrollTop = saved[el.dataset.sid]; });
@@ -808,6 +868,11 @@ function renderNotes() {
       <li>Quand on ne peut pas s'inscrire, la place du bouton dit pourquoi : MJ sur ce créneau, partie double publiée, tirage en cours ou publié.</li>
       <li>Sans réseau, le bouton reste actif ; l'échec donne « Pas de connexion : rien n'a été enregistré. », et après 10 s sans réponse « Le réseau ne répond pas : vérifie ton inscription. » (§6). Le choix « Réseau » vaut pour tous les cas.</li>
       <li>Les inscriptions du second créneau d'une partie double restent : le tirage ne les ignore que si l'on est pris dans la partie double (TI-3).</li></ul>
+    <h3>Notification « partie très demandée »</h3><ul>
+      <li>« Quelqu'un s'inscrit » ajoute un inscrit à la partie de la fiche ouverte (ou à celle du cas). Au passage au-dessus du maximum, la notification part vers les inscrits sans autre inscription sur le créneau ; un tap ouvre les parties du créneau.</li>
+      <li>Elle repart à chaque passage ; une nouvelle remplace la précédente du même créneau.</li>
+      <li>Application ouverte, elle irait en réalité dans le volet, sans alerte (NO-5). Le prototype la montre en haut de l'écran.</li>
+      <li>Rappel dans Mes parties et sur la ligne du créneau de l'Accueil, tant que la seule inscription du créneau est très demandée.</li></ul>
     <p style="color:#8f8a85">← → : variante · ↑ ↓ : cas.</p>`;
   frTypography(notes);
 }
@@ -816,6 +881,7 @@ app.addEventListener('click', (e) => {
   const t = e.target.closest('[data-act]');
   if (!t) return;
   const { act, id, n, v } = t.dataset;
+  S.push = null;
   switch (act) {
     case 'tab': S.tab = v; S.fiches = []; S.progSlot = null; S.alert = null; break;
     case 'prog-slot': S.progSlot = Number(n); break;
@@ -838,6 +904,7 @@ app.addEventListener('click', (e) => {
     case 'resub': return send(id, true);
     case 'dismiss': S.confirm = null; break;
     case 'alert-close': S.alert = null; break;
+    case 'push-open': S.push = null; S.fiches = []; S.confirm = null; S.alert = null; S.tab = 'programme'; S.progSlot = Number(n); break;
     case 'noop': return;
   }
   render();
@@ -860,6 +927,8 @@ document.getElementById('c-next').onclick = () => setCase(S.cas + 1);
 casSel.onchange = (e) => setCase(Number(e.target.value));
 document.getElementById('net').onchange = (e) => { S.net = e.target.value; render(); };
 document.getElementById('labels').onchange = (e) => { S.labels = e.target.value; render(); };
+document.getElementById('someone-in').onclick = () => someone(1);
+document.getElementById('someone-out').onclick = () => someone(-1);
 const sw = document.getElementById('switcher');
 if (matchMedia('(max-width: 520px)').matches) sw.classList.add('collapsed');
 document.getElementById('sw-toggle').onclick = (e) => { const c = sw.classList.toggle('collapsed'); e.target.setAttribute('aria-expanded', String(!c)); };
