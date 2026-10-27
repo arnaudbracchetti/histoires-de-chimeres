@@ -1,13 +1,13 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import type { ProblemDto } from '@chimeres/contract';
-import type { ErrorNotice } from './shell/notifications';
+import type { ErrorNotice } from './shell/alerts';
 import { fr } from './typography/french';
 
 /** Ce qu'un formulaire affiche d'une écriture refusée (docs/design/patterns.md, Validation). */
 export type FormProblem = {
   /** Erreurs rattachées à un champ du corps, à afficher sous ce champ. */
   fieldErrors: { field: string; message: string }[];
-  /** Erreur sans champ : une notification, qui ne décale rien dans la page. */
+  /** Erreur sans champ : une alerte, qui ne décale rien dans la page. */
   alert?: ErrorNotice;
 };
 
@@ -17,7 +17,7 @@ const OFFLINE = fr`Pas de connexion : rien n'a été enregistré.`;
 /** Lit l'erreur d'un `apiCall()`. Les textes viennent de l'API (ADR 0008), sauf pour un 500 et une coupure. */
 export function readProblem(error: unknown): FormProblem {
   if (!(error instanceof HttpErrorResponse)) {
-    // Erreur du front lui-même, pas de l'API : la notification reste sobre, la console la garde.
+    // Erreur du front lui-même, pas de l'API : l'alerte reste sobre, la console la garde.
     console.error(error);
     return { fieldErrors: [], alert: { title: INTERNAL_ERROR } };
   }

@@ -1,14 +1,14 @@
 import { Component, inject } from '@angular/core';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
-import { Notifications } from './notifications';
+import { Alerts } from './alerts';
 
-/** Les notifications d'erreur, en bas à droite. */
+/** Les alertes, en bas à droite. */
 @Component({
-  selector: 'app-notification-stack',
+  selector: 'app-alert-stack',
   imports: [Button, Icon],
   template: `
-    @for (notice of notifications.notices(); track notice.id) {
+    @for (notice of alerts.notices(); track notice.id) {
       <div class="notice" role="alert">
         <div class="text">
           <strong>{{ notice.title }}</strong>
@@ -21,7 +21,7 @@ import { Notifications } from './notifications';
           appButton="icon"
           aria-label="Fermer"
           title="Fermer"
-          (click)="notifications.close(notice.id)"
+          (click)="alerts.close(notice.id)"
         >
           <app-icon name="x" />
         </button>
@@ -61,6 +61,6 @@ import { Notifications } from './notifications';
     }
   `,
 })
-export class NotificationStack {
-  protected readonly notifications = inject(Notifications);
+export class AlertStack {
+  protected readonly alerts = inject(Alerts);
 }

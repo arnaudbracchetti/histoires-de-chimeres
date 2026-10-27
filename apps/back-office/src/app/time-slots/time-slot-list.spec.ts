@@ -9,7 +9,7 @@ import {
   type ProblemDto,
   type TimeSlotDto,
 } from '@chimeres/contract';
-import { Notifications } from '../shell/notifications';
+import { Alerts } from '../shell/alerts';
 import { NBSP, THIN_NBSP } from '../typography/french';
 import { TimeSlotList } from './time-slot-list';
 
@@ -240,7 +240,7 @@ describe('TimeSlotList', () => {
     expect(document.activeElement).toBe(input('Fin'));
   });
 
-  it('envoie en notification une erreur sans champ, sans perdre la saisie', async () => {
+  it('envoie en alerte une erreur sans champ, sans perdre la saisie', async () => {
     const { button, type, press, http, settle, input } = await render();
     button('Ajouter un créneau').click();
     await settle();
@@ -252,7 +252,7 @@ describe('TimeSlotList', () => {
       .flush(null, { status: 500, statusText: 'Erreur' });
     await settle();
 
-    expect(TestBed.inject(Notifications).notices()).toEqual([
+    expect(TestBed.inject(Alerts).notices()).toEqual([
       expect.objectContaining({ title: 'Une erreur est survenue, réessaie.' }),
     ]);
     expect(input('Début').value).toBe('14:00');

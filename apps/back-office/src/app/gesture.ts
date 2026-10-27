@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { computed, inject, signal, type Signal } from '@angular/core';
 import { readProblem } from './problem';
 import { fr } from './typography/french';
-import { Notifications, type ErrorNotice } from './shell/notifications';
+import { Alerts, type ErrorNotice } from './shell/alerts';
 
 /**
  * Refus qui disent que l'écran est périmé : l'élément n'existe plus (404), la convention a changé
@@ -21,7 +21,7 @@ const NO_KEY = '';
 export type GestureRefusal = {
   /** Le texte à afficher en place : le `detail` du refus, à défaut son `title`. */
   message: string;
-  /** Le refus en notification : `title` et `detail`. */
+  /** Le refus en alerte : `title` et `detail`. */
   notice: ErrorNotice;
   /** L'écran est à relire. */
   stale: boolean;
@@ -52,19 +52,19 @@ export type Gesture = {
 };
 
 export type GestureOptions = {
-  /** Le refus part aussi en notification. */
-  notify?: boolean;
+  /** Le refus part aussi en alerte. */
+  alert?: boolean;
   /** L'écran se relit sur un refus périmé : le refus d'un 409 le dit, au lieu de « recharge la page ». */
   refreshes?: boolean;
 };
 
 /**
  * Renvoie un `Gesture`, à créer dans un contexte d'injection (champ d'un composant). L'écran
- * choisit où afficher le refus (`refusal().message` en place, ou `notify` pour une notification)
+ * choisit où afficher le refus (`refusal().message` en place, ou `alert` pour une alerte)
  * et quoi relire quand il est périmé (`refusal.stale`).
  */
 export function injectGesture(options: GestureOptions = {}): Gesture {
-  const notifications = inject(Notifications);
+  const alerts = inject(Alerts);
   const keys = signal<ReadonlySet<string>>(new Set());
   const refusal = signal<GestureRefusal | undefined>(undefined);
 
@@ -89,7 +89,7 @@ export function injectGesture(options: GestureOptions = {}): Gesture {
       } catch (error) {
         const refused = refusalOf(error, options.refreshes ?? false);
         refusal.set(refused);
-        if (options.notify) notifications.error(refused.notice);
+        if (options.alert) alerts.error(refused.notice);
         return { status: 'refused', refusal: refused };
       } finally {
         update(key, false);

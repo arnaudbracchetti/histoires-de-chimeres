@@ -6,7 +6,7 @@ import {
   type ValidationError,
 } from '@angular/forms/signals';
 import { readProblem, type FormProblem } from '../problem';
-import { Notifications, type ErrorNotice } from '../shell/notifications';
+import { Alerts, type ErrorNotice } from '../shell/alerts';
 
 export type SubmitOptions = {
   /** Appelé avant le focus au premier champ en erreur : pour montrer un champ masqué. */
@@ -16,7 +16,7 @@ export type SubmitOptions = {
 /**
  * L'envoi d'un formulaire (docs/design/patterns.md, Validation), à passer en `submission` de
  * `form()`, dans le même contexte d'injection : `write` enregistre, et lance l'erreur de l'API
- * telle quelle. Une erreur rattachée à un champ s'affiche sous ce champ, le reste en notification,
+ * telle quelle. Une erreur rattachée à un champ s'affiche sous ce champ, le reste en alerte,
  * et le focus va au premier champ en erreur, refus de l'API comme erreur locale. Un second envoi
  * pendant le premier est refusé par `submit()`.
  */
@@ -24,7 +24,7 @@ export function submitWith<TModel>(
   write: () => Promise<unknown>,
   { beforeFocus }: SubmitOptions = {},
 ): FormSubmitOptions<TModel, unknown> {
-  const notifications = inject(Notifications);
+  const alerts = inject(Alerts);
   const injector = inject(Injector);
   const focusFirstError = (form: FieldTree<TModel>) => {
     beforeFocus?.();
@@ -39,7 +39,7 @@ export function submitWith<TModel>(
         return undefined;
       } catch (error) {
         const { errors, alert } = toSubmissionErrors(readProblem(error), form);
-        if (alert) notifications.error(alert);
+        if (alert) alerts.error(alert);
         focusFirstError(form);
         return errors;
       }
@@ -50,7 +50,7 @@ export function submitWith<TModel>(
 
 /**
  * Chaque erreur de champ sur le champ que nomme son `field` (`seats.min` → `form.seats.min`). Une
- * erreur dont le champ n'est pas dans le formulaire passe en notification.
+ * erreur dont le champ n'est pas dans le formulaire passe en alerte.
  */
 function toSubmissionErrors(
   problem: FormProblem,

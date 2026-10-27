@@ -154,10 +154,10 @@ export class ScheduleBoard {
   private readonly apiCall = injectApiCall();
   private readonly injector = inject(Injector);
   protected readonly drag = inject(ScheduleDrag);
-  /** Un refus part en notification : la fiche n'a pas de place pour lui. */
-  protected readonly unscheduling = injectGesture({ notify: true, refreshes: true });
-  /** Un glisser-déposer refusé part aussi en notification. */
-  private readonly dropping = injectGesture({ notify: true, refreshes: true });
+  /** Un refus part en alerte : la fiche n'a pas de place pour lui. */
+  protected readonly unscheduling = injectGesture({ alert: true, refreshes: true });
+  /** Un glisser-déposer refusé part aussi en alerte. */
+  private readonly dropping = injectGesture({ alert: true, refreshes: true });
 
   /**
    * Ouvre le dialogue de placement. Une fois la partie programmée, le focus va à sa carte, et la
@@ -195,7 +195,7 @@ export class ScheduleBoard {
   /**
    * Déprogramme la partie, sans confirmation (docs/design/patterns.md, Actions destructrices). La
    * fiche se ferme, et le focus va à la réserve, où revient son scénario. Un refus s'affiche en
-   * notification ; s'il dit l'écran périmé, la convention et le programme se relisent.
+   * alerte ; s'il dit l'écran périmé, la convention et le programme se relisent.
    */
   protected async unschedule(game: GameDto) {
     const outcome = await this.unscheduling.run(() => this.unscheduleCall(game));
@@ -206,7 +206,7 @@ export class ScheduleBoard {
   /**
    * Écrit un glisser-déposer : programmer, déplacer, échanger ou déprogrammer. Pendant l'écriture,
    * le programme montre son résultat, les parties concernées atténuées ; refusé, il revient à son
-   * état, le refus part en notification, et s'il dit l'écran périmé, la convention et le programme
+   * état, le refus part en alerte, et s'il dit l'écran périmé, la convention et le programme
    * se relisent. Pas d'annulation : on refait le geste inverse.
    */
   protected async drop({ subject, target }: Drop) {

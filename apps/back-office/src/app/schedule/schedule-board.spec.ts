@@ -11,7 +11,7 @@ import {
   type ProblemDto,
   type ScheduleDto,
 } from '@chimeres/contract';
-import { Notifications } from '../shell/notifications';
+import { Alerts } from '../shell/alerts';
 import { NBSP } from '../typography/french';
 import { ScheduleBoard } from './schedule-board';
 import type { Drop } from './schedule-drag';
@@ -121,7 +121,7 @@ describe('ScheduleBoard', () => {
     http.verify();
   });
 
-  it('refusé parce que la partie n’existe plus : notification, puis la convention et le programme se relisent', async () => {
+  it('refusé parce que la partie n’existe plus : alerte, puis la convention et le programme se relisent', async () => {
     const { http, settle, sheet, unschedule } = await render();
     const problem: Partial<ProblemDto> = {
       status: 404,
@@ -135,7 +135,7 @@ describe('ScheduleBoard', () => {
     await new Promise((resolve) => setTimeout(resolve));
     TestBed.tick();
 
-    expect(TestBed.inject(Notifications).notices()).toEqual([
+    expect(TestBed.inject(Alerts).notices()).toEqual([
       expect.objectContaining({ title: 'Partie introuvable', detail: problem.detail }),
     ]);
     http.expectOne(apiUrl(conventionEndpoints.read)).flush(CONVENTION);
@@ -144,14 +144,14 @@ describe('ScheduleBoard', () => {
     expect(sheet()).toBeNull();
   });
 
-  it('après une coupure : notification, la fiche reste ouverte, sans relecture', async () => {
+  it('après une coupure : alerte, la fiche reste ouverte, sans relecture', async () => {
     const { http, settle, sheet, unschedule } = await render();
 
     (await unschedule()).error(new ProgressEvent('error'), { status: 0 });
     await settle();
 
     expect(sheet()).not.toBeNull();
-    expect(TestBed.inject(Notifications).notices()).toEqual([
+    expect(TestBed.inject(Alerts).notices()).toEqual([
       expect.objectContaining({ title: `Pas de connexion${NBSP}: rien n'a été enregistré.` }),
     ]);
     http.verify();
@@ -178,7 +178,7 @@ describe('ScheduleBoard', () => {
       http.verify();
     });
 
-    it('refusée (422) : la partie revient à sa place, notification, puis la convention et le programme se relisent', async () => {
+    it('refusée (422) : la partie revient à sa place, alerte, puis la convention et le programme se relisent', async () => {
       const { http, settle, drop, gameAt } = await render();
       const problem: Partial<ProblemDto> = {
         status: 422,
@@ -196,7 +196,7 @@ describe('ScheduleBoard', () => {
 
       expect(gameAt('s1', 't1')).toEqual({ title: 'Brumes', pending: false });
       expect(gameAt('s1', 't2')).toBeNull();
-      expect(TestBed.inject(Notifications).notices()).toEqual([
+      expect(TestBed.inject(Alerts).notices()).toEqual([
         expect.objectContaining({ title: 'Table prise', detail: problem.detail }),
       ]);
       http.expectOne(apiUrl(conventionEndpoints.read)).flush(CONVENTION);
@@ -205,7 +205,7 @@ describe('ScheduleBoard', () => {
       http.verify();
     });
 
-    it('en conflit (409) : notification « l’écran est à jour », puis la convention et le programme se relisent', async () => {
+    it('en conflit (409) : alerte « l’écran est à jour », puis la convention et le programme se relisent', async () => {
       const { http, settle, drop, gameAt } = await render();
 
       await drop(toLicorne);
@@ -219,7 +219,7 @@ describe('ScheduleBoard', () => {
       TestBed.tick();
 
       expect(gameAt('s1', 't1')).toEqual({ title: 'Brumes', pending: false });
-      expect(TestBed.inject(Notifications).notices()).toEqual([
+      expect(TestBed.inject(Alerts).notices()).toEqual([
         expect.objectContaining({
           title: 'Modification simultanée',
           detail: `La convention a changé entre-temps${NBSP}: l'écran est à jour.`,

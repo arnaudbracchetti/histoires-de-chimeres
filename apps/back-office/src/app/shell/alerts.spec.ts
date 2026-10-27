@@ -1,15 +1,15 @@
 import { TestBed } from '@angular/core/testing';
-import { NotificationStack } from './notification-stack';
-import { Notifications } from './notifications';
+import { AlertStack } from './alert-stack';
+import { Alerts } from './alerts';
 
-describe('Notifications', () => {
+describe('Alerts', () => {
   function render() {
-    const fixture = TestBed.createComponent(NotificationStack);
+    const fixture = TestBed.createComponent(AlertStack);
     fixture.detectChanges();
-    const notifications = TestBed.inject(Notifications);
+    const service = TestBed.inject(Alerts);
     const host = fixture.nativeElement as HTMLElement;
     const show = (title: string, detail?: string) => {
-      notifications.error({ title, detail });
+      service.error({ title, detail });
       fixture.detectChanges();
     };
     const alerts = () => [...host.querySelectorAll('[role="alert"]')];

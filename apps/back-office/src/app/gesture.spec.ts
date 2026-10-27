@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import type { ProblemDto } from '@chimeres/contract';
 import { injectGesture, type GestureOptions } from './gesture';
-import { Notifications } from './shell/notifications';
+import { Alerts } from './shell/alerts';
 import { NBSP } from './typography/french';
 
 /** Une écriture refusée par l'API, avec ce Problem Details. */
@@ -125,20 +125,20 @@ describe('Gesture', () => {
     expect(gesture.isRunning('s1')).toBe(false);
   });
 
-  it('avec notify, le refus part aussi en notification, title et detail', async () => {
-    const gesture = create({ notify: true });
+  it('avec alert, le refus part aussi en alerte, title et detail', async () => {
+    const gesture = create({ alert: true });
 
     await gesture.run(
       refusedWith(404, { title: 'Partie introuvable', detail: 'Elle n’existe plus.' }),
     );
 
-    expect(TestBed.inject(Notifications).notices()).toEqual([
+    expect(TestBed.inject(Alerts).notices()).toEqual([
       expect.objectContaining({ title: 'Partie introuvable', detail: 'Elle n’existe plus.' }),
     ]);
   });
 
   it('après un 409, sur un écran qui se relit, le refus dit que l’écran est à jour', async () => {
-    const gesture = create({ notify: true, refreshes: true });
+    const gesture = create({ alert: true, refreshes: true });
 
     await gesture.run(
       refusedWith(409, {
@@ -149,7 +149,7 @@ describe('Gesture', () => {
 
     const detail = `La convention a changé entre-temps${NBSP}: l'écran est à jour.`;
     expect(gesture.refusal()?.message).toBe(detail);
-    expect(TestBed.inject(Notifications).notices()).toEqual([
+    expect(TestBed.inject(Alerts).notices()).toEqual([
       expect.objectContaining({ title: 'Modification simultanée', detail }),
     ]);
   });
@@ -163,9 +163,9 @@ describe('Gesture', () => {
     expect(gesture.refusal()?.message).toBe(detail);
   });
 
-  it('sans notify, aucune notification', async () => {
+  it('sans alert, aucune alerte', async () => {
     await create().run(refusedWith(404, { title: 'Partie introuvable' }));
 
-    expect(TestBed.inject(Notifications).notices()).toEqual([]);
+    expect(TestBed.inject(Alerts).notices()).toEqual([]);
   });
 });

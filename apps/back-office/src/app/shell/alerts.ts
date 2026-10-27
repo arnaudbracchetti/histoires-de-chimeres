@@ -11,9 +11,9 @@ type Notice = ErrorNotice & { id: number };
 /** Au-delà, la plus ancienne se ferme (docs/design/patterns.md, Retours d'action). */
 const MAX_NOTICES = 3;
 
-/** Pile des notifications d'erreur de la coquille. Une erreur reste affichée jusqu'à ce qu'on la ferme. */
+/** Pile des alertes de la coquille. Une erreur reste affichée jusqu'à ce qu'on la ferme. */
 @Injectable({ providedIn: 'root' })
-export class Notifications {
+export class Alerts {
   private nextId = 0;
   private readonly stack = signal<readonly Notice[]>([]);
   readonly notices = this.stack.asReadonly();
