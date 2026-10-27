@@ -52,7 +52,7 @@ Pièges :
 
 ## Déploiement
 
-Une seule image (`Dockerfile`), sur le modèle d'Agilometre (`/home/arnaud/projets/agilometre`). NestJS y sert le front office sur `/`, le back office sur `/gestion/` et l'API sur `/api`. Le service worker du front office a pour scope `/` : son `ngsw-config.json` exclut `/gestion` et `/api` de ses `navigationUrls`.
+Une seule image (`Dockerfile`), sur le modèle d'Agilometre (`/home/arnaud/projets/agilometre`). NestJS y sert le front office sur `/`, le back office sur `/gestion/` et l'API sur `/api`. Le service worker du front office a pour scope `/` : son `ngsw-config.json` exclut `/gestion` et `/api` de ses `navigationUrls`. À la différence d'Agilometre, l'image n'embarque que les dépendances de production de l'API (étape `prod-deps`, CLI Prisma comprise pour les migrations).
 
 En production (`docker-compose.prod.yml`), le serveur a un Caddy « edge » mutualisé. Il reçoit `histoires-de-chimeres.caddy`, dans lequel `__PUBLIC_DOMAIN__` est remplacé par `sed`. Les migrations Prisma s'appliquent au démarrage du conteneur.
 

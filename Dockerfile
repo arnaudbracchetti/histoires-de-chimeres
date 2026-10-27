@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 # Image unique : l'API NestJS sert aussi les deux fronts Angular
 # (front office sur /, back office sur /gestion/, API sur /api).
 
