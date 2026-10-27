@@ -66,9 +66,18 @@ export interface Findings {
   cells: Record<string, { verdict: string; note: string }>;
 }
 
+// Une série d'un protocole du pilotage (#61) : les étapes sont listées par le pilotage, les
+// résultats sont rangés par étape. `startedAt` borne les lignes de journal montrées sous chaque étape.
+export interface ProtocolRun {
+  device: string;
+  startedAt: number | null;
+  results: Record<string, { verdict: string; note: string }>;
+}
+
 export const phones = new Map<string, PhoneState>();
 export const sends: SendState[] = [];
 export const findings: Findings = { devices: [], cells: {} };
+export const runs: Record<string, ProtocolRun> = {};
 let lastN = 0;
 
 const dataFile = process.env['LABO_DATA'];
@@ -78,17 +87,19 @@ if (dataFile && existsSync(dataFile)) {
     phones: PhoneState[];
     sends: SendState[];
     findings: Findings;
+    runs?: Record<string, ProtocolRun>;
     lastN: number;
   };
   for (const p of saved.phones) phones.set(p.id, p);
   sends.push(...saved.sends);
   Object.assign(findings, saved.findings);
+  Object.assign(runs, saved.runs);
   lastN = saved.lastN;
 }
 
 export function save() {
   if (!dataFile) return;
-  writeFileSync(`${dataFile}.tmp`, JSON.stringify({ phones: [...phones.values()], sends, findings, lastN }));
+  writeFileSync(`${dataFile}.tmp`, JSON.stringify({ phones: [...phones.values()], sends, findings, runs, lastN }));
   renameSync(`${dataFile}.tmp`, dataFile);
 }
 

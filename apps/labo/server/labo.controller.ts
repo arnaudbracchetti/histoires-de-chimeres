@@ -12,7 +12,9 @@ import {
   phoneByEndpoint,
   phones,
   publicKey,
+  type ProtocolRun,
   pushHost,
+  runs,
   schedule,
   type SendRequest,
   sends,
@@ -192,6 +194,7 @@ export class LaboController {
         .map((p) => ({ ...p, pushHost: pushHost(p.subscription?.endpoint), subscription: undefined, hasSubscription: !!p.subscription })),
       sends,
       findings,
+      runs,
     };
   }
 
@@ -200,6 +203,13 @@ export class LaboController {
     checkKey(key);
     findings.devices = body.devices;
     findings.cells = body.cells;
+    return {};
+  }
+
+  @Post('pilotage/protocoles/:id')
+  saveRun(@Headers('x-labo-cle') key: string, @Param('id') id: string, @Body() body: ProtocolRun) {
+    checkKey(key);
+    runs[id] = body;
     return {};
   }
 

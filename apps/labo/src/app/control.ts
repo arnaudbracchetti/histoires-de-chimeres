@@ -1,6 +1,8 @@
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { api, dateTime, time } from './lab';
+import { type ProtocolRun, ProtocolSection } from './protocol-section';
+import { PROTOCOLS } from './protocols';
 
 interface PhoneView {
   id: string;
@@ -139,7 +141,7 @@ const KEY_STORAGE = 'labo-cle';
 
 // Écran de pilotage, sur ordinateur : il déclenche chaque envoi et montre ce que les téléphones rapportent.
 @Component({
-  imports: [FormsModule],
+  imports: [FormsModule, ProtocolSection],
   styles: `
     :host {
       display: block;
@@ -203,6 +205,14 @@ const KEY_STORAGE = 'labo-cle';
         }
       </div>
     </section>
+
+    @if (runs(); as r) {
+      @for (p of protocols; track p.id) {
+        <section>
+          <labo-protocol [protocol]="p" [run]="r[p.id] ?? emptyRun" [phones]="phones()" (runChange)="saveRun(p.id, $event)" />
+        </section>
+      }
+    }
 
     <section>
       <h2>Constats</h2>
@@ -336,8 +346,11 @@ const KEY_STORAGE = 'labo-cle';
 export class Control implements OnInit, OnDestroy {
   protected readonly templates = TEMPLATES;
   protected readonly checks = CHECKS;
-  // Lue une fois : le rafraîchissement toutes les 2 s n'écrase pas une saisie en cours.
+  protected readonly protocols = PROTOCOLS;
+  protected readonly emptyRun: ProtocolRun = { device: '', startedAt: null, results: {} };
+  // Lus une fois : le rafraîchissement toutes les 2 s n'écrase pas une saisie en cours.
   protected readonly findings = signal<Findings | null>(null);
+  protected readonly runs = signal<Record<string, ProtocolRun> | null>(null);
   protected readonly copied = signal('');
   protected readonly time = time;
   protected readonly dateTime = dateTime;
@@ -441,6 +454,11 @@ export class Control implements OnInit, OnDestroy {
     if (confirm('Retirer cet appareil et ses constats ?')) this.saveFindings({ ...f, devices: f.devices.filter((d) => d.id !== id) });
   }
 
+  protected saveRun(id: string, run: ProtocolRun) {
+    this.runs.update((runs) => ({ ...runs, [id]: run }));
+    api('POST', `/api/pilotage/protocoles/${id}`, run, this.headers()).catch((error) => this.error.set(String(error)));
+  }
+
   private saveFindings(findings: Findings) {
     this.findings.set(findings);
     api('POST', '/api/pilotage/constats', findings, this.headers()).catch((error) => this.error.set(String(error)));
@@ -520,7 +538,7 @@ export class Control implements OnInit, OnDestroy {
 
   private async refresh() {
     try {
-      const state = await api<{ phones: PhoneView[]; sends: SendView[]; findings: Findings }>(
+      const state = await api<{ phones: PhoneView[]; sends: SendView[]; findings: Findings; runs: Record<string, ProtocolRun> }>(
         'GET',
         '/api/pilotage/etat',
         undefined,
@@ -529,6 +547,7 @@ export class Control implements OnInit, OnDestroy {
       this.phones.set(state.phones);
       this.sends.set(state.sends);
       if (!this.findings()) this.findings.set(state.findings);
+      if (!this.runs()) this.runs.set(state.runs);
       this.error.set('');
     } catch (error) {
       this.error.set(String(error));

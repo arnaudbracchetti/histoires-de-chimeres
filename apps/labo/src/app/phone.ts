@@ -1,7 +1,8 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
+import { DomSanitizer } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
 import { SwPush } from '@angular/service-worker';
-import { api, dateTime, Lab, time } from './lab';
+import { api, dateTime, displayModes, Lab, time } from './lab';
 
 interface CookieValue {
   by: string;
@@ -61,9 +62,30 @@ const codeOf = (href: string) => new URL(href).searchParams.get('code') ?? 'aucu
     <section>
       <h2>Installation</h2>
       <p>{{ installState() }}</p>
+      <dl>
+        <dt>display-mode</dt>
+        <dd>{{ displayModes }}</dd>
+        <dt>beforeinstallprompt</dt>
+        <dd>{{ prompts() }}</dd>
+        <dt>appinstalled</dt>
+        <dd>{{ installed() }}</dd>
+        <dt>Applis liées</dt>
+        <dd>{{ relatedApps() }}</dd>
+      </dl>
       @if (installable()) {
         <button class="primary" (click)="install()">Installer</button>
       }
+      <button (click)="checkRelatedApps()">Revérifier les applis liées</button>
+    </section>
+
+    <section>
+      <h2>Passer dans l'application</h2>
+      <p>Depuis Chrome, l'application installée : chaque lien ouvre l'accueil du labo avec
+        <code>?ouvert-par=…</code>. Regarde où il s'ouvre (onglet de Chrome ou application) et le contexte
+        de « Ce téléphone ».</p>
+      <a class="button" href="/?ouvert-par=lien" (click)="lab.log('Passer dans l’application : lien, même onglet')">Lien, même onglet</a>
+      <a class="button" href="/?ouvert-par=nouvel-onglet" target="_blank" (click)="lab.log('Passer dans l’application : lien, nouvel onglet')">Lien, nouvel onglet</a>
+      <a class="button" [href]="intentUrl" (click)="lab.log('Passer dans l’application : intent://')">intent://</a>
     </section>
 
     <section>
@@ -157,12 +179,34 @@ export class Phone implements OnInit {
 
   protected readonly installable = signal(!!window.laboInstall.event);
   protected readonly installState = signal(this.describeInstall());
+  protected readonly displayModes = displayModes();
+  protected readonly prompts = signal(this.describePrompts());
+  protected readonly installed = signal(this.describeInstalled());
+  protected readonly relatedApps = signal('…');
+  // `intent:` passe par l'Android de Chrome, qui peut le confier à l'application installée. Le repli
+  // (`browser_fallback_url`) ne sert que si aucune application ne le prend. Angular refuse ce schéma sans
+  // `bypassSecurityTrustUrl`.
+  protected readonly intentUrl = inject(DomSanitizer).bypassSecurityTrustUrl(
+    `intent://${location.host}/?ouvert-par=intent#Intent;scheme=https;` +
+      `S.browser_fallback_url=${encodeURIComponent(`${location.origin}/?ouvert-par=intent-repli`)};end`,
+  );
 
   private describeInstall(): string {
     if (this.lab.standalone) return 'Ouverte depuis l’écran d’accueil : déjà installée.';
-    if (window.laboInstall.event) return `Installable : beforeinstallprompt reçu à ${time(window.laboInstall.firedAt!)}.`;
+    if (window.laboInstall.event) return 'Installable : le bouton « Installer » ouvre la fenêtre de Chrome.';
     if (!('onbeforeinstallprompt' in window)) return 'Ce navigateur ne propose pas beforeinstallprompt (Safari, Firefox).';
-    return 'Pas encore de beforeinstallprompt : l’app est peut-être déjà installée, ou le navigateur attend.';
+    return 'Pas de beforeinstallprompt en attente : l’app est peut-être déjà installée, ou le navigateur attend.';
+  }
+
+  private describePrompts(): string {
+    const fired = window.laboInstall.firedAt;
+    if (!fired.length) return 'aucun';
+    return fired.map((at, k) => `n°${k + 1} à ${time(at)} (${this.lab.sinceBoot(at)})`).join(' ; ');
+  }
+
+  private describeInstalled(): string {
+    const at = window.laboInstall.installedAt;
+    return at ? `reçu à ${time(at)} (${this.lab.sinceBoot(at)})` : 'pas reçu';
   }
 
   async install() {
@@ -172,16 +216,38 @@ export class Phone implements OnInit {
     const choice = await event.userChoice;
     this.lab.log(`Installer : ${choice.outcome} (${choice.platform || '?'})`);
     // Un événement ne sert qu'une fois.
-    window.laboInstall = { event: null, firedAt: null };
+    window.laboInstall.event = null;
     this.installable.set(false);
     this.installState.set(choice.outcome === 'accepted' ? 'Installation acceptée.' : 'Installation refusée.');
+  }
+
+  // Avec `related_applications` (manifeste A), Chrome sur Android dit si l'application est installée,
+  // même à la page restée dans Chrome.
+  async checkRelatedApps() {
+    const nav = navigator as Navigator & {
+      getInstalledRelatedApps?: () => Promise<{ platform: string; url?: string; id?: string }[]>;
+    };
+    if (!nav.getInstalledRelatedApps) {
+      this.relatedApps.set('getInstalledRelatedApps absent');
+    } else {
+      try {
+        const apps = await nav.getInstalledRelatedApps();
+        this.relatedApps.set(apps.length ? apps.map((a) => `${a.platform} ${a.url ?? a.id ?? ''}`).join(' ; ') : 'aucune');
+      } catch (error) {
+        this.relatedApps.set(`erreur : ${error}`);
+      }
+    }
+    this.lab.log(`getInstalledRelatedApps : ${this.relatedApps()}`);
   }
 
   async ngOnInit() {
     addEventListener('labo-installable', () => {
       this.installable.set(true);
       this.installState.set(this.describeInstall());
+      this.prompts.set(this.describePrompts());
     });
+    addEventListener('appinstalled', () => this.installed.set(this.describeInstalled()));
+    void this.checkRelatedApps();
     void this.readCookie();
     const registration = await this.lab.registration();
     this.worker.set(

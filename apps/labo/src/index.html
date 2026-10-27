@@ -16,12 +16,17 @@
       if (new URLSearchParams(location.search).get('manifeste') === 'b') {
         document.getElementById('manifeste').href = 'manifest-b.webmanifest';
       }
-      // `beforeinstallprompt` peut partir avant le démarrage d'Angular : gardé ici pour le bouton « Installer ».
-      window.laboInstall = { event: null, firedAt: null };
+      // `beforeinstallprompt` peut partir avant le démarrage d'Angular, et plusieurs fois : gardé ici
+      // pour le bouton « Installer », avec l'heure de chaque envoi (#61). `appinstalled` aussi.
+      window.laboInstall = { event: null, firedAt: [], installedAt: null };
       addEventListener('beforeinstallprompt', (event) => {
         event.preventDefault();
-        window.laboInstall = { event, firedAt: Date.now() };
+        window.laboInstall.event = event;
+        window.laboInstall.firedAt.push(Date.now());
         dispatchEvent(new Event('labo-installable'));
+      });
+      addEventListener('appinstalled', () => {
+        window.laboInstall.installedAt = Date.now();
       });
     </script>
   </head>

@@ -1,10 +1,16 @@
 # Labo : mini application de test pour iPhone et Android
 
-**PROTOTYPE jetable.** Branche `prototype/labo-telephones`, jamais fusionnée. Outil de [#59](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/59), qui sert à [#53](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/53).
+**PROTOTYPE jetable.** Branche `prototype/labo-telephones`, jamais fusionnée. Outil de [#59](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/59), qui sert à [#53](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/53) et à [#61](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/61).
 
 Même pile que la cible : Angular 22 et son service worker, NestJS, `web-push` 3.6.7 pour chiffrer et signer, envoi par `fetch` (ADR 0010). L'état (téléphones, journaux, envois, constats) est recopié toutes les 5 s dans un fichier JSON, sur le volume `labo_data` : un redéploiement le garde. Un téléphone renvoie son abonnement à chaque ouverture.
 
 En ligne : <https://test.nekbet.fr>. Pilotage : <https://test.nekbet.fr/pilotage>, avec la clé `LABO_CLE` du `.env` du serveur (`ssh deploy@ovh grep LABO_CLE chimeres-labo/.env`).
+
+## Protocoles du pilotage
+
+Le pilotage porte aussi des protocoles pas à pas (`src/app/protocols.ts`) : pour chaque étape, les gestes à faire sur le téléphone, ce qu'il faut noter, les lignes du journal qui la concernent, et la saisie du résultat (oui, non, partiel, pas fait, et une note). « Copier en Markdown » produit le texte de résolution du ticket.
+
+- **Android : installer depuis la page et passer dans l'application** ([#61](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/61)) : `beforeinstallprompt` et son retour après « Annuler », `appinstalled`, menu ⋮ de Chrome, ouverture de l'application depuis Chrome (lien, nouvel onglet, `intent://`), `display-mode`, `getInstalledRelatedApps`.
 
 ## Déroulé des tests
 
@@ -32,6 +38,8 @@ Le pilotage ouvert sur l'ordinateur, le téléphone en 4G. Dans « Constats », 
 |---|---|
 | Ce téléphone | contexte (navigateur ou web app), identifiant du stockage local (« créé à cette ouverture » : stockage vide), agent |
 | Ouverture et code de présence | URL de cette ouverture et de la première, code lu dans `?code=` |
+| Installation | `display-mode`, chaque `beforeinstallprompt` et son délai après l'ouverture, `appinstalled`, applis liées (`getInstalledRelatedApps`, avec le `related_applications` du manifeste A), bouton « Installer » |
+| Passer dans l'application | trois liens vers l'accueil (même onglet, nouvel onglet, `intent://`), marqués par `?ouvert-par=` |
 | Cookie HttpOnly | le serveur pose un cookie de 400 jours et dit s'il le reçoit, et d'où il vient |
 | Notifications | prise en charge, permission, trois façons de s'abonner (`SwPush`, `pushManager` du worker, `window.pushManager` sur Safari 18.4+) |
 | Retour et hors ligne | `/ecran/1` empile des écrans (`pushState`) ; `/hors-ligne` lit `/api/programme` en `freshness` (3 s, 7 jours) |
@@ -47,7 +55,8 @@ Les deux QR codes du pilotage ouvrent `/?code=LABO42`, avec le manifeste normal 
 - envoie un des textes de NO-2 (`docs/prd.md` §5.6), modifiable, aux téléphones choisis ;
 - règle le format (double, Angular seul, déclaratif seul), `mutable`, `tag`, `Topic`, `Urgency`, `TTL`, un délai avant l'envoi (le temps de fermer l'app ou de couper le réseau), et une répétition (deux « nouvelle partie » d'un même créneau) ;
 - montre pour chaque envoi : la réponse du service push, l'heure où le service worker l'a vu passer (`sw-labo.js`), l'heure du tap et son chemin ;
-- montre le journal de chaque téléphone, côté téléphone et côté serveur.
+- montre le journal de chaque téléphone, côté téléphone et côté serveur ;
+- déroule les protocoles (voir plus haut), avec un résultat par étape.
 
 Sur iPhone, Safari et la web app de l'écran d'accueil ont chacun leur stockage : ils apparaissent comme deux téléphones.
 

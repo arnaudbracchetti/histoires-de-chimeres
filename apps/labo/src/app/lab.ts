@@ -6,7 +6,7 @@ import { SwPush } from '@angular/service-worker';
 declare global {
   interface Window {
     laboBoot: { href: string; referrer: string; at: number };
-    laboInstall: { event: InstallPromptEvent | null; firedAt: number | null };
+    laboInstall: { event: InstallPromptEvent | null; firedAt: number[]; installedAt: number | null };
     pushManager?: PushManager;
   }
 }
@@ -64,6 +64,14 @@ function write(key: string, value: string) {
 
 const seconds = (ms: number) => `${Math.round(ms / 1000)} s`;
 
+const DISPLAY_MODES = ['browser', 'minimal-ui', 'standalone', 'fullscreen'];
+
+// Valeurs de `display-mode` vraies pour cette page : la seule façon, sur Android, de savoir
+// qu'elle tourne dans l'application installée (#61).
+export function displayModes(): string {
+  return DISPLAY_MODES.filter((mode) => matchMedia(`(display-mode: ${mode})`).matches).join(', ') || 'aucune';
+}
+
 @Injectable({ providedIn: 'root' })
 export class Lab {
   private readonly swPush = inject(SwPush);
@@ -98,7 +106,9 @@ export class Lab {
     write('labo-premiere-ouverture', JSON.stringify(this.firstOpening));
 
     void this.hello();
-    this.log(`Ouverture (${this.context}) : ${this.boot.href}${this.createdHere ? ' — stockage local vide' : ''}`);
+    this.log(
+      `Ouverture (${this.context}, display-mode ${displayModes()}) : ${this.boot.href}${this.createdHere ? ' — stockage local vide' : ''}`,
+    );
     this.watchBackground();
     this.openStream();
     void this.resendSubscription();
@@ -110,9 +120,17 @@ export class Lab {
     this.swPush.notificationClicks.subscribe(({ notification }) =>
       this.log(`Clic vu par la page (SwPush.notificationClicks) : n°${(notification.data as { n?: number })?.n}`),
     );
-    if (window.laboInstall.event) this.log('beforeinstallprompt reçu avant Angular');
-    addEventListener('labo-installable', () => this.log('beforeinstallprompt reçu'));
-    addEventListener('appinstalled', () => this.log('appinstalled : application installée'));
+    window.laboInstall.firedAt.forEach((at, k) => this.log(`beforeinstallprompt n°${k + 1} reçu avant Angular, ${this.sinceBoot(at)}`));
+    addEventListener('labo-installable', () => {
+      const fired = window.laboInstall.firedAt;
+      this.log(`beforeinstallprompt n°${fired.length} reçu, ${this.sinceBoot(fired[fired.length - 1])}`);
+    });
+    addEventListener('appinstalled', () => this.log(`appinstalled : application installée, ${this.sinceBoot(Date.now())}`));
+    for (const mode of DISPLAY_MODES) {
+      matchMedia(`(display-mode: ${mode})`).addEventListener('change', (event) => {
+        if (event.matches) this.log(`display-mode devient ${mode}`);
+      });
+    }
     addEventListener('online', () => this.log('Réseau : en ligne'));
     addEventListener('offline', () => this.log('Réseau : hors ligne'));
     addEventListener('popstate', () => this.log(`Retour (popstate) : ${location.pathname}, history.length ${history.length}`));
@@ -123,6 +141,10 @@ export class Lab {
     this.name.set(name);
     write('labo-nom', name);
     void this.hello();
+  }
+
+  sinceBoot(at: number): string {
+    return `${((at - this.boot.at) / 1000).toFixed(1).replace('.', ',')} s après l’ouverture`;
   }
 
   log(text: string) {
