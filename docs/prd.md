@@ -129,7 +129,7 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
   Seuls le titre, le jeu, la présentation, les places et la durée sont obligatoires.
 - **PR-2** Le MJ déclare ses disponibilités par créneau.
 - **PR-3** Un Organisateur programme un scénario sur un créneau et une table ; un même scénario peut être programmé plusieurs fois.
-- **PR-4** Une partie reprend les places de son scénario, et les suit quand il change. L'Organisateur peut lui fixer d'autres places, qu'elle garde alors quels que soient les changements du scénario, ou la ramener aux places du scénario.
+- **PR-4** Une partie a les places de son scénario, et les suit quand il change. Pour changer les places d'une partie, on change celles de son scénario (PR-13).
 - **PR-5** Contraintes de programmation :
   - une seule partie par table et par créneau ;
   - un MJ mène au plus une partie par créneau ;
@@ -146,7 +146,7 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 - **PR-14** Le contenu d'un scénario reste modifiable à tout moment. Sa durée ne se modifie plus dès qu'une partie en est programmée, et on ne peut pas supprimer un scénario qui a des parties.
 - **PR-15** Une disponibilité porte sur un créneau entier, pour le MJ, pas pour un scénario. On ne peut pas retirer une disponibilité sur laquelle le MJ mène une partie.
 - **PR-16** Un scénario appartient à un seul MJ, fixé à sa création.
-- **PR-17** Un Organisateur peut déprogrammer une partie, la déplacer sur un autre créneau ou une autre table, ou échanger deux parties (chacune prend la place de l'autre). Le déplacement et l'échange respectent les contraintes de PR-5, et chaque partie garde ses places (PR-4).
+- **PR-17** Un Organisateur peut déprogrammer une partie, la déplacer sur un autre créneau ou une autre table, ou échanger deux parties (chacune prend la place de l'autre). Le déplacement et l'échange respectent les contraintes de PR-5.
 
 ### 5.3 Fiche d'une partie (front office)
 
@@ -268,6 +268,7 @@ Les notifications propres au MJ (NO-2), l'alerte d'une partie à mener (NO-5) et
 - Équité entre créneaux ou brassage explicite dans l'algorithme.
 - Départs en cours de journée, absences, modification d'un tirage publié.
 - Suivi des places libres après publication.
+- Places propres à une partie, distinctes de celles de son scénario (PR-4).
 - Écran public d'affichage des affectations.
 - MJ désigné à la volée le jour J : toutes les parties viennent de scénarios enregistrés à l'avance.
 - Espace Organisateur sur mobile, notifications aux Organisateurs.

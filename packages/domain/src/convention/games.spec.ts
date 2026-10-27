@@ -6,7 +6,6 @@ import { ComparableName } from '../comparable-name.js';
 import { Convention } from './convention.js';
 import { Game } from './game.js';
 import { GameMaster } from './game-master.js';
-import { Seats } from '../scenario/seats.js';
 import { Table } from './table.js';
 import { TimeOfDay } from './time-of-day.js';
 import { TimeSlot } from './time-slot.js';
@@ -78,7 +77,6 @@ describe('Programmer une partie (PR-3)', () => {
         gameMasterId: 'g1',
         tableId: 't1',
         timeSlotIds: ['s1'],
-        seats: null,
       }),
     ]);
   });
@@ -462,8 +460,7 @@ describe('Déplacer une partie (PR-17)', () => {
     expect(placeOf(convention, 'p1')).toEqual(['t1', ['s1']]);
   });
 
-  it("garde l'identité de la partie, son scénario, ses places et sa place dans le programme", () => {
-    const seats = Seats.of(2, 6);
+  it("garde l'identité de la partie, son scénario et sa place dans le programme", () => {
     const convention = Convention.restore({
       id: 'c1',
       name: 'Histoires de Chimères',
@@ -480,17 +477,14 @@ describe('Déplacer une partie (PR-17)', () => {
         new GameMaster('g1', ComparableName.of('Élodie'), ['s1', 's2']),
         new GameMaster('g2', ComparableName.of('Kaïros'), ['s1']),
       ],
-      games: [
-        new Game('p1', 'a', 'g1', 't1', ['s1'], seats),
-        new Game('p2', 'c', 'g2', 't2', ['s1']),
-      ],
+      games: [new Game('p1', 'a', 'g1', 't1', ['s1']), new Game('p2', 'c', 'g2', 't2', ['s1'])],
       version: 0,
     });
 
     convention.moveGame('p1', 's2', 't1');
 
     expect(convention.games).toEqual([
-      new Game('p1', 'a', 'g1', 't1', ['s2'], seats),
+      new Game('p1', 'a', 'g1', 't1', ['s2']),
       new Game('p2', 'c', 'g2', 't2', ['s1']),
     ]);
   });
@@ -587,8 +581,7 @@ describe('Échanger deux parties (PR-17)', () => {
     expect(placeOf(convention, 'p2')).toEqual(['t1', ['s1']]);
   });
 
-  it('échange deux parties sur deux créneaux, en gardant leur identité, leurs places et leur rang', () => {
-    const seats = Seats.of(2, 6);
+  it('échange deux parties sur deux créneaux, en gardant leur identité et leur rang', () => {
     const convention = Convention.restore({
       id: 'c1',
       name: 'Histoires de Chimères',
@@ -602,17 +595,14 @@ describe('Échanger deux parties (PR-17)', () => {
         new GameMaster('g1', ComparableName.of('Élodie'), ['s1', 's2']),
         new GameMaster('g2', ComparableName.of('Kaïros'), ['s1', 's2']),
       ],
-      games: [
-        new Game('p1', 'a', 'g1', 't1', ['s1'], seats),
-        new Game('p2', 'c', 'g2', 't1', ['s2']),
-      ],
+      games: [new Game('p1', 'a', 'g1', 't1', ['s1']), new Game('p2', 'c', 'g2', 't1', ['s2'])],
       version: 0,
     });
 
     convention.swapGames('p2', 'p1');
 
     expect(convention.games).toEqual([
-      new Game('p1', 'a', 'g1', 't1', ['s2'], seats),
+      new Game('p1', 'a', 'g1', 't1', ['s2']),
       new Game('p2', 'c', 'g2', 't1', ['s1']),
     ]);
   });

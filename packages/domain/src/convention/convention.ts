@@ -266,7 +266,7 @@ export class Convention {
   /**
    * Déplace la partie sur un créneau et une table (PR-17), dans le respect de PR-5, sans compter la
    * partie elle-même. Une partie double se déplace par son premier créneau, et prend le suivant.
-   * Elle reste la même partie, avec ses places, à son rang dans le programme.
+   * Elle reste la même partie, à son rang dans le programme.
    */
   moveGame(gameId: string, timeSlotId: string, tableId: string): void {
     const game = this.gameSchedule.existingGame(gameId);
@@ -276,7 +276,7 @@ export class Convention {
   /**
    * Échange deux parties (PR-17) : chacune prend le premier créneau et la table de l'autre, en un
    * seul geste. Les deux places sont vérifiées ensemble contre PR-5, sans compter les deux parties à
-   * leur ancienne place. Chacune reste la même partie, avec ses places, à son rang dans le programme.
+   * leur ancienne place. Chacune reste la même partie, à son rang dans le programme.
    */
   swapGames(gameId: string, otherGameId: string): void {
     const game = this.gameSchedule.existingGame(gameId);

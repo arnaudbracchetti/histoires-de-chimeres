@@ -172,7 +172,6 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
   - propose « Annuler » (discret) et un bouton destructeur qui nomme l'action : « Supprimer le créneau » ;
   - met le focus initial sur « Annuler ».
 - **Aucune annulation après coup**, nulle part.
-- Déprogrammer une partie aux places modifiées perd ces places, sans confirmation.
 - **Refus du domaine** (PR-10, PR-12, PR-14 : un objet qui porte des parties) : l'action reste proposée, le front ne devine pas la règle. Le refus arrive de l'API et s'affiche **dans le dialogue de confirmation lui-même**, avec son `detail` : « Le créneau 2 porte 3 parties : déprogramme-les d'abord. » Le bouton destructeur disparaît, il ne reste que « Fermer ».
 
 ## Retours d'action
@@ -202,7 +201,7 @@ Pensés dès maintenant pour le pilotage du jour J (demande / capacité, PRD §4
 | Vert | `--success` | `circle-check` | correct, complet |
 | Jaune | `--warning` | `triangle-alert` | attention : la demande approche de la capacité |
 | Rouge brique | `--danger` | `octagon-alert` | surcharge, erreur |
-| Neutre | `--text-muted` sur `--surface-3` | propre au sens : `pencil` (places modifiées), `clock` (à venir), `inbox` (en réserve) | information sans jugement : « double », « places modifiées », « à venir », « en réserve » |
+| Neutre | `--text-muted` sur `--surface-3` | propre au sens : `clock` (à venir), `inbox` (en réserve) | information sans jugement : « double », « à venir », « en réserve » |
 
 - Une forme d'icône par couleur : aucune information ne passe par la couleur seule. Un statut a **toujours une icône et un libellé**.
 - **Deux formes seulement** :
@@ -228,7 +227,7 @@ La page Calendrier est l'écran d'accueil et le lieu de la programmation.
 
 - **Le temps court vers la droite.** Une colonne par créneau, de largeur proportionnelle à sa durée (environ 0,8 px par minute). Les pauses forment des colonnes étroites, avec leur durée. Une ligne par table.
 - En-têtes de créneau et de table en capitales espacées (Aldrich).
-- **Partie** : une carte avec sa vignette de 32 px, son titre, son jeu, son MJ et ses places. Un crayon signale des places modifiées.
+- **Partie** : une carte avec sa vignette de 32 px, son titre, son jeu, son MJ et ses places.
 - **Partie double** : une seule carte, étendue sur ses deux créneaux, par-dessus la pause qui les sépare.
 - **Barre d'aide** au-dessus de la frise : elle donne la phrase complète du motif de la cible survolée pendant un geste.
 
@@ -247,7 +246,7 @@ Chaque carte : vignette, titre et méta en tête, jusqu'au bord ; dessous, sur t
 
 - Un clic sur une partie ouvre sa fiche dans un **panneau latéral non modal** à droite de la frise, qui se rétrécit. Échap ou ✕ la ferme, et le focus revient à la partie.
 - Contenu : vignette, jeu, MJ, créneau ou créneaux, table, places, « Déplacer vers… », « Déprogrammer ».
-- **Places (PR-4)** : minimum et maximum, avec « Celles du scénario : elles suivent ses changements », ou « Modifiées · scénario : 3 à 5 » et « Revenir à celles du scénario ».
+- **Places (PR-4)** : minimum et maximum, ceux du scénario, en lecture seule.
 - Ce motif de fiche latérale ne sert qu'à la partie. MJ et scénarios ont leur page.
 
 ### Aucune action réservée au glisser-déposer

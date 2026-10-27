@@ -1,4 +1,3 @@
-import type { Seats } from '../scenario/seats.js';
 import type { Day } from './day.js';
 
 /**
@@ -7,8 +6,8 @@ import type { Day } from './day.js';
  */
 export class Game {
   /**
-   * `timeSlotIds` : ses créneaux, dans l'ordre de la journée ; `seats` : ses propres places, ou
-   * `null` pour celles de son scénario (PR-4).
+   * `timeSlotIds` : ses créneaux, dans l'ordre de la journée. Ses places sont celles de son
+   * scénario (PR-4).
    */
   constructor(
     readonly id: string,
@@ -16,7 +15,6 @@ export class Game {
     readonly gameMasterId: string,
     readonly tableId: string,
     readonly timeSlotIds: readonly string[],
-    readonly seats: Seats | null = null,
   ) {}
 
   isOnTimeSlot(timeSlotId: string): boolean {
@@ -36,8 +34,8 @@ export class Game {
     );
   }
 
-  /** La même partie, avec ses places, sur une autre table et d'autres créneaux (PR-17). */
+  /** La même partie, sur une autre table et d'autres créneaux (PR-17). */
   afterMovingTo(tableId: string, timeSlotIds: readonly string[]): Game {
-    return new Game(this.id, this.scenarioId, this.gameMasterId, tableId, timeSlotIds, this.seats);
+    return new Game(this.id, this.scenarioId, this.gameMasterId, tableId, timeSlotIds);
   }
 }

@@ -5,7 +5,6 @@ import {
   Convention,
   Game,
   GameMaster,
-  Seats,
   Table,
   TimeOfDay,
   TimeSlot,
@@ -62,9 +61,6 @@ export class PrismaConventionRepository implements ConventionRepository {
               .map(({ timeSlotId }) => timeSlots.find((slot) => slot.id === timeSlotId)!)
               .sort((a, b) => a.startMinute - b.startMinute)
               .map((slot) => slot.id),
-            game.seatsMin === null || game.seatsMax === null
-              ? null
-              : Seats.of(game.seatsMin, game.seatsMax),
           ),
       ),
       version,
@@ -151,16 +147,10 @@ export class PrismaConventionRepository implements ConventionRepository {
       });
 
       for (const game of convention.games) {
-        const seats = { seatsMin: game.seats?.min ?? null, seatsMax: game.seats?.max ?? null };
         await tx.game.upsert({
           where: { id: game.id },
-          create: {
-            id: game.id,
-            conventionId: convention.id,
-            scenarioId: game.scenarioId,
-            ...seats,
-          },
-          update: seats,
+          create: { id: game.id, conventionId: convention.id, scenarioId: game.scenarioId },
+          update: {},
         });
       }
       await tx.gameTimeSlot.createMany({

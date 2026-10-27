@@ -113,9 +113,6 @@ model Game {
   convention   Convention     @relation(fields: [conventionId], references: [id], onDelete: Cascade)
   scenarioId   String         @db.Uuid
   scenario     Scenario       @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
-  /// Ses propres places, ou rien : celles de son scénario (PR-4).
-  seatsMin     Int?
-  seatsMax     Int?
   /// L'ordre de programmation.
   scheduledAt  DateTime       @default(now())
   timeSlots    GameTimeSlot[]

@@ -16,7 +16,7 @@ export type GameDto = {
   tableId: string;
   /** Ses créneaux, dans l'ordre de la journée. */
   timeSlotIds: string[];
-  /** Ses places : celles de son scénario, sauf si l'Organisateur en a fixé d'autres (PR-4). */
+  /** Ses places : celles de son scénario (PR-4). */
   seats: SeatsDto;
   scenario: ScheduleScenarioDto;
 };

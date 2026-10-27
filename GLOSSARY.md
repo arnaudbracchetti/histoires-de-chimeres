@@ -36,7 +36,7 @@ _Avoid_: Game (réservé à la partie)
 Créneau sur lequel un MJ déclare pouvoir mener.
 
 **Partie** · `Game`:
-Un scénario programmé par un Organisateur sur un créneau (deux créneaux consécutifs pour un scénario double), à une table. Un même scénario peut donner plusieurs parties. Une partie a les places de son scénario, sauf si l'Organisateur lui en fixe d'autres.
+Un scénario programmé par un Organisateur sur un créneau (deux créneaux consécutifs pour un scénario double), à une table. Un même scénario peut donner plusieurs parties. Une partie a les places de son scénario.
 _Avoid_: Session, jeu, table
 
 **Programmer** · `schedule`:
@@ -48,10 +48,10 @@ Action d'un Organisateur qui retire une partie du programme ; son scénario rest
 _Avoid_: Annuler (réservé à la partie sous son minimum, après le tirage)
 
 **Déplacer une partie** · `moveGame`:
-Action d'un Organisateur qui change le créneau ou la table d'une partie ; elle reste la même partie, avec ses places. Une partie double se déplace par son premier créneau, et prend le créneau consécutif avec elle.
+Action d'un Organisateur qui change le créneau ou la table d'une partie ; elle reste la même partie. Une partie double se déplace par son premier créneau, et prend le créneau consécutif avec elle.
 
 **Échanger deux parties** · `swapGames`:
-Action d'un Organisateur qui met chacune de deux parties à la place de l'autre, en un seul geste ; chacune reste la même partie, avec ses places.
+Action d'un Organisateur qui met chacune de deux parties à la place de l'autre, en un seul geste ; chacune reste la même partie.
 _Avoid_: Permuter, intervertir
 
 **Programme** · `Schedule`:

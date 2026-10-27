@@ -25,22 +25,17 @@ export class PrismaScheduleReader implements ScheduleReader {
       },
       orderBy: { scheduledAt: 'asc' },
     });
-    return rows.map(
-      ({ id, seatsMin, seatsMax, scenario: { gameMaster, ...summary }, timeSlots }) => {
-        const slots = timeSlots.sort((a, b) => a.timeSlot.startMinute - b.timeSlot.startMinute);
-        const scenario = { ...toScenarioSummary(summary), gameMaster };
-        return {
-          id,
-          tableId: slots[0]!.tableId,
-          timeSlotIds: slots.map(({ timeSlotId }) => timeSlotId),
-          seats:
-            seatsMin === null || seatsMax === null
-              ? scenario.seats
-              : { min: seatsMin, max: seatsMax },
-          scenario,
-        };
-      },
-    );
+    return rows.map(({ id, scenario: { gameMaster, ...summary }, timeSlots }) => {
+      const slots = timeSlots.sort((a, b) => a.timeSlot.startMinute - b.timeSlot.startMinute);
+      const scenario = { ...toScenarioSummary(summary), gameMaster };
+      return {
+        id,
+        tableId: slots[0]!.tableId,
+        timeSlotIds: slots.map(({ timeSlotId }) => timeSlotId),
+        seats: scenario.seats,
+        scenario,
+      };
+    });
   }
 
   async scenarios(scenarioIds: readonly string[]): Promise<ScheduleScenarioDto[]> {
