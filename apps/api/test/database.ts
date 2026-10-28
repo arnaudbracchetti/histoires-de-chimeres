@@ -27,3 +27,34 @@ export async function resetDatabase(): Promise<void> {
     await prisma.$disconnect();
   }
 }
+
+/** Les tables des enfants de la convention, avec la clé de leurs lignes. */
+const conventionChildren = {
+  TimeSlot: '"id"',
+  Table: '"id"',
+  GameMaster: '"id"',
+  Availability: `"gameMasterId" || ':' || "timeSlotId"`,
+  Game: '"id"',
+  GameTimeSlot: `"gameId" || ':' || "timeSlotId"`,
+};
+
+/**
+ * La dernière écriture de chaque ligne des enfants de la convention, par table puis par clé.
+ * PostgreSQL la note dans la colonne système `xmin`, qui change à chaque écriture, même à
+ * l'identique : deux relevés égaux prouvent qu'une ligne n'a pas été réécrite.
+ */
+export async function rowWrites(): Promise<Record<string, Record<string, string>>> {
+  const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: testDatabaseUrl }) });
+  try {
+    const writes: Record<string, Record<string, string>> = {};
+    for (const [table, key] of Object.entries(conventionChildren)) {
+      const rows = await prisma.$queryRawUnsafe<{ key: string; xmin: string }[]>(
+        `SELECT ${key} AS key, xmin::text AS xmin FROM "${table}"`,
+      );
+      writes[table] = Object.fromEntries(rows.map((row) => [row.key, row.xmin]));
+    }
+    return writes;
+  } finally {
+    await prisma.$disconnect();
+  }
+}

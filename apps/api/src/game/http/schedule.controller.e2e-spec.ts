@@ -22,6 +22,7 @@ import {
   type SwapGamesBody,
 } from '@chimeres/contract';
 import { startApp } from '../../../test/app.js';
+import { rowWrites } from '../../../test/database.js';
 
 const UNKNOWN_ID = '8d3c1a8e-0000-4000-8000-000000000000';
 
@@ -791,6 +792,22 @@ describe('Programme', () => {
           code: 'no-next-time-slot',
           title: 'Pas de créneau suivant',
         });
+      });
+    });
+
+    it('un geste sur une partie laisse intacts les autres parties, les disponibilités et le reste de la convention', async () => {
+      const neonsGameId = await scheduled(neons.id, 1, 'Table 1');
+      const brumesGameId = await scheduled(brumes.id, 1, 'Table 2');
+      const before = await rowWrites();
+
+      await move(neonsGameId, { timeSlotId: slot(2), tableId: table('Table 1') }).expect(200);
+
+      expect(await rowWrites()).toEqual({
+        ...before,
+        GameTimeSlot: {
+          [`${brumesGameId}:${slot(1)}`]: before['GameTimeSlot']![`${brumesGameId}:${slot(1)}`],
+          [`${neonsGameId}:${slot(2)}`]: expect.any(String),
+        },
       });
     });
 

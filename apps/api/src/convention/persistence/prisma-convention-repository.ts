@@ -11,10 +11,17 @@ import {
 } from '@chimeres/domain';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { fromDatabaseDate, toDatabaseDate } from './calendar-date.js';
+import { changes, rowsOf, type ConventionRows } from './convention-rows.js';
 
 @Injectable()
 export class PrismaConventionRepository implements ConventionRepository {
   constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Les lignes de chaque convention chargée, telles que la base les tenait : `save` n'écrit que ce
+   * qui en diffère.
+   */
+  private readonly loaded = new WeakMap<Convention, ConventionRows>();
 
   async get(): Promise<Convention> {
     const { id, name, date, version, timeSlots, tables, gameMasters, games } =
@@ -29,7 +36,7 @@ export class PrismaConventionRepository implements ConventionRepository {
           },
         },
       });
-    return Convention.restore({
+    const convention = Convention.restore({
       id,
       name,
       date: fromDatabaseDate(date),
@@ -65,15 +72,32 @@ export class PrismaConventionRepository implements ConventionRepository {
       ),
       version,
     });
+    this.loaded.set(convention, rowsOf(convention));
+    return convention;
   }
 
   /**
    * N'écrit que si la version en base est encore celle du chargement (verrou optimiste), en une
-   * transaction : la convention, ses créneaux, ses tables, ses MJ, leurs disponibilités et les
-   * parties sont écrits ensemble, ou pas du tout. Les créneaux des parties partent en premier et
-   * reviennent en dernier : ils tiennent les créneaux, les tables et les MJ (RESTRICT).
+   * transaction : tout ou rien. La base est alors dans l'état du chargement, donc seules les lignes
+   * qui en diffèrent sont écrites. Les créneaux des parties déplacées partent en premier et
+   * reviennent en dernier : ils tiennent les créneaux, les tables et les MJ (RESTRICT), et une partie
+   * échangée prend la place d'une autre (index uniques).
    */
   async save(convention: Convention): Promise<void> {
+    const loaded = this.loaded.get(convention);
+    if (!loaded) throw new Error("La convention à sauvegarder n'a pas été chargée par get().");
+    const current = rowsOf(convention);
+    const timeSlots = changes(loaded.timeSlots, current.timeSlots);
+    const tables = changes(loaded.tables, current.tables);
+    const gameMasters = changes(loaded.gameMasters, current.gameMasters);
+    const availabilities = changes(loaded.availabilities, current.availabilities);
+    const {
+      removed: unscheduled,
+      added: scheduled,
+      changed: moved,
+    } = changes(loaded.games, current.games);
+    const ids = (rows: { id: string }[]) => ({ in: rows.map(({ id }) => id) });
+
     await this.prisma.$transaction(async (tx) => {
       const { count } = await tx.convention.updateMany({
         where: { id: convention.id, version: convention.version },
@@ -85,83 +109,43 @@ export class PrismaConventionRepository implements ConventionRepository {
       });
       if (count === 0) throw new StaleConventionError();
 
-      await tx.gameTimeSlot.deleteMany({ where: { game: { conventionId: convention.id } } });
-      await tx.game.deleteMany({
+      await tx.gameTimeSlot.deleteMany({ where: { gameId: ids(moved) } });
+      await tx.game.deleteMany({ where: { id: ids(unscheduled) } });
+      await tx.availability.deleteMany({
         where: {
-          conventionId: convention.id,
-          id: { notIn: convention.games.map(({ id }) => id) },
+          OR: availabilities.removed.map(({ gameMasterId, timeSlotId }) => ({
+            gameMasterId,
+            timeSlotId,
+          })),
         },
       });
+      await tx.timeSlot.deleteMany({ where: { id: ids(timeSlots.removed) } });
+      await tx.table.deleteMany({ where: { id: ids(tables.removed) } });
+      await tx.gameMaster.deleteMany({ where: { id: ids(gameMasters.removed) } });
 
-      const timeSlots = convention.timeSlots.map((slot) => ({
-        id: slot.id,
-        startMinute: slot.start.minutes,
-        endMinute: slot.end.minutes,
-      }));
-      await tx.timeSlot.deleteMany({
-        where: { conventionId: convention.id, id: { notIn: timeSlots.map(({ id }) => id) } },
+      const conventionId = convention.id;
+      await tx.timeSlot.createMany({
+        data: timeSlots.added.map((row) => ({ ...row, conventionId })),
       });
-      for (const { id, ...hours } of timeSlots) {
-        await tx.timeSlot.upsert({
-          where: { id },
-          create: { id, conventionId: convention.id, ...hours },
-          update: hours,
-        });
+      for (const { id, ...hours } of timeSlots.changed) {
+        await tx.timeSlot.update({ where: { id }, data: hours });
       }
-
-      const tables = convention.tables.map((table) => ({ id: table.id, name: table.name.text }));
-      await tx.table.deleteMany({
-        where: { conventionId: convention.id, id: { notIn: tables.map(({ id }) => id) } },
+      await tx.table.createMany({ data: tables.added.map((row) => ({ ...row, conventionId })) });
+      for (const { id, name } of tables.changed) {
+        await tx.table.update({ where: { id }, data: { name } });
+      }
+      await tx.gameMaster.createMany({
+        data: gameMasters.added.map((row) => ({ ...row, conventionId })),
       });
-      for (const { id, name } of tables) {
-        await tx.table.upsert({
-          where: { id },
-          create: { id, conventionId: convention.id, name },
-          update: { name },
-        });
+      for (const { id, nickname } of gameMasters.changed) {
+        await tx.gameMaster.update({ where: { id }, data: { nickname } });
       }
-
-      const gameMasters = convention.gameMasters.map((gameMaster) => ({
-        id: gameMaster.id,
-        nickname: gameMaster.nickname.text,
-      }));
-      await tx.gameMaster.deleteMany({
-        where: { conventionId: convention.id, id: { notIn: gameMasters.map(({ id }) => id) } },
+      await tx.availability.createMany({ data: availabilities.added });
+      await tx.game.createMany({
+        data: scheduled.map(({ id, scenarioId }) => ({ id, scenarioId, conventionId })),
       });
-      for (const { id, nickname } of gameMasters) {
-        await tx.gameMaster.upsert({
-          where: { id },
-          create: { id, conventionId: convention.id, nickname },
-          update: { nickname },
-        });
-      }
-
-      await tx.availability.deleteMany({ where: { gameMaster: { conventionId: convention.id } } });
-      await tx.availability.createMany({
-        data: convention.gameMasters.flatMap((gameMaster) =>
-          [...gameMaster.availabilities].map((timeSlotId) => ({
-            gameMasterId: gameMaster.id,
-            timeSlotId,
-          })),
-        ),
-      });
-
-      for (const game of convention.games) {
-        await tx.game.upsert({
-          where: { id: game.id },
-          create: { id: game.id, conventionId: convention.id, scenarioId: game.scenarioId },
-          update: {},
-        });
-      }
       await tx.gameTimeSlot.createMany({
-        data: convention.games.flatMap((game) =>
-          game.timeSlotIds.map((timeSlotId) => ({
-            gameId: game.id,
-            timeSlotId,
-            tableId: game.tableId,
-            gameMasterId: game.gameMasterId,
-          })),
-        ),
+        data: [...scheduled, ...moved].flatMap(({ timeSlots }) => timeSlots),
       });
     });
   }
