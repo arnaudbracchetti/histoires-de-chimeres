@@ -2,18 +2,13 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { Router, RouterLink } from '@angular/router';
 import { SwPush } from '@angular/service-worker';
-import { api, dateTime, displayModes, Lab, time } from './lab';
+import { api, dateTime, displayModes, Lab, time, urlBase64ToUint8Array } from './lab';
 
 interface CookieValue {
   by: string;
   name: string;
   context: string;
   at: number;
-}
-
-function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
-  const padded = (base64 + '='.repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/');
-  return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
 }
 
 const codeOf = (href: string) => new URL(href).searchParams.get('code') ?? 'aucun';
@@ -131,6 +126,10 @@ const codeOf = (href: string) => new URL(href).searchParams.get('code') ?? 'aucu
       }
       <button (click)="askPermission()">Permission seule</button>
       <button (click)="unsubscribe()">Se désabonner</button>
+      <label>
+        <input type="checkbox" [checked]="lab.autoSubscribe()" (change)="lab.setAutoSubscribe($any($event.target).checked)" />
+        S'abonner seul, sans tap, à l'ouverture et au retour au premier plan
+      </label>
     </section>
 
     <section>

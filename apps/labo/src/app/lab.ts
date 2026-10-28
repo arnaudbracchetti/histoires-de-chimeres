@@ -39,6 +39,11 @@ export async function api<T>(method: string, path: string, body?: unknown, heade
   return response.json() as Promise<T>;
 }
 
+export function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
+  const padded = (base64 + '='.repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+  return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+}
+
 export function time(at: number | undefined): string {
   if (!at) return '—';
   return new Date(at).toLocaleTimeString('fr-FR', { timeZone: 'Europe/Paris' });
@@ -64,6 +69,8 @@ function write(key: string, value: string) {
 
 const seconds = (ms: number) => `${Math.round(ms / 1000)} s`;
 
+const permission = () => ('Notification' in window ? Notification.permission : 'absente');
+
 const DISPLAY_MODES = ['browser', 'minimal-ui', 'standalone', 'fullscreen'];
 
 // Valeurs de `display-mode` vraies pour cette page : la seule façon, sur Android, de savoir
@@ -88,6 +95,7 @@ export class Lab {
   readonly entries = signal<Entry[]>([]);
   readonly stream = signal('fermé');
   readonly subscription = signal<PushSubscription | null>(null);
+  readonly autoSubscribe = signal(read('labo-abonnement-auto') === 'oui');
 
   private pending: Entry[] = [];
   private lastTick = Date.now();
@@ -141,6 +149,12 @@ export class Lab {
     this.name.set(name);
     write('labo-nom', name);
     void this.hello();
+  }
+
+  setAutoSubscribe(on: boolean) {
+    this.autoSubscribe.set(on);
+    write('labo-abonnement-auto', on ? 'oui' : 'non');
+    this.log(`Abonnement sans tap : ${on ? 'activé' : 'désactivé'}`);
   }
 
   sinceBoot(at: number): string {
@@ -200,9 +214,30 @@ export class Lab {
       const subscription =
         (await registration?.pushManager.getSubscription()) ?? (await window.pushManager?.getSubscription()) ?? null;
       if (subscription) await this.sendSubscription(subscription, 'renvoi à l’ouverture');
-      else this.log(`Aucun abonnement à renvoyer${registration ? '' : ' (pas de service worker prêt)'}`);
+      else {
+        this.log(`Aucun abonnement à renvoyer${registration ? '' : ' (pas de service worker prêt)'}, permission ${permission()}`);
+        if (this.autoSubscribe()) await this.subscribeWithoutTap();
+      }
     } catch (error) {
       this.log(`Renvoi de l’abonnement : ${error}`);
+    }
+  }
+
+  // Après un refus, puis une réactivation dans les Réglages : l'abonnement part-il sans le geste de
+  // l'utilisateur ? (#60)
+  private async subscribeWithoutTap() {
+    try {
+      const registration = await this.registration();
+      if (!registration) return this.log('Abonnement sans tap : pas de service worker prêt');
+      if (await registration.pushManager.getSubscription()) return this.log('Abonnement sans tap : déjà abonné');
+      const { publicKey } = await api<{ publicKey: string | null }>('GET', '/api/cle-publique');
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey!),
+      });
+      await this.sendSubscription(subscription, 'sans tap');
+    } catch (error) {
+      this.log(`Abonnement sans tap refusé (permission ${permission()}) : ${error}`);
     }
   }
 
@@ -217,7 +252,8 @@ export class Lab {
         this.hiddenAt = Date.now();
         this.log('Passe en arrière-plan');
       } else {
-        this.log(`Revient au premier plan après ${seconds(Date.now() - this.hiddenAt)}`);
+        this.log(`Revient au premier plan après ${seconds(Date.now() - this.hiddenAt)}, permission ${permission()}`);
+        if (this.autoSubscribe()) void this.subscribeWithoutTap();
       }
     });
     addEventListener('pagehide', (event) => this.log(`pagehide (persisted ${event.persisted})`));

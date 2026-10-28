@@ -1,6 +1,6 @@
 # Labo : mini application de test pour iPhone et Android
 
-**PROTOTYPE jetable.** Branche `prototype/labo-telephones`, jamais fusionnée. Outil de [#59](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/59), qui sert à [#53](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/53) et à [#61](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/61).
+**PROTOTYPE jetable.** Branche `prototype/labo-telephones`, jamais fusionnée. Outil de [#59](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/59), qui sert à [#53](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/53), à [#60](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/60) et à [#61](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/61).
 
 Même pile que la cible : Angular 22 et son service worker, NestJS, `web-push` 3.6.7 pour chiffrer et signer, envoi par `fetch` (ADR 0010). L'état (téléphones, journaux, envois, constats) est recopié toutes les 5 s dans un fichier JSON, sur le volume `labo_data` : un redéploiement le garde. Un téléphone renvoie son abonnement à chaque ouverture.
 
@@ -10,6 +10,7 @@ En ligne : <https://test.nekbet.fr>. Pilotage : <https://test.nekbet.fr/pilotage
 
 Le pilotage porte aussi des protocoles pas à pas (`src/app/protocols.ts`) : pour chaque étape, les gestes à faire sur le téléphone, ce qu'il faut noter, les lignes du journal qui la concernent, et la saisie du résultat (oui, non, partiel, pas fait, et une note). « Copier en Markdown » produit le texte de résolution du ticket.
 
+- **iPhone : stockage, push et arrière-plan** ([#60](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/60)) : ce que voit Safari avant l'installation, libellés de l'ajout à l'écran d'accueil, cookie et code du QR dans la web app (manifestes A et B), lien depuis Messages, refus puis réactivation dans les Réglages (abonnement sans tap), délai de livraison, tap selon le format (double, ou Angular seul comme un iOS avant 18.4), bannière au premier plan, titres, remplacement par `tag` et par `Topic` hors ligne, geste de retour, arrière-plan, programme hors ligne. Il remplace, pour l'iPhone, le déroulé ci-dessous.
 - **Android : installer depuis la page et passer dans l'application** ([#61](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/61)) : `beforeinstallprompt` et son retour après « Annuler », `appinstalled`, menu ⋮ de Chrome, ouverture de l'application depuis Chrome (lien, nouvel onglet, `intent://`), `display-mode`, `getInstalledRelatedApps`.
 
 ## Déroulé des tests
@@ -41,7 +42,7 @@ Le pilotage ouvert sur l'ordinateur, le téléphone en 4G. Dans « Constats », 
 | Installation | `display-mode`, chaque `beforeinstallprompt` et son délai après l'ouverture, `appinstalled`, applis liées (`getInstalledRelatedApps`, avec le `related_applications` du manifeste A), bouton « Installer » |
 | Passer dans l'application | trois liens vers l'accueil (même onglet, nouvel onglet, `intent://`), marqués par `?ouvert-par=` |
 | Cookie HttpOnly | le serveur pose un cookie de 400 jours et dit s'il le reçoit, et d'où il vient |
-| Notifications | prise en charge, permission, trois façons de s'abonner (`SwPush`, `pushManager` du worker, `window.pushManager` sur Safari 18.4+) |
+| Notifications | prise en charge, permission, trois façons de s'abonner (`SwPush`, `pushManager` du worker, `window.pushManager` sur Safari 18.4+) ; une case pour s'abonner sans tap, à l'ouverture et au retour au premier plan (réactivation dans les Réglages) |
 | Retour et hors ligne | `/ecran/1` empile des écrans (`pushState`) ; `/hors-ligne` lit `/api/programme` en `freshness` (3 s, 7 jours) |
 | Arrière-plan | minuterie d'une seconde et flux SSE : le journal note les trous et les coupures |
 | Journal | tout ce qui précède, remonté aussi au pilotage |
