@@ -70,9 +70,27 @@ test('le rail replié le reste après un rechargement', async ({ page }) => {
   await expect(scenarios.getByText('Scénarios')).toBeVisible();
 });
 
-test("un lien profond recharge la page d'un scénario, avec son fil d'Ariane", async ({
-  page,
-}) => {
+test('l’infobulle du rail replié passe devant les champs de la page', async ({ page }) => {
+  await page.goto('/gestion/creneaux-et-tables');
+  await page.getByRole('button', { name: 'Replier le rail' }).click();
+
+  // L'entrée « Créneaux et tables » est à la hauteur du champ « Nom », que son infobulle chevauche.
+  const entry = page.getByRole('link', { name: 'Créneaux et tables', exact: true });
+  await entry.hover();
+  const label = entry.getByText('Créneaux et tables');
+  await expect(label).toBeVisible();
+
+  // L'infobulle ne capte pas le pointeur : rendue cliquable, elle répond à elementFromPoint.
+  await label.evaluate((element: HTMLElement) => (element.style.pointerEvents = 'auto'));
+  const box = (await label.boundingBox())!;
+  const onTop = await page.evaluate(
+    ({ x, y }) => document.elementFromPoint(x, y)?.textContent?.trim(),
+    { x: box.x + box.width - 4, y: box.y + box.height / 2 },
+  );
+  expect(onTop).toBe('Créneaux et tables');
+});
+
+test("un lien profond recharge la page d'un scénario, avec son fil d'Ariane", async ({ page }) => {
   await page.goto('/gestion/scenarios/s1');
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Scénario');

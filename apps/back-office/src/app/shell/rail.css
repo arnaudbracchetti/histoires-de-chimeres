@@ -7,6 +7,9 @@
     height: 100vh;
     position: sticky;
     top: 0;
+    /* Collant, le rail empile ses infobulles chez lui : il passe donc devant la page (en-têtes
+       collants des tableaux, bulles d'erreur), mais sous les alertes (10). */
+    z-index: 3;
     padding: var(--space-m) var(--space-s);
     border-right: 1px solid var(--border);
     background: var(--surface-1);
