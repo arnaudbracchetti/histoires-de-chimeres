@@ -31,11 +31,7 @@ export function ranksLabelOf(schedule: FrontOfficeScheduleDto, game: FrontOffice
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-/**
- * Les rangs des créneaux d'une partie. Un créneau terminé n'est plus dans le programme : le premier
- * créneau d'une partie double se retrouve par le rang du second.
- */
+/** Les rangs des créneaux d'une partie. */
 export function ranksOf(schedule: FrontOfficeScheduleDto, game: FrontOfficeGameDto): number[] {
-  const last = timeSlotsOf(schedule, game).at(-1)!.rank;
-  return game.timeSlotIds.length > 1 ? [last - 1, last] : [last];
+  return timeSlotsOf(schedule, game).map(({ rank }) => rank);
 }

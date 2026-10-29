@@ -41,7 +41,8 @@ export class ParticipantData {
 
   /**
    * Le programme sans les créneaux terminés, selon l'heure du téléphone, même hors ligne (story 53),
-   * ni les parties qui n'ont plus de créneau à venir. `undefined` avant la première lecture réussie.
+   * ni les parties dont le premier créneau est terminé : une partie double commencée ne prend plus
+   * d'inscription. `undefined` avant la première lecture réussie.
    */
   readonly schedule = computed<FrontOfficeScheduleDto | undefined>(() => {
     const schedule = this.lastRead();
@@ -52,7 +53,7 @@ export class ParticipantData {
     return {
       ...schedule,
       timeSlots,
-      games: schedule.games.filter((game) => game.timeSlotIds.some((id) => remaining.has(id))),
+      games: schedule.games.filter((game) => remaining.has(game.timeSlotIds[0]!)),
     };
   });
 

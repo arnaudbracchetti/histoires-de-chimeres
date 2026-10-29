@@ -153,8 +153,18 @@ describe('ParticipantData', () => {
     await answer('failure');
 
     expect(data.schedule()?.timeSlots.map(({ rank }) => rank)).toEqual([2]);
-    // Une partie double reste sous son second créneau.
-    expect(data.schedule()?.games.map(({ id }) => id)).toEqual(['Épice']);
+    expect(data.schedule()?.games).toEqual([]);
+  });
+
+  it('cache une partie double dès la fin de son premier créneau : elle a commencé', async () => {
+    const data = await opened();
+
+    now = new Date(2027, 2, 14, 14, 0);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await answer('failure');
+
+    expect(data.schedule()?.timeSlots.map(({ rank }) => rank)).toEqual([2]);
+    expect(data.schedule()?.games.map(({ id }) => id)).not.toContain('Épice');
   });
 
   it('ne termine aucun créneau d’une convention sans date', async () => {
