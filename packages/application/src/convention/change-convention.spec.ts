@@ -19,6 +19,7 @@ class FakeConventionRepository implements ConventionRepository {
       timeSlots: [],
       tables: [],
       gameMasters: [],
+      participants: [],
       games: [],
       version: 0,
       presenceCode: PresenceCode.of('K7M2'),
@@ -51,6 +52,19 @@ describe('changeConvention', () => {
       changeConvention(repository, (convention) => convention.rename('Chimères 2027')),
     ).rejects.toBeInstanceOf(StaleConventionError);
     expect(repository.loads).toBe(2);
+    expect(repository.saved).toBeUndefined();
+  });
+
+  it('rend le résultat de l’action, et ne sauvegarde pas quand `changed` le refuse', async () => {
+    const repository = new FakeConventionRepository(0);
+
+    const result = await changeConvention(
+      repository,
+      (convention) => convention.name,
+      () => false,
+    );
+
+    expect(result).toBe('Histoires de Chimères');
     expect(repository.saved).toBeUndefined();
   });
 });

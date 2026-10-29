@@ -13,8 +13,9 @@ async function presenceCode(page: Page): Promise<string> {
   return ((await response.json()) as ConventionDto).presenceCode;
 }
 
+/** Le code accepté, l'application demande le pseudo. */
 const welcome = (page: Page) =>
-  expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Bienvenue à /);
+  expect(page.getByRole('heading', { level: 1 })).toHaveText('Ton pseudo');
 
 test('le code de présence du QR code ouvre le front office, et reste gardé (ID-2)', async ({
   page,

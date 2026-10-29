@@ -34,6 +34,7 @@ const conventionChildren = {
   TimeSlot: '"id"',
   Table: '"id"',
   GameMaster: '"id"',
+  Participant: '"id"',
   Availability: `"gameMasterId" || ':' || "timeSlotId"`,
   Game: '"id"',
   GameTimeSlot: `"gameId" || ':' || "timeSlotId"`,

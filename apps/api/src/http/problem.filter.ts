@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
 import type { Response } from 'express';
-import { StaleConventionError } from '@chimeres/application';
+import { PhoneNotLinkedError, StaleConventionError } from '@chimeres/application';
 import type { ProblemCode, ProblemDto, RefusalCode, RefusalParams } from '@chimeres/contract';
 import { Refusal } from '@chimeres/domain';
 import { ImageRefusedError } from './image-refused.error.js';
@@ -56,6 +56,9 @@ export class ProblemFilter extends BaseExceptionFilter {
     }
     if (error instanceof TooManyAttemptsError) {
       return problem(HttpStatus.TOO_MANY_REQUESTS, 'too-many-attempts', {});
+    }
+    if (error instanceof PhoneNotLinkedError) {
+      return problem(HttpStatus.UNAUTHORIZED, 'phone-not-linked', {});
     }
     if (error instanceof StaleConventionError) {
       return problem(HttpStatus.CONFLICT, 'concurrent-modification', {});

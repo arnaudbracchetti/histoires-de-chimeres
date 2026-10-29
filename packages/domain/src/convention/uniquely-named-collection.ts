@@ -46,6 +46,11 @@ export class UniquelyNamedCollection<T extends { readonly id: string }> {
     return item;
   }
 
+  /** L'élément qui porte ce nom, à la comparaison de `ComparableName` près, ou `undefined`. */
+  itemNamed(name: ComparableName): T | undefined {
+    return this.items.find((item) => this.rules.nameOf(item).equals(name));
+  }
+
   verifyItemExists(id: string): void {
     this.existingItem(id);
   }

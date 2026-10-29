@@ -33,6 +33,13 @@ export function rowsOf(convention: Convention) {
       ),
       ({ gameMasterId, timeSlotId }) => `${gameMasterId}:${timeSlotId}`,
     ),
+    participants: keyed(
+      convention.participants.map((participant) => ({
+        id: participant.id,
+        nickname: participant.nickname.text,
+      })),
+      ({ id }) => id,
+    ),
     /** Une partie avec ses créneaux : ils changent ensemble, quand elle se déplace. */
     games: keyed(
       convention.games.map((game) => ({

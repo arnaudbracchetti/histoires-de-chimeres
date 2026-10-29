@@ -28,6 +28,7 @@ export type RefusalParams = {
   /** `name` : le nom de la table ; `games` : le nombre de parties qu'elle porte. */
   'table-has-games': { name: string; games: number };
   'game-master-not-found': Record<string, never>;
+  'participant-not-found': Record<string, never>;
   'nickname-required': Record<string, never>;
   'nickname-too-long': { max: number };
   /** `nickname` : le pseudo du MJ qui le porte déjà, tel qu'il s'affiche. */
@@ -84,6 +85,8 @@ export type ApiErrorCode =
   | 'image-not-found'
   /** Trop de codes de présence faux depuis la même adresse IP (ID-2). */
   | 'too-many-attempts'
+  /** Le téléphone n'est relié à aucun pseudo : cookie absent, inconnu ou coupé (ADR 0009). */
+  | 'phone-not-linked'
   | 'internal-error';
 
 export type ProblemCode = RefusalCode | ApiErrorCode;

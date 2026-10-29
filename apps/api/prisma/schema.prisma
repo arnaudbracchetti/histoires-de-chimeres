@@ -21,6 +21,7 @@ model Convention {
   timeSlots    TimeSlot[]
   tables       Table[]
   gameMasters  GameMaster[]
+  participants Participant[]
   games        Game[]
 }
 
@@ -61,6 +62,29 @@ model GameMaster {
   games          GameTimeSlot[]
 
   @@index([conventionId])
+}
+
+/// Participant de la convention (ID-1). Son pseudo est unique parmi les participants, à la casse,
+/// aux accents et aux espaces près : le domaine le vérifie (ID-7). Il ne se modifie pas (ID-9).
+model Participant {
+  id           String        @id @db.Uuid
+  conventionId String        @db.Uuid
+  convention   Convention    @relation(fields: [conventionId], references: [id], onDelete: Cascade)
+  nickname     String
+  linkedPhones LinkedPhone[]
+
+  @@index([conventionId])
+}
+
+/// Téléphone relié à un pseudo (ADR 0009), hors de l'agrégat de la convention. Son identifiant,
+/// opaque, est la valeur du cookie du téléphone. Il part avec son participant.
+model LinkedPhone {
+  id            String      @id
+  participantId String      @db.Uuid
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  linkedAt      DateTime    @default(now())
+
+  @@index([participantId])
 }
 
 /// Disponibilité d'un MJ sur un créneau (PR-2). Elle part avec son créneau ou son MJ (PR-10, PR-12).

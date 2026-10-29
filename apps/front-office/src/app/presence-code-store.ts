@@ -25,6 +25,16 @@ export class PresenceCodeStore {
     this.location.replaceState(params.size ? `${path}?${params}` : path!);
   }
 
+  /** Oublie un code que l'API refuse : l'écran « Code de présence » le redemande. */
+  forget(): void {
+    this.code.set(null);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Stockage refusé : rien n'y était gardé.
+    }
+  }
+
   keep(code: string): void {
     this.code.set(code);
     try {

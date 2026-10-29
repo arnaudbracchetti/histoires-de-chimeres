@@ -19,7 +19,7 @@ Remplace l'[ADR 0001](0001-identification-par-pseudo-et-code-de-recuperation.md)
 
 ## Consequences
 
-- La session est un cookie `HttpOnly` posé par le serveur, qui relie le téléphone à un pseudo, sans expiration propre : la fin de la convention fait foi. Elle désigne le participant par son identifiant interne ; un badge QR remplacerait la saisie du pseudo sans toucher au reste.
+- La session est un cookie `HttpOnly` posé par le serveur, qui relie le téléphone à un pseudo pendant 30 jours : le code de présence ouvre l'application bien avant le jour J. La fin de la convention ferme tout, cookie ou non. Elle désigne le participant par son identifiant interne ; un badge QR remplacerait la saisie du pseudo sans toucher au reste.
 - Un pseudo peut être relié à plusieurs téléphones. « Changer de pseudo » coupe le lien du téléphone ; l'ancien pseudo reste, avec ses inscriptions, qui ne passent sur un autre pseudo que par une fusion décidée par un Organisateur. Les notifications vont au pseudo relié au téléphone au moment de l'envoi.
 - Deux personnes de bonne foi qui veulent le même pseudo ne se retrouvent pas dessus : la seconde répond « non » à la confirmation et en choisit un autre. Une personne de mauvaise foi peut reprendre un pseudo, y compris celui d'un MJ. Un Organisateur corrige sur place : il coupe tous les liens du pseudo, sans le verrouiller, et règle la suite avec les personnes (PRD ID-5).
 - Le pseudo d'un MJ est unique dans toute la convention : un participant qui le saisit est relié au MJ, et un Organisateur ne peut pas donner à un MJ un pseudo déjà pris par un participant.

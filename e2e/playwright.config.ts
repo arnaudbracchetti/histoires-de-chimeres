@@ -12,7 +12,14 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'mobile', testDir: './tests/front-office', use: { ...devices['Pixel 7'] } },
+    {
+      name: 'mobile',
+      testDir: './tests/front-office',
+      use: { ...devices['Pixel 7'] },
+      // La remise à zéro de chaque test du bureau effacerait les pseudos et les téléphones reliés
+      // des tests mobiles : ils passent après. `--no-deps` lance le projet mobile seul.
+      dependencies: ['bureau'],
+    },
     {
       name: 'bureau',
       testDir: './tests/back-office',

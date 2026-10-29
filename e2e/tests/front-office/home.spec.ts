@@ -7,16 +7,14 @@ import {
 } from '@chimeres/contract';
 import { loadFont } from '../fonts.js';
 
-test('le front office souhaite la bienvenue, avec le code de présence', async ({ page }) => {
+test('le front office demande le pseudo, avec le code de présence', async ({ page }) => {
   const convention = (await (
     await page.request.get(apiUrl(conventionEndpoints.read))
   ).json()) as ConventionDto;
 
   await page.goto(`/?${PRESENCE_CODE_PARAM}=${convention.presenceCode}`);
 
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    `Bienvenue à ${convention.name}`,
-  );
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ton pseudo');
 });
 
 test('un lien profond retombe sur le front office', async ({ page }) => {

@@ -1,49 +1,82 @@
 import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+  type TestRequest,
+} from '@angular/common/http/testing';
 import { provideLocationMocks } from '@angular/common/testing';
 import { TestBed } from '@angular/core/testing';
-import { apiUrl, frontOfficeEndpoints } from '@chimeres/contract';
+import { provideRouter, Router } from '@angular/router';
+import { apiUrl, frontOfficeEndpoints, linkedPhoneEndpoints } from '@chimeres/contract';
 import { App } from './app';
+import { routes } from './app.routes';
+
+type Respond = (request: TestRequest) => void;
 
 describe('App', () => {
   beforeEach(async () => {
     localStorage.clear();
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideHttpClient(), provideHttpClientTesting(), provideLocationMocks()],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideLocationMocks(),
+        provideRouter(routes),
+      ],
     }).compileComponents();
   });
 
-  /** L'application ouverte, une fois lue la réponse de l'API au front office. */
-  async function open(respond: (request: ReturnType<HttpTestingController['expectOne']>) => void) {
+  /** L'application ouverte, une fois lues les réponses de l'API : le front office, puis le pseudo relié. */
+  async function open(frontOffice: Respond, linkedPhone: Respond) {
     const fixture = TestBed.createComponent(App);
+    // TestBed ne lance pas la navigation initiale du démarrage.
+    await TestBed.inject(Router).navigateByUrl('/');
     fixture.detectChanges();
-    respond(TestBed.inject(HttpTestingController).expectOne(apiUrl(frontOfficeEndpoints.read)));
+    const http = TestBed.inject(HttpTestingController);
+    frontOffice(http.expectOne(apiUrl(frontOfficeEndpoints.read)));
+    linkedPhone(http.expectOne(apiUrl(linkedPhoneEndpoints.read)));
     await fixture.whenStable();
     return fixture.nativeElement as HTMLElement;
   }
 
-  const opened = (request: ReturnType<HttpTestingController['expectOne']>) =>
-    request.flush({ conventionName: 'Histoires de Chimères' });
-  const ended = (request: ReturnType<HttpTestingController['expectOne']>) =>
+  const opened: Respond = (request) => request.flush({ conventionName: 'Histoires de Chimères' });
+  const ended: Respond = (request) =>
     request.flush(
       { code: 'convention-ended', title: 'La convention est terminée' },
       { status: 410, statusText: 'Gone' },
     );
+  const linked: Respond = (request) => request.flush({ nickname: 'Élodie' });
+  const notLinked: Respond = (request) =>
+    request.flush(
+      { code: 'phone-not-linked', title: 'Téléphone relié à aucun pseudo' },
+      { status: 401, statusText: 'Unauthorized' },
+    );
+  const offline: Respond = (request) => request.error(new ProgressEvent('error'));
   const heading = (page: HTMLElement) => page.querySelector('h1')?.textContent?.trim();
 
-  it('souhaite la bienvenue à la convention, avec le code de présence', async () => {
-    localStorage.setItem('presenceCode', 'K7M2');
+  it('entre dans la coquille quand le téléphone est relié, même sans code de présence', async () => {
+    const page = await open(opened, linked);
 
-    const page = await open(opened);
-
-    expect(heading(page)).toBe('Bienvenue à Histoires de Chimères');
+    expect(page.querySelector('header button')?.textContent?.trim()).toBe('Élodie');
+    const tabs = [...page.querySelectorAll('nav a')].map((tab) => tab.textContent?.trim());
+    expect(tabs).toEqual(['Accueil', 'Programme', 'Mes parties']);
+    expect(page.querySelector('nav a[aria-current="page"]')?.textContent?.trim()).toBe('Accueil');
+    expect(page.textContent).toContain('Choisis tes parties');
   });
 
   it('demande le code de présence quand il manque (ID-2)', async () => {
-    const page = await open(opened);
+    const page = await open(opened, notLinked);
 
     expect(heading(page)).toBe('Code de présence');
+  });
+
+  it('demande le pseudo, avec le code de présence, à un téléphone relié à aucun pseudo (ID-1)', async () => {
+    localStorage.setItem('presenceCode', 'K7M2');
+
+    const page = await open(opened, notLinked);
+
+    expect(heading(page)).toBe('Ton pseudo');
   });
 
   it.each([
@@ -52,27 +85,28 @@ describe('App', () => {
   ])('dit que la convention est terminée, %s code', async (_, code) => {
     if (code) localStorage.setItem('presenceCode', code);
 
-    const page = await open(ended);
+    const page = await open(ended, ended);
 
     expect(heading(page)).toBe('La convention est terminée');
   });
 
-  it('dit quand le front office ne se charge pas', async () => {
-    const page = await open((request) => request.error(new ProgressEvent('error')));
+  it.each([
+    ['du front office', offline, notLinked],
+    ['du pseudo relié', opened, offline],
+  ])('dit quand la lecture %s échoue', async (_, frontOffice, linkedPhone) => {
+    const page = await open(frontOffice, linkedPhone);
 
     expect(page.textContent).toContain('Impossible de charger la convention.');
   });
 
   it.each([
-    ['l’écran du code', opened, null],
-    ['l’accueil', opened, 'K7M2'],
-    ['l’écran de fin', ended, null],
+    ['l’écran du code', opened, notLinked],
+    ['la coquille', opened, linked],
+    ['l’écran de fin', ended, ended],
   ])(
     'pose le motif gravé en filigrane derrière %s, masqué aux lecteurs d’écran',
-    async (_, respond, code) => {
-      if (code) localStorage.setItem('presenceCode', code);
-
-      const page = await open(respond);
+    async (_, frontOffice, linkedPhone) => {
+      const page = await open(frontOffice, linkedPhone);
 
       const watermark = page.querySelector('svg.watermark');
       expect(watermark?.getAttribute('aria-hidden')).toBe('true');

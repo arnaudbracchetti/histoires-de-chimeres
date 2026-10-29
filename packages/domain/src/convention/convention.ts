@@ -7,6 +7,7 @@ import { Day } from './day.js';
 import type { Game } from './game.js';
 import { GameMaster } from './game-master.js';
 import type { LocalMoment } from './local-moment.js';
+import { Participant } from './participant.js';
 import type { PresenceCode } from './presence-code.js';
 import { Table } from './table.js';
 import { reserveOfEachScenario, type ReserveOfScenario } from './reserve.js';
@@ -26,6 +27,8 @@ export type ConventionState = {
   tables: Table[];
   /** Dans n'importe quel ordre : `gameMasters` les rend dans l'ordre naturel de leur pseudo. */
   gameMasters: GameMaster[];
+  /** Dans n'importe quel ordre. */
+  participants: Participant[];
   /** Les parties programmées, dans l'ordre de leur programmation. */
   games: Game[];
   /** Numéro de version, pour le verrou optimiste : seul le repository le fait avancer. */
@@ -48,15 +51,24 @@ export class Convention {
     private day: Day,
     private allTables: UniquelyNamedCollection<Table>,
     private allGameMasters: UniquelyNamedCollection<GameMaster>,
+    private allParticipants: UniquelyNamedCollection<Participant>,
     private gameSchedule: Schedule,
   ) {}
 
-  static restore({ timeSlots, tables, gameMasters, games, ...state }: ConventionState): Convention {
+  static restore({
+    timeSlots,
+    tables,
+    gameMasters,
+    participants,
+    games,
+    ...state
+  }: ConventionState): Convention {
     return new Convention(
       state,
       Day.ordering(timeSlots),
       UniquelyNamedCollection.holding(tables, TABLE_NAMING_RULES),
       UniquelyNamedCollection.holding(gameMasters, NICKNAME_RULES),
+      UniquelyNamedCollection.holding(participants, PARTICIPANT_NICKNAME_RULES),
       Schedule.holding(games),
     );
   }
@@ -108,6 +120,38 @@ export class Convention {
     if (!this.state.presenceCode.matches(presented)) {
       throw new Refusal('presence-code-wrong', {});
     }
+  }
+
+  /**
+   * S'identifier par un pseudo (ID-1), derrière le code de présence (ID-2). Un pseudo nouveau est
+   * créé, sous l'identifiant `newParticipantId`, et donné à relier. Un pseudo existant, comparé
+   * selon ID-7, demande d'abord une confirmation, et n'est donné à relier qu'avec elle : une simple
+   * question ne crée rien.
+   */
+  identify(
+    newParticipantId: string,
+    presentedCode: string,
+    nickname: string,
+    confirmation: IdentityConfirmation | null,
+    now: LocalMoment,
+  ): Identification {
+    this.verifyPresenceCode(presentedCode, now);
+    const typed = ComparableName.of(nickname);
+    const existing = this.allParticipants.itemNamed(typed);
+    if (!existing) {
+      const participant = new Participant(newParticipantId, typed);
+      this.allParticipants = this.allParticipants.afterAdding(participant);
+      return { verdict: 'link', created: true, participant };
+    }
+    if (confirmation !== 'participant') {
+      return { verdict: 'confirm', confirmation: 'participant', nickname: existing.nickname.text };
+    }
+    return { verdict: 'link', created: false, participant: existing };
+  }
+
+  /** Les participants, dans l'ordre naturel de leur pseudo. */
+  get participants(): readonly Participant[] {
+    return this.allParticipants.inNaturalOrder;
   }
 
   rename(name: string): void {
@@ -455,6 +499,17 @@ export class Convention {
 /** L'id d'une partie qui n'existera pas : un verdict ne programme rien. */
 const HYPOTHETICAL_GAME_ID = '';
 
+/** La réponse « oui » à la confirmation d'un pseudo existant : « Est-ce bien toi qui l'as créé ? ». */
+export type IdentityConfirmation = 'participant';
+
+/**
+ * Le verdict d'une identification : le participant à relier au téléphone (`created` s'il vient
+ * d'être créé), ou la confirmation à demander, avec le pseudo existant tel qu'il s'affiche.
+ */
+export type Identification =
+  | { verdict: 'link'; created: boolean; participant: Participant }
+  | { verdict: 'confirm'; confirmation: IdentityConfirmation; nickname: string };
+
 /** Le verdict d'une case créneau × table pour un scénario : le refus d'écriture, ou `null`. */
 export type Placement = { timeSlotId: string; tableId: string; refusal: Refusal | null };
 
@@ -482,6 +537,20 @@ const NICKNAME_RULES: NamingRules<GameMaster> = {
   nameOf: (gameMaster) => gameMaster.nickname,
   maxLength: Convention.NICKNAME_MAX_LENGTH,
   refuseMissingItem: () => new Refusal('game-master-not-found', {}),
+  refuseEmptyName: () => new Refusal('nickname-required', {}),
+  refuseTooLongName: (max) => new Refusal('nickname-too-long', { max }),
+  refuseTakenName: (namesake) =>
+    new Refusal('nickname-taken', { nickname: namesake.nickname.text }),
+};
+
+/**
+ * Le pseudo d'un participant : obligatoire, borné, unique parmi les participants (ID-1, ID-7).
+ * `identify()` relie un pseudo déjà pris au lieu de le refuser.
+ */
+const PARTICIPANT_NICKNAME_RULES: NamingRules<Participant> = {
+  nameOf: (participant) => participant.nickname,
+  maxLength: Convention.NICKNAME_MAX_LENGTH,
+  refuseMissingItem: () => new Refusal('participant-not-found', {}),
   refuseEmptyName: () => new Refusal('nickname-required', {}),
   refuseTooLongName: (max) => new Refusal('nickname-too-long', { max }),
   refuseTakenName: (namesake) =>

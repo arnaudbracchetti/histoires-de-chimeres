@@ -2,16 +2,21 @@
 <svg class="watermark" aria-hidden="true" focusable="false" viewBox="-100 -100 200 200">
   <use href="illustration.svg#engraving" x="-100" y="-100" width="200" height="200" />
 </svg>
-<main>
-  @if (ended()) {
-    <app-convention-ended-page />
-  } @else if (frontOffice.error()) {
-    <p>Impossible de charger la convention.</p>
-  } @else if (!frontOffice.hasValue()) {
-    <p>Chargement…</p>
-  } @else if (!presenceCode()) {
-    <app-presence-code-page (ended)="endedOnEntry.set(true)" />
-  } @else {
-    <h1>Bienvenue à {{ frontOffice.value().conventionName }}</h1>
-  }
-</main>
+@if (!ended() && !failed() && !loading() && linkedPhone.nickname()) {
+  <app-shell />
+} @else {
+  <main>
+    @if (ended()) {
+      <app-convention-ended-page />
+    } @else if (failed()) {
+      <p>Impossible de charger la convention.</p>
+    } @else if (loading()) {
+      <p>Chargement…</p>
+    } @else if (!presenceCode()) {
+      <app-presence-code-page (ended)="endedOnEntry.set(true)" />
+    } @else {
+      <app-nickname-page (ended)="endedOnEntry.set(true)" />
+    }
+  </main>
+}
+<app-alert-stack />

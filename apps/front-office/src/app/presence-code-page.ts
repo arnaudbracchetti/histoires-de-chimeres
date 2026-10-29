@@ -1,8 +1,12 @@
 import { Component, inject, output, signal } from '@angular/core';
+import { form, FormField, FormRoot, validate } from '@angular/forms/signals';
 import { frontOfficeEndpoints } from '@chimeres/contract';
 import { injectApiCall } from './api-call';
+import { submitWith } from './forms/submit-with';
 import { PresenceCodeStore } from './presence-code-store';
 import { readProblem } from './problem';
+import { Button } from './ui/button';
+import { Field } from './ui/field';
 
 /**
  * Écran « Code de présence » (ID-2) : le téléphone n'a pas reçu le code par le QR code (web app
@@ -10,25 +14,23 @@ import { readProblem } from './problem';
  */
 @Component({
   selector: 'app-presence-code-page',
+  imports: [Button, Field, FormField, FormRoot],
   template: `
     <h1>Code de présence</h1>
     <p>Tape le code écrit en clair sous le QR code, sur l'affiche de l'accueil.</p>
-    <form novalidate (submit)="$event.preventDefault(); enter()">
-      <label for="presence-code">Code</label>
-      <input
-        id="presence-code"
-        type="text"
-        autocomplete="off"
-        autocapitalize="characters"
-        spellcheck="false"
-        aria-describedby="presence-code-error"
-        [attr.aria-invalid]="error() ? true : null"
-        [value]="code()"
-        (input)="code.set($any($event.target).value)"
-      />
-      <p class="error" id="presence-code-error">{{ error() }}</p>
-      <button type="submit" [disabled]="submitting()">
-        {{ submitting() ? 'Vérification…' : 'Entrer' }}
+    <form [formRoot]="form">
+      <app-field label="Code">
+        <input
+          [formField]="form.presenceCode"
+          type="text"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          enterkeyhint="go"
+        />
+      </app-field>
+      <button type="submit" appButton="primary">
+        {{ form().submitting() ? 'Vérification…' : 'Entrer' }}
       </button>
     </form>
   `,
@@ -46,40 +48,12 @@ import { readProblem } from './problem';
         gap: var(--space-xs);
       }
 
-      label {
-        font-weight: 600;
-      }
-
       input {
-        padding: var(--space-s);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-control);
-        background: var(--surface-1);
-        color: var(--text);
         font-family: var(--font-caps);
         font-size: var(--font-size-section);
         letter-spacing: 0.2em;
         text-align: center;
         text-transform: uppercase;
-
-        &[aria-invalid='true'] {
-          border-color: var(--danger);
-        }
-      }
-
-      /* Ligne réservée, vide sans erreur : le bouton ne bouge pas. */
-      .error {
-        min-height: 1.4lh;
-        color: var(--danger);
-        font-size: var(--font-size-meta);
-      }
-
-      button {
-        padding: var(--space-s) var(--space-m);
-        border: none;
-        border-radius: var(--radius-control);
-        background: var(--accent);
-        color: var(--on-accent);
       }
     }
   `,
@@ -91,26 +65,26 @@ export class PresenceCodePage {
   private readonly apiCall = injectApiCall();
   private readonly store = inject(PresenceCodeStore);
 
-  protected readonly code = signal('');
-  protected readonly error = signal('');
-  protected readonly submitting = signal(false);
+  private readonly model = signal({ presenceCode: '' });
 
-  protected async enter(): Promise<void> {
-    const code = this.code();
-    if (!code.trim()) {
-      this.error.set('Tape le code de présence.');
+  protected readonly form = form(
+    this.model,
+    (path) =>
+      validate(path.presenceCode, ({ value }) =>
+        value().trim() ? undefined : { kind: 'required', message: 'Tape le code de présence.' },
+      ),
+    { submission: submitWith(() => this.enter()) },
+  );
+
+  private async enter(): Promise<void> {
+    const { presenceCode } = this.model();
+    try {
+      await this.apiCall(frontOfficeEndpoints.verifyPresenceCode, { body: { presenceCode } });
+    } catch (error) {
+      if (readProblem(error).code !== 'convention-ended') throw error;
+      this.ended.emit();
       return;
     }
-    this.submitting.set(true);
-    try {
-      await this.apiCall(frontOfficeEndpoints.verifyPresenceCode, { body: { presenceCode: code } });
-      this.store.keep(code);
-    } catch (error) {
-      const problem = readProblem(error);
-      if (problem.code === 'convention-ended') this.ended.emit();
-      else this.error.set(problem.message);
-    } finally {
-      this.submitting.set(false);
-    }
+    this.store.keep(presenceCode);
   }
 }

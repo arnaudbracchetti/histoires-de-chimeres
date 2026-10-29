@@ -5,6 +5,7 @@ import {
   Convention,
   Game,
   GameMaster,
+  Participant,
   PresenceCode,
   Table,
   TimeOfDay,
@@ -25,18 +26,29 @@ export class PrismaConventionRepository implements ConventionRepository {
   private readonly loaded = new WeakMap<Convention, ConventionRows>();
 
   async get(): Promise<Convention> {
-    const { id, name, date, version, presenceCode, timeSlots, tables, gameMasters, games } =
-      await this.prisma.convention.findFirstOrThrow({
-        include: {
-          timeSlots: true,
-          tables: true,
-          gameMasters: { include: { availabilities: { select: { timeSlotId: true } } } },
-          games: {
-            include: { scenario: { select: { gameMasterId: true } }, timeSlots: true },
-            orderBy: { scheduledAt: 'asc' },
-          },
+    const {
+      id,
+      name,
+      date,
+      version,
+      presenceCode,
+      timeSlots,
+      tables,
+      gameMasters,
+      participants,
+      games,
+    } = await this.prisma.convention.findFirstOrThrow({
+      include: {
+        timeSlots: true,
+        tables: true,
+        gameMasters: { include: { availabilities: { select: { timeSlotId: true } } } },
+        participants: true,
+        games: {
+          include: { scenario: { select: { gameMasterId: true } }, timeSlots: true },
+          orderBy: { scheduledAt: 'asc' },
         },
-      });
+      },
+    });
     const convention = Convention.restore({
       id,
       name,
@@ -57,6 +69,9 @@ export class PrismaConventionRepository implements ConventionRepository {
             ComparableName.of(gameMaster.nickname),
             gameMaster.availabilities.map(({ timeSlotId }) => timeSlotId),
           ),
+      ),
+      participants: participants.map(
+        (participant) => new Participant(participant.id, ComparableName.of(participant.nickname)),
       ),
       games: games.map(
         (game) =>
@@ -93,6 +108,7 @@ export class PrismaConventionRepository implements ConventionRepository {
     const tables = changes(loaded.tables, current.tables);
     const gameMasters = changes(loaded.gameMasters, current.gameMasters);
     const availabilities = changes(loaded.availabilities, current.availabilities);
+    const participants = changes(loaded.participants, current.participants);
     const {
       removed: unscheduled,
       added: scheduled,
@@ -124,6 +140,7 @@ export class PrismaConventionRepository implements ConventionRepository {
       await tx.timeSlot.deleteMany({ where: { id: ids(timeSlots.removed) } });
       await tx.table.deleteMany({ where: { id: ids(tables.removed) } });
       await tx.gameMaster.deleteMany({ where: { id: ids(gameMasters.removed) } });
+      await tx.participant.deleteMany({ where: { id: ids(participants.removed) } });
 
       const conventionId = convention.id;
       await tx.timeSlot.createMany({
@@ -142,6 +159,10 @@ export class PrismaConventionRepository implements ConventionRepository {
       for (const { id, nickname } of gameMasters.changed) {
         await tx.gameMaster.update({ where: { id }, data: { nickname } });
       }
+      // Le pseudo d'un participant ne se modifie pas (ID-9) : il n'a pas de ligne changée.
+      await tx.participant.createMany({
+        data: participants.added.map((row) => ({ ...row, conventionId })),
+      });
       await tx.availability.createMany({ data: availabilities.added });
       await tx.game.createMany({
         data: scheduled.map(({ id, scenarioId }) => ({ id, scenarioId, conventionId })),

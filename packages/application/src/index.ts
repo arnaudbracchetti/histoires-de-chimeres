@@ -8,6 +8,12 @@ export {
 export { ReadFrontOffice } from './convention/read-front-office.js';
 export { UpdateConvention } from './convention/update-convention.js';
 export { VerifyPresenceCode } from './convention/verify-presence-code.js';
+export { Identify, type IdentifyResult } from './linked-phone/identify.js';
+export type { LinkedPhoneReader } from './linked-phone/linked-phone-reader.js';
+export type { LinkedPhone, LinkedPhoneRepository } from './linked-phone/linked-phone-repository.js';
+export { PhoneNotLinkedError } from './linked-phone/phone-not-linked.error.js';
+export { ReadLinkedPhone } from './linked-phone/read-linked-phone.js';
+export { UnlinkPhone } from './linked-phone/unlink-phone.js';
 export { MoveGame } from './game/move-game.js';
 export { ReadMovePlacements } from './game/read-move-placements.js';
 export { ReadPlacements } from './game/read-placements.js';

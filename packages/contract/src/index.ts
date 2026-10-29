@@ -32,6 +32,13 @@ export {
   type PresenceCodeBody,
 } from './front-office.js';
 export { healthEndpoints, type HealthDto } from './health.js';
+export {
+  linkedPhoneEndpoints,
+  type IdentityConfirmationDto,
+  type LinkedPhoneDto,
+  type LinkPhoneBody,
+  type LinkPhoneDto,
+} from './linked-phone.js';
 export type {
   ApiErrorCode,
   FieldErrorDto,

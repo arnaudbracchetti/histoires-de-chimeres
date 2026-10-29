@@ -3,6 +3,7 @@
 
 @import '@chimeres/design/tokens.css';
 @import '@chimeres/design/fonts.css';
+@import '@angular/cdk/overlay-prebuilt.css' layer(base);
 
 @layer reset {
   *,
@@ -55,6 +56,36 @@
 
   a {
     color: var(--accent);
+  }
+
+  /* Champ de saisie natif, que porte un `app-field` : 17 px, sinon Safari zoome à la saisie. */
+  input {
+    width: 100%;
+    min-height: 52px;
+    padding: 0 var(--space-m);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 1.0625rem;
+
+    &[aria-invalid='true'] {
+      border-color: var(--danger);
+    }
+  }
+
+  /* Fond du dialogue et de la boîte du pseudo (CDK) : l'écran assombri derrière. */
+  .scrim {
+    background: color-mix(in srgb, var(--surface-0) 72%, transparent);
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   :focus-visible {

@@ -118,9 +118,14 @@ export const problemCatalogue: Catalogue = {
     detail: () => "Ce MJ n'existe plus : recharge la page.",
     status: 404,
   },
+  'participant-not-found': {
+    title: 'Pseudo introuvable',
+    detail: () => "Ce pseudo n'existe plus : tape-le à nouveau.",
+    status: 404,
+  },
   'nickname-required': {
     title: 'Pseudo obligatoire',
-    detail: () => 'Donne un pseudo au MJ.',
+    detail: () => 'Tape un pseudo.',
     field: 'nickname',
   },
   'nickname-too-long': {
@@ -291,6 +296,11 @@ export const problemCatalogue: Catalogue = {
     detail: () => "Tu as fait trop d'essais : réessaie dans quelques minutes.",
     field: 'presenceCode',
     status: 429,
+  },
+  'phone-not-linked': {
+    title: 'Téléphone relié à aucun pseudo',
+    detail: () => 'Tape ton pseudo pour continuer.',
+    status: 401,
   },
   'internal-error': {
     title: 'Erreur interne',
