@@ -62,4 +62,23 @@ describe('App', () => {
 
     expect(page.textContent).toContain('Impossible de charger la convention.');
   });
+
+  it.each([
+    ['l’écran du code', opened, null],
+    ['l’accueil', opened, 'K7M2'],
+    ['l’écran de fin', ended, null],
+  ])(
+    'pose le motif gravé en filigrane derrière %s, masqué aux lecteurs d’écran',
+    async (_, respond, code) => {
+      if (code) localStorage.setItem('presenceCode', code);
+
+      const page = await open(respond);
+
+      const watermark = page.querySelector('svg.watermark');
+      expect(watermark?.getAttribute('aria-hidden')).toBe('true');
+      expect(watermark?.querySelector('use')?.getAttribute('href')).toBe(
+        'illustration.svg#engraving',
+      );
+    },
+  );
 });

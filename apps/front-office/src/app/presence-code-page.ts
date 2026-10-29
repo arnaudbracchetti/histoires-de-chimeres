@@ -59,6 +59,7 @@ import { readProblem } from './problem';
         font-family: var(--font-caps);
         font-size: var(--font-size-section);
         letter-spacing: 0.2em;
+        text-align: center;
         text-transform: uppercase;
 
         &[aria-invalid='true'] {
