@@ -126,7 +126,9 @@ describe('Front office', () => {
 
       const withoutCode = await read()
         .expect(410)
-        .expect('Content-Type', /application\/problem\+json/);
+        .expect('Content-Type', /application\/problem\+json/)
+        // Sans cet en-tête, Chrome garde un 410 sans limite : la convention rouverte resterait fermée.
+        .expect('Cache-Control', 'no-store');
       const withCode = await verify({ presenceCode: code }).expect(410);
 
       expect(withoutCode.body).toMatchObject({

@@ -31,6 +31,8 @@ export class ProblemFilter extends BaseExceptionFilter {
       .switchToHttp()
       .getResponse<Response>()
       .status(problem.status)
+      // Un refus vaut pour l'état du moment : Chrome garderait sans limite un 410 sans cet en-tête.
+      .setHeader('Cache-Control', 'no-store')
       .type('application/problem+json')
       .send(JSON.stringify(problem));
   }

@@ -6,7 +6,12 @@ import { ProblemFilter } from './problem.filter.js';
 
 /** Réponse Express réduite à ce que le filtre utilise. */
 function respond(error: unknown) {
-  const sent = { status: 0, type: '', body: undefined as unknown };
+  const sent = {
+    status: 0,
+    type: '',
+    headers: {} as Record<string, string>,
+    body: undefined as unknown,
+  };
   const response = {
     status(status: number) {
       sent.status = status;
@@ -14,6 +19,10 @@ function respond(error: unknown) {
     },
     type(type: string) {
       sent.type = type;
+      return response;
+    },
+    setHeader(name: string, value: string) {
+      sent.headers[name] = value;
       return response;
     },
     send(body: string) {
@@ -37,6 +46,7 @@ describe('ProblemFilter', () => {
 
     expect(sent.status).toBe(500);
     expect(sent.type).toBe('application/problem+json');
+    expect(sent.headers).toEqual({ 'Cache-Control': 'no-store' });
     expect(sent.body).toEqual({
       type: 'urn:histoires-de-chimeres:problem:internal-error',
       title: 'Erreur interne',
