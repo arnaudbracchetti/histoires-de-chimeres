@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import type { ProblemDto } from '@chimeres/contract';
 import { injectGesture, type GestureOptions } from './gesture';
 import { Alerts } from './shell/alerts';
-import { NBSP } from './typography/french';
+import { NBSP } from '@chimeres/design';
 
 /** Une écriture refusée par l'API, avec ce Problem Details. */
 function refusedWith(status: number, problem?: Partial<ProblemDto>) {

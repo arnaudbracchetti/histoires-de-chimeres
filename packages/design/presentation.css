@@ -1,0 +1,79 @@
+/*
+ * La présentation d'un scénario, rendue par `renderPresentation` : la même dans l'aperçu du back
+ * office et sur la fiche du front office. Son conteneur porte la classe `presentation`. Un
+ * intertitre (h3 à h5) ne se confond pas avec les titres de l'écran : Aldrich en capitales espacées,
+ * en orange, derrière un filet orange. Sa taille baisse avec son niveau ; chaque front la prend de
+ * son échelle, par `--presentation-heading-1` à `--presentation-heading-3`.
+ */
+@layer components {
+  .presentation {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-s);
+    overflow-wrap: anywhere;
+
+    & :is(p, ul, ol, blockquote, pre, h3, h4, h5, hr) {
+      margin: 0;
+    }
+
+    & :is(ul, ol) {
+      padding-left: var(--space-l);
+    }
+
+    & :is(h3, h4, h5) {
+      margin-top: var(--space-s);
+      padding-left: var(--space-s);
+      border-left: 3px solid var(--accent);
+      color: var(--accent);
+      font-family: var(--font-caps);
+      font-weight: normal;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    & h3 {
+      font-size: var(--presentation-heading-1);
+    }
+
+    & h4 {
+      font-size: var(--presentation-heading-2);
+    }
+
+    & h5 {
+      font-size: var(--presentation-heading-3);
+    }
+
+    & blockquote {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-s);
+      padding-left: var(--space-m);
+      border-left: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    & code {
+      padding: 0 var(--space-xs);
+      border-radius: var(--radius-thumb);
+      background: var(--surface-3);
+      font-family: var(--font-code);
+    }
+
+    & pre {
+      padding: var(--space-s);
+      overflow-x: auto;
+      border-radius: var(--radius-control);
+      background: var(--surface-3);
+
+      & code {
+        padding: 0;
+      }
+    }
+
+    & hr {
+      width: 100%;
+      border: 0;
+      border-top: 1px solid var(--border);
+    }
+  }
+}

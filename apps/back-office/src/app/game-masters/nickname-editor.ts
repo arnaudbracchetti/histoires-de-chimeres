@@ -5,7 +5,7 @@ import { injectApiCall } from '../api-call';
 import { CardForm } from '../forms/card-form';
 import { submitWith } from '../forms/submit-with';
 import { Announcer } from '../shell/announcer';
-import { fr } from '../typography/french';
+import { fr } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { Field } from '../ui/field';
 import { nicknameRules } from './nickname';

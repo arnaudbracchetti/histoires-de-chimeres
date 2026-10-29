@@ -2,7 +2,7 @@ import { ApplicationRef, Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { THIN_NBSP } from '../typography/french';
+import { THIN_NBSP } from '@chimeres/design';
 import { leaveUnsaved, type UnsavedChanges } from './leave-unsaved';
 
 @Component({ template: 'Scénario' })
@@ -57,7 +57,9 @@ describe('leaveUnsaved', () => {
 
     const navigation = router.navigateByUrl('/ailleurs');
     await settle();
-    expect(dialog()?.querySelector('h2')?.textContent).toBe(`Quitter sans enregistrer${THIN_NBSP}?`);
+    expect(dialog()?.querySelector('h2')?.textContent).toBe(
+      `Quitter sans enregistrer${THIN_NBSP}?`,
+    );
     expect(document.activeElement).toBe(button('Annuler'));
     button('Annuler').click();
 

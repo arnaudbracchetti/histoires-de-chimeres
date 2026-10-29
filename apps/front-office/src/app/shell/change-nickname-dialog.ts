@@ -2,7 +2,7 @@ import { DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { Component, inject, signal } from '@angular/core';
 import { LinkedPhone } from '../linked-phone';
 import { readProblem } from '../problem';
-import { fr } from '../typography/french';
+import { fr } from '@chimeres/design';
 import { Button } from '../ui/button';
 
 /**

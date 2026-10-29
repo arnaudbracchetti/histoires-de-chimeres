@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import type { ProblemDto, ScenarioBody, ScenarioDto } from '@chimeres/contract';
-import { NBSP } from '../typography/french';
+import { NBSP } from '@chimeres/design';
 import { ScenarioForm } from './scenario-form';
 
 const SCENARIO: ScenarioDto = {
@@ -106,7 +106,9 @@ describe('ScenarioForm', () => {
       await type('Titre', 'a'.repeat(81), { leave: false });
       expect(errorOf('Titre')).toBe('');
       await type('Titre', 'a'.repeat(81));
-      expect(errorOf('Titre')).toBe(`Le titre fait 80${NBSP}caractères au plus${NBSP}: raccourcis-le.`);
+      expect(errorOf('Titre')).toBe(
+        `Le titre fait 80${NBSP}caractères au plus${NBSP}: raccourcis-le.`,
+      );
     });
 
     it('se mettent à jour à chaque frappe une fois le champ quitté', async () => {

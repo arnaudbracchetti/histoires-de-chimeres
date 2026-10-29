@@ -1,0 +1,72 @@
+/*
+ * Styles globaux communs aux deux fronts : la remise à zéro, et les éléments de base qui ne
+ * dépendent pas de la taille de texte de chaque front, que chacun pose. Chaque front l'importe après `tokens.css`, et
+ * déclare l'ordre de ses couches avant.
+ */
+@layer reset {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body,
+  h1,
+  h2,
+  h3,
+  p {
+    margin: 0;
+  }
+
+  img,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+@layer base {
+  body {
+    background: var(--surface-0);
+    color: var(--text);
+    font-family: var(--font-ui);
+    line-height: var(--line-height-text);
+  }
+
+  h1,
+  h2,
+  h3 {
+    line-height: var(--line-height-title);
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: normal;
+  }
+
+  a {
+    color: var(--accent);
+  }
+
+  /* Lu par les lecteurs d'écran, invisible à l'écran. */
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+}

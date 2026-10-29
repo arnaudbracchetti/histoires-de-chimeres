@@ -4,68 +4,32 @@
 
 @import '@chimeres/design/tokens.css';
 @import '@chimeres/design/fonts.css';
+@import '@chimeres/design/base.css';
+@import '@chimeres/design/presentation.css';
 /* Conteneur et fond des dialogues du CDK. */
 @import '@angular/cdk/overlay-prebuilt.css' layer(base);
 
-@layer reset {
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
-  }
-
-  body,
-  h1,
-  h2,
-  h3,
-  p {
-    margin: 0;
-  }
-
-  img,
-  svg {
-    display: block;
-    max-width: 100%;
-  }
-
-  button,
-  input,
-  select,
-  textarea {
-    font: inherit;
-  }
-}
-
 @layer base {
+  /* Intertitres de la présentation d'un scénario (presentation.css), du plus grand au plus petit. */
+  :root {
+    --presentation-heading-1: var(--font-size-block);
+    --presentation-heading-2: var(--font-size-body);
+    --presentation-heading-3: var(--font-size-meta);
+  }
+
   body {
-    background: var(--surface-0);
-    color: var(--text);
-    font-family: var(--font-ui);
     /* Taille de base du back office : 13 px. */
     font-size: var(--font-size-body);
-    line-height: var(--line-height-text);
-  }
-
-  h1,
-  h2,
-  h3 {
-    line-height: var(--line-height-title);
   }
 
   h1 {
-    font-family: var(--font-display);
     font-size: var(--font-size-title);
-    font-weight: normal;
   }
 
   /* Titre de section : Aldrich n'a qu'une graisse, pas de faux gras. */
   h2 {
     font-family: var(--font-caps);
     font-weight: normal;
-  }
-
-  a {
-    color: var(--accent);
   }
 
   input,
@@ -114,21 +78,6 @@
 
   tbody th {
     font-weight: 600;
-  }
-
-  /* Lu par les lecteurs d'écran, invisible à l'écran. */
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--focus);
-    outline-offset: 2px;
   }
 }
 

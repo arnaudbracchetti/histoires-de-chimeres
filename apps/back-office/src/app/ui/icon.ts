@@ -3,7 +3,9 @@ import { Component, input } from '@angular/core';
 /** Une icône Lucide du sprite de `@chimeres/design`, décorative : le nom accessible est porté par son parent. */
 @Component({
   selector: 'app-icon',
-  template: `<svg aria-hidden="true" focusable="false"><use [attr.href]="'icons.svg#' + name()" /></svg>`,
+  template: `<svg aria-hidden="true" focusable="false">
+    <use [attr.href]="'icons.svg#' + name()" />
+  </svg>`,
   styles: `
     @layer components {
       :host {

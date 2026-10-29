@@ -12,7 +12,7 @@ import {
   type ScheduleDto,
 } from '@chimeres/contract';
 import { Alerts } from '../shell/alerts';
-import { NBSP } from '../typography/french';
+import { NBSP } from '@chimeres/design';
 import { ScheduleBoard } from './schedule-board';
 import type { Drop } from './schedule-drag';
 import { ScheduleTimeline } from './schedule-timeline';

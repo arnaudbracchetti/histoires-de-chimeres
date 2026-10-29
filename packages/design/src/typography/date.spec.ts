@@ -1,4 +1,5 @@
-import { formatConventionDate } from './date';
+import { describe, expect, it } from 'vitest';
+import { formatConventionDate } from './date.js';
 
 describe('formatConventionDate', () => {
   it('écrit le jour, le quantième, le mois et l’année', () => {

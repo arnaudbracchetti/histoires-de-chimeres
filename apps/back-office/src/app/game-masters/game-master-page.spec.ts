@@ -10,7 +10,7 @@ import {
   type GameMasterSheetDto,
   type ProblemDto,
 } from '@chimeres/contract';
-import { NBSP, THIN_NBSP } from '../typography/french';
+import { NBSP, THIN_NBSP } from '@chimeres/design';
 import { GameMasterPage } from './game-master-page';
 
 @Component({ template: '' })

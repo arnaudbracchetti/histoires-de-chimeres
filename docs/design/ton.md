@@ -35,7 +35,8 @@ Seuls les termes de [GLOSSARY.md](../../GLOSSARY.md) apparaissent à l'écran, e
 - Espace fine insécable (U+202F) devant ; ! ?, espace insécable (U+00A0) devant :.
 - Nombres : espace fine insécable pour les milliers (« 1 500 caractères »), virgule décimale.
 - Espace insécable entre un nombre et son nom ou son unité : « 4 places », « 24 heures », « 10 Mo ».
-- Dans le code de chaque front, une phrase visible passe par l'étiquette `fr` (`src/app/typography/`), qui pose ces espaces ; un gabarit HTML écrit `&nbsp;` et `&#8239;`. Aucune espace insécable n'est tapée en clair : `pnpm lint` le vérifie.
+- Dans le code des deux fronts, une phrase visible passe par l'étiquette `fr` de `@chimeres/design`, qui pose ces espaces ; un gabarit HTML écrit `&nbsp;` et `&#8239;`. Aucune espace insécable n'est tapée en clair : `pnpm lint` le vérifie (`check-typography`, du même package).
+- Les heures, les plages, les durées, les rangs de créneaux et la date de la convention s'écrivent par les fonctions de `@chimeres/design` (`formatTime`, `formatTimeRange`, `formatDuration`, `timeSlotLabel`, `formatConventionDate`…), les mêmes dans les deux fronts.
 
 ## Dates, heures et durées
 

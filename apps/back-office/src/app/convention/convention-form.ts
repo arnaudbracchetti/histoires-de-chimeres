@@ -5,9 +5,13 @@ import { submitWith } from '../forms/submit-with';
 import { textRules } from '../forms/text-rules';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
-import { formatConventionDate } from '../typography/date';
-import { countOf, fr } from '../typography/french';
-import { formatTime, formatTimeSlotRanks } from '../typography/time';
+import {
+  countOf,
+  formatConventionDate,
+  formatTime,
+  formatTimeSlotRanks,
+  fr,
+} from '@chimeres/design';
 import { Field } from '../ui/field';
 import { SaveButton } from '../ui/save-button';
 import { ConventionStore } from './convention-store';

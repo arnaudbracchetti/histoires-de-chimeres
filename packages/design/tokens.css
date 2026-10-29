@@ -38,6 +38,7 @@
     --font-display: 'Uncial Antiqua', serif;
     --font-caps: 'Aldrich', sans-serif;
     --font-ui: system-ui, sans-serif;
+    --font-code: ui-monospace, monospace;
 
     /* Échelle typographique (back office) */
     --font-size-title: 1.625rem; /* 26 px */

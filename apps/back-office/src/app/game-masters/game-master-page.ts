@@ -19,7 +19,7 @@ import { formatScenarioDuration, formatSeats } from '../scenarios/scenario-forma
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
-import { fr } from '../typography/french';
+import { fr } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { Confirmation } from '../ui/confirmation';
 import { Icon } from '../ui/icon';

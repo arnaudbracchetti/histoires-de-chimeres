@@ -6,7 +6,7 @@ import { CardForm } from '../forms/card-form';
 import { submitWith } from '../forms/submit-with';
 import { textRules } from '../forms/text-rules';
 import { Announcer } from '../shell/announcer';
-import { countOf, fr } from '../typography/french';
+import { countOf, fr } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { Field } from '../ui/field';
 import { IconTile } from '../ui/icon-tile';

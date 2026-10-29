@@ -4,7 +4,7 @@ Le choix et ses raisons sont dans l'[ADR 0006](../adr/0006-interface-sans-biblio
 
 ## Le package `@chimeres/design`
 
-`packages/design`, sans framework, ne dépend de rien. Les deux fronts en dépendent, avec `contract`.
+`packages/design`, sans framework, ne dépend que de `marked`, pour le rendu de la présentation. Les deux fronts en dépendent, avec `contract`. Tout ce que les deux fronts partagent sans framework y vit, jamais en copie dans chaque front.
 
 | Contenu | Détail |
 |---|---|
@@ -14,9 +14,13 @@ Le choix et ses raisons sont dans l'[ADR 0006](../adr/0006-interface-sans-biblio
 | `svg/icons.svg` | sprite des icônes Lucide (licence ISC), copiées à mesure qu'on s'en sert, colorées par `currentColor` |
 | `svg/emblem.svg` | l'emblème, complet (`emblem`) et ≤ 32 px (`emblem-small`) |
 | `pwa/` | les PNG de la PWA et le favicon, tirés une fois de l'emblème et versionnés |
-| `initialOf(title)` | la seule logique du package : l'initiale de l'illustration par défaut, testée par Vitest |
+| `initialOf(title)` | l'initiale de l'illustration par défaut, testée par Vitest |
+| `src/typography/` | la typographie française de [ton.md](ton.md) : `fr`, `NBSP`, `countOf`, heures, plages, durées, heure saisie, date de la convention, testées par Vitest |
+| `scripts/check-typography.mjs` | le garde-fou typographique, commande `check-typography` que lance le `pnpm lint` de chaque front |
+| `renderPresentation(text)` | le HTML de la présentation d'un scénario, en Markdown sans lien, image ni HTML (PR-1), testé par Vitest : un seul rendu pour l'aperçu du back office et la fiche du front office. Seule dépendance du package : `marked`, importé par sa propre entrée (`@chimeres/design/presentation`) pour ne peser que sur les écrans qui l'affichent |
+| `presentation.css` | le style de ce rendu (classe `presentation`), commun aux deux fronts : intertitres en Aldrich orange derrière un filet, de taille décroissante selon leur niveau, citation, code, séparateur |
 
-Chaque front importe `tokens.css` et `fonts.css` dans son `styles.css`, et copie les sprites à sa racine, les licences dans `licences/` (`assets` de `angular.json`). Le front office copie aussi `pwa/` dans `icons/`.
+Chaque front importe `tokens.css`, `fonts.css`, `base.css` (remise à zéro et éléments de base communs) et `presentation.css` dans son `styles.css`, et copie les sprites à sa racine, les licences dans `licences/` (`assets` de `angular.json`). Le front office copie aussi `pwa/` dans `icons/`.
 
 Aucune couleur n'est écrite en TypeScript ni en dur dans un SVG : le SVG référence les jetons.
 

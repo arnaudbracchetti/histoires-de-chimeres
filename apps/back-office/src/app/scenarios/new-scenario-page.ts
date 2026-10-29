@@ -13,7 +13,7 @@ import { ScenarioForm } from './scenario-form';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
-import { fr } from '../typography/french';
+import { fr } from '@chimeres/design';
 
 /**
  * Proposer un scénario depuis la fiche de son MJ, qui lui reste fixé (PR-16) : « MJ › pseudo ›

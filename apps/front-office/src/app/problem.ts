@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import type { ProblemCode, ProblemDto } from '@chimeres/contract';
 import type { ErrorNotice } from './shell/alerts';
-import { fr } from './typography/french';
+import { fr } from '@chimeres/design';
 
 /** Ce que le front office lit d'une erreur de l'API (docs/design/patterns.md, Validation). */
 export type Problem = {

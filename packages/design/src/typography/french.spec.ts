@@ -1,4 +1,5 @@
-import { countOf, formatCount, fr, NBSP, plural, THIN_NBSP } from './french';
+import { describe, expect, it } from 'vitest';
+import { countOf, formatCount, fr, NBSP, plural, THIN_NBSP } from './french.js';
 
 describe('Typographie française', () => {
   it('nomme les espaces de ton.md par leur point de code', () => {

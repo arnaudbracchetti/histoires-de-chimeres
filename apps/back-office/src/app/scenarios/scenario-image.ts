@@ -4,7 +4,7 @@ import { injectApiCall } from '../api-call';
 import { injectApiUpload } from '../api-upload';
 import { injectGesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
-import { fr } from '../typography/french';
+import { fr } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { Confirmation } from '../ui/confirmation';
 import { ScenarioIllustration } from '../ui/scenario-illustration';

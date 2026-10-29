@@ -1,5 +1,5 @@
 import type { DurationDto, SeatsDto } from '@chimeres/contract';
-import { countOf, NBSP } from '../typography/french';
+import { countOf, NBSP } from '@chimeres/design';
 
 /** « 3 à 5 places », ou « 4 places » quand minimum et maximum sont égaux. */
 export function formatSeats({ min, max }: SeatsDto): string {

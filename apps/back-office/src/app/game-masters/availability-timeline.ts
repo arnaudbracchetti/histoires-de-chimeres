@@ -7,9 +7,7 @@ import {
 import { injectApiCall } from '../api-call';
 import { injectGesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
-import { minutesOf } from '../time-slots/time-format';
-import { NBSP, THIN_NBSP } from '../typography/french';
-import { formatTime, timeSlotLabel } from '../typography/time';
+import { formatTime, timeSlotLabel, minutesOf, NBSP, THIN_NBSP } from '@chimeres/design';
 import { Icon } from '../ui/icon';
 
 /** Un morceau de la journée, en minutes : un créneau, ou une pause sans `slot`. */

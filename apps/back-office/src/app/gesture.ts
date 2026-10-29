@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { computed, inject, signal, type Signal } from '@angular/core';
 import { readProblem } from './problem';
-import { fr } from './typography/french';
+import { fr } from '@chimeres/design';
 import { Alerts, type ErrorNotice } from './shell/alerts';
 
 /**

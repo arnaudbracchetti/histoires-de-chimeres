@@ -64,6 +64,7 @@ Un nouveau couple texte et fond se vérifie avant d'entrer dans un composant : 4
 | Nom de l'application, titre de page (h1) | **Uncial Antiqua**, une seule graisse | `--font-display` |
 | Capitales espacées : surtitres, en-têtes de créneau et de table | **Aldrich**, une seule graisse, en Regular | `--font-caps` |
 | Tout le reste | police système (`system-ui`) | `--font-ui` |
+| Code dans la présentation d'un scénario | police à chasse fixe du système | `--font-code` |
 
 - Uncial Antiqua et Aldrich sont sous SIL Open Font License et ont tous les accents français. Elles sont livrées en WOFF2, en sous-ensemble latin étendu, en `font-display: swap`, avec leurs licences. Elles sont hébergées avec l'application, jamais chargées depuis Google Fonts, et marchent hors ligne.
 - **Pas de gras simulé** : ni Uncial Antiqua ni Aldrich n'ont de gras.

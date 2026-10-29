@@ -3,61 +3,25 @@
 
 @import '@chimeres/design/tokens.css';
 @import '@chimeres/design/fonts.css';
+@import '@chimeres/design/base.css';
+@import '@chimeres/design/presentation.css';
 @import '@angular/cdk/overlay-prebuilt.css' layer(base);
 
-@layer reset {
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
-  }
-
-  body,
-  h1,
-  h2,
-  h3,
-  p {
-    margin: 0;
-  }
-
-  img,
-  svg {
-    display: block;
-    max-width: 100%;
-  }
-
-  button,
-  input,
-  select,
-  textarea {
-    font: inherit;
-  }
-}
-
 @layer base {
+  /* Intertitres de la présentation d'un scénario (presentation.css), du plus grand au plus petit. */
+  :root {
+    --presentation-heading-1: var(--font-size-mobile-block);
+    --presentation-heading-2: var(--font-size-mobile-body);
+    --presentation-heading-3: var(--font-size-mobile-meta);
+  }
+
   body {
-    background: var(--surface-0);
-    color: var(--text);
-    font-family: var(--font-ui);
     /* Taille de base du front office : 15 px. */
     font-size: var(--font-size-mobile-body);
-    line-height: var(--line-height-text);
-  }
-
-  h1,
-  h2,
-  h3 {
-    line-height: var(--line-height-title);
   }
 
   h1 {
-    font-family: var(--font-display);
     font-size: var(--font-size-mobile-title);
-    font-weight: normal;
-  }
-
-  a {
-    color: var(--accent);
   }
 
   /* Champ de saisie natif, que porte un `app-field`. */
@@ -79,19 +43,5 @@
   /* Fond du dialogue et de la boîte du pseudo (CDK) : l'écran assombri derrière. */
   .scrim {
     background: color-mix(in srgb, var(--surface-0) 72%, transparent);
-  }
-
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--focus);
-    outline-offset: 2px;
   }
 }

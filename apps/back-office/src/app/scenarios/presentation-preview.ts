@@ -1,5 +1,5 @@
 import { Component, computed, input } from '@angular/core';
-import { renderPresentation } from './presentation-markdown';
+import { renderPresentation } from '@chimeres/design/presentation';
 
 /**
  * Rendu de la présentation, tel que le front office l'affichera. Le HTML passe par `[innerHTML]`,
@@ -9,7 +9,8 @@ import { renderPresentation } from './presentation-markdown';
   selector: 'app-presentation-preview',
   template: `
     @if (text().trim()) {
-      <div class="rendered" [innerHTML]="html()"></div>
+      <!-- Le style du rendu est commun aux deux fronts : presentation.css, de @chimeres/design. -->
+      <div class="presentation" [innerHTML]="html()"></div>
     } @else {
       <p class="empty">Rien à montrer pour l'instant&nbsp;: écris d'abord la présentation.</p>
     }
@@ -23,22 +24,6 @@ import { renderPresentation } from './presentation-markdown';
         border: 1px solid var(--border);
         border-radius: var(--radius-control);
         background: var(--surface-1);
-      }
-
-      .rendered {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-s);
-        overflow-wrap: anywhere;
-      }
-
-      /* Le HTML rendu échappe à l'encapsulation des styles. */
-      .rendered ::ng-deep :is(p, ul, ol) {
-        margin: 0;
-      }
-
-      .rendered ::ng-deep :is(ul, ol) {
-        padding-left: var(--space-l);
       }
 
       .empty {

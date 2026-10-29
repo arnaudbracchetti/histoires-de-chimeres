@@ -1,8 +1,7 @@
 import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
 import { Component, computed, inject, input, linkedSignal, output } from '@angular/core';
 import type { ReserveScenarioDto, ScheduleScenarioDto, TimeSlotDto } from '@chimeres/contract';
-import { plural } from '../typography/french';
-import { formatTimeSlotRanks } from '../typography/time';
+import { formatTimeSlotRanks, plural } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { ScenarioIllustration } from '../ui/scenario-illustration';

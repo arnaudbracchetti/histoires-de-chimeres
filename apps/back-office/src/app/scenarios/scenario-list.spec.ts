@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { apiUrl, scenarioEndpoints, type ScenarioListItemDto } from '@chimeres/contract';
-import { NBSP } from '../typography/french';
+import { NBSP } from '@chimeres/design';
 import { ScenarioList } from './scenario-list';
 
 const aScenario = (

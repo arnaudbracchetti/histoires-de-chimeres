@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { apiUrl, conventionEndpoints, type ProblemDto } from '@chimeres/contract';
-import { NBSP } from '../typography/french';
+import { NBSP } from '@chimeres/design';
 import { ConventionForm } from './convention-form';
 import { ConventionStore } from './convention-store';
 import { Alerts } from '../shell/alerts';

@@ -1,8 +1,7 @@
 import { Component, computed, ElementRef, inject, input, output } from '@angular/core';
 import type { GameDto, TableDto, TimeSlotDto } from '@chimeres/contract';
 import { formatSeats } from '../scenarios/scenario-format';
-import { plural } from '../typography/french';
-import { timeSlotLabel } from '../typography/time';
+import { timeSlotLabel, plural } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { ScenarioIllustration } from '../ui/scenario-illustration';

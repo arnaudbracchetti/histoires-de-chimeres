@@ -18,7 +18,9 @@ export type Crumb = { label: string; link: string };
         <nav aria-label="Fil d'Ariane">
           <ol>
             @for (crumb of trail(); track crumb.link) {
-              <li><a [routerLink]="crumb.link">{{ crumb.label }}</a></li>
+              <li>
+                <a [routerLink]="crumb.link">{{ crumb.label }}</a>
+              </li>
             }
             <li aria-current="page">{{ title() }}</li>
           </ol>

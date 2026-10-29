@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import type { GameDto, TableDto, TimeSlotDto } from '@chimeres/contract';
-import { NBSP, THIN_NBSP } from '../typography/french';
+import { NBSP, THIN_NBSP } from '@chimeres/design';
 import { ScheduleDrag } from './schedule-drag';
 import { ScheduleTimeline } from './schedule-timeline';
 

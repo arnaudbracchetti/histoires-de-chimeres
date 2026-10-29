@@ -6,7 +6,7 @@ import { apiUrl, conventionEndpoints, scenarioEndpoints } from '@chimeres/contra
 import { App } from './app';
 import { routes } from './app.routes';
 import { Announcer } from './shell/announcer';
-import { NBSP } from './typography/french';
+import { NBSP } from '@chimeres/design';
 
 describe('App', () => {
   beforeEach(async () => {

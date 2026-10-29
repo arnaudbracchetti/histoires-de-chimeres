@@ -14,7 +14,7 @@ import {
   type TableDto,
   type TimeSlotDto,
 } from '@chimeres/contract';
-import { NBSP } from '../typography/french';
+import { NBSP } from '@chimeres/design';
 import { Placements } from './placement-dialog';
 
 const TIME_SLOTS: TimeSlotDto[] = [

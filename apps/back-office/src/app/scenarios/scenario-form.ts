@@ -17,7 +17,7 @@ import {
 } from '@chimeres/contract';
 import { submitWith } from '../forms/submit-with';
 import { textRules } from '../forms/text-rules';
-import { countOf, fr, NBSP } from '../typography/french';
+import { countOf, fr, NBSP } from '@chimeres/design';
 import { Field } from '../ui/field';
 import { SaveButton } from '../ui/save-button';
 import { PresentationPreview } from './presentation-preview';
@@ -229,7 +229,7 @@ export class ScenarioForm {
     presentation: PRESENTATION_MAX_LENGTH,
     contentWarnings: CONTENT_WARNINGS_MAX_LENGTH,
   };
-  protected readonly markdownHelp = fr`**gras**, *italique*, « - » en début de ligne pour une liste`;
+  protected readonly markdownHelp = fr`**gras**, *italique*, « - » en début de ligne pour une liste, « # » pour un intertitre, « > » pour une citation`;
   protected readonly previewing = signal(false);
   protected readonly savedAt = signal<number | undefined>(undefined);
 

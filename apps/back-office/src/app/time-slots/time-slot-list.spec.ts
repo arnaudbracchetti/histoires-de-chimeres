@@ -10,7 +10,7 @@ import {
   type TimeSlotDto,
 } from '@chimeres/contract';
 import { Alerts } from '../shell/alerts';
-import { NBSP, THIN_NBSP } from '../typography/french';
+import { NBSP, THIN_NBSP } from '@chimeres/design';
 import { TimeSlotList } from './time-slot-list';
 
 /** « 14 h 00 – 16 h 30 ». */

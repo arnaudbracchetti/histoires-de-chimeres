@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import type { CanDeactivateFn } from '@angular/router';
-import { fr } from '../typography/french';
+import { fr } from '@chimeres/design';
 import { Confirmation } from '../ui/confirmation';
 
 /** Une page qui peut avoir des modifications non enregistrées. */

@@ -11,7 +11,7 @@ import {
 import { LinkedPhone } from '../linked-phone';
 import { PresenceCodeStore } from '../presence-code-store';
 import { Alerts } from '../shell/alerts';
-import { NBSP } from '../typography/french';
+import { NBSP } from '@chimeres/design';
 import { NicknamePage } from './nickname-page';
 
 /** Le POST de « s'identifier » : le GET du pseudo relié a la même adresse. */

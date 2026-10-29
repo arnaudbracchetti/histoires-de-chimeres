@@ -10,7 +10,7 @@ import {
   type ProblemDto,
   type TimeSlotDto,
 } from '@chimeres/contract';
-import { NBSP } from '../typography/french';
+import { NBSP } from '@chimeres/design';
 import { GameMasterList } from './game-master-list';
 
 /** Les MJ, dans l'ordre donné : celui que renvoie l'API. */

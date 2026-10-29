@@ -10,7 +10,7 @@ import {
   type TimeSlotDto,
 } from '@chimeres/contract';
 import { Alerts } from '../shell/alerts';
-import { NBSP, THIN_NBSP } from '../typography/french';
+import { NBSP, THIN_NBSP } from '@chimeres/design';
 import { AvailabilityTimeline } from './availability-timeline';
 
 const TIME_SLOTS: TimeSlotDto[] = [

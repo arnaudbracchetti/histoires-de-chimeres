@@ -1,9 +1,11 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { createFlexibleConnectedPositionStrategy } from '@angular/cdk/overlay';
 import { Component, ElementRef, inject, Injector, signal, viewChild } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter, firstValueFrom, map } from 'rxjs';
 import { LinkedPhone } from '../linked-phone';
+import { ParticipantData } from '../participant-data/participant-data';
 import { Icon } from '../ui/icon';
 import { ChangeNicknameDialog } from './change-nickname-dialog';
 import { NicknameBox, type NicknameBoxResult } from './nickname-box';
@@ -11,44 +13,50 @@ import { TabNavigation, TABS } from './tab-navigation';
 
 /**
  * La coquille du front office : en haut, l'emblème, « Histoires de Chimères » et le pseudo ; en
- * bas, les trois onglets. Un tap sur le pseudo ouvre sa boîte, avec « Changer de pseudo ».
+ * bas, les trois onglets. Un tap sur le pseudo ouvre sa boîte, avec « Changer de pseudo ». La
+ * fiche d'une partie (`sheet`) prend tout l'écran. Les données du participant vivent avec elle.
  */
 @Component({
   selector: 'app-shell',
   imports: [Icon, RouterOutlet],
+  providers: [ParticipantData],
   template: `
-    <header>
-      <svg class="emblem" aria-hidden="true" focusable="false">
-        <use href="emblem.svg#emblem-small" />
-      </svg>
-      <span class="brand">Histoires de Chimères</span>
-      <button
-        #nicknameButton
-        type="button"
-        class="nickname"
-        aria-haspopup="dialog"
-        [attr.aria-expanded]="boxOpen()"
-        (click)="openBox()"
-      >
-        <app-icon name="user-round" />
-        <span>{{ linkedPhone.nickname() }}</span>
-      </button>
-    </header>
-    <main>
+    @if (sheet()) {
       <router-outlet />
-    </main>
-    <nav aria-label="Navigation principale">
-      @for (tab of tabs; track tab.path) {
-        <a
-          [href]="'/' + tab.path"
-          [attr.aria-current]="navigation.current() === tab.path ? 'page' : null"
-          (click)="$event.preventDefault(); navigation.go(tab.path)"
+    } @else {
+      <header>
+        <svg class="emblem" aria-hidden="true" focusable="false">
+          <use href="emblem.svg#emblem-small" />
+        </svg>
+        <span class="brand">Histoires de Chimères</span>
+        <button
+          #nicknameButton
+          type="button"
+          class="nickname"
+          aria-haspopup="dialog"
+          [attr.aria-expanded]="boxOpen()"
+          (click)="openBox()"
         >
-          <app-icon [name]="tab.icon" />
-          <span>{{ tab.label }}</span>
-        </a>
-      }
-    </nav>
+          <app-icon name="user-round" />
+          <span>{{ linkedPhone.nickname() }}</span>
+        </button>
+      </header>
+      <main>
+        <router-outlet />
+      </main>
+      <nav aria-label="Navigation principale">
+        @for (tab of tabs; track tab.path) {
+          <a
+            [href]="'/' + tab.path"
+            [attr.aria-current]="navigation.current() === tab.path ? 'page' : null"
+            (click)="$event.preventDefault(); navigation.go(tab.path)"
+          >
+            <app-icon [name]="tab.icon" />
+            <span>{{ tab.label }}</span>
+          </a>
+        }
+      </nav>
+    }
   `,
   styles: `
     @layer components {
@@ -162,6 +170,16 @@ export class Shell {
   protected readonly tabs = TABS;
   protected readonly boxOpen = signal(false);
 
+  private readonly router = inject(Router);
+  /** L'écran affiché prend tout l'écran, sans en-tête ni onglets : la fiche d'une partie. */
+  protected readonly sheet = toSignal(
+    this.router.events.pipe(
+      filter((event) => event instanceof NavigationEnd),
+      map(() => isSheet(this.router.routerState.snapshot.root)),
+    ),
+    { initialValue: isSheet(this.router.routerState.snapshot.root) },
+  );
+
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
   private readonly nicknameButton = viewChild.required<ElementRef<HTMLElement>>('nicknameButton');
@@ -196,4 +214,8 @@ export class Shell {
       restoreFocus: true,
     });
   }
+}
+
+function isSheet(route: ActivatedRouteSnapshot): boolean {
+  return !!route.data['sheet'] || route.children.some(isSheet);
 }

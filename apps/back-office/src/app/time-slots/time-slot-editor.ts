@@ -5,11 +5,17 @@ import { ConventionStore } from '../convention/convention-store';
 import { CardForm } from '../forms/card-form';
 import { submitWith } from '../forms/submit-with';
 import { Announcer } from '../shell/announcer';
-import { fr, NBSP } from '../typography/french';
-import { formatDuration, timeSlotLabel } from '../typography/time';
+import {
+  formatDuration,
+  fr,
+  timeOf,
+  timeSlotLabel,
+  minutesOf,
+  NBSP,
+  normalizeTime,
+} from '@chimeres/design';
 import { Button } from '../ui/button';
 import { Field } from '../ui/field';
-import { minutesOf, normalizeTime, timeOf } from './time-format';
 
 /** Durée habituelle d'un créneau : la fin d'un nouveau créneau est proposée d'après elle. */
 const USUAL_DURATION_MINUTES = 150;

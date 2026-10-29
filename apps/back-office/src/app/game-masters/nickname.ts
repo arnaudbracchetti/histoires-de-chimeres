@@ -1,7 +1,7 @@
 import type { SchemaPath } from '@angular/forms/signals';
 import { NICKNAME_MAX_LENGTH } from '@chimeres/contract';
 import { textRules } from '../forms/text-rules';
-import { countOf, fr } from '../typography/french';
+import { countOf, fr } from '@chimeres/design';
 
 /**
  * Erreurs locales d'un pseudo (docs/design/patterns.md, Validation). Le pseudo déjà pris (ID-7)

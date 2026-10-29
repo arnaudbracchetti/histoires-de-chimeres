@@ -1,4 +1,4 @@
-import { countOf } from '../typography/french';
+import { countOf } from '@chimeres/design';
 
 /**
  * Ce qui part avec un créneau ou un MJ supprimé (docs/design/patterns.md, Actions destructrices) :

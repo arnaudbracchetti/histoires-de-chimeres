@@ -24,8 +24,7 @@ import { injectApiCall } from '../api-call';
 import { apiResource } from '../api-resource';
 import { injectGesture, type GestureOutcome } from '../gesture';
 import { Loadable } from '../shell/loadable';
-import { fr } from '../typography/french';
-import { formatTimeRange, timeSlotLabel } from '../typography/time';
+import { formatTimeRange, fr, timeSlotLabel } from '@chimeres/design';
 import { Button } from '../ui/button';
 
 /** La grille du programme : ses créneaux, dans l'ordre de la journée, et ses tables, dans l'ordre naturel. */

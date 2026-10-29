@@ -21,7 +21,7 @@ import { ConventionStore } from '../convention/convention-store';
 import { injectGesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
-import { fr } from '../typography/french';
+import { fr } from '@chimeres/design';
 import { GameSheet } from './game-sheet';
 import { Placements } from './placement-dialog';
 import { ReserveTray } from './reserve-tray';

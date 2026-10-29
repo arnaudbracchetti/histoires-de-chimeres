@@ -2,20 +2,32 @@
   "name": "@chimeres/design",
   "version": "0.0.0",
   "private": true,
-  "description": "Identité commune aux deux fronts : jetons CSS, polices, sprites SVG, icônes de PWA, initiale de l'illustration par défaut. Aucune dépendance.",
+  "description": "Identité commune aux deux fronts : jetons CSS, polices, sprites SVG, icônes de PWA, typographie française, initiale de l'illustration par défaut, rendu de la présentation.",
   "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./presentation": {
+      "types": "./dist/presentation-markdown.d.ts",
+      "default": "./dist/presentation-markdown.js"
+    },
     "./tokens.css": "./tokens.css",
-    "./fonts.css": "./fonts.css"
+    "./fonts.css": "./fonts.css",
+    "./base.css": "./base.css",
+    "./presentation.css": "./presentation.css"
+  },
+  "bin": {
+    "check-typography": "./scripts/check-typography.mjs"
   },
   "scripts": {
     "build": "tsc -b",
-    "lint": "oxlint src",
+    "lint": "oxlint src && node scripts/check-typography.mjs src",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "marked": "18.0.14"
   },
   "devDependencies": {
     "oxlint": "catalog:",

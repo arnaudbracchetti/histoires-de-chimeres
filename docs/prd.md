@@ -120,7 +120,7 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 - **PR-1** Un scénario comporte :
   - un titre (80 caractères au plus, pas forcément unique) ;
   - un jeu, en texte libre (60 caractères au plus) ;
-  - une présentation (1 500 caractères au plus), en Markdown restreint aux paragraphes, au gras, à l'italique et aux listes ;
+  - une présentation (1 500 caractères au plus), en Markdown sans lien, sans image ni HTML : paragraphes, retours à la ligne, gras, italique, listes, intertitres, citations, code et séparateurs. Un titre, quel que soit son niveau, devient un intertitre, distinct des titres de l'écran ;
   - une image facultative ;
   - des avertissements de contenu facultatifs, en texte libre (300 caractères au plus) ;
   - des places minimum et maximum, MJ non compris, avec 1 ≤ minimum ≤ maximum ;

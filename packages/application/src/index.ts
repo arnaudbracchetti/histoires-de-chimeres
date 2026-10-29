@@ -8,6 +8,8 @@ export {
 export { ReadFrontOffice } from './convention/read-front-office.js';
 export { UpdateConvention } from './convention/update-convention.js';
 export { VerifyPresenceCode } from './convention/verify-presence-code.js';
+export type { FrontOfficeScheduleReader } from './front-office/front-office-schedule-reader.js';
+export { ReadFrontOfficeSchedule } from './front-office/read-front-office-schedule.js';
 export { Identify, type IdentifyResult } from './linked-phone/identify.js';
 export type { LinkedPhoneReader } from './linked-phone/linked-phone-reader.js';
 export type { LinkedPhone, LinkedPhoneRepository } from './linked-phone/linked-phone-repository.js';

@@ -1,6 +1,8 @@
-// Garde-fou de la typographie française (docs/design/ton.md), lancé par `pnpm lint`.
+#!/usr/bin/env node
+// Garde-fou de la typographie française (docs/design/ton.md), lancé par le `pnpm lint` de chaque
+// front et de ce package : `check-typography src`.
 // 1. Aucune espace insécable ni fine insécable écrite en clair : invisibles, elles ne se relisent pas.
-//    Le code passe par NBSP et THIN_NBSP (src/app/typography/french.ts), un gabarit par &nbsp; et &#8239;.
+//    Le code passe par NBSP et THIN_NBSP (`@chimeres/design`, src/typography/french.ts), un gabarit par &nbsp; et &#8239;.
 // 2. Hors spec, hors commentaire et hors du module typography/ qui la définit, des guillemets
 //    entourés d'espaces ordinaires n'apparaissent que dans une phrase étiquetée fr`…`, qui pose
 //    elle-même les espaces insécables.
@@ -23,7 +25,7 @@ function* sourceFiles(dir) {
 
 const problems = [];
 for (const file of sourceFiles(root)) {
-  const exempt = file.endsWith('.spec.ts') || file.includes(join('app', 'typography'));
+  const exempt = file.endsWith('.spec.ts') || file.includes(join('src', 'typography'));
   readFileSync(file, 'utf8')
     .split('\n')
     .forEach((line, index) => {

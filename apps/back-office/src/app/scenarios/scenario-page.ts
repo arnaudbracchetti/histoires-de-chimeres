@@ -9,7 +9,7 @@ import { ScenarioImage } from './scenario-image';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
-import { fr } from '../typography/french';
+import { fr } from '@chimeres/design';
 import { Confirmation } from '../ui/confirmation';
 import { MoreMenu, type MoreMenuItem } from '../ui/more-menu';
 

@@ -29,6 +29,9 @@ export {
   PRESENCE_CODE_PARAM,
   frontOfficeEndpoints,
   type FrontOfficeDto,
+  type FrontOfficeGameDto,
+  type FrontOfficeScheduleDto,
+  type FrontOfficeTimeSlotDto,
   type PresenceCodeBody,
 } from './front-office.js';
 export { healthEndpoints, type HealthDto } from './health.js';

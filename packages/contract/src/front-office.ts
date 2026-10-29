@@ -1,4 +1,5 @@
 import { endpoint } from './endpoint.js';
+import type { SeatsDto } from './scenario.js';
 
 /** Paramètre de l'adresse du QR code de l'affiche, qui porte le code de présence : `/?code=K7M2`. */
 export const PRESENCE_CODE_PARAM = 'code';
@@ -13,9 +14,63 @@ export type PresenceCodeBody = {
   presenceCode: string;
 };
 
+/** Un créneau du programme du front office. */
+export type FrontOfficeTimeSlotDto = {
+  id: string;
+  /** Rang dans la journée, à partir de 1 : « Créneau 2 » (PR-8). */
+  rank: number;
+  /** `HH:MM`, à l'heure de Paris. */
+  start: string;
+  /** `HH:MM`, après le début, le même jour. */
+  end: string;
+};
+
+/** Une partie du programme du front office, avec tout le contenu de sa fiche (§5.3, ADR 0011). */
+export type FrontOfficeGameDto = {
+  id: string;
+  /** Ses créneaux, dans l'ordre de la journée : deux pour une partie double. */
+  timeSlotIds: string[];
+  tableName: string;
+  title: string;
+  system: string;
+  gameMasterNickname: string;
+  /** URL de l'image, ou `null` : le front dessine alors l'illustration par défaut (PR-7). */
+  imageUrl: string | null;
+  /** En Markdown restreint : paragraphes, gras, italique et listes. */
+  presentation: string;
+  /** Vide sans avertissement. */
+  contentWarnings: string;
+  /** Ses places : celles de son scénario (PR-4). */
+  seats: SeatsDto;
+  /** Le nombre d'inscrits. */
+  signUpCount: number;
+  /** Partie très demandée : ses inscrits dépassent ses places maximum (IN-5). */
+  oversubscribed: boolean;
+};
+
+/**
+ * Le programme, tel que le lit le téléphone : de quoi le garder lisible hors ligne, et cacher
+ * lui-même les créneaux terminés, selon son heure (ADR 0011).
+ */
+export type FrontOfficeScheduleDto = {
+  /** Date de la convention, `AAAA-MM-JJ`, ou `null` tant qu'elle n'est pas fixée : aucun créneau ne se termine. */
+  date: string | null;
+  /** Dans l'ordre de la journée. */
+  timeSlots: FrontOfficeTimeSlotDto[];
+  /** Dans l'ordre naturel de leur table. */
+  games: FrontOfficeGameDto[];
+  /**
+   * La fin de la convention : la fin de son dernier créneau (`HH:MM`), le jour de sa date. `null`
+   * sans date ou sans créneau.
+   */
+  end: { date: string; time: string } | null;
+};
+
 /** Le front office se ferme à la fin de la convention : ses endpoints refusent alors avec `convention-ended`. */
 export const frontOfficeEndpoints = {
   read: endpoint<FrontOfficeDto>('GET', 'front-office'),
   /** Vérifie le code de présence, sans rien changer : 204, ou `presence-code-wrong` (ID-2). */
   verifyPresenceCode: endpoint<void, never, PresenceCodeBody>('POST', 'front-office/presence-code'),
+  /** Le programme, servi au seul téléphone relié : sinon `phone-not-linked`. */
+  readSchedule: endpoint<FrontOfficeScheduleDto>('GET', 'front-office/schedule'),
 };

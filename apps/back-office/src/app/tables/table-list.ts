@@ -3,7 +3,7 @@ import { tableEndpoints, type TableDto } from '@chimeres/contract';
 import { ConventionStore } from '../convention/convention-store';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
-import { fr } from '../typography/french';
+import { fr } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { AddCard, Card } from '../ui/card';
 import { CardEditing } from '../ui/card-editing';

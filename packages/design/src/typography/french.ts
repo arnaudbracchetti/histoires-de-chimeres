@@ -1,6 +1,7 @@
 /**
  * Typographie française de docs/design/ton.md. Les espaces spéciales ne s'écrivent jamais en clair
- * dans le code : invisibles, elles ne se relisent pas (`pnpm --filter back-office lint` le vérifie).
+ * dans le code : invisibles, elles ne se relisent pas (`check-typography`, lancé par `pnpm lint`, le
+ * vérifie).
  */
 
 /** Espace insécable (U+00A0) : dans « 14 h 00 », devant « : », à l'intérieur des guillemets. */
