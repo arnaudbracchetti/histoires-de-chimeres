@@ -172,3 +172,54 @@ describe('Identification par un pseudo (ID-1)', () => {
     expect(convention.participants).toEqual([]);
   });
 });
+
+describe('Identification par le pseudo d’un MJ (ID-3, ID-4)', () => {
+  /** Une convention dont « Brann » est MJ, sous l'identifiant g1, avec son participant p-g1. */
+  function withGameMasterBrann(): Convention {
+    const convention = aConvention();
+    convention.addGameMaster('g1', 'p-g1', 'Brann');
+    return convention;
+  }
+
+  it('demande la confirmation « MJ », selon ID-7, sans rien créer', () => {
+    const convention = withGameMasterBrann();
+
+    const identification = convention.identify('p1', 'K7M2', ' BRANN ', null, NOW);
+
+    expect(identification).toEqual({
+      verdict: 'confirm',
+      confirmation: 'game-master',
+      nickname: 'Brann',
+    });
+    expect(participantsOf(convention)).toEqual(['p-g1 Brann']);
+  });
+
+  it('donne à relier le participant du MJ avec la confirmation « MJ », sans rien créer', () => {
+    const convention = withGameMasterBrann();
+
+    const identification = convention.identify('p1', 'K7M2', 'brann', 'game-master', NOW);
+
+    expect(identification).toEqual({
+      verdict: 'link',
+      created: false,
+      participant: expect.objectContaining({ id: 'p-g1' }),
+    });
+    expect(participantsOf(convention)).toEqual(['p-g1 Brann']);
+  });
+
+  it('redemande la confirmation « MJ » à qui confirme être participant (ID-4)', () => {
+    const convention = withGameMasterBrann();
+
+    const identification = convention.identify('p1', 'K7M2', 'Brann', 'participant', NOW);
+
+    expect(identification).toMatchObject({ verdict: 'confirm', confirmation: 'game-master' });
+  });
+
+  it('demande la confirmation « participant » à qui confirme être MJ d’un pseudo de participant', () => {
+    const convention = withElodie();
+
+    const identification = convention.identify('p2', 'K7M2', 'Élodie', 'game-master', NOW);
+
+    expect(identification).toMatchObject({ verdict: 'confirm', confirmation: 'participant' });
+  });
+});

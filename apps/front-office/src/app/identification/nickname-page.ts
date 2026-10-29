@@ -19,14 +19,15 @@ import { Icon } from '../ui/icon';
 
 /**
  * S'identifier par un pseudo (ID-1) : l'écran « Ton pseudo », puis, pour un pseudo existant,
- * « Ce pseudo existe déjà ». Chaque étape a son propre retour, sans compter sur le geste de
- * retour du téléphone. Le code de présence gardé part avec le pseudo (ID-2).
+ * « Ce pseudo existe déjà », ou « Es-tu bien ce MJ ? » pour celui d'un MJ (ID-3). Chaque
+ * étape a son propre retour, sans compter sur le geste de retour du téléphone. Le code de
+ * présence gardé part avec le pseudo (ID-2).
  */
 @Component({
   selector: 'app-nickname-page',
   imports: [Button, Field, FormField, FormRoot, Icon],
   template: `
-    @if (existing(); as nickname) {
+    @if (existing(); as pending) {
       <button
         type="button"
         appButton="icon"
@@ -37,13 +38,19 @@ import { Icon } from '../ui/icon';
       >
         <app-icon name="chevron-left" />
       </button>
-      <p class="nickname">{{ nickname }}</p>
-      <h1>Ce pseudo existe déjà</h1>
-      <p>{{ question }}</p>
-      <p>{{ whoCreatedIt }}</p>
-      <p class="meta">{{ inDoubt }}</p>
+      <p class="nickname">{{ pending.nickname }}</p>
+      @if (pending.confirmation === 'game-master') {
+        <h1>{{ gameMasterQuestion }}</h1>
+        <p>{{ whatGameMasterLinkOpens }}</p>
+        <p class="meta">{{ gameMasterInDoubt }}</p>
+      } @else {
+        <h1>Ce pseudo existe déjà</h1>
+        <p>{{ question }}</p>
+        <p>{{ whoCreatedIt }}</p>
+        <p class="meta">{{ inDoubt }}</p>
+      }
       <div class="actions">
-        <button type="button" appButton="primary" (click)="confirm()">
+        <button type="button" appButton="primary" (click)="confirm(pending.confirmation)">
           {{ confirming() ? 'Vérification…' : "Oui, c'est moi" }}
         </button>
         <button type="button" appButton="secondary" (click)="chooseAnother()">
@@ -119,6 +126,9 @@ export class NicknamePage {
   protected readonly question = fr`Est-ce bien toi qui l'as créé ?`;
   protected readonly whoCreatedIt = fr`C'est toi si tu as déjà tapé ce pseudo plus tôt dans la journée, sur ce téléphone ou un autre. Tu retrouves alors tes inscriptions.`;
   protected readonly inDoubt = fr`Si quelqu'un d'autre l'a choisi, prends-en un autre : sinon, tu t'inscrirais à sa place. En cas de doute, demande à un Organisateur, à l'accueil : il retrouve les pseudos et leurs inscriptions.`;
+  protected readonly gameMasterQuestion = fr`Es-tu bien ce MJ ?`;
+  protected readonly whatGameMasterLinkOpens = fr`Ce pseudo est celui d'un MJ de la convention. Si c'est toi, ton téléphone te montre les parties que tu mènes, dans Mes parties, et reçoit leurs notifications.`;
+  protected readonly gameMasterInDoubt = fr`Si ce n'est pas toi, choisis un autre pseudo. En cas de doute, demande à un Organisateur, à l'accueil.`;
 
   private readonly apiCall = injectApiCall();
   private readonly alerts = inject(Alerts);
@@ -127,8 +137,11 @@ export class NicknamePage {
   private readonly presenceCode = inject(PresenceCodeStore);
 
   private readonly model = signal({ nickname: '' });
-  /** Le pseudo existant, tel qu'il s'affiche, en attente de confirmation. */
-  protected readonly existing = signal<string | null>(null);
+  /** Le pseudo existant, tel qu'il s'affiche, et la confirmation qu'il attend. */
+  protected readonly existing = signal<{
+    nickname: string;
+    confirmation: IdentityConfirmationDto;
+  } | null>(null);
   protected readonly confirming = signal(false);
 
   protected readonly form = form(
@@ -142,11 +155,11 @@ export class NicknamePage {
   );
 
   /** « Oui, c'est moi » : relie le téléphone au pseudo existant. Un refus part en alerte. */
-  protected async confirm(): Promise<void> {
+  protected async confirm(confirmation: IdentityConfirmationDto): Promise<void> {
     if (this.confirming()) return;
     this.confirming.set(true);
     try {
-      await this.link('participant');
+      await this.link(confirmation);
     } catch (error) {
       const { alert, fieldErrors } = readProblem(error);
       this.alerts.error(alert ?? { title: fieldErrors.map(({ message }) => message).join(' ') });
@@ -179,7 +192,8 @@ export class NicknamePage {
       this.alerts.error({ title: fieldErrors.map(({ message }) => message).join(' ') });
       return this.presenceCode.forget();
     }
-    if (result.status === 'confirmation-needed') this.existing.set(result.nickname);
-    else this.linkedPhone.linked(result.nickname);
+    if (result.status === 'confirmation-needed') {
+      this.existing.set({ nickname: result.nickname, confirmation: result.confirmation });
+    } else this.linkedPhone.linked(result.nickname);
   }
 }

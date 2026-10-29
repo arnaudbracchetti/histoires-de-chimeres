@@ -26,7 +26,7 @@ export type ConventionState = {
   tables: Table[];
   /** Dans n'importe quel ordre : `gameMasters` les rend dans l'ordre naturel de leur pseudo. */
   gameMasters: GameMaster[];
-  /** Dans n'importe quel ordre. */
+  /** Dans n'importe quel ordre. Ceux des MJ peuvent y manquer : chaque MJ apporte le sien. */
   participants: Participant[];
   /** Les parties programmées, dans l'ordre de leur programmation. */
   games: Game[];
@@ -79,7 +79,14 @@ export class Convention {
       Day.ordering(timeSlots),
       UniquelyNamedCollection.holding(tables, TABLE_NAMING_RULES),
       UniquelyNamedCollection.holding(gameMasters, NICKNAME_RULES),
-      UniquelyNamedCollection.holding(participants, PARTICIPANT_NICKNAME_RULES),
+      UniquelyNamedCollection.holding(
+        new Map(
+          [...participants, ...gameMasters.map((gameMaster) => gameMaster.participant)].map(
+            (participant) => [participant.id, participant],
+          ),
+        ).values(),
+        PARTICIPANT_NICKNAME_RULES,
+      ),
       Schedule.holding(games),
     );
   }
@@ -136,8 +143,9 @@ export class Convention {
   /**
    * S'identifier par un pseudo (ID-1), derrière le code de présence (ID-2). Un pseudo nouveau est
    * créé, sous l'identifiant `newParticipantId`, et donné à relier. Un pseudo existant, comparé
-   * selon ID-7, demande d'abord une confirmation, et n'est donné à relier qu'avec elle : une simple
-   * question ne crée rien.
+   * selon ID-7, demande d'abord une confirmation, celle d'un MJ si c'est le sien (ID-3), et n'est
+   * donné à relier qu'avec elle : une simple question ne crée rien. Le pseudo d'un MJ est celui de
+   * son participant : il n'en devient jamais un autre (ID-4, ADR 0012).
    */
   identify(
     newParticipantId: string,
@@ -154,15 +162,23 @@ export class Convention {
       this.allParticipants = this.allParticipants.afterAdding(participant);
       return { verdict: 'link', created: true, participant };
     }
-    if (confirmation !== 'participant') {
-      return { verdict: 'confirm', confirmation: 'participant', nickname: existing.nickname.text };
+    const expected = this.isGameMaster(existing) ? 'game-master' : 'participant';
+    if (confirmation !== expected) {
+      return { verdict: 'confirm', confirmation: expected, nickname: existing.nickname.text };
     }
     return { verdict: 'link', created: false, participant: existing };
   }
 
-  /** Les participants, dans l'ordre naturel de leur pseudo. */
+  /** Les participants, MJ compris, dans l'ordre naturel de leur pseudo. */
   get participants(): readonly Participant[] {
     return this.allParticipants.inNaturalOrder;
+  }
+
+  /** Le participant a un rôle de MJ (ADR 0012). */
+  private isGameMaster(participant: Participant): boolean {
+    return this.allGameMasters.inNaturalOrder.some(
+      (gameMaster) => gameMaster.participant.id === participant.id,
+    );
   }
 
   rename(name: string): void {
@@ -264,30 +280,41 @@ export class Convention {
     return this.allGameMasters.inNaturalOrder;
   }
 
-  /** Ajoute un MJ, au pseudo obligatoire, borné et unique parmi les MJ (PR-12, ID-7). */
-  addGameMaster(id: string, nickname: string): void {
-    this.allGameMasters = this.allGameMasters.afterAdding(
-      new GameMaster(id, ComparableName.of(nickname)),
+  /**
+   * Ajoute un MJ, avec son participant (`participantId`), au pseudo obligatoire, borné et unique
+   * dans la convention, parmi les MJ comme parmi les participants (PR-12, ID-4, ID-7, ADR 0012).
+   */
+  addGameMaster(id: string, participantId: string, nickname: string): void {
+    const gameMaster = new GameMaster(
+      id,
+      new Participant(participantId, ComparableName.of(nickname)),
     );
-  }
-
-  /** Change le pseudo d'un MJ, à tout moment (PR-12). */
-  renameGameMaster(id: string, nickname: string): void {
-    const gameMaster = this.allGameMasters.existingItem(id);
-    this.allGameMasters = this.allGameMasters.afterReplacing(
-      gameMaster.afterRenaming(ComparableName.of(nickname)),
-    );
+    const gameMasters = this.allGameMasters.afterAdding(gameMaster);
+    this.allParticipants = this.allParticipants.afterAdding(gameMaster.participant);
+    this.allGameMasters = gameMasters;
   }
 
   /**
-   * Supprime un MJ, et ses disponibilités avec lui. Un MJ qui a au moins un scénario reste (PR-12) :
-   * le catalogue, entier, le dit.
+   * Change le pseudo d'un MJ, à tout moment, aux mêmes règles qu'à sa création : celui de son
+   * participant, dont les téléphones restent reliés (PR-12).
+   */
+  renameGameMaster(id: string, nickname: string): void {
+    const renamed = this.allGameMasters.existingItem(id).afterRenaming(ComparableName.of(nickname));
+    const gameMasters = this.allGameMasters.afterReplacing(renamed);
+    this.allParticipants = this.allParticipants.afterReplacing(renamed.participant);
+    this.allGameMasters = gameMasters;
+  }
+
+  /**
+   * Supprime un MJ, et avec lui ses disponibilités et son participant, donc ses téléphones reliés.
+   * Un MJ qui a au moins un scénario reste (PR-12) : le catalogue, entier, le dit.
    */
   removeGameMaster(id: string, catalogue: ScenarioCatalogue): void {
-    this.allGameMasters.verifyItemExists(id);
+    const gameMaster = this.allGameMasters.existingItem(id);
     const scenarios = catalogue.scenarioCountOfGameMaster(id);
     if (scenarios > 0) throw new Refusal('game-master-has-scenarios', { scenarios });
     this.allGameMasters = this.allGameMasters.afterRemoving(id);
+    this.allParticipants = this.allParticipants.afterRemoving(gameMaster.participant.id);
   }
 
   /** Le MJ se déclare disponible sur un créneau existant (PR-2). Déclarer deux fois ne change rien. */
@@ -510,12 +537,15 @@ export class Convention {
 /** L'id d'une partie qui n'existera pas : un verdict ne programme rien. */
 const HYPOTHETICAL_GAME_ID = '';
 
-/** La réponse « oui » à la confirmation d'un pseudo existant : « Est-ce bien toi qui l'as créé ? ». */
-export type IdentityConfirmation = 'participant';
+/**
+ * La réponse « oui » à la confirmation d'un pseudo existant : « Est-ce bien toi qui l'as créé ? »
+ * pour un participant (ID-1), « Es-tu bien ce MJ ? » pour un MJ (ID-3).
+ */
+export type IdentityConfirmation = 'participant' | 'game-master';
 
 /**
- * Le verdict d'une identification : le participant à relier au téléphone (`created` s'il vient
- * d'être créé), ou la confirmation à demander, avec le pseudo existant tel qu'il s'affiche.
+ * Le verdict d'une identification : le participant à relier au téléphone, MJ ou non (`created` s'il
+ * vient d'être créé), ou la confirmation à demander, avec le pseudo existant tel qu'il s'affiche.
  */
 export type Identification =
   | { verdict: 'link'; created: boolean; participant: Participant }
@@ -543,7 +573,10 @@ const TABLE_NAMING_RULES: NamingRules<Table> = {
   refuseTakenName: (namesake) => new Refusal('table-name-taken', { name: namesake.name.text }),
 };
 
-/** Le pseudo d'un MJ : obligatoire, borné, unique parmi les MJ (PR-12, ID-7). */
+/**
+ * Le pseudo d'un MJ : obligatoire, borné, unique parmi les MJ (PR-12, ID-7). Vérifié avant celui de
+ * son participant, il donne son motif au refus d'un pseudo de MJ.
+ */
 const NICKNAME_RULES: NamingRules<GameMaster> = {
   nameOf: (gameMaster) => gameMaster.nickname,
   maxLength: Convention.NICKNAME_MAX_LENGTH,
@@ -555,8 +588,9 @@ const NICKNAME_RULES: NamingRules<GameMaster> = {
 };
 
 /**
- * Le pseudo d'un participant : obligatoire, borné, unique parmi les participants (ID-1, ID-7).
- * `identify()` relie un pseudo déjà pris au lieu de le refuser.
+ * Le pseudo d'un participant, MJ compris : obligatoire, borné, unique parmi les participants (ID-1,
+ * ID-4, ID-7). `identify()` relie un pseudo déjà pris au lieu de le refuser ; seuls l'ajout et le
+ * renommage d'un MJ le refusent, une fois écarté un autre MJ (PR-12).
  */
 const PARTICIPANT_NICKNAME_RULES: NamingRules<Participant> = {
   nameOf: (participant) => participant.nickname,
@@ -565,5 +599,5 @@ const PARTICIPANT_NICKNAME_RULES: NamingRules<Participant> = {
   refuseEmptyName: () => new Refusal('nickname-required', {}),
   refuseTooLongName: (max) => new Refusal('nickname-too-long', { max }),
   refuseTakenName: (namesake) =>
-    new Refusal('nickname-taken', { nickname: namesake.nickname.text }),
+    new Refusal('nickname-taken-by-participant', { nickname: namesake.nickname.text }),
 };

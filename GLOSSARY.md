@@ -98,7 +98,7 @@ Code unique de la convention, fixé à sa création, que le QR code affiché sur
 _Avoid_: Code de salle, code d'accès, code d'accès anticipé, mot de passe
 
 **MJ** · `GameMaster`:
-Personne connue des Organisateurs avant la convention, qui mène des parties ; elle ne joue pas sur le ou les créneaux où elle mène une partie, et peut jouer sur les autres.
+Personne connue des Organisateurs avant la convention, qui mène des parties ; elle ne joue pas sur le ou les créneaux où elle mène une partie, et peut jouer sur les autres. Un MJ est un participant, qui a en plus ce rôle : son pseudo est celui de son participant.
 _Avoid_: Meneur, GM, animateur, Gm (abrégé)
 
 **Organisateur** · `Organizer`:

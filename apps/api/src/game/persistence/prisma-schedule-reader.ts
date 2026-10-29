@@ -7,10 +7,14 @@ import {
   SCENARIO_SUMMARY_SELECT,
   toScenarioSummary,
 } from '../../scenario/persistence/scenario-summary.js';
+import {
+  SCENARIO_GAME_MASTER_SELECT,
+  toScenarioGameMaster,
+} from '../../scenario/persistence/scenario-game-master.js';
 
 const SCHEDULE_SCENARIO_SELECT = {
   ...SCENARIO_SUMMARY_SELECT,
-  gameMaster: { select: { id: true, nickname: true } },
+  gameMaster: SCENARIO_GAME_MASTER_SELECT,
 };
 
 @Injectable()
@@ -27,7 +31,10 @@ export class PrismaScheduleReader implements ScheduleReader {
     });
     return rows.map(({ id, scenario: { gameMaster, ...summary }, timeSlots }) => {
       const slots = timeSlots.sort((a, b) => a.timeSlot.startMinute - b.timeSlot.startMinute);
-      const scenario = { ...toScenarioSummary(summary), gameMaster };
+      const scenario = {
+        ...toScenarioSummary(summary),
+        gameMaster: toScenarioGameMaster(gameMaster),
+      };
       return {
         id,
         tableId: slots[0]!.tableId,
@@ -44,7 +51,10 @@ export class PrismaScheduleReader implements ScheduleReader {
       select: SCHEDULE_SCENARIO_SELECT,
     });
     return rows
-      .map(({ gameMaster, ...summary }) => ({ ...toScenarioSummary(summary), gameMaster }))
+      .map(({ gameMaster, ...summary }) => ({
+        ...toScenarioSummary(summary),
+        gameMaster: toScenarioGameMaster(gameMaster),
+      }))
       .sort(byTitle);
   }
 }

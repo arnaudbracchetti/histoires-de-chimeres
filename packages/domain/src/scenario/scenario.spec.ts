@@ -17,7 +17,7 @@ function aConvention(): Convention {
     version: 0,
     presenceCode: PresenceCode.of('K7M2'),
   });
-  convention.addGameMaster('g1', 'Kaïros');
+  convention.addGameMaster('g1', 'p-g1', 'Kaïros');
   return convention;
 }
 

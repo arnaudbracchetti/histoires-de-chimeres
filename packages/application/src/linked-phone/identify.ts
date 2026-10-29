@@ -10,7 +10,7 @@ export type IdentifyResult =
   | Extract<LinkPhoneDto, { status: 'confirmation-needed' }>;
 
 /**
- * S'identifier par un pseudo (ID-1) : la convention rend son verdict, et n'est sauvegardée que si
+ * S'identifier par un pseudo (ID-1), celui d'un MJ compris (ID-3) : la convention rend son verdict, et n'est sauvegardée que si
  * elle a créé le participant. Un pseudo à relier l'est sous un nouvel identifiant de téléphone ;
  * si le téléphone était déjà relié, ce lien est coupé d'abord : un pseudo par téléphone (ID-8).
  */

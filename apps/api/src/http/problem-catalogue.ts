@@ -138,6 +138,12 @@ export const problemCatalogue: Catalogue = {
     detail: ({ nickname }) => `Le MJ « ${nickname} » porte déjà ce pseudo : choisis-en un autre.`,
     field: 'nickname',
   },
+  'nickname-taken-by-participant': {
+    title: 'Pseudo déjà pris',
+    detail: ({ nickname }) =>
+      `Le participant « ${nickname} » porte déjà ce pseudo : choisis-en un autre.`,
+    field: 'nickname',
+  },
   'game-master-has-scenarios': {
     title: 'MJ avec des scénarios',
     detail: ({ scenarios }) =>

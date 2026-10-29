@@ -160,6 +160,53 @@ describe('NicknamePage', () => {
     });
   });
 
+  describe('pseudo d’un MJ (ID-3)', () => {
+    async function confirmationOf(typed: string) {
+      const rendered = render();
+      await rendered.enter(typed);
+      answer({ status: 'confirmation-needed', confirmation: 'game-master', nickname: 'Brann' });
+      await rendered.settle();
+      return rendered;
+    }
+
+    it('demande « Es-tu bien ce MJ ? », dit ce que le lien ouvre, et renvoie vers un Organisateur', async () => {
+      const { heading, page } = await confirmationOf('brann');
+
+      expect(heading()).toBe(`Es-tu bien ce MJ${'\u202f'}?`);
+      expect(page.querySelector('.nickname')?.textContent?.trim()).toBe('Brann');
+      expect(page.textContent).toContain('les parties que tu mènes');
+      expect(page.textContent).toContain('leurs notifications');
+      expect(page.textContent).toContain(`demande à un Organisateur, à l'accueil`);
+      expect(nickname()).toBeNull();
+    });
+
+    it('relie le téléphone au MJ sur « Oui, c’est moi »', async () => {
+      const { tap, settle } = await confirmationOf('brann');
+
+      await tap("Oui, c'est moi");
+      const request = http().expectOne(LINK);
+      expect(request.request.body).toEqual({
+        presenceCode: 'K7M2',
+        nickname: 'brann',
+        confirmation: 'game-master',
+      });
+      request.flush({ status: 'linked', nickname: 'Brann' } satisfies LinkPhoneDto);
+      await settle();
+
+      expect(nickname()).toBe('Brann');
+    });
+
+    it('revient au champ du pseudo sur « Non, choisir un autre pseudo »', async () => {
+      const { tap, heading, input } = await confirmationOf('brann');
+
+      await tap('Non, choisir un autre pseudo');
+
+      http().expectNone(LINK);
+      expect(heading()).toBe('Ton pseudo');
+      expect(input().value).toBe('brann');
+    });
+  });
+
   it('redemande le code de présence quand l’API le refuse (ID-2)', async () => {
     const { enter, settle } = render();
 

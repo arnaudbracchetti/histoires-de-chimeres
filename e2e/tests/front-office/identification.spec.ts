@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import {
   apiUrl,
+  gameMasterEndpoints,
   linkedPhoneEndpoints,
   PRESENCE_CODE_PARAM,
   type LinkPhoneBody,
@@ -74,6 +75,30 @@ test('un pseudo existant demande une confirmation avant de relier le téléphone
   await page.getByRole('button', { name: 'Continuer' }).click();
   await page.getByRole('button', { name: "Oui, c'est moi" }).click();
   // Affiché tel qu'il a été créé.
+  await expect(nicknameButton(page)).toHaveText(nickname);
+});
+
+test('le pseudo d’un MJ demande « Es-tu bien ce MJ ? » avant de relier le téléphone (ID-3)', async ({
+  page,
+  request,
+}) => {
+  // Créé par un Organisateur, dans le back office.
+  const nickname = aNickname('Brann');
+  expect((await request.post(apiUrl(gameMasterEndpoints.add), { data: { nickname } })).ok()).toBe(
+    true,
+  );
+
+  await identify(page, nickname.toLowerCase());
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Es-tu bien ce MJ.\?$/);
+  await expect(page.getByText(nickname, { exact: true })).toBeVisible();
+  await expect(page.getByText('les parties que tu mènes')).toBeVisible();
+  await expect(page.getByText("demande à un Organisateur, à l'accueil")).toBeVisible();
+
+  await page.getByRole('button', { name: 'Non, choisir un autre pseudo' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ton pseudo');
+
+  await page.getByRole('button', { name: 'Continuer' }).click();
+  await page.getByRole('button', { name: "Oui, c'est moi" }).click();
   await expect(nicknameButton(page)).toHaveText(nickname);
 });
 

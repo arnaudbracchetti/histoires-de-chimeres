@@ -1,7 +1,10 @@
 import { endpoint } from './endpoint.js';
 
-/** Le « oui » à « Ce pseudo existe déjà. Est-ce bien toi qui l'as créé ? » (ID-1). */
-export type IdentityConfirmationDto = 'participant';
+/**
+ * Le « oui » à « Ce pseudo existe déjà. Est-ce bien toi qui l'as créé ? » (`participant`, ID-1), ou
+ * à « Es-tu bien ce MJ ? » (`game-master`, ID-3).
+ */
+export type IdentityConfirmationDto = 'participant' | 'game-master';
 
 export type LinkPhoneBody = {
   /** Le code de présence gardé par le téléphone (ID-2). */
@@ -13,8 +16,8 @@ export type LinkPhoneBody = {
 };
 
 /**
- * Le verdict de « s'identifier » : le téléphone est relié, ou le pseudo existe et demande une
- * confirmation. `nickname` est le pseudo tel qu'il s'affiche, celui de sa création.
+ * Le verdict de « s'identifier » : le téléphone est relié, ou le pseudo existe et demande la
+ * confirmation de son participant ou de son MJ. `nickname` est le pseudo tel qu'il s'affiche.
  */
 export type LinkPhoneDto =
   | { status: 'linked'; nickname: string }

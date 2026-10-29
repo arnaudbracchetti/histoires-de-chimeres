@@ -49,6 +49,12 @@ export class PrismaConventionRepository implements ConventionRepository {
         },
       },
     });
+    const participantById = new Map(
+      participants.map((participant) => [
+        participant.id,
+        new Participant(participant.id, ComparableName.of(participant.nickname)),
+      ]),
+    );
     const convention = Convention.restore({
       id,
       name,
@@ -66,13 +72,11 @@ export class PrismaConventionRepository implements ConventionRepository {
         (gameMaster) =>
           new GameMaster(
             gameMaster.id,
-            ComparableName.of(gameMaster.nickname),
+            participantById.get(gameMaster.participantId)!,
             gameMaster.availabilities.map(({ timeSlotId }) => timeSlotId),
           ),
       ),
-      participants: participants.map(
-        (participant) => new Participant(participant.id, ComparableName.of(participant.nickname)),
-      ),
+      participants: [...participantById.values()],
       games: games.map(
         (game) =>
           new Game(
@@ -153,15 +157,16 @@ export class PrismaConventionRepository implements ConventionRepository {
       for (const { id, name } of tables.changed) {
         await tx.table.update({ where: { id }, data: { name } });
       }
-      await tx.gameMaster.createMany({
-        data: gameMasters.added.map((row) => ({ ...row, conventionId })),
-      });
-      for (const { id, nickname } of gameMasters.changed) {
-        await tx.gameMaster.update({ where: { id }, data: { nickname } });
-      }
-      // Le pseudo d'un participant ne se modifie pas (ID-9) : il n'a pas de ligne changée.
+      // Un MJ tient son participant (RESTRICT) : le participant arrive d'abord.
       await tx.participant.createMany({
         data: participants.added.map((row) => ({ ...row, conventionId })),
+      });
+      // Seul le renommage d'un MJ change le pseudo d'un participant (ID-9, PR-12).
+      for (const { id, nickname } of participants.changed) {
+        await tx.participant.update({ where: { id }, data: { nickname } });
+      }
+      await tx.gameMaster.createMany({
+        data: gameMasters.added.map((row) => ({ ...row, conventionId })),
       });
       await tx.availability.createMany({ data: availabilities.added });
       await tx.game.createMany({

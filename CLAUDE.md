@@ -79,7 +79,7 @@ Langues ([ADR 0003](docs/adr/0003-code-en-anglais-glossaire-bilingue.md)) :
 Points structurants, répartis entre plusieurs documents :
 
 - **Identité remplaçable** (ADR 0009, qui remplace l'ADR 0001) : le système identifie un participant par un identifiant interne ; le pseudo n'est qu'un nom affiché. On s'identifie par son seul pseudo, sans secret, derrière le code de présence de la convention. Ce mécanisme doit pouvoir être remplacé (par des badges QR, par exemple) sans toucher au reste du domaine.
-- **Une personne, un compte** : un MJ est aussi un participant, et une même personne peut être MJ et Organisateur. Sur le téléphone, saisir le pseudo d'un MJ le relie à ce MJ après une confirmation, sans code.
+- **Une personne, un compte** (ADR 0012) : un MJ est aussi un participant, qui porte son pseudo, et une même personne peut être MJ et Organisateur. Sur le téléphone, saisir le pseudo d'un MJ le relie à ce MJ après une confirmation, sans code.
 - **Cycle de vie d'un créneau** : inscriptions ouvertes → tirage lancé (inscriptions fermées) → résultat provisoire, ajustable → publication (résultat figé). Programmer une partie depuis la réserve annule le tirage provisoire et rouvre les inscriptions du créneau (TI-6).
 - **Le tirage** est le cœur du métier. Il obéit à un ordre de priorités strict (TI-4), et une partie double est tirée avec son premier créneau (TI-3).
 - **Pas de donnée nominative côté participant** : seuls les emails des MJ et des Organisateurs sont stockés, et ils ne servent qu'aux liens magiques du back office.

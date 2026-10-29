@@ -5,5 +5,5 @@ import { z } from 'zod';
 export const linkPhoneBodySchema = z.strictObject({
   presenceCode: z.string(),
   nickname: z.string(),
-  confirmation: z.literal('participant').nullable(),
+  confirmation: z.enum(['participant', 'game-master']).nullable(),
 }) satisfies z.ZodType<LinkPhoneBody>;

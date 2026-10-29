@@ -33,6 +33,8 @@ export type RefusalParams = {
   'nickname-too-long': { max: number };
   /** `nickname` : le pseudo du MJ qui le porte déjà, tel qu'il s'affiche. */
   'nickname-taken': { nickname: string };
+  /** `nickname` : le pseudo du participant qui le porte déjà, tel qu'il s'affiche (PR-12, ID-4). */
+  'nickname-taken-by-participant': { nickname: string };
   /** `scenarios` : le nombre de scénarios du MJ. */
   'game-master-has-scenarios': { scenarios: number };
   /** `nickname` : le pseudo du MJ ; `rank` : le rang du créneau. */

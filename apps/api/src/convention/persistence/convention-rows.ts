@@ -20,7 +20,7 @@ export function rowsOf(convention: Convention) {
     gameMasters: keyed(
       convention.gameMasters.map((gameMaster) => ({
         id: gameMaster.id,
-        nickname: gameMaster.nickname.text,
+        participantId: gameMaster.participant.id,
       })),
       ({ id }) => id,
     ),
@@ -33,6 +33,7 @@ export function rowsOf(convention: Convention) {
       ),
       ({ gameMasterId, timeSlotId }) => `${gameMasterId}:${timeSlotId}`,
     ),
+    /** MJ compris : le pseudo d'un MJ est celui de son participant (ADR 0012). */
     participants: keyed(
       convention.participants.map((participant) => ({
         id: participant.id,

@@ -11,10 +11,13 @@ import {
   toScenarioSummary,
 } from '../../scenario/persistence/scenario-summary.js';
 
-/** Le pseudo, les disponibilités et les parties dans l'ordre de la journée, et les scénarios. */
+/**
+ * Le pseudo, celui du participant (ADR 0012), les disponibilités et les parties dans l'ordre de la
+ * journée, et les scénarios.
+ */
 const SELECT = {
   id: true,
-  nickname: true,
+  participant: { select: { nickname: true } },
   availabilities: {
     select: { timeSlotId: true },
     orderBy: { timeSlot: { startMinute: 'asc' } },
@@ -55,10 +58,16 @@ export class PrismaGameMasterReader implements GameMasterReader {
   }
 }
 
-function toDto({ id, nickname, availabilities, scenarios, games }: GameMasterRow): GameMasterDto {
+function toDto({
+  id,
+  participant,
+  availabilities,
+  scenarios,
+  games,
+}: GameMasterRow): GameMasterDto {
   return {
     id,
-    nickname,
+    nickname: participant.nickname,
     availabilities: availabilities.map(({ timeSlotId }) => timeSlotId),
     scenarios: scenarios.map(toScenarioSummary).sort(byTitle),
     games: games.map(({ gameId, timeSlotId, table, game }) => ({

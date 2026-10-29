@@ -54,13 +54,14 @@ Un tap sur le bouton du pseudo ouvre une boîte sous lui, calée sur son bord dr
 
 ## Parcours d'identification
 
-Avant d'être relié à un pseudo, le téléphone passe par l'identification (ID-1, ID-2) : « Code de présence » s'il manque, puis « Ton pseudo », et « Ce pseudo existe déjà » pour un pseudo pris. « La convention est terminée » remplace tout après la fin du dernier créneau.
+Avant d'être relié à un pseudo, le téléphone passe par l'identification (ID-1, ID-2) : « Code de présence » s'il manque, puis « Ton pseudo », et « Ce pseudo existe déjà » pour un pseudo de participant pris, ou « Es-tu bien ce MJ ? » pour un pseudo de MJ (ID-3). « La convention est terminée » remplace tout après la fin du dernier créneau.
 
 - **Pas de coquille** : ni en-tête, ni onglets. Le motif gravé est en **filigrane**, centré et fixe ; le contenu est centré sur lui, verticalement comme horizontalement, et son texte aussi.
 - Un écran porte un titre (h1, Uncial Antiqua), quelques phrases courtes, puis son champ ou ses boutons.
-- **Une étape qui en suit une autre a son propre retour** : un bouton ‹ (`chevron-left`, « Retour ») en haut à gauche, hors du contenu centré. Le geste de retour du téléphone n'y suffit pas : la web app de l'iPhone n'en a pas. Revenir rend l'étape précédente avec ce qui y était tapé, focus sur son champ. « Ce pseudo existe déjà » revient ainsi à « Ton pseudo ». « Ton pseudo » n'a pas de retour : un code de présence accepté ne se redemande pas.
-- **Le pseudo d'un autre** (« Ce pseudo existe déjà ») s'affiche en grand au-dessus du titre, en Uncial Antiqua orange (`--font-size-mobile-hero`, interligne `--line-height-display`).
+- **Une étape qui en suit une autre a son propre retour** : un bouton ‹ (`chevron-left`, « Retour ») en haut à gauche, hors du contenu centré. Le geste de retour du téléphone n'y suffit pas : la web app de l'iPhone n'en a pas. Revenir rend l'étape précédente avec ce qui y était tapé, focus sur son champ. « Ce pseudo existe déjà » et « Es-tu bien ce MJ ? » reviennent ainsi à « Ton pseudo ». « Ton pseudo » n'a pas de retour : un code de présence accepté ne se redemande pas.
+- **Le pseudo d'un autre** (« Ce pseudo existe déjà », « Es-tu bien ce MJ ? ») s'affiche en grand au-dessus du titre, en Uncial Antiqua orange (`--font-size-mobile-hero`, interligne `--line-height-display`).
 - Deux choix s'empilent sur toute la largeur, le principal au-dessus : « Oui, c'est moi », puis « Non, choisir un autre pseudo ».
+- « Es-tu bien ce MJ ? » dit ce que le lien ouvre (les parties à mener, dans Mes parties, et leurs notifications), puis renvoie vers un Organisateur en cas de doute, comme « Ce pseudo existe déjà ».
 
 ## Champs et validation
 

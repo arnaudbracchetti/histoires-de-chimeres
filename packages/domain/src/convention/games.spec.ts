@@ -7,6 +7,7 @@ import { Convention } from './convention.js';
 import { PresenceCode } from './presence-code.js';
 import { Game } from './game.js';
 import { GameMaster } from './game-master.js';
+import { Participant } from './participant.js';
 import { Table } from './table.js';
 import { TimeOfDay } from './time-of-day.js';
 import { TimeSlot } from './time-slot.js';
@@ -34,8 +35,8 @@ function aConvention(): Convention {
   convention.addTimeSlot('s2', at('14:00'), at('16:30'));
   convention.addTable('t1', 'Table 1');
   convention.addTable('t2', 'Table 2');
-  convention.addGameMaster('g1', 'Élodie');
-  convention.addGameMaster('g2', 'Kaïros');
+  convention.addGameMaster('g1', 'p-g1', 'Élodie');
+  convention.addGameMaster('g2', 'p-g2', 'Kaïros');
   convention.declareAvailability('g1', 's1');
   convention.declareAvailability('g1', 's2');
   convention.declareAvailability('g2', 's1');
@@ -477,8 +478,8 @@ describe('Déplacer une partie (PR-17)', () => {
         new Table('t2', ComparableName.of('Table 2')),
       ],
       gameMasters: [
-        new GameMaster('g1', ComparableName.of('Élodie'), ['s1', 's2']),
-        new GameMaster('g2', ComparableName.of('Kaïros'), ['s1']),
+        new GameMaster('g1', new Participant('p-g1', ComparableName.of('Élodie')), ['s1', 's2']),
+        new GameMaster('g2', new Participant('p-g2', ComparableName.of('Kaïros')), ['s1']),
       ],
       participants: [],
       games: [new Game('p1', 'a', 'g1', 't1', ['s1']), new Game('p2', 'c', 'g2', 't2', ['s1'])],
@@ -547,7 +548,13 @@ describe('Déplacer une partie (PR-17)', () => {
           new TimeSlot('s2', at('14:00'), at('16:30')),
         ],
         tables: [new Table('t1', ComparableName.of('Table 1'))],
-        gameMasters: [new GameMaster('g1', ComparableName.of('Élodie'), ['s1', 's2', 's3'])],
+        gameMasters: [
+          new GameMaster('g1', new Participant('p-g1', ComparableName.of('Élodie')), [
+            's1',
+            's2',
+            's3',
+          ]),
+        ],
         participants: [],
         games: [new Game('p1', 'd', 'g1', 't1', ['s1', 's2'])],
         version: 0,
@@ -599,8 +606,8 @@ describe('Échanger deux parties (PR-17)', () => {
       ],
       tables: [new Table('t1', ComparableName.of('Table 1'))],
       gameMasters: [
-        new GameMaster('g1', ComparableName.of('Élodie'), ['s1', 's2']),
-        new GameMaster('g2', ComparableName.of('Kaïros'), ['s1', 's2']),
+        new GameMaster('g1', new Participant('p-g1', ComparableName.of('Élodie')), ['s1', 's2']),
+        new GameMaster('g2', new Participant('p-g2', ComparableName.of('Kaïros')), ['s1', 's2']),
       ],
       participants: [],
       games: [new Game('p1', 'a', 'g1', 't1', ['s1']), new Game('p2', 'c', 'g2', 't1', ['s2'])],
@@ -664,9 +671,9 @@ describe('Échanger deux parties (PR-17)', () => {
           new Table('t2', ComparableName.of('Table 2')),
         ],
         gameMasters: [
-          new GameMaster('g1', ComparableName.of('Élodie'), elodie),
-          new GameMaster('g2', ComparableName.of('Kaïros'), ['s1', 's2']),
-          new GameMaster('g3', ComparableName.of('Moïra'), ['s3']),
+          new GameMaster('g1', new Participant('p-g1', ComparableName.of('Élodie')), elodie),
+          new GameMaster('g2', new Participant('p-g2', ComparableName.of('Kaïros')), ['s1', 's2']),
+          new GameMaster('g3', new Participant('p-g3', ComparableName.of('Moïra')), ['s3']),
         ],
         participants: [],
         games: [
@@ -717,8 +724,12 @@ describe('Échanger deux parties (PR-17)', () => {
         ],
         tables: [new Table('t1', ComparableName.of('Table 1'))],
         gameMasters: [
-          new GameMaster('g1', ComparableName.of('Élodie'), ['s1', 's2', 's3']),
-          new GameMaster('g2', ComparableName.of('Kaïros'), ['s1', 's2']),
+          new GameMaster('g1', new Participant('p-g1', ComparableName.of('Élodie')), [
+            's1',
+            's2',
+            's3',
+          ]),
+          new GameMaster('g2', new Participant('p-g2', ComparableName.of('Kaïros')), ['s1', 's2']),
         ],
         participants: [],
         games: [
@@ -839,8 +850,8 @@ describe('Verdicts de déplacement', () => {
         new Table('t2', ComparableName.of('Table 2')),
       ],
       gameMasters: [
-        new GameMaster('g1', ComparableName.of('Élodie'), ['s1', 's2']),
-        new GameMaster('g2', ComparableName.of('Kaïros'), ['s1', 's2']),
+        new GameMaster('g1', new Participant('p-g1', ComparableName.of('Élodie')), ['s1', 's2']),
+        new GameMaster('g2', new Participant('p-g2', ComparableName.of('Kaïros')), ['s1', 's2']),
       ],
       participants: [],
       games: [

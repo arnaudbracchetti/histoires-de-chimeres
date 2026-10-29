@@ -50,13 +50,14 @@ model Table {
   @@index([conventionId])
 }
 
-/// MJ de la convention. Son pseudo est unique parmi les MJ, à la casse, aux accents et aux espaces
-/// près : le domaine le vérifie (PR-12, ID-7).
+/// MJ de la convention : un rôle de son participant, qui porte son pseudo (ADR 0012). Le
+/// participant ne part pas sans son MJ (RESTRICT) : le repository supprime le MJ, puis lui.
 model GameMaster {
   id             String         @id @db.Uuid
   conventionId   String         @db.Uuid
   convention     Convention     @relation(fields: [conventionId], references: [id], onDelete: Cascade)
-  nickname       String
+  participantId  String         @unique @db.Uuid
+  participant    Participant    @relation(fields: [participantId], references: [id], onDelete: Restrict)
   availabilities Availability[]
   scenarios      Scenario[]
   games          GameTimeSlot[]
@@ -64,13 +65,15 @@ model GameMaster {
   @@index([conventionId])
 }
 
-/// Participant de la convention (ID-1). Son pseudo est unique parmi les participants, à la casse,
-/// aux accents et aux espaces près : le domaine le vérifie (ID-7). Il ne se modifie pas (ID-9).
+/// Participant de la convention (ID-1), MJ compris (ADR 0012). Son pseudo est unique dans la
+/// convention, à la casse, aux accents et aux espaces près : le domaine le vérifie (ID-4, ID-7).
+/// Seul un Organisateur le modifie, en renommant son MJ (ID-9, PR-12).
 model Participant {
   id           String        @id @db.Uuid
   conventionId String        @db.Uuid
   convention   Convention    @relation(fields: [conventionId], references: [id], onDelete: Cascade)
   nickname     String
+  gameMaster   GameMaster?
   linkedPhones LinkedPhone[]
 
   @@index([conventionId])

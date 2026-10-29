@@ -4,9 +4,11 @@ import type { App } from 'supertest/types.js';
 import {
   apiUrl,
   conventionEndpoints,
+  gameMasterEndpoints,
   linkedPhoneEndpoints,
   timeSlotEndpoints,
   type ConventionDto,
+  type GameMasterDto,
   type LinkPhoneBody,
   type UpdateConventionBody,
 } from '@chimeres/contract';
@@ -153,12 +155,84 @@ describe('Téléphone relié à un pseudo', () => {
 
     it.each([
       ['un pseudo qui n’est pas un texte', { nickname: 42 }],
-      ['une confirmation inconnue', { nickname: 'Élodie', confirmation: 'game-master' }],
+      ['une confirmation inconnue', { nickname: 'Élodie', confirmation: 'organizer' }],
       ['un champ en trop', { nickname: 'Élodie', email: 'elodie@example.org' }],
     ])('refuse %s : 400 malformed-request', async (_, body) => {
       const response = await link(body as LinkPhoneBody).expect(400);
 
       expect(response.body).toMatchObject({ code: 'malformed-request' });
+    });
+  });
+
+  describe('le pseudo d’un MJ (ID-3, ID-4)', () => {
+    /** Crée le MJ, comme un Organisateur dans le back office : son identifiant. */
+    const gameMasterOf = async (nickname: string) => {
+      const response = await server()
+        .post(apiUrl(gameMasterEndpoints.add))
+        .send({ nickname })
+        .expect(201);
+      return (response.body as GameMasterDto[]).find(
+        (gameMaster) => gameMaster.nickname === nickname,
+      )!.id;
+    };
+    /** Un téléphone relié au MJ, après sa confirmation : son cookie. */
+    const gameMasterPhoneOf = async (nickname: string) =>
+      cookieOf(await link({ nickname, confirmation: 'game-master' }).expect(200));
+
+    it('demande « Es-tu bien ce MJ ? », selon ID-7, sans relier le téléphone', async () => {
+      await gameMasterOf('Brann');
+
+      const response = await link({ nickname: ' BRANN ' }).expect(200);
+
+      expect(response.body).toEqual({
+        status: 'confirmation-needed',
+        confirmation: 'game-master',
+        nickname: 'Brann',
+      });
+      expect(setCookieOf(response)).toBeUndefined();
+    });
+
+    it('relie le téléphone au MJ sur la confirmation « MJ », sans code', async () => {
+      await gameMasterOf('Brann');
+
+      const response = await link({ nickname: 'brann', confirmation: 'game-master' }).expect(200);
+
+      expect(response.body).toEqual({ status: 'linked', nickname: 'Brann' });
+      expect((await read(cookieOf(response)).expect(200)).body).toEqual({ nickname: 'Brann' });
+    });
+
+    it('ne crée jamais de participant sous le pseudo d’un MJ, même confirmé « participant »', async () => {
+      await gameMasterOf('Brann');
+
+      const response = await link({ nickname: 'Brann', confirmation: 'participant' }).expect(200);
+
+      expect(response.body).toMatchObject({ confirmation: 'game-master' });
+      expect(setCookieOf(response)).toBeUndefined();
+    });
+
+    it('garde les liens d’un MJ renommé, sous son nouveau pseudo (PR-12)', async () => {
+      const id = await gameMasterOf('Brann');
+      const phone = await gameMasterPhoneOf('Brann');
+
+      await server()
+        .put(apiUrl(gameMasterEndpoints.rename, { gameMasterId: id }))
+        .send({ nickname: 'Brann le Rouge' })
+        .expect(200);
+
+      expect((await read(phone).expect(200)).body).toEqual({ nickname: 'Brann le Rouge' });
+    });
+
+    it('coupe tous les liens d’un MJ supprimé (PR-12, ID-8)', async () => {
+      const id = await gameMasterOf('Brann');
+      const first = await gameMasterPhoneOf('Brann');
+      const second = await gameMasterPhoneOf('Brann');
+
+      await server()
+        .delete(apiUrl(gameMasterEndpoints.remove, { gameMasterId: id }))
+        .expect(204);
+
+      await read(first).expect(401);
+      await read(second).expect(401);
     });
   });
 

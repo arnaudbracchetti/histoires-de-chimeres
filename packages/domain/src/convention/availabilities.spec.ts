@@ -23,8 +23,8 @@ function aConvention(): Convention {
   });
   convention.addTimeSlot('s1', at('09:00'), at('11:30'));
   convention.addTimeSlot('s2', at('14:00'), at('16:30'));
-  convention.addGameMaster('g1', 'Élodie');
-  convention.addGameMaster('g2', 'Kaïros');
+  convention.addGameMaster('g1', 'p-g1', 'Élodie');
+  convention.addGameMaster('g2', 'p-g2', 'Kaïros');
   return convention;
 }
 

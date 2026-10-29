@@ -3,7 +3,10 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import {
   apiUrl,
+  conventionEndpoints,
   gameMasterEndpoints,
+  linkedPhoneEndpoints,
+  type ConventionDto,
   type GameMasterDto,
   type GameMasterNicknameBody,
 } from '@chimeres/contract';
@@ -79,6 +82,38 @@ describe('MJ', () => {
     });
     expect(response.body.detail).toContain('« Élodie »');
     expect(nicknamesOf(await list())).toEqual(['Élodie']);
+  });
+
+  describe('pseudo déjà pris par un participant : un seul ensemble de pseudos (PR-12, ID-4)', () => {
+    beforeEach(async () => {
+      const { presenceCode } = (await server().get(apiUrl(conventionEndpoints.read)).expect(200))
+        .body as ConventionDto;
+      await server()
+        .post(apiUrl(linkedPhoneEndpoints.link))
+        .send({ presenceCode, nickname: 'Élodie', confirmation: null })
+        .expect(200);
+    });
+
+    it('refuse de créer le MJ : 422, rattaché au pseudo, avec le motif', async () => {
+      const response = await add({ nickname: 'ELODIE' }).expect(422);
+
+      expect(response.body).toMatchObject({
+        code: 'nickname-taken-by-participant',
+        title: 'Pseudo déjà pris',
+        errors: [{ field: 'nickname', code: 'nickname-taken-by-participant' }],
+      });
+      expect(response.body.detail).toContain('Le participant « Élodie »');
+      expect(await list()).toEqual([]);
+    });
+
+    it('refuse de renommer le MJ', async () => {
+      await add({ nickname: 'Kaïros' }).expect(201);
+
+      const response = await rename(await idOf('Kaïros'), { nickname: 'elodie' }).expect(422);
+
+      expect(response.body).toMatchObject({ code: 'nickname-taken-by-participant' });
+      expect(nicknamesOf(await list())).toEqual(['Kaïros']);
+    });
   });
 
   it('accepte « Jean Luc » à côté de « Jean-Luc » : la ponctuation compte', async () => {
