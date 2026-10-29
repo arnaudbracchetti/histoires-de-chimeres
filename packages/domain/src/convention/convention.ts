@@ -2,7 +2,6 @@ import { ComparableName } from '../comparable-name.js';
 import { Refusal } from '../refusal.js';
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Scenario, type ScenarioDetails } from '../scenario/scenario.js';
-import { endOfConvention } from './convention-end.js';
 import { Day } from './day.js';
 import type { Game } from './game.js';
 import { GameMaster } from './game-master.js';
@@ -45,6 +44,18 @@ export class Convention {
   static readonly TABLE_NAME_MAX_LENGTH = 30;
   /** Reprise par `contract` (`NICKNAME_MAX_LENGTH`) ; le même test d'`application` le vérifie. */
   static readonly NICKNAME_MAX_LENGTH = 30;
+
+  /**
+   * La fin de la convention : la fin de son dernier créneau, le jour de sa date. Sans date ou sans
+   * créneau, elle n'en a pas : les Organisateurs testent le front office avant le jour J. Les créneaux
+   * ne se chevauchent pas, donc le dernier est celui qui finit le plus tard. Statique pour que la
+   * lecture la calcule sans charger l'agrégat.
+   */
+  static endOf(date: string | null, timeSlotEnds: readonly TimeOfDay[]): LocalMoment | null {
+    const [first, ...others] = timeSlotEnds;
+    if (date === null || !first) return null;
+    return { date, time: others.reduce((last, end) => (last.isBefore(end) ? end : last), first) };
+  }
 
   private constructor(
     private state: Pick<ConventionState, 'id' | 'name' | 'date' | 'version' | 'presenceCode'>,
@@ -93,9 +104,9 @@ export class Convention {
     return this.state.presenceCode;
   }
 
-  /** La fin de la convention, ou `null` sans date ou sans créneau : voir `endOfConvention()`. */
+  /** La fin de la convention, ou `null` sans date ou sans créneau : voir `Convention.endOf()`. */
   get end(): LocalMoment | null {
-    return endOfConvention(
+    return Convention.endOf(
       this.state.date,
       this.day.timeSlots.map((slot) => slot.end),
     );

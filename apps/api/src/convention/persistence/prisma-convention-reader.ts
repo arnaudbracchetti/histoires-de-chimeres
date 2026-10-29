@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { ConventionReader } from '@chimeres/application';
 import type { ConventionDto } from '@chimeres/contract';
-import { ComparableName, endOfConvention, TimeOfDay, type LocalMoment } from '@chimeres/domain';
+import { ComparableName, Convention, TimeOfDay, type LocalMoment } from '@chimeres/domain';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { fromDatabaseDate } from './calendar-date.js';
 
@@ -38,7 +38,7 @@ export class PrismaConventionReader implements ConventionReader {
       // L'ordre naturel est celui du domaine, que PostgreSQL ne sait pas reproduire.
       tables: tables.sort((a, b) => ComparableName.of(a.name).compareTo(ComparableName.of(b.name))),
       end: endDtoOf(
-        endOfConvention(
+        Convention.endOf(
           fromDatabaseDate(date),
           timeSlots.map((slot) => TimeOfDay.fromMinutes(slot.endMinute)),
         ),
