@@ -2,9 +2,12 @@ import { ComparableName } from '../comparable-name.js';
 import { Refusal } from '../refusal.js';
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Scenario, type ScenarioDetails } from '../scenario/scenario.js';
+import { endOfConvention } from './convention-end.js';
 import { Day } from './day.js';
 import type { Game } from './game.js';
 import { GameMaster } from './game-master.js';
+import type { LocalMoment } from './local-moment.js';
+import type { PresenceCode } from './presence-code.js';
 import { Table } from './table.js';
 import { reserveOfEachScenario, type ReserveOfScenario } from './reserve.js';
 import { Schedule, type PlacementCollaborators } from './schedule.js';
@@ -27,6 +30,8 @@ export type ConventionState = {
   games: Game[];
   /** Numéro de version, pour le verrou optimiste : seul le repository le fait avancer. */
   version: number;
+  /** Fixé à la création de la convention, il ne change plus (ID-2). */
+  presenceCode: PresenceCode;
 };
 
 /** La convention, racine de l'agrégat. Une base n'en a qu'une. */
@@ -39,7 +44,7 @@ export class Convention {
   static readonly NICKNAME_MAX_LENGTH = 30;
 
   private constructor(
-    private state: Pick<ConventionState, 'id' | 'name' | 'date' | 'version'>,
+    private state: Pick<ConventionState, 'id' | 'name' | 'date' | 'version' | 'presenceCode'>,
     private day: Day,
     private allTables: UniquelyNamedCollection<Table>,
     private allGameMasters: UniquelyNamedCollection<GameMaster>,
@@ -70,6 +75,39 @@ export class Convention {
 
   get version(): number {
     return this.state.version;
+  }
+
+  get presenceCode(): PresenceCode {
+    return this.state.presenceCode;
+  }
+
+  /** La fin de la convention, ou `null` sans date ou sans créneau : voir `endOfConvention()`. */
+  get end(): LocalMoment | null {
+    return endOfConvention(
+      this.state.date,
+      this.day.timeSlots.map((slot) => slot.end),
+    );
+  }
+
+  /** La convention est terminée dès sa fin. Sans fin, elle ne se termine pas. */
+  hasEndedAt(now: LocalMoment): boolean {
+    const end = this.end;
+    if (!end) return false;
+    if (now.date !== end.date) return now.date > end.date;
+    return !now.time.isBefore(end.time);
+  }
+
+  /** Refuse ce que la convention ouvre au front office, une fois terminée. */
+  verifyOpenAt(now: LocalMoment): void {
+    if (this.hasEndedAt(now)) throw new Refusal('convention-ended', {});
+  }
+
+  /** Refuse un code qui n'est pas le code de présence (ID-2), et toute entrée une fois terminée. */
+  verifyPresenceCode(presented: string, now: LocalMoment): void {
+    this.verifyOpenAt(now);
+    if (!this.state.presenceCode.matches(presented)) {
+      throw new Refusal('presence-code-wrong', {});
+    }
   }
 
   rename(name: string): void {

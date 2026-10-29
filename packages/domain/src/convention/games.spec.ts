@@ -4,6 +4,7 @@ import { Scenario, type Duration } from '../scenario/scenario.js';
 import { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { ComparableName } from '../comparable-name.js';
 import { Convention } from './convention.js';
+import { PresenceCode } from './presence-code.js';
 import { Game } from './game.js';
 import { GameMaster } from './game-master.js';
 import { Table } from './table.js';
@@ -26,6 +27,7 @@ function aConvention(): Convention {
     gameMasters: [],
     games: [],
     version: 0,
+    presenceCode: PresenceCode.of('K7M2'),
   });
   convention.addTimeSlot('s1', at('09:00'), at('11:30'));
   convention.addTimeSlot('s2', at('14:00'), at('16:30'));
@@ -479,6 +481,7 @@ describe('Déplacer une partie (PR-17)', () => {
       ],
       games: [new Game('p1', 'a', 'g1', 't1', ['s1']), new Game('p2', 'c', 'g2', 't2', ['s1'])],
       version: 0,
+      presenceCode: PresenceCode.of('K7M2'),
     });
 
     convention.moveGame('p1', 's2', 't1');
@@ -545,6 +548,7 @@ describe('Déplacer une partie (PR-17)', () => {
         gameMasters: [new GameMaster('g1', ComparableName.of('Élodie'), ['s1', 's2', 's3'])],
         games: [new Game('p1', 'd', 'g1', 't1', ['s1', 's2'])],
         version: 0,
+        presenceCode: PresenceCode.of('K7M2'),
       });
 
     it('se déplace par son premier créneau, et prend le suivant avec lui', () => {
@@ -597,6 +601,7 @@ describe('Échanger deux parties (PR-17)', () => {
       ],
       games: [new Game('p1', 'a', 'g1', 't1', ['s1']), new Game('p2', 'c', 'g2', 't1', ['s2'])],
       version: 0,
+      presenceCode: PresenceCode.of('K7M2'),
     });
 
     convention.swapGames('p2', 'p1');
@@ -664,6 +669,7 @@ describe('Échanger deux parties (PR-17)', () => {
           new Game('p2', 'c', 'g2', 't2', ['s2']),
         ],
         version: 0,
+        presenceCode: PresenceCode.of('K7M2'),
       });
 
     it('la partie double prend le premier créneau de l’autre, et le suivant avec lui', () => {
@@ -714,6 +720,7 @@ describe('Échanger deux parties (PR-17)', () => {
           new Game('p2', 'c', 'g2', 't1', ['s1']),
         ],
         version: 0,
+        presenceCode: PresenceCode.of('K7M2'),
       });
 
       expect(refusalOf(() => convention.swapGames('p1', 'p2'))).toMatchObject({
@@ -834,6 +841,7 @@ describe('Verdicts de déplacement', () => {
         new Game('p2', 'c', 'g2', 't2', ['s1']),
       ],
       version: 0,
+      presenceCode: PresenceCode.of('K7M2'),
     });
 
     expect(

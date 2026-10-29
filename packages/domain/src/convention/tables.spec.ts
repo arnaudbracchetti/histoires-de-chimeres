@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Refusal } from '../refusal.js';
 import { Convention } from './convention.js';
+import { PresenceCode } from './presence-code.js';
 
 function aConvention(): Convention {
   return Convention.restore({
@@ -12,6 +13,7 @@ function aConvention(): Convention {
     gameMasters: [],
     games: [],
     version: 0,
+    presenceCode: PresenceCode.of('K7M2'),
   });
 }
 

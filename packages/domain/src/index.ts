@@ -6,7 +6,10 @@ export {
   type Placement,
   type Withdrawal,
 } from './convention/convention.js';
+export { endOfConvention } from './convention/convention-end.js';
 export { Game } from './convention/game.js';
+export type { LocalMoment } from './convention/local-moment.js';
+export { PresenceCode } from './convention/presence-code.js';
 export type { ReserveOfScenario } from './convention/reserve.js';
 export { GameMaster } from './convention/game-master.js';
 export { Table } from './convention/table.js';

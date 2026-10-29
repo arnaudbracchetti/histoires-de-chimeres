@@ -10,15 +10,18 @@ datasource db {
 }
 
 model Convention {
-  id          String       @id @default(uuid()) @db.Uuid
-  name        String
-  date        DateTime?    @db.Date
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String
+  date         DateTime?    @db.Date
   /// Verrou optimiste : chaque sauvegarde de l'agrégat l'incrémente.
-  version     Int          @default(0)
-  timeSlots   TimeSlot[]
-  tables      Table[]
-  gameMasters GameMaster[]
-  games       Game[]
+  version      Int          @default(0)
+  /// Code de présence (ID-2) : tiré au hasard par la base à la création de la convention, il ne
+  /// change plus. La fonction vient de la migration presence_code.
+  presenceCode String       @default(dbgenerated("random_presence_code()"))
+  timeSlots    TimeSlot[]
+  tables       Table[]
+  gameMasters  GameMaster[]
+  games        Game[]
 }
 
 /// Créneau de la convention. Ses heures sont en minutes depuis minuit, de 0 à 1439.

@@ -1,0 +1,8 @@
+@layer components {
+  /* Gouttière de 16 px sur les côtés, à la largeur d'un téléphone. */
+  main {
+    max-width: 480px;
+    margin-inline: auto;
+    padding: var(--space-xl) var(--space-l);
+  }
+}

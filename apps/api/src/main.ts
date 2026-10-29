@@ -1,11 +1,12 @@
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
-import { API_PREFIX } from '@chimeres/contract';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module.js';
+import { configureApp } from './configure-app.js';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix(API_PREFIX);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  configureApp(app);
   app.enableShutdownHooks();
   await app.listen(process.env.PORT ?? 3000);
 }

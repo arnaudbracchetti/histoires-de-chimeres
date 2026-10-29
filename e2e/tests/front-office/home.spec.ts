@@ -1,11 +1,21 @@
 import { expect, test } from '@playwright/test';
+import {
+  apiUrl,
+  conventionEndpoints,
+  PRESENCE_CODE_PARAM,
+  type ConventionDto,
+} from '@chimeres/contract';
 import { loadFont } from '../fonts.js';
 
-test('le front office souhaite la bienvenue', async ({ page }) => {
-  await page.goto('/');
+test('le front office souhaite la bienvenue, avec le code de présence', async ({ page }) => {
+  const convention = (await (
+    await page.request.get(apiUrl(conventionEndpoints.read))
+  ).json()) as ConventionDto;
+
+  await page.goto(`/?${PRESENCE_CODE_PARAM}=${convention.presenceCode}`);
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Bienvenue à Histoires de Chimères',
+    `Bienvenue à ${convention.name}`,
   );
 });
 

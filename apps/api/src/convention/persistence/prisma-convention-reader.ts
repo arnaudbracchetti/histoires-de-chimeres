@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { ConventionReader } from '@chimeres/application';
 import type { ConventionDto } from '@chimeres/contract';
-import { ComparableName, TimeOfDay } from '@chimeres/domain';
+import { ComparableName, endOfConvention, TimeOfDay, type LocalMoment } from '@chimeres/domain';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { fromDatabaseDate } from './calendar-date.js';
 
@@ -10,18 +10,20 @@ export class PrismaConventionReader implements ConventionReader {
   constructor(private readonly prisma: PrismaService) {}
 
   async read(): Promise<ConventionDto> {
-    const { id, name, date, timeSlots, tables } = await this.prisma.convention.findFirstOrThrow({
-      select: {
-        id: true,
-        name: true,
-        date: true,
-        timeSlots: {
-          orderBy: { startMinute: 'asc' },
-          include: { _count: { select: { availabilities: true } } },
+    const { id, name, date, presenceCode, timeSlots, tables } =
+      await this.prisma.convention.findFirstOrThrow({
+        select: {
+          id: true,
+          name: true,
+          date: true,
+          presenceCode: true,
+          timeSlots: {
+            orderBy: { startMinute: 'asc' },
+            include: { _count: { select: { availabilities: true } } },
+          },
+          tables: { select: { id: true, name: true } },
         },
-        tables: { select: { id: true, name: true } },
-      },
-    });
+      });
     return {
       id,
       name,
@@ -35,6 +37,17 @@ export class PrismaConventionReader implements ConventionReader {
       })),
       // L'ordre naturel est celui du domaine, que PostgreSQL ne sait pas reproduire.
       tables: tables.sort((a, b) => ComparableName.of(a.name).compareTo(ComparableName.of(b.name))),
+      end: endDtoOf(
+        endOfConvention(
+          fromDatabaseDate(date),
+          timeSlots.map((slot) => TimeOfDay.fromMinutes(slot.endMinute)),
+        ),
+      ),
+      presenceCode,
     };
   }
+}
+
+function endDtoOf(end: LocalMoment | null): ConventionDto['end'] {
+  return end && { date: end.date, time: end.time.toString() };
 }

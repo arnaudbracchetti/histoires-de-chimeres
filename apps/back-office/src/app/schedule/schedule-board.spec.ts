@@ -26,6 +26,8 @@ const CONVENTION: ConventionDto = {
     { id: 't1', name: 'Dragon' },
     { id: 't2', name: 'Licorne' },
   ],
+  end: null,
+  presenceCode: 'K7M2',
 };
 
 const GAME: GameDto = {

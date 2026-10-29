@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Convention } from '../convention/convention.js';
+import { PresenceCode } from '../convention/presence-code.js';
 import { Refusal } from '../refusal.js';
 import type { ScenarioDetails } from './scenario.js';
 
@@ -13,6 +14,7 @@ function aConvention(): Convention {
     gameMasters: [],
     games: [],
     version: 0,
+    presenceCode: PresenceCode.of('K7M2'),
   });
   convention.addGameMaster('g1', 'Kaïros');
   return convention;

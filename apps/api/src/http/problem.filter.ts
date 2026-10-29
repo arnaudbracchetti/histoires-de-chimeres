@@ -13,6 +13,7 @@ import type { ProblemCode, ProblemDto, RefusalCode, RefusalParams } from '@chime
 import { Refusal } from '@chimeres/domain';
 import { ImageRefusedError } from './image-refused.error.js';
 import { MalformedRequestError } from './malformed-request.error.js';
+import { TooManyAttemptsError } from './too-many-attempts.error.js';
 import { problemCatalogue } from './problem-catalogue.js';
 
 /**
@@ -50,6 +51,9 @@ export class ProblemFilter extends BaseExceptionFilter {
     }
     if (error instanceof MalformedRequestError || isUnreadableBody(error)) {
       return problem(HttpStatus.BAD_REQUEST, 'malformed-request', {});
+    }
+    if (error instanceof TooManyAttemptsError) {
+      return problem(HttpStatus.TOO_MANY_REQUESTS, 'too-many-attempts', {});
     }
     if (error instanceof StaleConventionError) {
       return problem(HttpStatus.CONFLICT, 'concurrent-modification', {});

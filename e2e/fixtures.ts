@@ -13,6 +13,7 @@ const apiDir = join(import.meta.dirname, '..', 'apps', 'api');
 const resetScripts = [
   join(apiDir, 'test', 'reset-database.sql'),
   join(apiDir, 'prisma', 'migrations', '20261022120000_default_convention', 'migration.sql'),
+  join(apiDir, 'test', 'restore-presence-code.sql'),
 ];
 
 /**

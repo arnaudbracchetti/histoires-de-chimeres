@@ -1,5 +1,14 @@
-import { apiUrl, conventionEndpoints, type UpdateConventionBody } from '@chimeres/contract';
+import {
+  apiUrl,
+  conventionEndpoints,
+  timeSlotEndpoints,
+  type ConventionDto,
+  type UpdateConventionBody,
+} from '@chimeres/contract';
 import { expect, test } from '../../fixtures.js';
+
+// Espace insécable (U+00A0) de docs/design/ton.md.
+const NBSP = '\u00a0';
 
 test('renommer la convention et fixer sa date, puis les voir dans le rail', async ({ page }) => {
   await page.goto('/gestion/creneaux-et-tables');
@@ -48,4 +57,28 @@ test('un nom vide est signalé sous le champ, sans rien envoyer', async ({ page 
   // L'erreur s'écrit sur une ligne réservée : elle ne décale rien.
   expect(await save.boundingBox()).toEqual(before);
   await expect(page.locator('a.convention')).toContainText('Histoires de Chimères');
+});
+
+test('la carte de la convention montre sa fin et son code de présence', async ({ page }) => {
+  const convention = (await (
+    await page.request.get(apiUrl(conventionEndpoints.read))
+  ).json()) as ConventionDto;
+  await page.goto('/gestion/creneaux-et-tables');
+  await expect(page.getByText('Pas de fin')).toBeVisible();
+  await expect(page.getByText(convention.presenceCode, { exact: true })).toBeVisible();
+
+  for (const hours of [
+    { start: '09:00', end: '11:30' },
+    { start: '14:00', end: '18:30' },
+  ]) {
+    expect((await page.request.post(apiUrl(timeSlotEndpoints.add), { data: hours })).ok()).toBe(
+      true,
+    );
+  }
+  await page.reload();
+  await page.getByLabel('Date').fill('2027-03-13');
+  await page.getByRole('button', { name: 'Enregistrer' }).click();
+
+  await expect(page.getByText(`samedi 13 mars 2027 à 18${NBSP}h${NBSP}30`)).toBeVisible();
+  await expect(page.getByText('À la fin du dernier créneau (créneau 2)')).toBeVisible();
 });

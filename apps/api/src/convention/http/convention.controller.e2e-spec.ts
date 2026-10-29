@@ -1,8 +1,14 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
-import { apiUrl, conventionEndpoints, type UpdateConventionBody } from '@chimeres/contract';
+import {
+  apiUrl,
+  conventionEndpoints,
+  timeSlotEndpoints,
+  type UpdateConventionBody,
+} from '@chimeres/contract';
 import { startApp } from '../../../test/app.js';
+import { resetDatabase } from '../../../test/database.js';
 
 describe('Convention', () => {
   let app: INestApplication<App>;
@@ -31,7 +37,46 @@ describe('Convention', () => {
       date: null,
       timeSlots: [],
       tables: [],
+      end: null,
+      presenceCode: expect.any(String),
     });
+  });
+
+  it('finit à la fin de son dernier créneau, le jour de sa date ; sans date, pas de fin', async () => {
+    const addTimeSlot = (start: string, end: string) =>
+      request(app.getHttpServer())
+        .post(apiUrl(timeSlotEndpoints.add))
+        .send({ start, end })
+        .expect(201);
+    await addTimeSlot('14:00', '18:30');
+    await addTimeSlot('09:00', '11:30');
+    expect((await read()).body.end).toBeNull();
+
+    const response = await update({ name: 'Chimères 2027', date: '2027-03-14' }).expect(200);
+
+    expect(response.body.end).toEqual({ date: '2027-03-14', time: '18:30' });
+  });
+
+  it('porte le code de présence tiré par la migration : 4 caractères sans 0, O, 1, I ni L (ID-2)', async () => {
+    const response = await read().expect(200);
+
+    expect(response.body.presenceCode).toMatch(/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{4}$/);
+  });
+
+  it('garde son code de présence à la remise à zéro des bases de test, comme un test l’a lu', async () => {
+    const { presenceCode } = (await read()).body;
+
+    await resetDatabase();
+
+    expect((await read()).body.presenceCode).toBe(presenceCode);
+  });
+
+  it('garde son code de présence quand elle change', async () => {
+    const { presenceCode } = (await read()).body;
+
+    const response = await update({ name: 'Chimères 2027', date: '2027-03-14' }).expect(200);
+
+    expect(response.body.presenceCode).toBe(presenceCode);
   });
 
   it('enregistre le nom et la date, et les relit', async () => {

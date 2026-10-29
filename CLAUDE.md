@@ -31,6 +31,7 @@ Pièges :
 - pnpm bloque les scripts d'installation non listés dans `allowBuilds` (`pnpm-workspace.yaml`).
 - `ng serve` ne pré-bundle pas `@chimeres/contract` ni `@chimeres/design` (`prebundle.exclude` de chaque `angular.json`). Sinon Vite en garde une copie périmée dans `.angular/cache` : un descripteur renommé dans `contract` y reste `undefined`, et l'appel échoue sans requête.
 - Les deux suites de bout en bout ne touchent jamais la base de dev. Leur remise à zéro vide toutes les tables (`apps/api/test/reset-database.sql`), puis rejoue la migration `default_convention`. Si la convention reçoit de nouvelles colonnes, cette migration reste la source de son état initial.
+- Le code de présence vient de la valeur par défaut de sa colonne (`random_presence_code()`, migration `presence_code`) : l'`INSERT` de `default_convention` le reçoit sans le nommer. Il survit à la remise à zéro des bases de test (`restore-presence-code.sql`) : un test `mobile` qui l'a lu le garde valable, même si le projet `bureau` remet la base à zéro en parallèle.
 
 ## Organisation du code (DDD)
 

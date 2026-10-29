@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Refusal } from '../refusal.js';
 import { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Convention } from './convention.js';
+import { PresenceCode } from './presence-code.js';
 import { TimeOfDay } from './time-of-day.js';
 
 const at = TimeOfDay.parse;
@@ -17,6 +18,7 @@ function aConvention(): Convention {
     gameMasters: [],
     games: [],
     version: 0,
+    presenceCode: PresenceCode.of('K7M2'),
   });
   convention.addTimeSlot('s1', at('09:00'), at('11:30'));
   convention.addTimeSlot('s2', at('14:00'), at('16:30'));

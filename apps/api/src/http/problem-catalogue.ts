@@ -43,6 +43,16 @@ export const problemCatalogue: Catalogue = {
     detail: ({ max }) => `Le nom de la convention fait ${max} caractères au plus : raccourcis-le.`,
     field: 'name',
   },
+  'convention-ended': {
+    title: 'La convention est terminée',
+    detail: () => "L'application ne sert plus depuis la fin du dernier créneau.",
+    status: 410,
+  },
+  'presence-code-wrong': {
+    title: 'Code incorrect',
+    detail: () => "Ce code ne correspond pas. Vérifie-le sur l'affiche, sous le QR code.",
+    field: 'presenceCode',
+  },
   'time-slot-not-found': {
     title: 'Créneau introuvable',
     detail: () => "Ce créneau n'existe plus : recharge la page.",
@@ -275,6 +285,12 @@ export const problemCatalogue: Catalogue = {
     title: 'Image introuvable',
     detail: () => "Cette image n'existe plus : recharge la page.",
     status: 404,
+  },
+  'too-many-attempts': {
+    title: "Trop d'essais",
+    detail: () => "Tu as fait trop d'essais : réessaie dans quelques minutes.",
+    field: 'presenceCode',
+    status: 429,
   },
   'internal-error': {
     title: 'Erreur interne',

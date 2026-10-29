@@ -14,7 +14,15 @@ import { TableList } from './table-list';
 /** La convention et ses tables, dans l'ordre donné : celui que renvoie l'API. */
 function conventionWith(...names: string[]): ConventionDto {
   const tables = names.map((name) => ({ id: `t-${name}`, name }));
-  return { id: 'c1', name: 'Histoires de Chimères', date: null, timeSlots: [], tables };
+  return {
+    id: 'c1',
+    name: 'Histoires de Chimères',
+    date: null,
+    timeSlots: [],
+    tables,
+    end: null,
+    presenceCode: 'K7M2',
+  };
 }
 
 describe('TableList', () => {

@@ -1,10 +1,13 @@
+export type { Clock } from './clock.js';
 export { changeConvention } from './convention/change-convention.js';
 export type { ConventionReader } from './convention/convention-reader.js';
 export {
   StaleConventionError,
   type ConventionRepository,
 } from './convention/convention-repository.js';
+export { ReadFrontOffice } from './convention/read-front-office.js';
 export { UpdateConvention } from './convention/update-convention.js';
+export { VerifyPresenceCode } from './convention/verify-presence-code.js';
 export { MoveGame } from './game/move-game.js';
 export { ReadMovePlacements } from './game/read-move-placements.js';
 export { ReadPlacements } from './game/read-placements.js';

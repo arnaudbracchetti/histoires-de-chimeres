@@ -25,6 +25,12 @@ export {
   type GameMasterSheetDto,
   type WithdrawalDto,
 } from './game-master.js';
+export {
+  PRESENCE_CODE_PARAM,
+  frontOfficeEndpoints,
+  type FrontOfficeDto,
+  type PresenceCodeBody,
+} from './front-office.js';
 export { healthEndpoints, type HealthDto } from './health.js';
 export type {
   ApiErrorCode,

@@ -5,6 +5,7 @@ import {
   Convention,
   Game,
   GameMaster,
+  PresenceCode,
   Table,
   TimeOfDay,
   TimeSlot,
@@ -24,7 +25,7 @@ export class PrismaConventionRepository implements ConventionRepository {
   private readonly loaded = new WeakMap<Convention, ConventionRows>();
 
   async get(): Promise<Convention> {
-    const { id, name, date, version, timeSlots, tables, gameMasters, games } =
+    const { id, name, date, version, presenceCode, timeSlots, tables, gameMasters, games } =
       await this.prisma.convention.findFirstOrThrow({
         include: {
           timeSlots: true,
@@ -71,6 +72,7 @@ export class PrismaConventionRepository implements ConventionRepository {
           ),
       ),
       version,
+      presenceCode: PresenceCode.of(presenceCode),
     });
     this.loaded.set(convention, rowsOf(convention));
     return convention;

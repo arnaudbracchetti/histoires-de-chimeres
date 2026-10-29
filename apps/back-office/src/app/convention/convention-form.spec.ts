@@ -14,13 +14,13 @@ describe('ConventionForm', () => {
     });
   });
 
-  async function render() {
+  async function render(
+    convention: object = { id: 'c1', name: 'Histoires de Chimères', date: null },
+  ) {
     const fixture = TestBed.createComponent(ConventionForm);
     const http = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
-    http
-      .expectOne(apiUrl(conventionEndpoints.read))
-      .flush({ id: 'c1', name: 'Histoires de Chimères', date: null });
+    http.expectOne(apiUrl(conventionEndpoints.read)).flush(convention);
     await fixture.whenStable();
     const host = fixture.nativeElement as HTMLElement;
     const input = (label: string) =>
@@ -51,8 +51,61 @@ describe('ConventionForm', () => {
       await fixture.whenStable();
       return request.request;
     };
-    return { fixture, host, http, input, type, save, errorOf, flush };
+    /** Les lignes de la définition `term` (« Fin », « Code de présence »), séparées d'une espace. */
+    const detail = (term: string) => {
+      const dt = [...host.querySelectorAll('dt')].find((d) => d.textContent?.trim() === term);
+      return [...(dt?.nextElementSibling?.children ?? [])]
+        .map((line) => line.textContent?.trim())
+        .join(' ');
+    };
+    return { fixture, host, http, input, type, save, errorOf, flush, detail };
   }
+
+  /** La convention du 14 mars 2027, en deux créneaux, finie à 18 h 30. */
+  const onMarch14 = {
+    id: 'c1',
+    name: 'Histoires de Chimères',
+    date: '2027-03-14',
+    timeSlots: [
+      { id: 's1', rank: 1, start: '09:00', end: '11:30', availabilityCount: 0 },
+      { id: 's2', rank: 2, start: '14:00', end: '18:30', availabilityCount: 0 },
+    ],
+    tables: [],
+    end: { date: '2027-03-14', time: '18:30' },
+    presenceCode: 'K7M2',
+  };
+
+  it('montre le code de présence, imprimé sous le QR code de l’affiche (ID-2)', async () => {
+    const { detail } = await render(onMarch14);
+
+    expect(detail('Code de présence')).toBe("K7M2 Imprimé en clair sous le QR code de l'affiche.");
+  });
+
+  it('place « Enregistrer » sous la fin et le code de présence', async () => {
+    const { host } = await render(onMarch14);
+
+    const code = [...host.querySelectorAll('dt')].find(
+      (dt) => dt.textContent?.trim() === 'Code de présence',
+    )!;
+    const save = host.querySelector('button[type="submit"]')!;
+    expect(code.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('montre la fin de la convention, et comment elle se calcule', async () => {
+    const { detail } = await render(onMarch14);
+
+    expect(detail('Fin')).toBe(
+      `dimanche 14 mars 2027 à 18${NBSP}h${NBSP}30 À la fin du dernier créneau (créneau 2), le jour de la convention. L'application des participants se ferme alors pour tous.`,
+    );
+  });
+
+  it('dit qu’il n’y a pas de fin sans date ou sans créneau', async () => {
+    const { detail } = await render({ ...onMarch14, date: null, end: null });
+
+    expect(detail('Fin')).toBe(
+      `Pas de fin Il faut une date et au moins un créneau${NBSP}: d'ici là, l'application des participants reste ouverte.`,
+    );
+  });
 
   it('reprend le nom et la date de la convention', async () => {
     const { input } = await render();

@@ -14,6 +14,13 @@ export type ConventionDto = {
   timeSlots: TimeSlotDto[];
   /** Dans l'ordre naturel : « Table 2 » avant « Table 10 ». */
   tables: TableDto[];
+  /**
+   * La fin de la convention : la fin de son dernier créneau (`HH:MM`), le jour de sa date. `null`
+   * sans date ou sans créneau : le front office ne se ferme pas.
+   */
+  end: { date: string; time: string } | null;
+  /** Le code de présence (ID-2), fixé à la création de la convention. */
+  presenceCode: string;
 };
 
 export type UpdateConventionBody = {

@@ -1,9 +1,13 @@
 <main>
-  @if (convention.hasValue()) {
-    <h1>Bienvenue à {{ convention.value().name }}</h1>
-  } @else if (convention.error()) {
+  @if (ended()) {
+    <app-convention-ended-page />
+  } @else if (frontOffice.error()) {
     <p>Impossible de charger la convention.</p>
-  } @else {
+  } @else if (!frontOffice.hasValue()) {
     <p>Chargement…</p>
+  } @else if (!presenceCode()) {
+    <app-presence-code-page (ended)="endedOnEntry.set(true)" />
+  } @else {
+    <h1>Bienvenue à {{ frontOffice.value().conventionName }}</h1>
   }
 </main>

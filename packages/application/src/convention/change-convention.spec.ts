@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Convention } from '@chimeres/domain';
+import { Convention, PresenceCode } from '@chimeres/domain';
 import { changeConvention } from './change-convention.js';
 import { StaleConventionError, type ConventionRepository } from './convention-repository.js';
 
@@ -21,6 +21,7 @@ class FakeConventionRepository implements ConventionRepository {
       gameMasters: [],
       games: [],
       version: 0,
+      presenceCode: PresenceCode.of('K7M2'),
     });
   }
 

@@ -27,7 +27,15 @@ function conventionWith(...hours: [string, string][]): ConventionDto {
       end,
       availabilityCount: 0,
     }));
-  return { id: 'c1', name: 'Histoires de Chimères', date: null, timeSlots, tables: [] };
+  return {
+    id: 'c1',
+    name: 'Histoires de Chimères',
+    date: null,
+    timeSlots,
+    tables: [],
+    end: null,
+    presenceCode: 'K7M2',
+  };
 }
 
 describe('TimeSlotList', () => {

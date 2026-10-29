@@ -5,6 +5,10 @@
 export type RefusalParams = {
   'convention-name-required': Record<string, never>;
   'convention-name-too-long': { max: number };
+  /** La convention est terminée : le front office est fermé à tous. */
+  'convention-ended': Record<string, never>;
+  /** Le code présenté n'est pas le code de présence (ID-2). */
+  'presence-code-wrong': Record<string, never>;
   'time-slot-not-found': Record<string, never>;
   'time-slot-end-not-after-start': Record<string, never>;
   /** `rank` : le rang du créneau chevauché. */
