@@ -88,14 +88,14 @@ import { Icon } from '../ui/icon';
       .nickname {
         color: var(--accent);
         font-family: var(--font-display);
-        font-size: var(--font-size-title);
-        line-height: 1.1;
+        font-size: var(--font-size-mobile-hero);
+        line-height: var(--line-height-display);
         overflow-wrap: anywhere;
       }
 
       .meta {
         color: var(--text-muted);
-        font-size: var(--font-size-meta);
+        font-size: var(--font-size-mobile-meta);
       }
 
       form,

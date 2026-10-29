@@ -1,4 +1,17 @@
-# Patterns du back office
+# Patterns
+
+Cette page décrit les patterns du back office. Une partie vaut aussi pour le front office, qui en adapte le dessin au téléphone dans [patterns-front-office.md](patterns-front-office.md).
+
+| Vaut pour les deux fronts | Propre au back office |
+|---|---|
+| [Boutons](#boutons) : une seule action principale par vue, un nom accessible pour une icône seule, aucun bouton désactivé pour une saisie incomplète. Le front office a son propre jeu de dessins | [Coquille](#coquille), [En-tête de page](#en-tête-de-page) |
+| [Champs](#champs), [Validation](#validation), [Une erreur ne décale rien](#une-erreur-ne-décale-rien), [Enregistrement](#enregistrement) (pendant l'envoi, un second envoi est refusé) | [Où se fait la saisie](#où-se-fait-la-saisie) : cartes, lignes et pages de saisie |
+| [Actions destructrices](#actions-destructrices) : le dialogue de confirmation, le refus dans le dialogue | [Tableaux](#tableaux) |
+| [Erreur hors formulaire](#erreur-hors-formulaire), sauf la place des alertes : en bas à droite ici, en bas de l'écran sur le téléphone | [Chargement, état vide, erreur de lecture](#chargement-état-vide-erreur-de-lecture), jusqu'aux premiers écrans du front office qui en ont besoin |
+| [Succès](#succès) : pas d'alerte de succès, annonce aux lecteurs d'écran | [Programmation](#programmation) |
+| [Statuts](#statuts), [Focus](#focus) | |
+
+## Le back office sur l'écran
 
 Le back office se conçoit pour un portable, à **1280 px de large et plus**. En dessous de 1280 px, le rail se replie de lui-même. En dessous de 1024 px, rien n'est garanti : le back office ne vise ni la tablette ni le téléphone.
 

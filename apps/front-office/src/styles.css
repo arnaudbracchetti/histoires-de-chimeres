@@ -35,22 +35,24 @@
 }
 
 @layer base {
-  /* La taille de base du front office se fixera avec ses patterns. */
   body {
     background: var(--surface-0);
     color: var(--text);
     font-family: var(--font-ui);
-    line-height: 1.4;
+    /* Taille de base du front office : 15 px. */
+    font-size: var(--font-size-mobile-body);
+    line-height: var(--line-height-text);
   }
 
   h1,
   h2,
   h3 {
-    line-height: 1.2;
+    line-height: var(--line-height-title);
   }
 
   h1 {
     font-family: var(--font-display);
+    font-size: var(--font-size-mobile-title);
     font-weight: normal;
   }
 
@@ -58,16 +60,16 @@
     color: var(--accent);
   }
 
-  /* Champ de saisie natif, que porte un `app-field` : 17 px, sinon Safari zoome à la saisie. */
+  /* Champ de saisie natif, que porte un `app-field`. */
   input {
     width: 100%;
-    min-height: 52px;
+    min-height: var(--field-height);
     padding: 0 var(--space-m);
     border: 1px solid var(--border);
     border-radius: var(--radius-control);
     background: var(--surface-2);
     color: var(--text);
-    font-size: 1.0625rem;
+    font-size: var(--font-size-mobile-field);
 
     &[aria-invalid='true'] {
       border-color: var(--danger);

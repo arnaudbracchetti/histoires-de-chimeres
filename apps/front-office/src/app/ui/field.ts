@@ -35,15 +35,15 @@ let nextId = 0;
 
       .help {
         color: var(--text-muted);
-        font-size: var(--font-size-meta);
+        font-size: var(--font-size-mobile-meta);
       }
 
       /* Deux lignes réservées : un refus de l'API tient sur deux lignes à la largeur d'un téléphone. */
       .error {
         min-height: 2lh;
         color: var(--danger);
-        font-size: var(--font-size-meta);
-        line-height: 1.4;
+        font-size: var(--font-size-mobile-meta);
+        line-height: var(--line-height-text);
       }
     }
   `,

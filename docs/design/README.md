@@ -1,13 +1,14 @@
 # Charte d'IHM
 
-La charte fixe l'identité commune aux deux applications : le front office, PWA mobile des participants et des MJ, et le back office, sur ordinateur, des MJ et des Organisateurs. Elle détaille les patterns du back office seul. Ceux du front office viendront dans un effort ultérieur, dans la même identité.
+La charte fixe l'identité commune aux deux applications : le front office, PWA mobile des participants et des MJ, et le back office, sur ordinateur, des MJ et des Organisateurs. Elle en détaille les patterns : ceux du back office, et ceux du front office, qui s'y ajoutent écran par écran.
 
 | Fichier | Contenu | À lire pour |
 |---|---|---|
 | [identite.md](identite.md) | Registre, emblème, motif gravé, illustration par défaut, images, accessibilité | tout écran, toute image |
-| [jetons.md](jetons.md) | Couleurs, contrastes, polices, échelles typographique et d'espacement, rayons, halo, mouvement | tout CSS |
+| [jetons.md](jetons.md) | Couleurs, contrastes, polices, échelles typographiques des deux fronts, interlignes, espacements, rayons, halo, mouvement | tout CSS |
 | [ton.md](ton.md) | Voix, micro-rédaction, typographie, formats de date et d'heure | tout texte visible |
-| [patterns.md](patterns.md) | Coquille, formulaires, erreurs sans décalage, tableaux, états, actions destructrices, retours d'action, statuts, focus, programmation | tout écran du back office |
+| [patterns.md](patterns.md) | Ce qui vaut pour les deux fronts ; coquille, formulaires, erreurs sans décalage, tableaux, états, actions destructrices, retours d'action, statuts, focus, programmation du back office | tout écran |
+| [patterns-front-office.md](patterns-front-office.md) | Mesures du téléphone, coquille et historique, boîte du pseudo, parcours d'identification, champs, boutons, alertes, dialogue de confirmation, patterns à venir | tout écran du front office |
 | [ecriture-css.md](ecriture-css.md) | Couches, encapsulation, unités, icônes, composants partagés | tout composant |
 
 ## Ce qui fait foi
@@ -29,4 +30,4 @@ Elle consigne les décisions de la carte [Initialiser une convention dans le bac
 - [Écritures dans l'API : validation des commandes et erreurs](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/13) ;
 - [Patterns du back office et rédaction de la charte](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/16).
 
-Les prototypes HTML qui ont servi à trancher vivent sur des branches jetables, jamais fusionnées (`prototype/pistes-visuelles`, `prototype/illustration-par-defaut`, `prototype/coquille-back-office`, `prototype/ecran-de-programmation`). Ils ne sont qu'un historique : en cas d'écart, la charte l'emporte.
+Les prototypes HTML qui ont servi à trancher vivent sur des branches jetables, jamais fusionnées (`prototype/pistes-visuelles`, `prototype/illustration-par-defaut`, `prototype/coquille-back-office`, `prototype/ecran-de-programmation`, et pour le front office `prototype/parcours-d-accueil`, `prototype/coquille-front-office`, `prototype/fiche-de-partie`, `prototype/vue-du-mj`). Ils ne sont qu'un historique : en cas d'écart, la charte l'emporte.

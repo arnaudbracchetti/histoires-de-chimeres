@@ -23,19 +23,22 @@ export type NicknameBoxResult = 'change';
         position: relative;
         display: grid;
         gap: var(--space-s);
-        width: 264px;
+        width: var(--popover-width);
+        /* Sous le bouton du pseudo, à distance. */
+        margin-top: var(--overlay-offset);
         padding: var(--space-l);
         border: 1px solid var(--edge);
         border-radius: var(--radius-card);
         background: var(--surface-3);
       }
 
-      /* La pointe, vers le bouton du pseudo. */
+      /* La pointe de 12 px, vers le pseudo : la boîte et le bouton partagent leur bord droit, et la
+         pointe s'en écarte d'un pas. Sa moitié dépasse du filet. */
       :host::before {
         content: '';
         position: absolute;
         top: -7px;
-        right: 32px;
+        right: var(--space-xxl);
         width: 12px;
         height: 12px;
         border-top: 1px solid var(--edge);
@@ -47,13 +50,13 @@ export type NicknameBoxResult = 'change';
       .over {
         color: var(--text-muted);
         font-family: var(--font-caps);
-        font-size: var(--font-size-overline);
+        font-size: var(--font-size-mobile-overline);
         letter-spacing: 0.12em;
         text-transform: uppercase;
       }
 
       strong {
-        font-size: var(--font-size-section);
+        font-size: var(--font-size-mobile-section);
         overflow-wrap: anywhere;
       }
     }

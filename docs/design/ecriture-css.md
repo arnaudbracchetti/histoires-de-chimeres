@@ -39,13 +39,14 @@ Aucune couleur n'est écrite en TypeScript ni en dur dans un SVG : le SVG réfé
 - **Couches**, déclarées une fois dans le `styles.css` de chaque front : `@layer reset, tokens, base, components;`. Le back office ajoute `cdk-resets` en tête : le CDK y remet à zéro l'aperçu d'un glisser-déposer, et le style du composant doit l'emporter.
   - `reset` : remise à zéro courte ;
   - `tokens` : l'import de `tokens.css` ;
-  - `base` : éléments HTML nus (corps, titres, liens, tableaux, champs), taille de base du front (13 px dans le back office) ;
+  - `base` : éléments HTML nus (corps, titres, liens, tableaux, champs), taille de base du front (13 px dans le back office, 15 px dans le front office) ;
   - `components` : les styles des composants.
 - **Styles encapsulés** par composant (`ViewEncapsulation.Emulated`), écrits dans `@layer components`. Le `styles.css` global reste court.
 - **Unités** :
   - `rem` pour le texte et les tailles qui suivent le texte ;
   - `px` pour les filets, les rayons, les vignettes et les dimensions fixées par la charte (32 et 44 px, 0,8 px par minute) ;
   - les espacements passent par les jetons `--space-*`, jamais par une valeur libre.
-- **Seulement des jetons** pour les couleurs, les polices, les tailles de texte, les espacements, les rayons et le halo.
+- **Seulement des jetons** pour les couleurs, les polices, les tailles de texte, les espacements, les rayons et le halo, et dans le front office pour les interlignes (`--line-height-*`). Le back office garde quelques interlignes propres à ses composants denses ; sa base les prend des jetons. Le front office prend son échelle (`--font-size-mobile-*`) et ses dimensions (`--touch-target`, `--button-height`, `--gutter`, `--content-width`…), jamais celles du back office.
+- **Les réglages du CDK passent par le CSS** : la position d'une boîte, l'écart avec son origine, la largeur d'un dialogue s'écrivent dans le style du composant ouvert, par les jetons. Le TypeScript ne donne que l'origine et le sens (`originX`, `overlayY`…), jamais de décalage ni de largeur.
 - **Mouvement** : transitions de moins de 200 ms, toutes neutralisées sous `@media (prefers-reduced-motion: reduce)`.
 - Pas d'ombre grise, pas de `backdrop-filter`.

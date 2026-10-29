@@ -4,12 +4,5 @@ import { Component } from '@angular/core';
 @Component({
   selector: 'app-my-games-page',
   template: `<h1>Mes parties</h1>`,
-  styles: `
-    @layer components {
-      h1 {
-        font-size: var(--font-size-title);
-      }
-    }
-  `,
 })
 export class MyGamesPage {}

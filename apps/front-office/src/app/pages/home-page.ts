@@ -40,14 +40,14 @@ import { Button } from '../ui/button';
       .over {
         color: var(--text-muted);
         font-family: var(--font-caps);
-        font-size: var(--font-size-overline);
+        font-size: var(--font-size-mobile-overline);
         letter-spacing: 0.12em;
         text-transform: uppercase;
       }
 
       h2 {
         font-family: var(--font-display);
-        font-size: var(--font-size-title);
+        font-size: var(--font-size-mobile-title);
         font-weight: normal;
       }
     }

@@ -65,8 +65,8 @@ import { TabNavigation, TABS } from './tab-navigation';
         display: flex;
         gap: var(--space-s);
         align-items: center;
-        min-height: 56px;
-        padding: var(--space-xs) var(--space-s) var(--space-xs) var(--space-l);
+        min-height: var(--bar-height);
+        padding: var(--space-xs) var(--space-s) var(--space-xs) var(--gutter);
         border-bottom: 1px solid var(--border);
         background: var(--surface-1);
       }
@@ -82,6 +82,7 @@ import { TabNavigation, TABS } from './tab-navigation';
         min-width: 0;
         overflow: hidden;
         font-family: var(--font-display);
+        font-size: var(--font-size-mobile-body);
         text-overflow: ellipsis;
         white-space: nowrap;
       }
@@ -92,12 +93,13 @@ import { TabNavigation, TABS } from './tab-navigation';
         gap: var(--space-xs);
         align-items: center;
         max-width: 150px;
-        min-height: 44px;
+        min-height: var(--touch-target);
         padding: 0 var(--space-m) 0 var(--space-s);
         border: 1px solid var(--border);
         border-radius: 999px;
         background: var(--surface-3);
         color: var(--text);
+        font-size: var(--font-size-mobile-meta);
         font-weight: 600;
         cursor: pointer;
 
@@ -120,9 +122,9 @@ import { TabNavigation, TABS } from './tab-navigation';
       main {
         flex: 1;
         width: 100%;
-        max-width: 480px;
+        max-width: var(--content-width);
         margin-inline: auto;
-        padding: var(--space-l);
+        padding: var(--gutter);
       }
 
       nav {
@@ -141,9 +143,9 @@ import { TabNavigation, TABS } from './tab-navigation';
         gap: var(--space-xxs);
         align-items: center;
         justify-content: center;
-        min-height: 56px;
+        min-height: var(--bar-height);
         color: var(--text-muted);
-        font-size: var(--font-size-meta);
+        font-size: var(--font-size-mobile-meta);
         font-weight: 600;
         text-decoration: none;
 
@@ -179,9 +181,7 @@ export class Shell {
       positionStrategy: createFlexibleConnectedPositionStrategy(
         this.injector,
         this.nicknameButton(),
-      ).withPositions([
-        { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
-      ]),
+      ).withPositions([{ originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top' }]),
     });
     this.boxOpen.set(true);
     const result = await firstValueFrom(box.closed);
@@ -193,8 +193,6 @@ export class Shell {
       ariaLabelledBy: 'change-nickname-title',
       autoFocus: '.cancel',
       backdropClass: 'scrim',
-      width: 'calc(100vw - 32px)',
-      maxWidth: '448px',
       restoreFocus: true,
     });
   }

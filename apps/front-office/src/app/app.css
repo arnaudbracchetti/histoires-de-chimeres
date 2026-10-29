@@ -4,22 +4,22 @@
     position: fixed;
     inset: 0;
     z-index: -1;
-    width: min(90vmin, 480px);
-    height: min(90vmin, 480px);
+    width: min(90vmin, var(--content-width));
+    height: min(90vmin, var(--content-width));
     margin: auto;
     pointer-events: none;
   }
 
-  /* Gouttière de 16 px sur les côtés, à la largeur d'un téléphone. Contenu centré sur l'écran,
-     comme le filigrane. */
+  /* Gouttière sur les côtés, à la largeur d'un téléphone. Contenu centré sur l'écran, comme le
+     filigrane. */
   main {
     display: flex;
     flex-direction: column;
     justify-content: center;
     min-height: 100dvh;
-    max-width: 480px;
+    max-width: var(--content-width);
     margin-inline: auto;
-    padding: var(--space-xl) var(--space-l);
+    padding: var(--space-xl) var(--gutter);
     text-align: center;
   }
 }

@@ -29,8 +29,10 @@ import { Button } from '../ui/button';
   `,
   styles: `
     @layer components {
+      /* La largeur du contenu, dans la gouttière. */
       :host {
         display: grid;
+        width: calc(min(100vw, var(--content-width)) - 2 * var(--gutter));
         gap: var(--space-m);
         padding: var(--space-xl) var(--space-l) var(--space-l);
         border: 1px solid var(--border);
@@ -41,7 +43,7 @@ import { Button } from '../ui/button';
       /* Une question, pas un titre de section : police système. */
       h2 {
         font-family: var(--font-ui);
-        font-size: var(--font-size-section);
+        font-size: var(--font-size-mobile-section);
         font-weight: 600;
       }
 

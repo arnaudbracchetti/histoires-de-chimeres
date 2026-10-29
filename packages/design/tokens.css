@@ -47,6 +47,32 @@
     --font-size-meta: 0.75rem; /* 12 px */
     --font-size-overline: 0.6875rem; /* 11 px */
 
+    /* Échelle typographique (front office) */
+    --font-size-mobile-hero: 2rem; /* 32 px */
+    --font-size-mobile-title: 1.625rem; /* 26 px */
+    --font-size-mobile-section: 1.25rem; /* 20 px */
+    --font-size-mobile-block: 1.0625rem; /* 17 px */
+    --font-size-mobile-body: 0.9375rem; /* 15 px */
+    --font-size-mobile-meta: 0.8125rem; /* 13 px */
+    --font-size-mobile-overline: 0.6875rem; /* 11 px */
+    /* Texte d'un champ : 16 px au moins, sinon Safari zoome à la saisie. */
+    --font-size-mobile-field: 1.0625rem; /* 17 px */
+
+    /* Interlignes */
+    --line-height-text: 1.4;
+    --line-height-title: 1.2;
+    --line-height-display: 1.1; /* pseudo affiché en grand */
+
+    /* Dimensions du front office */
+    --touch-target: 44px; /* plus petite cible tactile */
+    --button-height: 48px;
+    --field-height: 52px;
+    --bar-height: 56px; /* en-tête et barre d'onglets */
+    --gutter: var(--space-l); /* marge latérale de l'écran */
+    --content-width: 480px; /* largeur maximale du contenu */
+    --popover-width: 264px; /* boîte du pseudo */
+    --overlay-offset: var(--space-s); /* écart entre un élément et ce qu'il ouvre */
+
     /* Espacements */
     --space-xxs: 2px;
     --space-xs: 4px;

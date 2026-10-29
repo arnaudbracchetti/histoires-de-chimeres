@@ -50,7 +50,7 @@ import { Field } from './ui/field';
 
       input {
         font-family: var(--font-caps);
-        font-size: var(--font-size-section);
+        font-size: var(--font-size-mobile-section);
         letter-spacing: 0.2em;
         text-align: center;
         text-transform: uppercase;

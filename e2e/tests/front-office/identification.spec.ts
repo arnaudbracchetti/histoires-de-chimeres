@@ -32,6 +32,21 @@ test('un pseudo vide ou trop long est signalé sous le champ', async ({ page }) 
   await expect(field).toHaveAccessibleDescription(/^Ton pseudo fait 30.caractères au plus/);
 });
 
+test('une erreur ne décale rien : le bouton reste sous le pouce', async ({ page }) => {
+  await page.goto(`/?${PRESENCE_CODE_PARAM}=${await presenceCodeOf(page.request)}`);
+  const field = page.getByLabel('Pseudo', { exact: true });
+  const button = page.getByRole('button', { name: 'Continuer' });
+  const before = await button.boundingBox();
+
+  await button.click();
+  await expect(field).toHaveAccessibleDescription('Tape ton pseudo.');
+  expect(await button.boundingBox()).toEqual(before);
+
+  await field.fill('a'.repeat(31));
+  await expect(field).toHaveAccessibleDescription(/^Ton pseudo fait 30.caractères au plus/);
+  expect(await button.boundingBox()).toEqual(before);
+});
+
 test('un pseudo existant demande une confirmation avant de relier le téléphone (ID-1, ID-7)', async ({
   page,
   request,

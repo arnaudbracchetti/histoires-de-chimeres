@@ -72,7 +72,7 @@ Un nouveau couple texte et fond se vérifie avant d'entrer dans un composant : 4
 
 ## Échelle typographique (back office)
 
-La taille de base du back office est de 13 px (`--font-size-body`), posée dans son `styles.css`. Celle du front office se fixera avec ses patterns. Les tailles sont en `rem`.
+La taille de base du back office est de 13 px (`--font-size-body`), posée dans son `styles.css`. Les tailles sont en `rem`.
 
 | Rôle | Police | Jeton |
 |---|---|---|
@@ -83,8 +83,37 @@ La taille de base du back office est de 13 px (`--font-size-body`), posée dans 
 | Métadonnées, aide, compteurs | système | `--font-size-meta` |
 | Surtitres, en-têtes de créneau et de table | Aldrich, capitales, `letter-spacing: 0.12em` | `--font-size-overline` |
 
-- Interligne de 1,4 pour le texte, de 1,2 pour les titres.
 - Aucune autre taille : les prototypes en ont essayé d'intermédiaires, l'échelle les ferme.
+
+## Échelle typographique (front office)
+
+Le téléphone se lit de plus loin et se tape au pouce : son échelle est plus grande d'un cran. La taille de base est de 15 px (`--font-size-mobile-body`), posée dans le `styles.css` du front office. Les jetons sont préfixés `mobile`, pour qu'un composant ne prenne jamais par mégarde la taille de l'autre front.
+
+| Rôle | Police | Jeton |
+|---|---|---|
+| Pseudo affiché en grand | Uncial Antiqua, orange | `--font-size-mobile-hero` |
+| Titre d'écran (h1), titre de carte de l'Accueil | Uncial Antiqua | `--font-size-mobile-title` |
+| Question d'un dialogue, pseudo dans sa boîte, code de présence | système, semi-gras (Aldrich pour le code) | `--font-size-mobile-section` |
+| Titre de bloc ou de ligne | système, semi-gras | `--font-size-mobile-block` |
+| Texte courant, boutons, nom de l'application dans l'en-tête | système (Uncial Antiqua pour le nom) | `--font-size-mobile-body` |
+| Aide, erreur de champ, détail d'une alerte, onglets, bouton du pseudo | système | `--font-size-mobile-meta` |
+| Surtitres | Aldrich, capitales, `letter-spacing: 0.12em` | `--font-size-mobile-overline` |
+| Texte d'un champ | système | `--font-size-mobile-field` |
+
+- **Le texte d'un champ ne descend jamais sous 16 px** : en dessous, Safari zoome sur le champ à la saisie, et la page ne revient pas à sa taille.
+- Aucune autre taille, comme pour le back office.
+
+## Interlignes
+
+| Jeton | Pour |
+|---|---|
+| `--line-height-text` (1,4) | texte courant |
+| `--line-height-title` (1,2) | titres |
+| `--line-height-display` (1,1) | pseudo affiché en grand, sur plusieurs lignes |
+
+## Dimensions du front office
+
+Cibles tactiles, hauteurs, gouttière et largeurs : leurs jetons et leur usage sont dans [patterns-front-office.md](patterns-front-office.md#mesures).
 
 ## Espacements
 

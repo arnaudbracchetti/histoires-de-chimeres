@@ -3,7 +3,7 @@ import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { Alerts } from './alerts';
 
-/** Les alertes, en bas de l'écran, sur toute sa largeur. */
+/** Les alertes, en bas de l'écran, à la largeur du contenu (docs/design/patterns-front-office.md, Alertes). */
 @Component({
   selector: 'app-alert-stack',
   imports: [Button, Icon],
@@ -32,14 +32,14 @@ import { Alerts } from './alerts';
     @layer components {
       :host {
         position: fixed;
-        right: var(--space-l);
-        bottom: var(--space-l);
-        left: var(--space-l);
+        right: var(--gutter);
+        bottom: var(--gutter);
+        left: var(--gutter);
         z-index: 10;
         display: flex;
         flex-direction: column;
         gap: var(--space-s);
-        max-width: 448px;
+        max-width: calc(var(--content-width) - 2 * var(--gutter));
         margin-inline: auto;
       }
 
@@ -61,6 +61,7 @@ import { Alerts } from './alerts';
 
       p {
         color: var(--text-muted);
+        font-size: var(--font-size-mobile-meta);
       }
     }
   `,

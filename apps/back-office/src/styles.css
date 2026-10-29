@@ -43,13 +43,13 @@
     font-family: var(--font-ui);
     /* Taille de base du back office : 13 px. */
     font-size: var(--font-size-body);
-    line-height: 1.4;
+    line-height: var(--line-height-text);
   }
 
   h1,
   h2,
   h3 {
-    line-height: 1.2;
+    line-height: var(--line-height-title);
   }
 
   h1 {
