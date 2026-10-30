@@ -111,9 +111,9 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
 - **ID-9** « Changer de pseudo », après une confirmation, coupe le lien du téléphone et ramène à l'identification : pour corriger une erreur, ou pour inscrire plusieurs personnes depuis un même téléphone. L'ancien pseudo reste, avec ses inscriptions. Un participant ne peut pas modifier son pseudo.
 - **ID-10** Supprimer un pseudo de participant est toujours possible, même après la publication d'un tirage. Le pseudo perd ses liens, ses inscriptions et son résultat dans les tirages, provisoires ou publiés, puis redevient libre. Après la publication, sa partie compte simplement un joueur de moins : la place n'est proposée à personne (§7). Un MJ ne se supprime que par PR-12.
 - **ID-11** Fusionner un pseudo de participant (la source) dans un autre pseudo, de participant ou de MJ (la destination), fait passer sur la destination les inscriptions de la source et son résultat dans les tirages, provisoires ou publiés, puis supprime la source (ID-10) : ses liens sont coupés, pas transférés. La destination garde une seule inscription par partie, et une seule table par créneau ; une partie double compte sur ses deux créneaux :
-  - sur un créneau où la destination mène une partie (IN-4) ou est déjà placée par un tirage, les inscriptions et le résultat de la source sont perdus ;
+  - sur un créneau où la destination est déjà placée par un tirage, les inscriptions et le résultat de la source sont perdus ;
   - sur un créneau où la source est placée et la destination non placée, la destination prend la partie de la source ;
-  - ailleurs, les inscriptions et le résultat de la source passent à la destination.
+  - ailleurs, les inscriptions et le résultat de la source passent à la destination, y compris sur un créneau où elle mène une partie (IN-4).
 
 ### 5.2 Programme
 
@@ -165,7 +165,7 @@ Une barre fixée en bas de l'écran porte le geste : « S'inscrire » ou, une fo
 - **IN-1** Les inscriptions sont ouvertes dès qu'on entre dans l'application avec le code de présence (§4.1), sans heure d'ouverture.
 - **IN-2** Un participant peut s'inscrire à plusieurs parties d'un même créneau et se désinscrire librement tant que le tirage de ce créneau n'est pas lancé. S'inscrire à une partie où l'on est déjà inscrit, ou se désinscrire d'une partie où l'on ne l'est pas, ne change rien : un geste répété après une coupure du réseau est sans risque. Se désinscrire se fait d'un tap, sans confirmation.
 - **IN-3** S'inscrire à une partie double revient à se déclarer disponible sur ses deux créneaux. Au programme, elle n'apparaît que sous son premier créneau, où elle commence, avec la mention de ses deux créneaux. S'y inscrire garde les inscriptions déjà prises sur son second créneau : elles comptent si l'on n'est pas placé dans la partie double, et le tirage les ignore sinon (TI-3). La fiche n'en dit rien.
-- **IN-4** Un MJ ne peut pas s'inscrire comme joueur sur un créneau où il mène une partie. Si une partie de son scénario est programmée sur un créneau où il était inscrit comme joueur, ses inscriptions sur ce créneau sont retirées et il est notifié (NO-2).
+- **IN-4** Un MJ ne peut pas s'inscrire comme joueur sur un créneau où il mène une partie. Si une partie de son scénario est programmée ou déplacée sur un créneau où il était inscrit comme joueur, ses inscriptions sur ce créneau restent en place, mais ne comptent pas tant qu'il y mène : elles n'entrent ni dans le nombre d'inscrits d'une partie, ni dans « très demandée » (IN-5), ni dans le tirage (TI-2). Son téléphone ne les montre pas sur ce créneau. Elles reprennent effet si sa partie quitte le créneau. Ainsi, une partie programmée par erreur, puis déplacée, ne lui fait perdre aucune inscription.
 - **IN-5** Avant une inscription qui ferait dépasser les places maximum d'une partie, y compris celle qui la fait passer en très demandée, l'application demande une confirmation :
   - titre : « Partie très demandée » ;
   - texte : « *Titre* a déjà *K* inscrits pour *M* places : tu risques de ne pas avoir de place. Inscris-toi aussi à d'autres parties du créneau *N*, pour avoir plus de chances de jouer. » ;
@@ -177,7 +177,7 @@ Une barre fixée en bas de l'écran porte le geste : « S'inscrire » ou, une fo
 ### 5.5 Tirage
 
 - **TI-1** Le tirage se fait par créneau, lancé manuellement par un Organisateur. Le lancement ferme les inscriptions du créneau.
-- **TI-2** Participants concernés : les inscrits du créneau, hors MJ qui y mènent une partie.
+- **TI-2** Participants concernés : les inscrits du créneau, hors MJ qui y mènent une partie, dont les inscriptions sur ce créneau sont ignorées (IN-4).
 - **TI-3** Partie double : elle est tirée avec son premier créneau. Ses joueurs ne participent pas au tirage du créneau suivant, et leurs inscriptions sur ce créneau suivant sont ignorées.
 - **TI-4** Priorités, dans l'ordre :
   1. ne jamais dépasser le maximum d'une partie et ne placer un participant que sur une partie où il est inscrit ;
@@ -214,7 +214,6 @@ Notifications push web. Chaque notification se suffit à elle-même : son titre 
 
   Variantes :
   - après l'annulation d'un tirage provisoire (TI-6), le corps de « nouvelle partie » se termine par « Les inscriptions du créneau sont rouvertes. » ;
-  - quand le MJ était inscrit sur ce créneau (IN-4), le corps de « tu mènes une partie » se termine par « Tes inscriptions sur ce créneau sont retirées. » ;
   - quand aucune table n'a de place, « Toutes les parties du créneau sont complètes. » remplace le corps du non placé, et la phrase « Il reste de la place… » de la partie annulée ;
   - une partie double se désigne par ses deux créneaux : « Créneaux 2 et 3 : table *T* ».
 
