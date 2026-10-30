@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countOf, formatCount, fr, NBSP, plural, THIN_NBSP } from './french.js';
+import { countOf, formatCount, formatList, fr, NBSP, plural, THIN_NBSP } from './french.js';
 
 describe('Typographie française', () => {
   it('nomme les espaces de ton.md par leur point de code', () => {
@@ -43,5 +43,11 @@ describe('Typographie française', () => {
     expect(plural(2, 'place', 'places')).toBe('places');
     expect(countOf(4, 'place', 'places')).toBe(`4${NBSP}places`);
     expect(countOf(1500, 'caractère', 'caractères')).toBe(`1${THIN_NBSP}500${NBSP}caractères`);
+  });
+
+  it('énumère avec « et » devant le dernier élément, sans virgule devant lui', () => {
+    expect(formatList(['Dragon'])).toBe('Dragon');
+    expect(formatList(['Dragon', 'Licorne'])).toBe('Dragon et Licorne');
+    expect(formatList(['Dragon', 'Licorne', 'Griffon'])).toBe('Dragon, Licorne et Griffon');
   });
 });

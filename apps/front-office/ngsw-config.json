@@ -31,7 +31,7 @@
     {
       "name": "front-office",
       "urls": ["/api/front-office", "/api/front-office/**"],
-      "version": 2,
+      "version": 3,
       "cacheConfig": {
         "strategy": "freshness",
         "timeout": "3s",

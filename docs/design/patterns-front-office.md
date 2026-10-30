@@ -140,6 +140,27 @@ Le geste d'inscription (IN-2), fixé en bas de la fiche d'une partie, toujours s
 
 Sur une carte du programme, un badge « Inscrit » (`check`, orange teinté à 14 %) se pose en haut à gauche de l'image d'une partie où le pseudo est inscrit.
 
+## Accueil
+
+En tête, une seule carte (stories 54, 55, 57, 59), puis « Ton programme ».
+
+- **Affectation** : la dernière publiée, tant que sa partie n'est pas terminée (une partie double, jusqu'à la fin de son second créneau). Carte 3:2 qui ouvre la fiche : l'image, dans son coin « Début à 9 h 30 » ou « Maintenant » (`clock`, orange teinté à 14 %), puis par-dessus « Créneau 1 · 9 h 30 – 12 h 00 » en surtitre, « Table Griffon » en Uncial Antiqua à taille de héros, « Tu joues à *Titre*, avec *MJ* » et le jeu.
+- **« Pas de place pour toi »**, si c'est le dernier résultat publié : carte bordée de jaune, la phrase qui dit où il reste de la place, puis une carte par partie du créneau qui en a (vignette, « Table Dragon », « *Titre*, avec *MJ* », « 2 places libres » en vert), qui ouvre sa fiche.
+- **« Tirage en cours »**, sinon, pour un créneau en cours de tirage où le pseudo est inscrit : ses inscriptions comptent pour ce tirage, et sa table s'affichera ici dès la publication.
+- **« Choisis tes parties »**, sans rien de tout cela, avec « Voir le programme ».
+
+**Ton programme** : une liste en Anthracite 2, une ligne par créneau à venir, sauf ceux de la carte. Le surtitre « Créneau 2 · 14 h 00 », puis l'état du pseudo (icône, libellé semi-gras, détail en texte secondaire), et `chevron-right` à droite :
+
+| État | Icône | Libellé · détail |
+|---|---|---|
+| inscriptions ouvertes | `circle-check` orange, ou `plus` | « 2 inscriptions » · leurs titres, ou « Aucune inscription » · « Choisir une partie » |
+| tirage en cours | `hourglass` | « Tirage en cours » · ses inscriptions |
+| table | `circle-check` vert | « Table Griffon » · « *Titre*, avec *MJ* » |
+| pas de place | `triangle-alert` jaune | « Pas de place pour toi » · les tables où il en reste |
+| publié, sans inscription | `circle-check` | « Tirage publié » · « Aucune inscription sur ce créneau » |
+
+Une ligne ouvre la fiche de sa table, sinon le programme du créneau, posé sur l'Accueil comme son onglet. Le rappel d'IN-5 s'y ajoute, sur fond jaune teinté à 14 %.
+
 ## Mes parties
 
 L'onglet suit la journée du pseudo, créneau par créneau à venir (story 86). Chaque créneau est une section titrée « Créneau 2 », suivie de sa plage horaire en texte secondaire.

@@ -1,4 +1,8 @@
-import type { FrontOfficeGameDto, FrontOfficeScheduleDto } from '@chimeres/contract';
+import type {
+  FrontOfficeGameDto,
+  FrontOfficeScheduleDto,
+  FrontOfficeTimeSlotDto,
+} from '@chimeres/contract';
 import { countOf, formatTimeRange, formatTimeSlotRanks, fr } from '@chimeres/design';
 
 /** « Aucun inscrit · 5 places », « 6 inscrits · 4 places » : les places maximum (§5.3). */
@@ -20,14 +24,21 @@ export function timeSlotsLabelOf(
   schedule: FrontOfficeScheduleDto,
   game: FrontOfficeGameDto,
 ): string {
-  const slots = timeSlotsOf(schedule, game);
+  return timeSlotsLabel(timeSlotsOf(schedule, game));
+}
+
+/** « Créneau 2 · 14 h 00 – 18 h 30 », « Créneaux 3 et 4 · 14 h 00 – 23 h 00 » : des créneaux qui se suivent. */
+export function timeSlotsLabel(slots: FrontOfficeTimeSlotDto[]): string {
   const range = formatTimeRange(slots[0]!.start, slots.at(-1)!.end);
-  return `${ranksLabelOf(schedule, game)} · ${range}`;
+  return `${capitalized(formatTimeSlotRanks(slots.map(({ rank }) => rank)))} · ${range}`;
 }
 
 /** « Créneau 2 », ou « Créneaux 3 et 4 » pour une partie double. */
 export function ranksLabelOf(schedule: FrontOfficeScheduleDto, game: FrontOfficeGameDto): string {
-  const label = formatTimeSlotRanks(ranksOf(schedule, game));
+  return capitalized(formatTimeSlotRanks(ranksOf(schedule, game)));
+}
+
+function capitalized(label: string): string {
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 

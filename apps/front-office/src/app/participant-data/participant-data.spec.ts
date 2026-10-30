@@ -10,6 +10,7 @@ import {
   signUpEndpoints,
   type FrontOfficeGameDto,
   type FrontOfficeScheduleDto,
+  type FrontOfficeTimeSlotDto,
   type ParticipantSituationDto,
 } from '@chimeres/contract';
 import { LinkedPhone } from '../linked-phone';
@@ -30,6 +31,7 @@ const game = (id: string, timeSlotIds: string[]): FrontOfficeGameDto => ({
   contentWarnings: '',
   seats: { min: 3, max: 5 },
   signUpCount: 0,
+  playerCount: null,
   oversubscribed: false,
 });
 
@@ -312,7 +314,10 @@ describe('ParticipantData', () => {
 
   describe('s’inscrire et se désinscrire (IN-2)', () => {
     const signUpUrl = (gameId: string) => apiUrl(signUpEndpoints.signUp, { gameId });
-    const alerts = () => TestBed.inject(Alerts).notices().map(({ title }) => title);
+    const alerts = () =>
+      TestBed.inject(Alerts)
+        .notices()
+        .map(({ title }) => title);
 
     it('inscrit, attend pendant l’envoi, puis relit : la barre dit « Inscription enregistrée »', async () => {
       const data = await opened();
@@ -396,17 +401,15 @@ describe('ParticipantData', () => {
       const data = await opened();
 
       const gesture = data.signUp('Brumes');
-      http()
-        .expectOne(signUpUrl('Brumes'))
-        .flush(
-          {
-            code: 'sign-ups-closed',
-            title: 'Inscriptions fermées',
-            detail: 'Le tirage du créneau 1 est lancé : ses inscriptions sont fermées.',
-            status: 422,
-          },
-          { status: 422, statusText: '' },
-        );
+      http().expectOne(signUpUrl('Brumes')).flush(
+        {
+          code: 'sign-ups-closed',
+          title: 'Inscriptions fermées',
+          detail: 'Le tirage du créneau 1 est lancé : ses inscriptions sont fermées.',
+          status: 422,
+        },
+        { status: 422, statusText: '' },
+      );
       await vi.advanceTimersByTimeAsync(0);
       await answer(schedule([brumes]), now, situation([], { ...open('s1'), state: 'drawing' }));
       await gesture;
@@ -476,10 +479,9 @@ describe('ParticipantData', () => {
   describe('Mes parties', () => {
     /** Pour chaque créneau de Mes parties : son rang et ses inscriptions. */
     const signUpsBySlot = (data: ParticipantData) =>
-      data.myTimeSlots()?.map(({ timeSlot, signedUpGames }) => [
-        timeSlot.rank,
-        signedUpGames.map(({ id }) => id),
-      ]);
+      data
+        .myTimeSlots()
+        ?.map(({ timeSlot, signedUpGames }) => [timeSlot.rank, signedUpGames.map(({ id }) => id)]);
 
     it('montre les inscriptions par créneau à venir, une partie double sous son premier créneau (IN-3, story 53)', async () => {
       const data = await opened(undefined, undefined, situation(['Épice', 'Néons']));
@@ -501,14 +503,18 @@ describe('ParticipantData', () => {
         undefined,
         situation(
           ['Brumes', 'Néons'],
-          { timeSlotId: 's1', state: 'published', drawResult: { kind: 'assigned', gameId: 'Brumes' } },
+          {
+            timeSlotId: 's1',
+            state: 'published',
+            drawResult: { kind: 'assigned', gameId: 'Brumes' },
+          },
           { timeSlotId: 's2', state: 'published', drawResult: { kind: 'unassigned' } },
         ),
       );
 
       expect(data.myTimeSlots()?.map(({ assignment }) => assignment)).toEqual([
         { kind: 'assigned', game: brumes },
-        { kind: 'unassigned' },
+        { kind: 'unassigned', gamesWithSeats: [] },
       ]);
     });
 
@@ -616,6 +622,145 @@ describe('ParticipantData', () => {
 
         expect(reminded(data)).toEqual([]);
       });
+    });
+  });
+
+  describe('Accueil', () => {
+    /** Les rangs des créneaux de « Ton programme ». */
+    const programmeRanks = (data: ParticipantData) =>
+      data.home()?.timeSlots.map(({ timeSlot }) => timeSlot.rank);
+
+    it('montre « Choisis tes parties » sans affectation à montrer, et chaque créneau à venir dans « Ton programme » (stories 59, 60)', async () => {
+      const data = await opened(undefined, undefined, situation(['Brumes']));
+
+      expect(data.home()?.card).toEqual({ kind: 'choose-games' });
+      expect(programmeRanks(data)).toEqual([1, 2]);
+    });
+
+    const published = (timeSlotId: string, drawResult: TimeSlotSituation['drawResult']) => ({
+      timeSlotId,
+      state: 'published' as const,
+      drawResult,
+    });
+    const [slot1, slot2] = schedule([]).timeSlots as [
+      FrontOfficeTimeSlotDto,
+      FrontOfficeTimeSlotDto,
+    ];
+
+    it('montre l’affectation publiée tant que son créneau n’est pas terminé, puis « Maintenant » dès son début (story 54)', async () => {
+      const data = await opened(
+        undefined,
+        undefined,
+        situation(['Brumes'], published('s1', { kind: 'assigned', gameId: 'Brumes' })),
+      );
+
+      expect(data.home()?.card).toEqual({
+        kind: 'assigned',
+        game: brumes,
+        timeSlots: [slot1],
+        started: false,
+      });
+      expect(programmeRanks(data)).toEqual([2]);
+
+      now = new Date(2027, 2, 14, 9, 0);
+      await vi.advanceTimersByTimeAsync(30_000);
+      await answer('failure');
+      expect(data.home()?.card).toMatchObject({ kind: 'assigned', started: true });
+
+      now = new Date(2027, 2, 14, 11, 30);
+      await vi.advanceTimersByTimeAsync(30_000);
+      await answer('failure');
+      expect(data.home()?.card).toEqual({ kind: 'choose-games' });
+      expect(programmeRanks(data)).toEqual([2]);
+    });
+
+    it('montre la dernière affectation publiée, et la plus ancienne dans « Ton programme »', async () => {
+      const data = await opened(
+        undefined,
+        undefined,
+        situation(
+          ['Brumes', 'Néons'],
+          published('s1', { kind: 'assigned', gameId: 'Brumes' }),
+          published('s2', { kind: 'assigned', gameId: 'Néons' }),
+        ),
+      );
+
+      expect(data.home()?.card).toMatchObject({ kind: 'assigned', game: neons });
+      expect(data.home()?.timeSlots.map(({ assignment }) => assignment)).toEqual([
+        { kind: 'assigned', game: brumes },
+      ]);
+    });
+
+    it('garde la partie double publiée jusqu’à la fin de son second créneau (TI-3)', async () => {
+      const data = await opened(
+        undefined,
+        undefined,
+        situation(['Épice'], published('s1', { kind: 'assigned', gameId: 'Épice' })),
+      );
+
+      expect(data.home()?.card).toEqual({
+        kind: 'assigned',
+        game: epice,
+        timeSlots: [slot1, slot2],
+        started: false,
+      });
+      expect(programmeRanks(data)).toEqual([]);
+
+      now = new Date(2027, 2, 14, 14, 0);
+      await vi.advanceTimersByTimeAsync(30_000);
+      await answer('failure');
+      expect(data.home()?.card).toEqual({
+        kind: 'assigned',
+        game: epice,
+        timeSlots: [slot1, slot2],
+        started: true,
+      });
+    });
+
+    it('montre « Pas de place pour toi » et les parties du créneau où il reste de la place (story 55)', async () => {
+      const full = { ...brumes, playerCount: 5 };
+      const ruines = { ...game('Ruines', ['s1']), playerCount: 3 };
+      const data = await opened(
+        schedule([full, ruines, epice, neons]),
+        undefined,
+        situation(['Brumes'], published('s1', { kind: 'unassigned' })),
+      );
+
+      expect(data.home()?.card).toEqual({
+        kind: 'unassigned',
+        timeSlot: slot1,
+        gamesWithSeats: [ruines],
+      });
+      expect(programmeRanks(data)).toEqual([2]);
+    });
+
+    it('montre « Tirage en cours » à un inscrit sur un créneau en cours de tirage (story 57)', async () => {
+      const data = await opened(
+        undefined,
+        undefined,
+        situation(['Brumes', 'Épice'], { ...open('s1'), state: 'drawing' }),
+      );
+
+      expect(data.home()?.card).toEqual({
+        kind: 'drawing',
+        timeSlot: slot1,
+        signedUpGames: [brumes, epice],
+      });
+      expect(programmeRanks(data)).toEqual([2]);
+    });
+
+    it('montre « Choisis tes parties » sans inscription sur le créneau en cours de tirage, qui reste dans « Ton programme »', async () => {
+      const data = await opened(
+        undefined,
+        undefined,
+        situation(['Néons'], { ...open('s1'), state: 'drawing' }),
+      );
+
+      expect(data.home()?.card).toEqual({ kind: 'choose-games' });
+      expect(data.home()?.timeSlots.map(({ state }) => state)).toEqual([
+        'drawing',
+        'sign-ups-open',
+      ]);
     });
   });
 });

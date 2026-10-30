@@ -1,7 +1,7 @@
 import { Location } from '@angular/common';
 import { inject, Injectable } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router } from '@angular/router';
+import { NavigationEnd, type Params, Router } from '@angular/router';
 import { filter, firstValueFrom, map } from 'rxjs';
 
 /** Un onglet de la barre du bas : son chemin, sans `/` (`''` pour l'Accueil). */
@@ -37,15 +37,19 @@ export class TabNavigation {
     { initialValue: this.currentPath() },
   );
 
-  /** Depuis l'Accueil, l'onglet s'empile ; depuis un onglet, il le remplace ; l'Accueil se retrouve en reculant. */
-  go(path: string): void {
+  /**
+   * Depuis l'Accueil, l'onglet s'empile ; depuis un onglet, il le remplace ; l'Accueil se retrouve
+   * en reculant. `queryParams` y choisit ce qu'il montre (le créneau du programme).
+   */
+  go(path: string, queryParams?: Params): void {
     const current = this.currentPath();
     if (path === current) return;
     if (path === HOME) {
       this.location.back();
       return;
     }
-    void this.router.navigateByUrl(`/${path}`, {
+    void this.router.navigate([`/${path}`], {
+      queryParams,
       replaceUrl: current !== HOME,
       state: { [ABOVE_HOME]: true },
     });

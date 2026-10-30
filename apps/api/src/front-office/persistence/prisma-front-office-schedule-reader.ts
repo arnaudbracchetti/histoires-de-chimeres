@@ -101,6 +101,8 @@ export class PrismaFrontOfficeScheduleReader implements FrontOfficeScheduleReade
             contentWarnings: scenario.contentWarnings,
             seats: { min: scenario.seatsMin, max: scenario.seatsMax },
             signUpCount,
+            // Le tirage n'existe pas encore : aucun créneau n'est publié.
+            playerCount: null,
             oversubscribed: signUpCount > scenario.seatsMax,
           };
         }),

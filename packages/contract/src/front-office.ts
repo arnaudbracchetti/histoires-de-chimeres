@@ -44,6 +44,11 @@ export type FrontOfficeGameDto = {
   seats: SeatsDto;
   /** Le nombre d'inscrits. */
   signUpCount: number;
+  /**
+   * Le nombre de joueurs, une fois le tirage de son créneau publié : il reste de la place sous ses
+   * places maximum. `null` avant.
+   */
+  playerCount: number | null;
   /** Partie très demandée : ses inscrits dépassent ses places maximum (IN-5). */
   oversubscribed: boolean;
 };

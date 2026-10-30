@@ -67,7 +67,7 @@ describe('App', () => {
     const tabs = [...page.querySelectorAll('nav a')].map((tab) => tab.textContent?.trim());
     expect(tabs).toEqual(['Accueil', 'Programme', 'Mes parties']);
     expect(page.querySelector('nav a[aria-current="page"]')?.textContent?.trim()).toBe('Accueil');
-    expect(page.textContent).toContain('Choisis tes parties');
+    expect(heading(page)).toBe('Accueil');
   });
 
   it('demande le code de présence quand il manque (ID-2)', async () => {

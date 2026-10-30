@@ -46,3 +46,10 @@ export function plural(count: number, singular: string, pluralForm: string): str
 export function countOf(count: number, singular: string, pluralForm: string): string {
   return `${formatCount(count)}${NBSP}${plural(count, singular, pluralForm)}`;
 }
+
+const LIST = new Intl.ListFormat('fr', { type: 'conjunction' });
+
+/** « Dragon », « Dragon et Licorne », « Dragon, Licorne et Griffon ». */
+export function formatList(items: readonly string[]): string {
+  return LIST.format(items);
+}

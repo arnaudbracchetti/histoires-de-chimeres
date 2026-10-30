@@ -1,4 +1,4 @@
-import { NBSP, plural, THIN_NBSP } from './french.js';
+import { formatList, NBSP, plural, THIN_NBSP } from './french.js';
 
 /** « 14 h 00 », « 9 h 30 ». */
 export function formatTime(time: string): string {
@@ -39,12 +39,10 @@ export function timeSlotLabel({
   return `Créneau ${rank} · ${formatTimeRange(start, end)}`;
 }
 
-const RANKS = new Intl.ListFormat('fr', { type: 'conjunction' });
-
 /** « créneau 2 », « créneaux 1, 2 et 4 » : des créneaux par leur rang. `''` sans aucun. */
 export function formatTimeSlotRanks(ranks: readonly number[]): string {
   if (!ranks.length) return '';
-  return `${plural(ranks.length, 'créneau', 'créneaux')} ${RANKS.format(ranks.map(String))}`;
+  return `${plural(ranks.length, 'créneau', 'créneaux')} ${formatList(ranks.map(String))}`;
 }
 
 /**

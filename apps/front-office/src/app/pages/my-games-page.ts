@@ -1,8 +1,9 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { formatTimeRange } from '@chimeres/design';
-import { doubleGameRanksOf, oversubscribedReminderOf } from '../game/game-text';
+import { doubleGameRanksOf } from '../game/game-text';
 import { OversubscribedBadge } from '../game/oversubscribed-badge';
+import { OversubscribedReminder } from '../game/oversubscribed-reminder';
 import { ParticipantData } from '../participant-data/participant-data';
 import { ScenarioIllustration } from '../scenario-illustration';
 import { Icon } from '../ui/icon';
@@ -13,7 +14,7 @@ import { Icon } from '../ui/icon';
  */
 @Component({
   selector: 'app-my-games-page',
-  imports: [Icon, OversubscribedBadge, RouterLink, ScenarioIllustration],
+  imports: [Icon, OversubscribedBadge, OversubscribedReminder, RouterLink, ScenarioIllustration],
   template: `
     <h1 class="visually-hidden">Mes parties</h1>
     @if (data.schedule(); as schedule) {
@@ -24,11 +25,7 @@ import { Icon } from '../ui/icon';
             <span class="range">{{ formatTimeRange(slot.timeSlot.start, slot.timeSlot.end) }}</span>
           </h2>
           @if (slot.onlySignUpOversubscribed) {
-            <p class="reminder">
-              <app-icon name="triangle-alert" /><span>{{
-                oversubscribedReminderOf(slot.timeSlot.rank)
-              }}</span>
-            </p>
+            <app-oversubscribed-reminder [rank]="slot.timeSlot.rank" />
           }
           @if (slot.signedUpGames.length) {
             <ul aria-label="Tes inscriptions">
@@ -117,19 +114,6 @@ import { Icon } from '../ui/icon';
         font-variant-numeric: tabular-nums;
       }
 
-      .reminder {
-        display: flex;
-        gap: var(--space-s);
-        align-items: flex-start;
-        padding: var(--space-m);
-        border-radius: var(--radius-card);
-        background: color-mix(in srgb, var(--warning) 14%, var(--surface-2));
-
-        app-icon {
-          color: var(--warning);
-        }
-      }
-
       ul {
         display: grid;
         gap: var(--space-s);
@@ -196,6 +180,5 @@ import { Icon } from '../ui/icon';
 export class MyGamesPage {
   protected readonly data = inject(ParticipantData);
   protected readonly formatTimeRange = formatTimeRange;
-  protected readonly oversubscribedReminderOf = oversubscribedReminderOf;
   protected readonly doubleGameRanksOf = doubleGameRanksOf;
 }

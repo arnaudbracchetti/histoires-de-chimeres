@@ -151,6 +151,7 @@ describe('Programme du front office', () => {
           contentWarnings: '',
           seats: { min: 4, max: 6 },
           signUpCount: 0,
+          playerCount: null,
           oversubscribed: false,
         },
         {
@@ -165,6 +166,7 @@ describe('Programme du front office', () => {
           contentWarnings: 'Noyade.',
           seats: { min: 3, max: 5 },
           signUpCount: 0,
+          playerCount: null,
           oversubscribed: false,
         },
       ],
