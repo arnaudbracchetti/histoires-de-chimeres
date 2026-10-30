@@ -113,6 +113,7 @@ describe('Abonnement push du téléphone relié', () => {
       vi.stubEnv('VAPID_PUBLIC_KEY', 'BPublique');
       vi.stubEnv('VAPID_PRIVATE_KEY', 'privée');
       vi.stubEnv('VAPID_SUBJECT', 'mailto:organisateurs@example.org');
+      vi.stubEnv('PUBLIC_URL', 'https://chimeres.example.org');
       app = await startApp();
 
       const response = await server().get(apiUrl(pushSubscriptionEndpoints.readPublicKey)).expect(200);

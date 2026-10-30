@@ -9,11 +9,14 @@ import {
   SwapGames,
   UnscheduleGame,
   type ConventionRepository,
+  type NotificationSender,
   type ScenarioRepository,
   type ScheduleReader,
 } from '@chimeres/application';
 import { CONVENTION_REPOSITORY } from '../convention/convention-repository.token.js';
 import { ConventionModule } from '../convention/convention.module.js';
+import { NOTIFICATION_SENDER } from '../notification/notification-sender.token.js';
+import { NotificationModule } from '../notification/notification.module.js';
 import { SCENARIO_REPOSITORY } from '../scenario/scenario-repository.token.js';
 import { ScenarioModule } from '../scenario/scenario.module.js';
 import { ScheduleController } from './http/schedule.controller.js';
@@ -21,7 +24,7 @@ import { PrismaScheduleReader } from './persistence/prisma-schedule-reader.js';
 import { SCHEDULE_READER } from './schedule-reader.token.js';
 
 @Module({
-  imports: [ConventionModule, ScenarioModule],
+  imports: [ConventionModule, NotificationModule, ScenarioModule],
   controllers: [ScheduleController],
   providers: [
     { provide: SCHEDULE_READER, useClass: PrismaScheduleReader },
@@ -53,18 +56,21 @@ import { SCHEDULE_READER } from './schedule-reader.token.js';
     },
     {
       provide: MoveGame,
-      useFactory: (conventions: ConventionRepository) => new MoveGame(conventions),
-      inject: [CONVENTION_REPOSITORY],
+      useFactory: (conventions: ConventionRepository, notifications: NotificationSender) =>
+        new MoveGame(conventions, notifications),
+      inject: [CONVENTION_REPOSITORY, NOTIFICATION_SENDER],
     },
     {
       provide: SwapGames,
-      useFactory: (conventions: ConventionRepository) => new SwapGames(conventions),
-      inject: [CONVENTION_REPOSITORY],
+      useFactory: (conventions: ConventionRepository, notifications: NotificationSender) =>
+        new SwapGames(conventions, notifications),
+      inject: [CONVENTION_REPOSITORY, NOTIFICATION_SENDER],
     },
     {
       provide: UnscheduleGame,
-      useFactory: (conventions: ConventionRepository) => new UnscheduleGame(conventions),
-      inject: [CONVENTION_REPOSITORY],
+      useFactory: (conventions: ConventionRepository, notifications: NotificationSender) =>
+        new UnscheduleGame(conventions, notifications),
+      inject: [CONVENTION_REPOSITORY, NOTIFICATION_SENDER],
     },
   ],
 })

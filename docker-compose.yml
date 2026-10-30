@@ -47,6 +47,8 @@ services:
       VAPID_PUBLIC_KEY: BMXbLlbTNw9LkgEydftW4ItQAwBr29-km3dwRNyGCMn7n1lVj_1_POgKxC3QQlX70s8CVN7C5eqGhe-j0ke7riY
       VAPID_PRIVATE_KEY: uNAJwgUkFvwCdgTS7SegYNhM5FD5P5ks4rggyO7mOvk
       VAPID_SUBJECT: mailto:e2e@example.org
+      # L'adresse que les notifications ouvrent.
+      PUBLIC_URL: http://localhost:8081
     ports:
       - '8081:3000'
 

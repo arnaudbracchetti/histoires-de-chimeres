@@ -21,6 +21,7 @@ import { CLOCK } from '../clock/clock.token.js';
 import { ParisClock } from '../clock/paris-clock.js';
 import { CONVENTION_REPOSITORY } from '../convention/convention-repository.token.js';
 import { ConventionModule } from '../convention/convention.module.js';
+import { NotificationModule } from '../notification/notification.module.js';
 import { FRONT_OFFICE_SCHEDULE_READER } from './front-office-schedule-reader.token.js';
 import { FrontOfficeScheduleController } from './http/front-office-schedule.controller.js';
 import { FrontOfficeController } from './http/front-office.controller.js';
@@ -34,14 +35,12 @@ import { PrismaFrontOfficeScheduleReader } from './persistence/prisma-front-offi
 import { PrismaLinkedPhoneReader } from './persistence/prisma-linked-phone-reader.js';
 import { PrismaLinkedPhoneRepository } from './persistence/prisma-linked-phone-repository.js';
 import { PresenceCodeAttempts } from './presence-code-attempts.js';
-import { VAPID_KEYS } from './vapid-keys.token.js';
-import { vapidKeysFromEnvironment } from './vapid-keys.js';
 
 /** L'identifiant opaque d'un téléphone relié, valeur de son cookie : 256 bits tirés au hasard. */
 const newPhoneId = () => randomBytes(32).toString('base64url');
 
 @Module({
-  imports: [ConventionModule],
+  imports: [ConventionModule, NotificationModule],
   controllers: [
     FrontOfficeController,
     FrontOfficeScheduleController,
@@ -56,7 +55,6 @@ const newPhoneId = () => randomBytes(32).toString('base64url');
     { provide: LINKED_PHONE_READER, useClass: PrismaLinkedPhoneReader },
     { provide: FRONT_OFFICE_SCHEDULE_READER, useClass: PrismaFrontOfficeScheduleReader },
     PresenceCodeAttempts,
-    { provide: VAPID_KEYS, useFactory: vapidKeysFromEnvironment },
     {
       provide: ReadFrontOffice,
       useFactory: (repository: ConventionRepository, clock: Clock) =>

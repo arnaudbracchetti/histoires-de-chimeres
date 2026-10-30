@@ -1,4 +1,5 @@
 import type { PushSubscriptionBody } from '@chimeres/contract';
+import type { NotificationRecipients } from '@chimeres/domain';
 
 /**
  * Le téléphone relié à un pseudo (ADR 0009), hors de l'agrégat `Convention`. `id` est opaque :
@@ -22,4 +23,8 @@ export interface LinkedPhoneRepository {
    * un seul téléphone relié : le ranger ici l'enlève d'un autre.
    */
   savePushSubscription(phoneId: string, subscription: PushSubscriptionBody): Promise<void>;
+  /** Les abonnements push des téléphones reliés, à cet instant, aux destinataires (NO-1). */
+  pushSubscriptionsOf(recipients: NotificationRecipients): Promise<PushSubscriptionBody[]>;
+  /** Efface l'abonnement mort (404 ou 410 du service push) ; le lien du téléphone reste. */
+  erasePushSubscription(endpoint: string): Promise<void>;
 }

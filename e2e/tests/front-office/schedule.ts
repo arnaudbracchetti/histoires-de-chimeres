@@ -12,6 +12,7 @@ import {
   type GameMasterDto,
   type ScenarioBody,
   type ScenarioDto,
+  type ScheduleDto,
   type SeatsDto,
 } from '@chimeres/contract';
 import { aNickname } from './identification.js';
@@ -78,12 +79,13 @@ export async function prepare(page: Page, { brumesSeats }: { brumesSeats?: Seats
       request.post(apiUrl(tableEndpoints.add), { data: { name: tableName } }),
     );
     const tableId = convention.tables.find((table) => table.name === tableName)!.id;
-    await send(() =>
+    const { games } = await send<ScheduleDto>(() =>
       request.post(apiUrl(scheduleEndpoints.schedule), {
         data: { scenarioId, timeSlotId: slot1, tableId },
       }),
     );
-    return { title: scenario.title, tableName };
+    const gameId = games.find((game) => game.scenario.id === scenarioId)!.id;
+    return { gameId, title: scenario.title, tableName };
   };
   const brann = await gameMaster([slot1]);
   const kairos = await gameMaster([slot1, slot2]);

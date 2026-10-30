@@ -31,4 +31,10 @@ export {
 } from './scenario/scenario.js';
 export { ScenarioCatalogue, type CatalogueEntry } from './scenario/scenario-catalogue.js';
 export { Seats } from './scenario/seats.js';
+export type {
+  Notification,
+  NotificationCode,
+  NotificationParams,
+  NotificationRecipients,
+} from './notification.js';
 export { Refusal, type RefusalCode, type RefusalParams } from './refusal.js';

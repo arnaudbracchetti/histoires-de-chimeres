@@ -46,6 +46,15 @@ describe('changeConvention', () => {
     expect(repository.saved?.name).toBe('Chimères 2027');
   });
 
+  it('rend les notifications de la tentative réussie, pas celles de la tentative ratée', async () => {
+    const repository = new FakeConventionRepository(1);
+    let attempts = 0;
+
+    const notifications = await changeConvention(repository, () => [`tentative ${++attempts}`]);
+
+    expect(notifications).toEqual(['tentative 2']);
+  });
+
   it('abandonne au second conflit', async () => {
     const repository = new FakeConventionRepository(2);
 

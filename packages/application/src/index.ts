@@ -18,6 +18,7 @@ export { ReadLinkedPhone } from './linked-phone/read-linked-phone.js';
 export { SavePushSubscription } from './linked-phone/save-push-subscription.js';
 export { UnlinkPhone } from './linked-phone/unlink-phone.js';
 export { MoveGame } from './game/move-game.js';
+export type { NotificationSender } from './notification/notification-sender.js';
 export { ReadMovePlacements } from './game/read-move-placements.js';
 export { ReadPlacements } from './game/read-placements.js';
 export { ReadSchedule, type ReserveScenario, type Schedule } from './game/read-schedule.js';

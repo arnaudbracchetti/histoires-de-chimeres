@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { LinkedPhone, LinkedPhoneRepository } from '@chimeres/application';
 import type { PushSubscriptionBody } from '@chimeres/contract';
+import type { NotificationRecipients } from '@chimeres/domain';
 import { PrismaService } from '../../prisma/prisma.service.js';
 
 @Injectable()
@@ -34,5 +35,29 @@ export class PrismaLinkedPhoneRepository implements LinkedPhoneRepository {
         data: { pushEndpoint: endpoint, pushP256dh: keys.p256dh, pushAuth: keys.auth },
       }),
     ]);
+  }
+
+  async pushSubscriptionsOf({
+    kind,
+    participantIds,
+  }: NotificationRecipients): Promise<PushSubscriptionBody[]> {
+    const phones = await this.prisma.linkedPhone.findMany({
+      where: {
+        participantId: kind === 'participants' ? { in: participantIds } : { notIn: participantIds },
+        pushEndpoint: { not: null },
+      },
+      select: { pushEndpoint: true, pushP256dh: true, pushAuth: true },
+    });
+    return phones.map(({ pushEndpoint, pushP256dh, pushAuth }) => ({
+      endpoint: pushEndpoint!,
+      keys: { p256dh: pushP256dh!, auth: pushAuth! },
+    }));
+  }
+
+  async erasePushSubscription(endpoint: string): Promise<void> {
+    await this.prisma.linkedPhone.updateMany({
+      where: { pushEndpoint: endpoint },
+      data: { pushEndpoint: null, pushP256dh: null, pushAuth: null },
+    });
   }
 }

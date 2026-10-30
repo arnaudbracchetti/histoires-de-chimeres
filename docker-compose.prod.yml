@@ -32,6 +32,7 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      PUBLIC_URL: https://${PUBLIC_DOMAIN}
     depends_on:
       database:
         condition: service_healthy

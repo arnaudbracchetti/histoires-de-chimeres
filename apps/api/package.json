@@ -32,6 +32,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "sharp": "0.35.5",
+    "web-push": "3.6.7",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -41,7 +42,9 @@
     "@types/express": "^5.0.0",
     "@types/node": "catalog:",
     "@types/supertest": "^7.0.0",
+    "@types/web-push": "3.6.4",
     "@vitest/coverage-v8": "catalog:",
+    "http_ece": "1.2.0",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "^7.0.2001",
     "source-map-support": "^0.5.21",

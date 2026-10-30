@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+import { frontOfficeUrls } from '@chimeres/contract';
 import { aNickname, enterNickname, identify, nicknameButton } from './identification.js';
+import { prepare } from './schedule.js';
 
 const banner = (page: Page) => page.getByRole('button', { name: /pour connaître ta table$/ });
 
@@ -77,4 +79,20 @@ test('l’étape des notifications ne revient pas à la réouverture', async ({ 
 
   await expect(nicknameButton(page)).toBeVisible();
   await expect(banner(page)).toBeVisible();
+});
+
+test('le tap d’une notification ouvre la fiche, et le retour mène à l’Accueil (story 52)', async ({
+  page,
+}) => {
+  const { brumes } = await prepare(page);
+  await identify(page, aNickname('Élodie'));
+  await expect(nicknameButton(page)).toBeVisible();
+
+  // Le service worker ouvre l'adresse de la notification dans l'application (`navigateLastFocusedOrOpen`).
+  await page.goto(frontOfficeUrls.game(brumes.gameId));
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(brumes.title);
+
+  await page.goBack();
+  await expect(page).toHaveURL((url) => url.pathname === '/');
+  await expect(page.getByRole('heading', { name: 'Choisis tes parties' })).toBeVisible();
 });

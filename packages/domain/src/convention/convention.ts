@@ -1,4 +1,5 @@
 import { ComparableName } from '../comparable-name.js';
+import type { Notification } from '../notification.js';
 import { Refusal } from '../refusal.js';
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Scenario, type ScenarioDetails } from '../scenario/scenario.js';
@@ -414,13 +415,15 @@ export class Convention {
    * Déplace la partie sur un créneau et une table (PR-17), dans le respect de PR-5, sans compter la
    * partie elle-même. Une partie double se déplace par son premier créneau, et prend le suivant.
    * Elle reste la même partie, à son rang dans le programme. Sur un autre créneau, elle perd ses
-   * inscriptions ; à une autre table du même créneau, elle les garde (IN-6).
+   * inscriptions ; à une autre table du même créneau, elle les garde (IN-6). Rend les
+   * notifications de ses inscrits (`movedGameNotifications()`).
    */
-  moveGame(gameId: string, timeSlotId: string, tableId: string): void {
+  moveGame(gameId: string, timeSlotId: string, tableId: string): Notification[] {
     const game = this.gameSchedule.existingGame(gameId);
-    this.replaceScheduleAndSignUps(
-      this.acceptedOrThrown(this.scheduleAfterMoving(game, timeSlotId, tableId)),
-    );
+    const next = this.acceptedOrThrown(this.scheduleAfterMoving(game, timeSlotId, tableId));
+    const notifications = this.movedGameNotifications(next, [game]);
+    this.replaceScheduleAndSignUps(next);
+    return notifications;
   }
 
   /**
@@ -428,19 +431,42 @@ export class Convention {
    * seul geste. Les deux places sont vérifiées ensemble contre PR-5, sans compter les deux parties à
    * leur ancienne place. Chacune reste la même partie, à son rang dans le programme. Échangées entre
    * deux créneaux, elles perdent leurs inscriptions ; sur un même créneau, elles les gardent (IN-6).
+   * Rend les notifications des inscrits de chacune (`movedGameNotifications()`) : un inscrit aux
+   * deux en reçoit une par partie.
    */
-  swapGames(gameId: string, otherGameId: string): void {
+  swapGames(gameId: string, otherGameId: string): Notification[] {
     const game = this.gameSchedule.existingGame(gameId);
     const other = this.gameSchedule.existingGame(otherGameId);
-    this.replaceScheduleAndSignUps(this.acceptedOrThrown(this.scheduleAfterSwapping(game, other)));
+    const next = this.acceptedOrThrown(this.scheduleAfterSwapping(game, other));
+    const notifications = this.movedGameNotifications(next, [game, other]);
+    this.replaceScheduleAndSignUps(next);
+    return notifications;
   }
 
   /**
    * Déprogramme la partie (PR-17) : son scénario reste proposé, et revient dans la réserve. Elle
-   * perd ses inscriptions (IN-6).
+   * perd ses inscriptions (IN-6). Rend les notifications de ses inscrits et de son MJ (NO-2), qui
+   * courent jusqu'à la fin de son dernier créneau (NO-3). Le MJ ne reçoit que la sienne : son
+   * inscription à sa propre partie ne compte pas (IN-4, NO-1).
    */
-  unschedule(gameId: string): void {
+  unschedule(gameId: string): Notification[] {
+    const game = this.gameSchedule.existingGame(gameId);
+    const signedUp = this.countingSignUpParticipantIdsOf(game);
     this.replaceScheduleAndSignUps(this.gameSchedule.afterUnscheduling(gameId));
+    const params = { scenarioId: game.scenarioId, ranks: this.ranksOf(game.timeSlotIds) };
+    const deadline = this.endOfTimeSlots(game.timeSlotIds);
+    const gameMaster = this.allGameMasters.existingItem(game.gameMasterId);
+    const toGameMaster: Notification = {
+      code: 'own-game-unscheduled',
+      params,
+      recipients: participants([gameMaster.participant.id]),
+      deadline,
+    };
+    if (!signedUp.length) return [toGameMaster];
+    return [
+      { code: 'game-unscheduled', params, recipients: participants(signedUp), deadline },
+      toGameMaster,
+    ];
   }
 
   /**
@@ -552,6 +578,52 @@ export class Convention {
     );
   }
 
+  /**
+   * « Partie déplacée » pour chacune de ces parties qui passe à d'autres créneaux dans `next`, à ses
+   * inscrits dont l'inscription compte (IN-4, IN-6). Elle court jusqu'à la fin du plus tardif de ses
+   * anciens et nouveaux créneaux (NO-3). À lire avant le remplacement : il efface ces inscriptions.
+   */
+  private movedGameNotifications(next: Schedule, games: readonly Game[]): Notification[] {
+    return games.flatMap((game) => {
+      const signedUp = this.countingSignUpParticipantIdsOf(game);
+      if (next.keepsSignUpsOf(game) || !signedUp.length) return [];
+      const moved = next.existingGame(game.id);
+      return [
+        {
+          code: 'game-moved',
+          params: {
+            gameId: game.id,
+            scenarioId: game.scenarioId,
+            fromRanks: this.ranksOf(game.timeSlotIds),
+            toRanks: this.ranksOf(moved.timeSlotIds),
+          },
+          recipients: participants(signedUp),
+          deadline: this.endOfTimeSlots([...game.timeSlotIds, ...moved.timeSlotIds]),
+        },
+      ];
+    });
+  }
+
+  /** Les participants inscrits à la partie, dans l'ordre de leur inscription, sauf ceux dont l'inscription ne compte pas (IN-4). */
+  private countingSignUpParticipantIdsOf(game: Game): string[] {
+    return this.allSignUps
+      .filter((signUp) => signUp.gameId === game.id && !this.isSuspended(signUp))
+      .map(({ participantId }) => participantId);
+  }
+
+  /** Les rangs des créneaux, dans l'ordre donné. */
+  private ranksOf(timeSlotIds: readonly string[]): number[] {
+    return timeSlotIds.map((slotId) => this.rankOfTimeSlot(slotId));
+  }
+
+  /** La fin du dernier de ces créneaux, le jour de la convention, ou `null` sans date. */
+  private endOfTimeSlots(timeSlotIds: readonly string[]): LocalMoment | null {
+    return Convention.endOf(
+      this.state.date,
+      timeSlotIds.map((slotId) => this.day.existingTimeSlot(slotId).end),
+    );
+  }
+
   /** L'état du créneau. Le tirage n'existant pas encore, ses inscriptions restent ouvertes. */
   private stateOfTimeSlot(_timeSlotId: string): TimeSlotState {
     return 'sign-ups-open';
@@ -655,6 +727,11 @@ export class Convention {
     this.gameSchedule.verifyTwoSlotGamesStayConsecutive(this.day, nextDay);
     return nextDay;
   }
+}
+
+/** Des destinataires désignés par leur identifiant de participant. */
+function participants(participantIds: string[]): Notification['recipients'] {
+  return { kind: 'participants', participantIds };
 }
 
 /** L'id d'une partie qui n'existera pas : un verdict ne programme rien. */

@@ -1,6 +1,11 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import type { FrontOfficeGameDto } from '@chimeres/contract';
+import {
+  frontOfficePaths,
+  frontOfficeUrls,
+  TIME_SLOT_PARAM,
+  type FrontOfficeGameDto,
+} from '@chimeres/contract';
 import { countOf, formatList, formatTime, fr, plural, timeSlotLabel } from '@chimeres/design';
 import { timeSlotsLabel } from '../game/game-text';
 import { OversubscribedReminder } from '../game/oversubscribed-reminder';
@@ -9,7 +14,6 @@ import { ScenarioIllustration } from '../scenario-illustration';
 import { TabNavigation } from '../shell/tab-navigation';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
-import { TIME_SLOT_PARAM } from './schedule-page';
 
 /** Une ligne de « Ton programme » : l'état du créneau pour le pseudo (story 60). */
 type ProgrammeLine = {
@@ -362,16 +366,16 @@ export class HomePage {
   /** Une ligne mène à la fiche de sa table, sinon au programme du créneau. */
   protected hrefOf({ timeSlot, assignment }: MyTimeSlot): string {
     return assignment?.kind === 'assigned'
-      ? `/parties/${assignment.game.id}`
-      : `/programme?${TIME_SLOT_PARAM}=${timeSlot.rank}`;
+      ? frontOfficeUrls.game(assignment.game.id)
+      : frontOfficeUrls.timeSlotGames(timeSlot.rank);
   }
 
   /** La fiche s'empile sur l'Accueil ; le programme s'y pose, comme son onglet. */
   protected open({ timeSlot, assignment }: MyTimeSlot): void {
     if (assignment?.kind === 'assigned') {
-      void this.router.navigate(['/parties', assignment.game.id]);
+      void this.router.navigateByUrl(frontOfficeUrls.game(assignment.game.id));
     } else {
-      this.navigation.go('programme', { [TIME_SLOT_PARAM]: timeSlot.rank });
+      this.navigation.go(frontOfficePaths.schedule, { [TIME_SLOT_PARAM]: timeSlot.rank });
     }
   }
 

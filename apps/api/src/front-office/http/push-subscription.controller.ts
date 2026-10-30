@@ -8,8 +8,8 @@ import {
 } from '@chimeres/contract';
 import { PushNotConfiguredError } from '../../http/push-not-configured.error.js';
 import { ZodBody } from '../../http/zod-body.pipe.js';
-import { VAPID_KEYS } from '../vapid-keys.token.js';
-import type { VapidKeys } from '../vapid-keys.js';
+import { PUSH_SETTINGS } from '../../notification/push-settings.token.js';
+import type { PushSettings } from '../../notification/push-settings.js';
 import { linkedPhoneIdOf } from './linked-phone-cookie.js';
 import { pushSubscriptionBodySchema } from './push-subscription-body.schema.js';
 
@@ -18,7 +18,7 @@ import { pushSubscriptionBodySchema } from './push-subscription-body.schema.js';
 export class PushSubscriptionController {
   constructor(
     @Inject(SavePushSubscription) private readonly savePushSubscription: SavePushSubscription,
-    @Inject(VAPID_KEYS) private readonly vapidKeys: VapidKeys | null,
+    @Inject(PUSH_SETTINGS) private readonly pushSettings: PushSettings | null,
   ) {}
 
   @Put(pushSubscriptionEndpoints.save.path)
@@ -32,7 +32,7 @@ export class PushSubscriptionController {
 
   @Get(pushSubscriptionEndpoints.readPublicKey.path)
   readPublicKey(): ResponseOf<typeof pushSubscriptionEndpoints.readPublicKey> {
-    if (!this.vapidKeys) throw new PushNotConfiguredError();
-    return { publicKey: this.vapidKeys.publicKey };
+    if (!this.pushSettings) throw new PushNotConfiguredError();
+    return { publicKey: this.pushSettings.publicKey };
   }
 }

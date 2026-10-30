@@ -38,6 +38,7 @@ export {
   type TimeSlotStateDto,
   signUpEndpoints,
 } from './front-office.js';
+export { TIME_SLOT_PARAM, frontOfficePaths, frontOfficeUrls } from './front-office-paths.js';
 export { healthEndpoints, type HealthDto } from './health.js';
 export {
   linkedPhoneEndpoints,

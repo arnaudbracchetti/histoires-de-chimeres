@@ -1,0 +1,304 @@
+import type { INestApplication } from '@nestjs/common';
+import request from 'supertest';
+import type { App } from 'supertest/types.js';
+import webpush from 'web-push';
+import {
+  apiUrl,
+  availabilityEndpoints,
+  conventionEndpoints,
+  gameMasterEndpoints,
+  linkedPhoneEndpoints,
+  scenarioEndpoints,
+  scheduleEndpoints,
+  signUpEndpoints,
+  tableEndpoints,
+  timeSlotEndpoints,
+  type ConventionDto,
+  type GameMasterDto,
+  type IdentityConfirmationDto,
+  type PushSubscriptionBody,
+  type ScenarioDto,
+  type ScheduleDto,
+} from '@chimeres/contract';
+import { PrismaService } from '../../prisma/prisma.service.js';
+import { startApp } from '../../../test/app.js';
+import { FakePushService, type ReceivedPush } from '../../../test/fake-push-service.js';
+
+const PUBLIC_URL = 'https://chimeres.example.org';
+const FOUR_WEEKS = 4 * 7 * 24 * 3600;
+
+/** Un délai où un envoi aurait eu le temps d'arriver : pour vérifier que rien ne part. */
+const quietPeriod = () => new Promise((resolve) => setTimeout(resolve, 300));
+
+describe('Notifications des gestes de programmation (NO-2, ADR 0010)', () => {
+  let app: INestApplication<App>;
+  let push: FakePushService;
+  let convention: ConventionDto;
+  /** « Néons » d'Élodie, au créneau 1 (9 h – 11 h 30), table Griffon. */
+  let gameId: string;
+  /** Les abonnements des téléphones reliés à Lune, inscrite à « Néons », à Sven, et à Élodie, MJ. */
+  let lune: PushSubscriptionBody;
+  let sven: PushSubscriptionBody;
+  let elodie: PushSubscriptionBody;
+  let lunePhone: string;
+
+  const server = () => request(app.getHttpServer());
+
+  /**
+   * Relie un téléphone au pseudo et range son abonnement : son cookie, `nom=valeur`. L'endpoint du
+   * faux service push est en HTTP, que l'API refuse d'un téléphone : il est rangé en base.
+   */
+  const linkPhone = async (
+    nickname: string,
+    subscription: PushSubscriptionBody,
+    confirmation: IdentityConfirmationDto | null = null,
+  ) => {
+    const response = await server()
+      .post(apiUrl(linkedPhoneEndpoints.link))
+      .send({ presenceCode: convention.presenceCode, nickname, confirmation })
+      .expect(200);
+    const cookie = (response.headers['set-cookie'] as unknown as string[])[0]!.split(';')[0]!;
+    await app.get(PrismaService).linkedPhone.update({
+      where: { id: decodeURIComponent(cookie.slice(cookie.indexOf('=') + 1)) },
+      data: {
+        pushEndpoint: subscription.endpoint,
+        pushP256dh: subscription.keys.p256dh,
+        pushAuth: subscription.keys.auth,
+      },
+    });
+    return cookie;
+  };
+
+  const setDate = (date: string | null) =>
+    server()
+      .put(apiUrl(conventionEndpoints.update))
+      .send({ name: convention.name, date })
+      .expect(200);
+
+  const unschedule = (id = gameId) =>
+    server().delete(apiUrl(scheduleEndpoints.unschedule, { gameId: id })).expect(200);
+
+  const slot = (rank: number) => convention.timeSlots[rank - 1]!.id;
+
+  const sentTo = (received: ReceivedPush[], subscription: PushSubscriptionBody) =>
+    received.filter(({ endpoint }) => endpoint === subscription.endpoint);
+
+  const startWithPush = async () => {
+    vi.stubEnv('VAPID_PUBLIC_KEY', vapidKeys.publicKey);
+    vi.stubEnv('VAPID_PRIVATE_KEY', vapidKeys.privateKey);
+    vi.stubEnv('VAPID_SUBJECT', 'mailto:organisateurs@example.org');
+    vi.stubEnv('PUBLIC_URL', PUBLIC_URL);
+    app = await startApp();
+  };
+
+  const vapidKeys = webpush.generateVAPIDKeys();
+
+  /** La convention, son MJ, sa partie et ses téléphones, l'application démarrée par `start`. */
+  const prepare = async (start: () => Promise<void>) => {
+    push = await FakePushService.start();
+    await start();
+    for (const start of ['09:00', '14:00']) {
+      await server()
+        .post(apiUrl(timeSlotEndpoints.add))
+        .send({ start, end: start.replace(/^(\d\d):00/, (_, h) => `${Number(h) + 2}:30`) })
+        .expect(201);
+    }
+    convention = (await server().post(apiUrl(tableEndpoints.add)).send({ name: 'Griffon' }))
+      .body as ConventionDto;
+    const [gameMaster] = (
+      await server().post(apiUrl(gameMasterEndpoints.add)).send({ nickname: 'Élodie' }).expect(201)
+    ).body as GameMasterDto[];
+    for (const timeSlotId of [slot(1), slot(2)]) {
+      await server()
+        .put(apiUrl(availabilityEndpoints.declare, { gameMasterId: gameMaster!.id, timeSlotId }))
+        .expect(200);
+    }
+    const scenario = (
+      await server()
+        .post(apiUrl(scenarioEndpoints.propose, { gameMasterId: gameMaster!.id }))
+        .send({
+          title: 'Néons',
+          system: 'Cthulhu',
+          presentation: 'Une enquête.',
+          contentWarnings: '',
+          seats: { min: 3, max: 5 },
+          duration: 1,
+        })
+        .expect(201)
+    ).body as ScenarioDto;
+    const scheduled = (
+      await server()
+        .post(apiUrl(scheduleEndpoints.schedule))
+        .send({ scenarioId: scenario.id, timeSlotId: slot(1), tableId: convention.tables[0]!.id })
+        .expect(201)
+    ).body as ScheduleDto;
+    gameId = scheduled.games[0]!.id;
+    [lune, sven, elodie] = [push.subscription(), push.subscription(), push.subscription()];
+    lunePhone = await linkPhone('Lune', lune);
+    await linkPhone('Sven', sven);
+    await linkPhone('Élodie', elodie, 'game-master');
+    await server()
+      .put(apiUrl(signUpEndpoints.signUp, { gameId }))
+      .set('Cookie', lunePhone)
+      .expect(204);
+  };
+
+  afterEach(async () => {
+    await app.close();
+    await push.stop();
+    vi.unstubAllEnvs();
+  });
+
+  describe('avec les clés VAPID', () => {
+    beforeEach(() => prepare(startWithPush));
+
+    it('une partie déprogrammée prévient ses inscrits et son MJ, en un JSON déclaratif', async () => {
+      await unschedule();
+
+      const received = await push.receivedAtLeast(2);
+      expect(sentTo(received, sven)).toEqual([]);
+      const tap = '/programme?creneau=1';
+      expect(sentTo(received, lune).map(({ message }) => message)).toEqual([
+        {
+          web_push: 8030,
+          notification: {
+            title: 'Créneau 1\u00a0: partie retirée du programme',
+            body: 'Néons est retirée\u00a0: ton inscription est supprimée.',
+            navigate: `${PUBLIC_URL}${tap}`,
+            lang: 'fr',
+            icon: `${PUBLIC_URL}/icons/icon-192.png`,
+            badge: `${PUBLIC_URL}/icons/badge-96.png`,
+            data: { onActionClick: { default: { operation: 'navigateLastFocusedOrOpen', url: tap } } },
+          },
+        },
+      ]);
+      expect(sentTo(received, elodie).map(({ message }) => message)).toEqual([
+        expect.objectContaining({
+          notification: expect.objectContaining({
+            title: 'Créneau 1\u00a0: partie retirée du programme',
+            body: "Néons est retirée\u00a0: tu peux t'inscrire sur ce créneau.",
+          }),
+        }),
+      ]);
+    });
+
+    it('chiffre, signe, et envoie en urgence, 4 semaines tant que la convention n’a pas de date', async () => {
+      await unschedule();
+
+      const [{ headers }] = sentTo(await push.receivedAtLeast(2), lune) as [ReceivedPush];
+      expect(headers).toMatchObject({
+        ttl: String(FOUR_WEEKS),
+        urgency: 'high',
+        'content-encoding': 'aes128gcm',
+        'content-type': 'application/octet-stream',
+      });
+      expect(headers.authorization).toMatch(new RegExp(`^vapid t=.+, k=${vapidKeys.publicKey}$`));
+    });
+
+    it('limite le TTL à la fin du créneau concerné (NO-3)', async () => {
+      await setDate('2099-01-15');
+
+      await unschedule();
+
+      const [{ headers }] = sentTo(await push.receivedAtLeast(2), lune) as [ReceivedPush];
+      const expected = (Date.parse('2099-01-15T11:30:00+01:00') - Date.now()) / 1000;
+      expect(Math.abs(Number(headers.ttl) - expected)).toBeLessThan(10);
+    });
+
+    it('n’envoie rien après la fin du créneau concerné (NO-3)', async () => {
+      await setDate('2020-01-15');
+      await unschedule();
+      await quietPeriod();
+
+      expect(push.received).toEqual([]);
+    });
+
+    it('une partie passée à un autre créneau prévient ses inscrits, et le tap ouvre sa fiche', async () => {
+      await server()
+        .put(apiUrl(scheduleEndpoints.move, { gameId }))
+        .send({ timeSlotId: slot(2), tableId: convention.tables[0]!.id })
+        .expect(200);
+
+      const [{ message }] = (await push.receivedAtLeast(1)) as [ReceivedPush];
+      expect(push.received.map(({ endpoint }) => endpoint)).toEqual([lune.endpoint]);
+      expect(message).toMatchObject({
+        notification: {
+          title: 'Créneau 1\u00a0: partie déplacée',
+          body: "Néons passe au créneau 2\u00a0: ton inscription est retirée. Réinscris-toi si l'horaire te va.",
+          navigate: `${PUBLIC_URL}/parties/${gameId}`,
+          data: {
+            onActionClick: {
+              default: { operation: 'navigateLastFocusedOrOpen', url: `/parties/${gameId}` },
+            },
+          },
+        },
+      });
+    });
+
+    it('va au pseudo relié au moment de l’envoi (NO-1)', async () => {
+      await server().delete(apiUrl(linkedPhoneEndpoints.unlink)).set('Cookie', lunePhone).expect(204);
+      await linkPhone('Zoé', lune);
+
+      await unschedule();
+
+      await push.receivedAtLeast(1);
+      await quietPeriod();
+      expect(push.received.map(({ endpoint }) => endpoint)).toEqual([elodie.endpoint]);
+    });
+
+    it.each([404, 410])(
+      'un %i efface l’abonnement, et le téléphone reste relié',
+      async (status) => {
+        push.respondWith(lune.endpoint, status);
+
+        await unschedule();
+
+        await push.receivedAtLeast(2);
+        const prisma = app.get(PrismaService);
+        await vi.waitFor(async () => {
+          const phone = await prisma.linkedPhone.findFirst({
+            where: { participant: { nickname: 'Lune' } },
+          });
+          expect(phone).toMatchObject({ pushEndpoint: null, pushP256dh: null, pushAuth: null });
+        });
+      },
+    );
+
+    it('retente une fois sur une erreur du service push', async () => {
+      push.respondWith(lune.endpoint, 503, 503);
+
+      await unschedule();
+
+      await push.receivedAtLeast(3);
+      await quietPeriod();
+      expect(sentTo(push.received, lune)).toHaveLength(2);
+    });
+
+    it('le geste répond sans attendre l’envoi', async () => {
+      const release = push.hold();
+
+      await unschedule();
+
+      await push.receivedAtLeast(2);
+      release();
+    });
+  });
+
+  describe('sans clés VAPID', () => {
+    beforeEach(() =>
+      prepare(async () => {
+        vi.stubEnv('VAPID_PUBLIC_KEY', '');
+        vi.stubEnv('VAPID_PRIVATE_KEY', '');
+        vi.stubEnv('VAPID_SUBJECT', '');
+        app = await startApp();
+      }),
+    );
+
+    it('le geste réussit, et rien ne part', async () => {
+      await unschedule();
+      await quietPeriod();
+
+      expect(push.received).toEqual([]);
+    });
+  });
+});

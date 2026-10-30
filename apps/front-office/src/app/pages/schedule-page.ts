@@ -12,10 +12,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { GameCard } from '../game/game-card';
 import { ParticipantData } from '../participant-data/participant-data';
+import { TIME_SLOT_PARAM } from '@chimeres/contract';
 import { formatTime, formatTimeRange } from '@chimeres/design';
-
-/** Paramètre de l'adresse du programme : le rang du créneau montré (`/programme?creneau=2`). */
-export const TIME_SLOT_PARAM = 'creneau';
 
 /**
  * Le programme des parties, créneau par créneau : une puce par créneau à venir, puis les parties du

@@ -3,17 +3,18 @@ import { inject, Injectable } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, type Params, Router } from '@angular/router';
 import { filter, firstValueFrom, map } from 'rxjs';
+import { frontOfficePaths } from '@chimeres/contract';
 
 /** Un onglet de la barre du bas : son chemin, sans `/` (`''` pour l'Accueil). */
 export type Tab = { path: string; label: string; icon: string };
 
 export const TABS: readonly Tab[] = [
-  { path: '', label: 'Accueil', icon: 'house' },
-  { path: 'programme', label: 'Programme', icon: 'calendar' },
-  { path: 'mes-parties', label: 'Mes parties', icon: 'dices' },
+  { path: frontOfficePaths.home, label: 'Accueil', icon: 'house' },
+  { path: frontOfficePaths.schedule, label: 'Programme', icon: 'calendar' },
+  { path: frontOfficePaths.myGames, label: 'Mes parties', icon: 'dices' },
 ];
 
-const HOME = '';
+const HOME = frontOfficePaths.home;
 
 /** Marque, dans l'historique, une entrée posée sur l'Accueil. */
 const ABOVE_HOME = 'aboveHome';
