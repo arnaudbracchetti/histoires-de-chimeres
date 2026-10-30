@@ -1,5 +1,12 @@
 import { Location } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import {
+  afterRenderEffect,
+  Component,
+  computed,
+  type ElementRef,
+  inject,
+  viewChild,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
@@ -21,7 +28,7 @@ const TIME_SLOT_PARAM = 'creneau';
     <h1 class="visually-hidden">Programme</h1>
     @if (data.schedule(); as schedule) {
       @if (selected(); as slot) {
-        <nav aria-label="Créneaux">
+        <nav #chips aria-label="Créneaux">
           @for (chip of schedule.timeSlots; track chip.id) {
             <a
               [href]="'/programme?' + param + '=' + chip.rank"
@@ -55,17 +62,29 @@ const TIME_SLOT_PARAM = 'creneau';
         gap: var(--space-m);
       }
 
+      /* Collée sous l'en-tête, de bord à bord. Trop de créneaux pour la largeur : elle glisse. */
       nav {
-        display: grid;
-        grid-auto-columns: 1fr;
-        grid-auto-flow: column;
+        position: sticky;
+        top: var(--bar-height);
+        z-index: 1;
+        display: flex;
         gap: var(--space-xs);
+        margin: calc(-1 * var(--gutter)) calc(-1 * var(--gutter)) 0;
+        padding: var(--space-s) var(--gutter);
+        overflow-x: auto;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-1);
+        scroll-padding-inline: var(--gutter);
+        scroll-snap-type: x proximity;
+        scrollbar-width: none;
       }
 
       nav a {
         display: grid;
+        flex: 1 0 0;
         justify-items: center;
         align-content: center;
+        min-width: max-content;
         min-height: var(--button-height);
         padding: var(--space-xs);
         border: 1px solid var(--border);
@@ -75,6 +94,8 @@ const TIME_SLOT_PARAM = 'creneau';
         font-size: var(--font-size-mobile-meta);
         font-weight: 600;
         text-decoration: none;
+        white-space: nowrap;
+        scroll-snap-align: start;
 
         &[aria-current='true'] {
           border-color: var(--accent);
@@ -140,6 +161,18 @@ export class SchedulePage {
       (game) => slot && game.timeSlotIds[0] === slot.id,
     );
   });
+
+  /** Le créneau choisi reste visible dans la barre, même s'il était hors de l'écran. */
+  private readonly chips = viewChild<ElementRef<HTMLElement>>('chips');
+
+  constructor() {
+    afterRenderEffect(() => {
+      this.selected();
+      this.chips()
+        ?.nativeElement.querySelector('[aria-current="true"]')
+        ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+  }
 
   /** Changer de créneau ne s'empile pas dans l'historique : le retour remonte d'un écran. */
   protected select(rank: number): void {
