@@ -6,6 +6,11 @@ export function formatTime(time: string): string {
   return `${Number(hours)}${NBSP}h${NBSP}${minutes}`;
 }
 
+/** « 14 h 05 » : l'heure d'un instant, à l'heure locale. */
+export function formatTimeOfDay(instant: Date): string {
+  return formatTime(`${instant.getHours()}:${String(instant.getMinutes()).padStart(2, '0')}`);
+}
+
 /** « 14 h 00 – 16 h 30 » : demi-cadratin entouré d'espaces fines insécables. */
 export function formatTimeRange(start: string, end: string): string {
   return `${formatTime(start)}${THIN_NBSP}–${THIN_NBSP}${formatTime(end)}`;

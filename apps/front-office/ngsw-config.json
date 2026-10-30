@@ -26,6 +26,19 @@
       }
     }
   ],
+  "dataGroups": [
+    {
+      "name": "front-office",
+      "urls": ["/api/front-office", "/api/front-office/**"],
+      "version": 1,
+      "cacheConfig": {
+        "strategy": "freshness",
+        "timeout": "3s",
+        "maxAge": "30d",
+        "maxSize": 20
+      }
+    }
+  ],
   "navigationUrls": [
     "/**",
     "!/**/*.*",

@@ -16,6 +16,15 @@ export type Problem = {
 const INTERNAL_ERROR = 'Une erreur est survenue, réessaie.';
 const OFFLINE = fr`Pas de connexion : rien n'a été enregistré.`;
 
+/**
+ * L'appel n'a pas atteint l'API : pas de réseau. Sans réseau ni copie, le service worker répond
+ * lui-même 504, sans corps.
+ */
+export function isNetworkFailure(error: unknown): boolean {
+  if (!(error instanceof HttpErrorResponse)) return false;
+  return error.status === 0 || (error.status === 504 && !(error.error as ProblemDto | null)?.code);
+}
+
 /** Lit l'erreur d'un appel à l'API. Les textes viennent de l'API (ADR 0008), sauf pour un 500 et une coupure. */
 export function readProblem(error: unknown): Problem {
   if (!(error instanceof HttpErrorResponse)) {
@@ -23,7 +32,7 @@ export function readProblem(error: unknown): Problem {
     console.error(error);
     return { code: null, fieldErrors: [], alert: { title: INTERNAL_ERROR } };
   }
-  if (error.status === 0) return { code: null, fieldErrors: [], alert: { title: OFFLINE } };
+  if (isNetworkFailure(error)) return { code: null, fieldErrors: [], alert: { title: OFFLINE } };
   const problem = error.error as Partial<ProblemDto> | null;
   if (error.status >= 500 || !problem?.code || !problem.title) {
     return { code: null, fieldErrors: [], alert: { title: INTERNAL_ERROR } };

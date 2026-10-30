@@ -53,6 +53,11 @@ describe('App', () => {
       { status: 401, statusText: 'Unauthorized' },
     );
   const offline: Respond = (request) => request.error(new ProgressEvent('error'));
+  /** Sans réseau ni copie, le service worker répond lui-même 504, sans corps. */
+  const offlineBehindServiceWorker: Respond = (request) =>
+    request.flush(null, { status: 504, statusText: 'Gateway Timeout' });
+  const broken: Respond = (request) =>
+    request.flush(null, { status: 500, statusText: 'Internal Server Error' });
   const heading = (page: HTMLElement) => page.querySelector('h1')?.textContent?.trim();
 
   it('entre dans la coquille quand le téléphone est relié, même sans code de présence', async () => {
@@ -91,13 +96,26 @@ describe('App', () => {
   });
 
   it.each([
-    ['du front office', offline, notLinked],
-    ['du pseudo relié', opened, offline],
+    ['du front office', broken, notLinked],
+    ['du pseudo relié', opened, broken],
   ])('dit quand la lecture %s échoue', async (_, frontOffice, linkedPhone) => {
     const page = await open(frontOffice, linkedPhone);
 
     expect(page.textContent).toContain('Impossible de charger la convention.');
   });
+
+  it.each([
+    ['du front office', offline, notLinked],
+    ['du pseudo relié', opened, offline],
+    ['derrière le service worker', offlineBehindServiceWorker, offlineBehindServiceWorker],
+  ])(
+    'dit qu’il faut du réseau à la première ouverture, faute de réseau %s',
+    async (_, frontOffice, linkedPhone) => {
+      const page = await open(frontOffice, linkedPhone);
+
+      expect(heading(page)).toBe('Il faut du réseau');
+    },
+  );
 
   it.each([
     ['l’écran du code', opened, notLinked],

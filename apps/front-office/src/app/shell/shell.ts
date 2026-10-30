@@ -1,6 +1,15 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { createFlexibleConnectedPositionStrategy } from '@angular/cdk/overlay';
-import { Component, ElementRef, inject, Injector, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  effect,
+  ElementRef,
+  inject,
+  Injector,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, firstValueFrom, map } from 'rxjs';
@@ -14,7 +23,9 @@ import { TabNavigation, TABS } from './tab-navigation';
 /**
  * La coquille du front office : en haut, l'emblème, « Histoires de Chimères » et le pseudo ; en
  * bas, les trois onglets. Un tap sur le pseudo ouvre sa boîte, avec « Changer de pseudo ». La
- * fiche d'une partie (`sheet`) prend tout l'écran. Les données du participant vivent avec elle.
+ * fiche d'une partie (`sheet`) prend tout l'écran. Les données du participant vivent avec elle :
+ * sous l'en-tête, la ligne d'âge dit de quand elles datent, et un tap les relit. À la fin de la
+ * convention, la coquille s'efface (`ended`).
  */
 @Component({
   selector: 'app-shell',
@@ -41,6 +52,9 @@ import { TabNavigation, TABS } from './tab-navigation';
           <span>{{ linkedPhone.nickname() }}</span>
         </button>
       </header>
+      @if (data.ageLine(); as line) {
+        <button type="button" class="age-line" (click)="data.reread()">{{ line }}</button>
+      }
       <main>
         <router-outlet />
       </main>
@@ -127,6 +141,19 @@ import { TabNavigation, TABS } from './tab-navigation';
         }
       }
 
+      .age-line {
+        min-height: var(--touch-target);
+        padding: var(--space-xs) var(--gutter);
+        border: none;
+        border-bottom: 1px solid var(--border);
+        background: var(--surface-2);
+        color: var(--text-muted);
+        font: inherit;
+        font-size: var(--font-size-mobile-meta);
+        text-align: start;
+        cursor: pointer;
+      }
+
       main {
         flex: 1;
         width: 100%;
@@ -169,6 +196,9 @@ export class Shell {
   protected readonly navigation = inject(TabNavigation);
   protected readonly tabs = TABS;
   protected readonly boxOpen = signal(false);
+  protected readonly data = inject(ParticipantData);
+  /** La convention est terminée, selon l'heure du téléphone ou le serveur. */
+  readonly ended = output<void>();
 
   private readonly router = inject(Router);
   /** L'écran affiché prend tout l'écran, sans en-tête ni onglets : la fiche d'une partie. */
@@ -186,6 +216,9 @@ export class Shell {
 
   constructor() {
     void this.navigation.recreateHomeBelow();
+    effect(() => {
+      if (this.data.ended()) this.ended.emit();
+    });
   }
 
   /** La boîte du pseudo, sous son bouton ; « Changer de pseudo » y ouvre la confirmation. */

@@ -3,19 +3,25 @@
   <use href="illustration.svg#engraving" x="-100" y="-100" width="200" height="200" />
 </svg>
 @if (!ended() && !failed() && !loading() && linkedPhone.nickname()) {
-  <app-shell />
+  <app-shell (ended)="endedOnScreen.set(true)" />
 } @else {
   <main>
     @if (ended()) {
       <app-convention-ended-page />
+    } @else if (offline()) {
+      <h1>Il faut du réseau</h1>
+      <p>
+        Connecte-toi une première fois&nbsp;: l'application gardera ensuite le programme sans
+        réseau.
+      </p>
     } @else if (failed()) {
       <p>Impossible de charger la convention.</p>
     } @else if (loading()) {
       <p>Chargement…</p>
     } @else if (!presenceCode()) {
-      <app-presence-code-page (ended)="endedOnEntry.set(true)" />
+      <app-presence-code-page (ended)="endedOnScreen.set(true)" />
     } @else {
-      <app-nickname-page (ended)="endedOnEntry.set(true)" />
+      <app-nickname-page (ended)="endedOnScreen.set(true)" />
     }
   </main>
 }

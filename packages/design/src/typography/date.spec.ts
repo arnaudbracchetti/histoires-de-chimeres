@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatConventionDate } from './date.js';
+import { formatConventionDate, formatDayAndMonth } from './date.js';
 
 describe('formatConventionDate', () => {
   it('écrit le jour, le quantième, le mois et l’année', () => {
@@ -12,5 +12,15 @@ describe('formatConventionDate', () => {
 
   it('écrit « date à fixer » sans date', () => {
     expect(formatConventionDate(null)).toBe('date à fixer');
+  });
+});
+
+describe('formatDayAndMonth', () => {
+  it('écrit le quantième et le mois, à l’heure locale', () => {
+    expect(formatDayAndMonth(new Date(2027, 9, 26, 23, 30))).toBe('26 octobre');
+  });
+
+  it('écrit le premier du mois « 1er »', () => {
+    expect(formatDayAndMonth(new Date(2027, 4, 1))).toBe('1er mai');
   });
 });

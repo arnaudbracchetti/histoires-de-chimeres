@@ -3,6 +3,7 @@ import { NBSP, THIN_NBSP } from './french.js';
 import {
   formatDuration,
   formatTime,
+  formatTimeOfDay,
   formatTimeRange,
   formatTimeSlotRanks,
   normalizeTime,
@@ -57,5 +58,11 @@ describe('normalizeTime', () => {
 
   it.each(['24:00', '12:60', '2 PM', '14:5', 'midi', ''])('refuse « %s »', (text) => {
     expect(normalizeTime(text)).toBeUndefined();
+  });
+});
+
+describe('formatTimeOfDay', () => {
+  it('écrit l’heure locale d’un instant', () => {
+    expect(formatTimeOfDay(new Date(2027, 2, 14, 9, 5))).toBe('9\u00a0h\u00a005');
   });
 });
