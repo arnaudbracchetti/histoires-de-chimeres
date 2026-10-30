@@ -4,12 +4,19 @@ import type { App } from 'supertest/types.js';
 import {
   apiUrl,
   availabilityEndpoints,
+  conventionEndpoints,
+  frontOfficeEndpoints,
   gameMasterEndpoints,
+  linkedPhoneEndpoints,
   scenarioEndpoints,
   scheduleEndpoints,
+  signUpEndpoints,
   tableEndpoints,
   timeSlotEndpoints,
   type ConventionDto,
+  type FrontOfficeScheduleDto,
+  type IdentityConfirmationDto,
+  type ParticipantSituationDto,
   type GameMasterDto,
   type GameMasterSheetDto,
   type MovePlacementDto,
@@ -792,6 +799,80 @@ describe('Programme', () => {
           code: 'no-next-time-slot',
           title: 'Pas de créneau suivant',
         });
+      });
+    });
+
+    describe('Effets sur les inscriptions', () => {
+      /** Un téléphone relié au pseudo, confirmé s'il existe déjà : son cookie, `nom=valeur`. */
+      const linkedPhone = async (
+        nickname: string,
+        confirmation: IdentityConfirmationDto | null = null,
+      ) => {
+        const { presenceCode } = (await server().get(apiUrl(conventionEndpoints.read)).expect(200))
+          .body as ConventionDto;
+        const response = await server()
+          .post(apiUrl(linkedPhoneEndpoints.link))
+          .send({ presenceCode, nickname, confirmation })
+          .expect(200);
+        return (response.headers['set-cookie'] as unknown as string[])[0]!.split(';')[0]!;
+      };
+      const signUp = (gameId: string, cookie: string) =>
+        server().put(apiUrl(signUpEndpoints.signUp, { gameId })).set('Cookie', cookie).expect(204);
+      const signedUpGameIdsOf = async (cookie: string) =>
+        (
+          (await server().get(apiUrl(frontOfficeEndpoints.readSituation)).set('Cookie', cookie))
+            .body as ParticipantSituationDto
+        ).signedUpGameIds;
+      const signUpCountOf = async (gameId: string, cookie: string) =>
+        (
+          (await server().get(apiUrl(frontOfficeEndpoints.readSchedule)).set('Cookie', cookie))
+            .body as FrontOfficeScheduleDto
+        ).games.find(({ id }) => id === gameId)!.signUpCount;
+
+      it('une partie déprogrammée ou déplacée sur un autre créneau perd ses inscriptions, une autre table les garde (IN-6)', async () => {
+        const neonsGameId = await scheduled(neons.id, 1, 'Table 1');
+        const brumesGameId = await scheduled(brumes.id, 1, 'Table 2');
+        const lune = await linkedPhone('Lune');
+        await signUp(neonsGameId, lune);
+        await signUp(brumesGameId, lune);
+
+        await unschedule(brumesGameId).expect(200);
+        expect(await signedUpGameIdsOf(lune)).toEqual([neonsGameId]);
+
+        await move(neonsGameId, { timeSlotId: slot(1), tableId: table('Table 2') }).expect(200);
+        expect(await signedUpGameIdsOf(lune)).toEqual([neonsGameId]);
+
+        await move(neonsGameId, { timeSlotId: slot(2), tableId: table('Table 2') }).expect(200);
+        expect(await signedUpGameIdsOf(lune)).toEqual([]);
+        expect(await signUpCountOf(neonsGameId, lune)).toBe(0);
+      });
+
+      it('deux parties échangées entre deux créneaux perdent leurs inscriptions (IN-6)', async () => {
+        const neonsGameId = await scheduled(neons.id, 2, 'Table 1');
+        const ruinesGameId = await scheduled(ruines.id, 1, 'Table 2');
+        const lune = await linkedPhone('Lune');
+        await signUp(neonsGameId, lune);
+        await signUp(ruinesGameId, lune);
+
+        await swap(neonsGameId, { otherGameId: ruinesGameId }).expect(200);
+
+        expect(await signedUpGameIdsOf(lune)).toEqual([]);
+      });
+
+      it('un MJ garde ses inscriptions sur le créneau où sa partie arrive, sans qu’elles comptent, et les retrouve quand elle en part (IN-4)', async () => {
+        const brumesGameId = await scheduled(brumes.id, 1, 'Table 2');
+        const elodiePhone = await linkedPhone('Élodie', 'game-master');
+        const lune = await linkedPhone('Lune');
+        await signUp(brumesGameId, elodiePhone);
+        await signUp(brumesGameId, lune);
+
+        const neonsGameId = await scheduled(neons.id, 1, 'Table 1');
+        expect(await signUpCountOf(brumesGameId, lune)).toBe(1);
+        expect(await signedUpGameIdsOf(elodiePhone)).toEqual([]);
+
+        await move(neonsGameId, { timeSlotId: slot(2), tableId: table('Table 1') }).expect(200);
+        expect(await signUpCountOf(brumesGameId, lune)).toBe(2);
+        expect(await signedUpGameIdsOf(elodiePhone)).toEqual([brumesGameId]);
       });
     });
 

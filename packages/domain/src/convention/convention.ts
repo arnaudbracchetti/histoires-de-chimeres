@@ -60,6 +60,19 @@ export class Convention {
     return { date, time: others.reduce((last, end) => (last.isBefore(end) ? end : last), first) };
   }
 
+  /**
+   * Une inscription ne compte pas tant que son participant mène une partie sur l'un des créneaux de
+   * la partie (IN-4) : ni dans le nombre d'inscrits, ni dans « très demandée », ni dans le tirage.
+   * Elle reste en place, et reprend effet quand il n'y mène plus. Statique pour que la lecture
+   * compte les inscrits sans charger l'agrégat.
+   */
+  static isSignUpSuspended(
+    gameTimeSlotIds: readonly string[],
+    timeSlotIdsLedByParticipant: readonly string[],
+  ): boolean {
+    return gameTimeSlotIds.some((slotId) => timeSlotIdsLedByParticipant.includes(slotId));
+  }
+
   private constructor(
     private state: Pick<ConventionState, 'id' | 'name' | 'date' | 'version' | 'presenceCode'>,
     private day: Day,
@@ -182,8 +195,13 @@ export class Convention {
 
   /** Le participant a un rôle de MJ (ADR 0012). */
   private isGameMaster(participant: Participant): boolean {
-    return this.allGameMasters.inNaturalOrder.some(
-      (gameMaster) => gameMaster.participant.id === participant.id,
+    return this.gameMasterOfParticipant(participant.id) !== undefined;
+  }
+
+  /** Le MJ du participant, ou `undefined` s'il n'en a pas le rôle (ADR 0012). */
+  private gameMasterOfParticipant(participantId: string): GameMaster | undefined {
+    return this.allGameMasters.inNaturalOrder.find(
+      (gameMaster) => gameMaster.participant.id === participantId,
     );
   }
 
@@ -312,8 +330,8 @@ export class Convention {
   }
 
   /**
-   * Supprime un MJ, et avec lui ses disponibilités et son participant, donc ses téléphones reliés.
-   * Un MJ qui a au moins un scénario reste (PR-12) : le catalogue, entier, le dit.
+   * Supprime un MJ, et avec lui ses disponibilités et son participant, donc ses téléphones reliés et
+   * ses inscriptions. Un MJ qui a au moins un scénario reste (PR-12) : le catalogue, entier, le dit.
    */
   removeGameMaster(id: string, catalogue: ScenarioCatalogue): void {
     const gameMaster = this.allGameMasters.existingItem(id);
@@ -321,6 +339,9 @@ export class Convention {
     if (scenarios > 0) throw new Refusal('game-master-has-scenarios', { scenarios });
     this.allGameMasters = this.allGameMasters.afterRemoving(id);
     this.allParticipants = this.allParticipants.afterRemoving(gameMaster.participant.id);
+    this.allSignUps = this.allSignUps.filter(
+      (signUp) => signUp.participantId !== gameMaster.participant.id,
+    );
   }
 
   /** Le MJ se déclare disponible sur un créneau existant (PR-2). Déclarer deux fois ne change rien. */
@@ -384,35 +405,42 @@ export class Convention {
    * double se programme sur son premier créneau, et prend le suivant, à la même table.
    */
   schedule(id: string, scenario: Scenario, timeSlotId: string, tableId: string): void {
-    this.gameSchedule = this.acceptedOrThrown(
-      this.scheduleAfterScheduling(id, scenario, timeSlotId, tableId),
+    this.replaceScheduleAndSignUps(
+      this.acceptedOrThrown(this.scheduleAfterScheduling(id, scenario, timeSlotId, tableId)),
     );
   }
 
   /**
    * Déplace la partie sur un créneau et une table (PR-17), dans le respect de PR-5, sans compter la
    * partie elle-même. Une partie double se déplace par son premier créneau, et prend le suivant.
-   * Elle reste la même partie, à son rang dans le programme.
+   * Elle reste la même partie, à son rang dans le programme. Sur un autre créneau, elle perd ses
+   * inscriptions ; à une autre table du même créneau, elle les garde (IN-6).
    */
   moveGame(gameId: string, timeSlotId: string, tableId: string): void {
     const game = this.gameSchedule.existingGame(gameId);
-    this.gameSchedule = this.acceptedOrThrown(this.scheduleAfterMoving(game, timeSlotId, tableId));
+    this.replaceScheduleAndSignUps(
+      this.acceptedOrThrown(this.scheduleAfterMoving(game, timeSlotId, tableId)),
+    );
   }
 
   /**
    * Échange deux parties (PR-17) : chacune prend le premier créneau et la table de l'autre, en un
    * seul geste. Les deux places sont vérifiées ensemble contre PR-5, sans compter les deux parties à
-   * leur ancienne place. Chacune reste la même partie, à son rang dans le programme.
+   * leur ancienne place. Chacune reste la même partie, à son rang dans le programme. Échangées entre
+   * deux créneaux, elles perdent leurs inscriptions ; sur un même créneau, elles les gardent (IN-6).
    */
   swapGames(gameId: string, otherGameId: string): void {
     const game = this.gameSchedule.existingGame(gameId);
     const other = this.gameSchedule.existingGame(otherGameId);
-    this.gameSchedule = this.acceptedOrThrown(this.scheduleAfterSwapping(game, other));
+    this.replaceScheduleAndSignUps(this.acceptedOrThrown(this.scheduleAfterSwapping(game, other)));
   }
 
-  /** Déprogramme la partie (PR-17) : son scénario reste proposé, et revient dans la réserve. */
+  /**
+   * Déprogramme la partie (PR-17) : son scénario reste proposé, et revient dans la réserve. Elle
+   * perd ses inscriptions (IN-6).
+   */
   unschedule(gameId: string): void {
-    this.gameSchedule = this.gameSchedule.afterUnscheduling(gameId);
+    this.replaceScheduleAndSignUps(this.gameSchedule.afterUnscheduling(gameId));
   }
 
   /**
@@ -496,14 +524,14 @@ export class Convention {
   }
 
   /**
-   * La situation du participant : ses inscriptions, puis l'état de chaque créneau, dans l'ordre de
-   * la journée, avec le résultat de son tirage.
+   * La situation du participant : ses inscriptions, sauf celles qui ne comptent pas (IN-4), puis
+   * l'état de chaque créneau, dans l'ordre de la journée, avec le résultat de son tirage.
    */
   situationOf(participantId: string): ParticipantSituation {
     const participant = this.allParticipants.existingItem(participantId);
     return {
       signedUpGameIds: this.allSignUps
-        .filter((signUp) => signUp.participantId === participant.id)
+        .filter((signUp) => signUp.participantId === participant.id && !this.isSuspended(signUp))
         .map(({ gameId }) => gameId),
       timeSlots: this.day.timeSlots.map((slot) => ({
         timeSlotId: slot.id,
@@ -512,6 +540,16 @@ export class Convention {
         drawResult: null,
       })),
     };
+  }
+
+  /** L'inscription ne compte pas : voir `Convention.isSignUpSuspended()`. */
+  private isSuspended(signUp: SignUp): boolean {
+    const gameMaster = this.gameMasterOfParticipant(signUp.participantId);
+    if (!gameMaster) return false;
+    return Convention.isSignUpSuspended(
+      this.gameSchedule.existingGame(signUp.gameId).timeSlotIds,
+      this.gameSchedule.timeSlotIdsLedBy(gameMaster.id),
+    );
   }
 
   /** L'état du créneau. Le tirage n'existant pas encore, ses inscriptions restent ouvertes. */
@@ -579,6 +617,17 @@ export class Convention {
   ): PlacementCollaborators {
     const table = this.allTables.existingItem(tableId);
     return { gameMaster: this.allGameMasters.existingItem(gameMasterId), table };
+  }
+
+  /**
+   * Remplace le Programme. Une partie déprogrammée, ou qui passe sur d'autres créneaux, perd ses
+   * inscriptions ; changer de table les garde (IN-6).
+   */
+  private replaceScheduleAndSignUps(next: Schedule): void {
+    this.allSignUps = this.allSignUps.filter(({ gameId }) =>
+      next.keepsSignUpsOf(this.gameSchedule.existingGame(gameId)),
+    );
+    this.gameSchedule = next;
   }
 
   /** Le Programme accepté, ou lève son refus. */

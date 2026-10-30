@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Refusal } from '../refusal.js';
+import { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Scenario, type Duration } from '../scenario/scenario.js';
 import { Convention } from './convention.js';
 import type { LocalMoment } from './local-moment.js';
@@ -150,6 +151,147 @@ describe('Se désinscrire d’une partie (IN-2)', () => {
     expect(refusalOf(() => aConvention().withdraw('inconnu', 'brumes')).code).toBe(
       'participant-not-found',
     );
+  });
+});
+
+describe('Gestes de programmation et inscriptions (IN-6)', () => {
+  it('une partie déprogrammée perd ses inscriptions, et elles seules', () => {
+    const convention = aConvention();
+    convention.signUp('p1', 'brumes');
+    convention.signUp('p1', 'epice');
+    convention.signUp('p2', 'brumes');
+
+    convention.unschedule('brumes');
+
+    expect(signUpsOf(convention)).toEqual(['p1 epice']);
+  });
+
+  it('une partie déplacée sur un autre créneau perd ses inscriptions', () => {
+    const convention = aConvention();
+    convention.addTimeSlot('s3', at('18:00'), at('20:30'));
+    convention.declareAvailability('g1', 's3');
+    convention.signUp('p1', 'brumes');
+    convention.signUp('p1', 'epice');
+
+    convention.moveGame('brumes', 's3', 't1');
+
+    expect(signUpsOf(convention)).toEqual(['p1 epice']);
+  });
+
+  it('une partie qui change de table garde ses inscriptions', () => {
+    const convention = aConvention();
+    convention.addTable('t3', 'Table 3');
+    convention.signUp('p1', 'brumes');
+
+    convention.moveGame('brumes', 's1', 't3');
+
+    expect(signUpsOf(convention)).toEqual(['p1 brumes']);
+  });
+
+  it('deux parties échangées entre deux créneaux perdent leurs inscriptions', () => {
+    const convention = aConvention();
+    convention.signUp('p1', 'brumes');
+    convention.signUp('p1', 'neons');
+    convention.signUp('p1', 'epice');
+
+    convention.swapGames('brumes', 'neons');
+
+    expect(signUpsOf(convention)).toEqual(['p1 epice']);
+  });
+
+  it('deux parties échangées sur un même créneau gardent leurs inscriptions', () => {
+    const convention = aConvention();
+    convention.unschedule('neons');
+    convention.signUp('p1', 'brumes');
+    convention.signUp('p2', 'epice');
+
+    convention.swapGames('brumes', 'epice');
+
+    expect(signUpsOf(convention)).toEqual(['p1 brumes', 'p2 epice']);
+  });
+});
+
+describe('Un MJ qui mène sur un créneau où il est inscrit (IN-4)', () => {
+  /**
+   * « Mira » (g3, p-g3), disponible sur les deux créneaux, inscrite comme joueuse à « brumes »
+   * (créneau 1) et à « néons » (créneau 2). Son scénario « ombres » n'est pas encore programmé.
+   */
+  function aConventionWithMira(): Convention {
+    const convention = aConvention();
+    convention.addTable('t3', 'Table 3');
+    convention.addGameMaster('g3', 'p-g3', 'Mira');
+    convention.declareAvailability('g3', 's1');
+    convention.declareAvailability('g3', 's2');
+    convention.signUp('p-g3', 'brumes');
+    convention.signUp('p-g3', 'neons');
+    return convention;
+  }
+  const signedUpGameIdsOfMira = (convention: Convention) =>
+    convention.situationOf('p-g3').signedUpGameIds;
+
+  it('garde ses inscriptions sur le créneau de sa partie, sans les montrer dans sa situation', () => {
+    const convention = aConventionWithMira();
+
+    convention.schedule('ombres', aScenario('d', 'g3'), 's1', 't3');
+
+    expect(signUpsOf(convention)).toEqual(['p-g3 brumes', 'p-g3 neons']);
+    expect(signedUpGameIdsOfMira(convention)).toEqual(['neons']);
+  });
+
+  it('les lui rend quand sa partie quitte le créneau, et suspend celles du nouveau', () => {
+    const convention = aConventionWithMira();
+    convention.schedule('ombres', aScenario('d', 'g3'), 's1', 't3');
+
+    convention.moveGame('ombres', 's2', 't3');
+
+    expect(signUpsOf(convention)).toEqual(['p-g3 brumes', 'p-g3 neons']);
+    expect(signedUpGameIdsOfMira(convention)).toEqual(['brumes']);
+  });
+
+  it('les lui rend toutes quand sa partie est déprogrammée', () => {
+    const convention = aConventionWithMira();
+    convention.schedule('ombres', aScenario('d', 'g3'), 's1', 't3');
+
+    convention.unschedule('ombres');
+
+    expect(signedUpGameIdsOfMira(convention)).toEqual(['brumes', 'neons']);
+  });
+
+  it('les lui rend quand sa partie est échangée avec une partie d’un autre créneau', () => {
+    const convention = aConventionWithMira();
+    convention.addTimeSlot('s3', at('18:00'), at('20:30'));
+    convention.declareAvailability('g3', 's3');
+    convention.addGameMaster('g4', 'p-g4', 'Sven');
+    convention.declareAvailability('g4', 's1');
+    convention.declareAvailability('g4', 's3');
+    convention.schedule('ombres', aScenario('d', 'g3'), 's1', 't3');
+    convention.schedule('lanternes', aScenario('e', 'g4'), 's3', 't3');
+
+    convention.swapGames('ombres', 'lanternes');
+
+    expect(signedUpGameIdsOfMira(convention)).toEqual(['brumes', 'neons']);
+  });
+
+  it('suspend son inscription à une partie double dont l’un des créneaux est celui de sa partie', () => {
+    const convention = aConventionWithMira();
+    convention.signUp('p-g3', 'epice');
+
+    convention.schedule('ombres', aScenario('d', 'g3'), 's2', 't3');
+
+    expect(signedUpGameIdsOfMira(convention)).toEqual(['brumes']);
+  });
+});
+
+describe('Supprimer un MJ (PR-12)', () => {
+  it('efface ses inscriptions, et elles seules', () => {
+    const convention = aConvention();
+    convention.addGameMaster('g3', 'p-g3', 'Mira');
+    convention.signUp('p-g3', 'brumes');
+    convention.signUp('p1', 'brumes');
+
+    convention.removeGameMaster('g3', ScenarioCatalogue.restore([]));
+
+    expect(signUpsOf(convention)).toEqual(['p1 brumes']);
   });
 });
 

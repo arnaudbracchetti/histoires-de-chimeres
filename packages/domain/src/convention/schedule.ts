@@ -32,6 +32,13 @@ export class Schedule {
     return game;
   }
 
+  /** La partie y est encore, sur les mêmes créneaux : ses inscriptions restent (IN-6). */
+  keepsSignUpsOf(game: Game): boolean {
+    return this.games.some(
+      (candidate) => candidate.id === game.id && candidate.isOnSameTimeSlotsAs(game),
+    );
+  }
+
   gameCountOnTimeSlot(timeSlotId: string): number {
     return this.games.filter((game) => game.isOnTimeSlot(timeSlotId)).length;
   }
@@ -55,6 +62,13 @@ export class Schedule {
     return this.games.some(
       (game) => game.gameMasterId === gameMasterId && game.isOnTimeSlot(timeSlotId),
     );
+  }
+
+  /** Les créneaux où le MJ mène une partie. */
+  timeSlotIdsLedBy(gameMasterId: string): string[] {
+    return this.games
+      .filter((game) => game.gameMasterId === gameMasterId)
+      .flatMap((game) => game.timeSlotIds);
   }
 
   /** La partie, autre que `game`, dont c'est la première case, ou `undefined`. */

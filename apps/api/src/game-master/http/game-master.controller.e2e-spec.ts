@@ -3,12 +3,22 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import {
   apiUrl,
+  availabilityEndpoints,
   conventionEndpoints,
+  frontOfficeEndpoints,
   gameMasterEndpoints,
   linkedPhoneEndpoints,
+  scenarioEndpoints,
+  scheduleEndpoints,
+  signUpEndpoints,
+  tableEndpoints,
+  timeSlotEndpoints,
   type ConventionDto,
+  type FrontOfficeScheduleDto,
   type GameMasterDto,
   type GameMasterNicknameBody,
+  type ScenarioDto,
+  type ScheduleDto,
 } from '@chimeres/contract';
 import { startApp } from '../../../test/app.js';
 
@@ -181,6 +191,70 @@ describe('MJ', () => {
 
     expect(nicknamesOf(await list())).toEqual(['Kaïros']);
     await read(id).expect(404);
+  });
+
+  it('supprime un MJ avec ses inscriptions (PR-12)', async () => {
+    await add({ nickname: 'Élodie' }).expect(201);
+    await add({ nickname: 'Kaïros' }).expect(201);
+    const kairosId = await idOf('Kaïros');
+    const { timeSlots } = (
+      await server()
+        .post(apiUrl(timeSlotEndpoints.add))
+        .send({ start: '09:00', end: '11:30' })
+        .expect(201)
+    ).body as ConventionDto;
+    const { tables } = (
+      await server().post(apiUrl(tableEndpoints.add)).send({ name: 'Griffon' }).expect(201)
+    ).body as ConventionDto;
+    const timeSlotId = timeSlots[0]!.id;
+    await server()
+      .put(apiUrl(availabilityEndpoints.declare, { gameMasterId: kairosId, timeSlotId }))
+      .expect(200);
+    const scenario = (
+      await server()
+        .post(apiUrl(scenarioEndpoints.propose, { gameMasterId: kairosId }))
+        .send({
+          title: 'Brumes',
+          system: 'Cthulhu',
+          presentation: 'Une enquête.',
+          contentWarnings: '',
+          seats: { min: 3, max: 5 },
+          duration: 1,
+        })
+        .expect(201)
+    ).body as ScenarioDto;
+    const { games } = (
+      await server()
+        .post(apiUrl(scheduleEndpoints.schedule))
+        .send({ scenarioId: scenario.id, timeSlotId, tableId: tables[0]!.id })
+        .expect(201)
+    ).body as ScheduleDto;
+    const gameId = games[0]!.id;
+    const { presenceCode } = (await server().get(apiUrl(conventionEndpoints.read)).expect(200))
+      .body as ConventionDto;
+    const linked = await server()
+      .post(apiUrl(linkedPhoneEndpoints.link))
+      .send({ presenceCode, nickname: 'Élodie', confirmation: 'game-master' })
+      .expect(200);
+    const cookie = (linked.headers['set-cookie'] as unknown as string[])[0]!.split(';')[0]!;
+    await server()
+      .put(apiUrl(signUpEndpoints.signUp, { gameId }))
+      .set('Cookie', cookie)
+      .expect(204);
+
+    await remove(await idOf('Élodie')).expect(204);
+
+    const lune = await server()
+      .post(apiUrl(linkedPhoneEndpoints.link))
+      .send({ presenceCode, nickname: 'Lune', confirmation: null })
+      .expect(200);
+    const schedule = (
+      await server()
+        .get(apiUrl(frontOfficeEndpoints.readSchedule))
+        .set('Cookie', (lune.headers['set-cookie'] as unknown as string[])[0]!.split(';')[0]!)
+        .expect(200)
+    ).body as FrontOfficeScheduleDto;
+    expect(schedule.games[0]!.signUpCount).toBe(0);
   });
 
   it.each([

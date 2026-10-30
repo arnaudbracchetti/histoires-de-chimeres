@@ -21,6 +21,14 @@ export class Game {
     return this.timeSlotIds.includes(timeSlotId);
   }
 
+  /** Elle occupe les mêmes créneaux que l'autre, quelle que soit la table. */
+  isOnSameTimeSlotsAs(other: Game): boolean {
+    return (
+      this.timeSlotIds.length === other.timeSlotIds.length &&
+      this.timeSlotIds.every((slotId, index) => other.timeSlotIds[index] === slotId)
+    );
+  }
+
   /** Elle commence sur ce créneau, à cette table : c'est sa première case. */
   startsAtTimeSlotAndTable(timeSlotId: string, tableId: string): boolean {
     return this.timeSlotIds[0] === timeSlotId && this.tableId === tableId;
