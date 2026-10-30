@@ -4,8 +4,7 @@ import type { FrontOfficeGameDto, FrontOfficeScheduleDto } from '@chimeres/contr
 import { ParticipantData } from '../participant-data/participant-data';
 import { ScenarioIllustration } from '../scenario-illustration';
 import { Icon } from '../ui/icon';
-import { formatTimeSlotRanks } from '@chimeres/design';
-import { counterOf, ranksOf } from './game-text';
+import { counterOf, doubleGameRanksOf } from './game-text';
 import { OversubscribedBadge } from './oversubscribed-badge';
 
 /**
@@ -102,14 +101,6 @@ import { OversubscribedBadge } from './oversubscribed-badge';
         );
       }
 
-      .over {
-        color: var(--text-muted);
-        font-family: var(--font-caps);
-        font-size: var(--font-size-mobile-overline);
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
-
       .title {
         font-size: var(--font-size-mobile-block);
         font-weight: 600;
@@ -139,9 +130,5 @@ export class GameCard {
 
   protected readonly counter = computed(() => counterOf(this.game()));
   protected readonly signedUp = computed(() => this.data.isSignedUp(this.game().id));
-  /** « créneaux 1 et 2 » pour une partie double, sinon rien : la carte est sous son créneau. */
-  protected readonly doubleRanks = computed(() => {
-    const ranks = ranksOf(this.schedule(), this.game());
-    return ranks.length > 1 ? formatTimeSlotRanks(ranks) : null;
-  });
+  protected readonly doubleRanks = computed(() => doubleGameRanksOf(this.schedule(), this.game()));
 }

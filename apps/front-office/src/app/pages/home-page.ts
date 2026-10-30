@@ -37,14 +37,6 @@ import { Button } from '../ui/button';
         background: var(--surface-2);
       }
 
-      .over {
-        color: var(--text-muted);
-        font-family: var(--font-caps);
-        font-size: var(--font-size-mobile-overline);
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
-
       h2 {
         font-family: var(--font-display);
         font-size: var(--font-size-mobile-title);

@@ -47,14 +47,6 @@ export type NicknameBoxResult = 'change';
         rotate: 45deg;
       }
 
-      .over {
-        color: var(--text-muted);
-        font-family: var(--font-caps);
-        font-size: var(--font-size-mobile-overline);
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
-
       strong {
         font-size: var(--font-size-mobile-section);
         overflow-wrap: anywhere;

@@ -45,7 +45,7 @@ Aucune couleur n'est écrite en TypeScript ni en dur dans un SVG : le SVG réfé
   - `tokens` : l'import de `tokens.css` ;
   - `base` : éléments HTML nus (corps, titres, liens, tableaux, champs), taille de base du front (13 px dans le back office, 15 px dans le front office) ;
   - `components` : les styles des composants.
-- **Styles encapsulés** par composant (`ViewEncapsulation.Emulated`), écrits dans `@layer components`. Le `styles.css` global reste court.
+- **Styles encapsulés** par composant (`ViewEncapsulation.Emulated`), écrits dans `@layer components`. Le `styles.css` global reste court. Il ne porte que ce que plusieurs composants partagent à l'identique, comme le surtitre `.over` du front office ; un composant n'y réécrit que son écart.
 - **Unités** :
   - `rem` pour le texte et les tailles qui suivent le texte ;
   - `px` pour les filets, les rayons, les vignettes et les dimensions fixées par la charte (32 et 44 px, 0,8 px par minute) ;

@@ -472,4 +472,150 @@ describe('ParticipantData', () => {
       expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'closed', rank: 1 });
     });
   });
+
+  describe('Mes parties', () => {
+    /** Pour chaque créneau de Mes parties : son rang et ses inscriptions. */
+    const signUpsBySlot = (data: ParticipantData) =>
+      data.myTimeSlots()?.map(({ timeSlot, signedUpGames }) => [
+        timeSlot.rank,
+        signedUpGames.map(({ id }) => id),
+      ]);
+
+    it('montre les inscriptions par créneau à venir, une partie double sous son premier créneau (IN-3, story 53)', async () => {
+      const data = await opened(undefined, undefined, situation(['Épice', 'Néons']));
+
+      expect(signUpsBySlot(data)).toEqual([
+        [1, ['Épice']],
+        [2, ['Néons']],
+      ]);
+
+      now = new Date(2027, 2, 14, 11, 30);
+      await vi.advanceTimersByTimeAsync(30_000);
+      await answer('failure');
+      expect(signUpsBySlot(data)).toEqual([[2, ['Néons']]]);
+    });
+
+    it('montre l’affectation, ou « Pas de place pour toi », après la publication du créneau (TI-7, story 86)', async () => {
+      const data = await opened(
+        undefined,
+        undefined,
+        situation(
+          ['Brumes', 'Néons'],
+          { timeSlotId: 's1', state: 'published', drawResult: { kind: 'assigned', gameId: 'Brumes' } },
+          { timeSlotId: 's2', state: 'published', drawResult: { kind: 'unassigned' } },
+        ),
+      );
+
+      expect(data.myTimeSlots()?.map(({ assignment }) => assignment)).toEqual([
+        { kind: 'assigned', game: brumes },
+        { kind: 'unassigned' },
+      ]);
+    });
+
+    it('ne montre aucune affectation avant la publication (TI-5, story 86)', async () => {
+      const data = await opened(
+        undefined,
+        undefined,
+        situation(['Brumes'], { ...open('s1'), state: 'drawing' }),
+      );
+
+      expect(data.myTimeSlots()?.map(({ assignment }) => assignment)).toEqual([null, null]);
+    });
+
+    it('montre la partie double publiée sur son second créneau aussi (TI-3)', async () => {
+      const data = await opened(
+        undefined,
+        undefined,
+        situation(['Épice', 'Néons'], {
+          timeSlotId: 's1',
+          state: 'published',
+          drawResult: { kind: 'assigned', gameId: 'Épice' },
+        }),
+      );
+
+      expect(data.myTimeSlots()?.map(({ assignment }) => assignment)).toEqual([
+        { kind: 'assigned', game: epice },
+        { kind: 'assigned', game: epice },
+      ]);
+
+      now = new Date(2027, 2, 14, 14, 0);
+      await vi.advanceTimersByTimeAsync(30_000);
+      await answer('failure');
+      expect(data.myTimeSlots()?.map(({ assignment }) => assignment)).toEqual([
+        { kind: 'assigned', game: epice },
+      ]);
+    });
+
+    describe('rappel « partie très demandée » (IN-5)', () => {
+      const oversubscribed = (dto: FrontOfficeGameDto) => ({ ...dto, oversubscribed: true });
+      /** Les rangs des créneaux qui portent le rappel. */
+      const reminded = (data: ParticipantData) =>
+        data
+          .myTimeSlots()
+          ?.filter(({ onlySignUpOversubscribed }) => onlySignUpOversubscribed)
+          .map(({ timeSlot }) => timeSlot.rank);
+
+      it('apparaît quand la seule inscription du créneau est une partie très demandée', async () => {
+        const data = await opened(
+          schedule([oversubscribed(brumes), epice, neons]),
+          undefined,
+          situation(['Brumes']),
+        );
+
+        expect(reminded(data)).toEqual([1]);
+      });
+
+      it('n’apparaît pas avec une autre inscription sur le créneau, ni pour une partie qui ne l’est pas', async () => {
+        const data = await opened(
+          schedule([oversubscribed(brumes), game('Ruines', ['s1']), epice, neons]),
+          undefined,
+          situation(['Brumes', 'Ruines', 'Néons']),
+        );
+
+        expect(reminded(data)).toEqual([]);
+      });
+
+      it('disparaît dès le lancement du tirage : les inscriptions sont fermées', async () => {
+        const data = await opened(
+          schedule([oversubscribed(brumes), epice, neons]),
+          undefined,
+          situation(['Brumes'], { ...open('s1'), state: 'drawing' }),
+        );
+
+        expect(reminded(data)).toEqual([]);
+      });
+
+      it('compte une partie double sur son seul premier créneau', async () => {
+        let data = await opened(
+          schedule([brumes, oversubscribed(epice), neons]),
+          undefined,
+          situation(['Épice', 'Néons']),
+        );
+        expect(reminded(data)).toEqual([1]);
+
+        TestBed.resetTestingModule();
+        configure();
+        data = await opened(
+          schedule([brumes, epice, oversubscribed(neons)]),
+          undefined,
+          situation(['Épice', 'Néons']),
+        );
+        expect(reminded(data)).toEqual([2]);
+      });
+
+      it('n’apparaît pas sur le second créneau d’une partie double où le pseudo joue (TI-3)', async () => {
+        const data = await opened(
+          schedule([brumes, epice, oversubscribed(neons)]),
+          undefined,
+          situation(['Épice', 'Néons'], {
+            timeSlotId: 's1',
+            state: 'published',
+            drawResult: { kind: 'assigned', gameId: 'Épice' },
+          }),
+        );
+
+        expect(reminded(data)).toEqual([]);
+      });
+    });
+  });
 });

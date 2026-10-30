@@ -40,6 +40,16 @@
     }
   }
 
+  /* Surtitre en petites capitales : « Créneau 2 », « Table Griffon », « Ton pseudo ». */
+  .over {
+    color: var(--text-muted);
+    font-family: var(--font-caps);
+    font-size: var(--font-size-mobile-overline);
+    font-weight: normal;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
   /* Fond du dialogue et de la boîte du pseudo (CDK) : l'écran assombri derrière. */
   .scrim {
     background: color-mix(in srgb, var(--surface-0) 72%, transparent);

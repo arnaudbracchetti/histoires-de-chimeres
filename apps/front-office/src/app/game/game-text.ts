@@ -1,5 +1,5 @@
 import type { FrontOfficeGameDto, FrontOfficeScheduleDto } from '@chimeres/contract';
-import { countOf, formatTimeRange, formatTimeSlotRanks } from '@chimeres/design';
+import { countOf, formatTimeRange, formatTimeSlotRanks, fr } from '@chimeres/design';
 
 /** « Aucun inscrit · 5 places », « 6 inscrits · 4 places » : les places maximum (§5.3). */
 export function counterOf({ signUpCount, seats }: FrontOfficeGameDto): string {
@@ -31,7 +31,24 @@ export function ranksLabelOf(schedule: FrontOfficeScheduleDto, game: FrontOffice
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
+/** « créneaux 1 et 2 » pour une partie double, `null` sinon : une partie simple est sous son créneau. */
+export function doubleGameRanksOf(
+  schedule: FrontOfficeScheduleDto,
+  game: FrontOfficeGameDto,
+): string | null {
+  const ranks = ranksOf(schedule, game);
+  return ranks.length > 1 ? formatTimeSlotRanks(ranks) : null;
+}
+
 /** Les rangs des créneaux d'une partie. */
 export function ranksOf(schedule: FrontOfficeScheduleDto, game: FrontOfficeGameDto): number[] {
   return timeSlotsOf(schedule, game).map(({ rank }) => rank);
+}
+
+/**
+ * Le rappel d'IN-5, quand la seule inscription du créneau est une partie très demandée : dans Mes
+ * parties, et sur la ligne du créneau dans l'Accueil.
+ */
+export function oversubscribedReminderOf(rank: number): string {
+  return fr`Ta seule inscription du créneau ${rank} est une partie très demandée : inscris-toi aussi à une autre partie.`;
 }

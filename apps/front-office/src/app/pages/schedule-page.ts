@@ -104,12 +104,9 @@ const TIME_SLOT_PARAM = 'creneau';
         }
       }
 
+      /* Le surtitre d'une puce prend sa couleur : orange sur le créneau choisi. */
       .over {
-        font-family: var(--font-caps);
-        font-size: var(--font-size-mobile-overline);
-        font-weight: normal;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
+        color: inherit;
       }
 
       .time,

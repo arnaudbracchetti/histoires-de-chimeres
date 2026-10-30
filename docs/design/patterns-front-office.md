@@ -123,6 +123,14 @@ Le geste d'inscription (IN-2), fixé en bas de la fiche d'une partie, toujours s
 
 Sur une carte du programme, un badge « Inscrit » (`check`, orange teinté à 14 %) se pose en haut à gauche de l'image d'une partie où le pseudo est inscrit.
 
+## Mes parties
+
+L'onglet suit la journée du pseudo, créneau par créneau à venir (story 86). Chaque créneau est une section titrée « Créneau 2 », suivie de sa plage horaire en texte secondaire.
+
+- **Rappel « partie très demandée »** (IN-5) : en tête du créneau, sur fond jaune teinté à 14 %, avec `triangle-alert` en jaune : « Ta seule inscription du créneau 2 est une partie très demandée : inscris-toi aussi à une autre partie. » Il disparaît dès le lancement du tirage.
+- **Inscriptions** : une carte par partie, en Anthracite 3 sous un filet, qui ouvre sa fiche. À gauche, le titre, la table (et « créneaux 3 et 4 » pour une partie double, listée sous son seul premier créneau), puis « Très demandée » s'il y a lieu ; à droite, la vignette de 44 px du scénario. Sans inscription : « Aucune inscription sur ce créneau. », en texte secondaire.
+- **Affectation**, après la publication, sous les inscriptions : une carte qui ouvre la fiche, avec `circle-check` en vert, le surtitre « Table Griffon » et « Tu joues à *Titre*, avec *MJ* ». Non placé : « Pas de place pour toi », avec `triangle-alert` en jaune.
+
 ## À venir avec leurs écrans
 
 Ces patterns ont été tranchés sur prototype, mais pas encore construits. Chacun se décrit ici avec son premier écran.

@@ -12,6 +12,7 @@ import {
   type GameMasterDto,
   type ScenarioBody,
   type ScenarioDto,
+  type SeatsDto,
 } from '@chimeres/contract';
 import { aNickname } from './identification.js';
 
@@ -49,9 +50,10 @@ async function firstTwoTimeSlots(request: APIRequestContext): Promise<[string, s
 
 /**
  * Par l'API, sur des tables et des MJ propres au test : une partie simple au créneau 1, et une
- * partie double aux créneaux 1 et 2. Leurs titres sont propres au test.
+ * partie double aux créneaux 1 et 2. Leurs titres sont propres au test. `brumesSeats` change les
+ * places de la partie simple, 3 à 5 sinon.
  */
-export async function prepare(page: Page) {
+export async function prepare(page: Page, { brumesSeats }: { brumesSeats?: SeatsDto } = {}) {
   const { request } = page;
   const [slot1, slot2] = await firstTwoTimeSlots(request);
   const gameMaster = async (timeSlotIds: string[]) => {
@@ -90,7 +92,7 @@ export async function prepare(page: Page) {
     system: "L'Appel de Cthulhu",
     presentation: 'Une enquête **sous** la brume.',
     contentWarnings: 'Noyade.',
-    seats: { min: 3, max: 5 },
+    seats: brumesSeats ?? { min: 3, max: 5 },
     duration: 1,
   });
   const epice = await schedule(kairos.id, {

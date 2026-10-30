@@ -121,15 +121,6 @@ import { SignUpBar } from './sign-up-bar';
         gap: var(--space-s);
       }
 
-      .over {
-        color: var(--text-muted);
-        font-family: var(--font-caps);
-        font-size: var(--font-size-mobile-overline);
-        font-weight: normal;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
-
       .meta {
         color: var(--text-muted);
       }

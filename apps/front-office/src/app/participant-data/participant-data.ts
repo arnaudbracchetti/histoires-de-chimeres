@@ -14,6 +14,7 @@ import {
   signUpEndpoints,
   type FrontOfficeGameDto,
   type FrontOfficeScheduleDto,
+  type FrontOfficeTimeSlotDto,
   type ParticipantSituationDto,
 } from '@chimeres/contract';
 import { formatDayAndMonth, formatTimeOfDay, fr } from '@chimeres/design';
@@ -50,6 +51,24 @@ export type SignUpBarState =
   | { kind: 'assigned-elsewhere'; game: FrontOfficeGameDto }
   | { kind: 'unassigned' }
   | { kind: 'closed'; rank: number };
+
+/** Un créneau à venir de Mes parties. */
+export type MyTimeSlot = {
+  timeSlot: FrontOfficeTimeSlotDto;
+  /** Les inscriptions du pseudo dont c'est le premier créneau : une partie double est sous son premier (IN-3). */
+  signedUpGames: FrontOfficeGameDto[];
+  /**
+   * Son affectation, après la publication : la partie où il joue, une partie double publiée comprise
+   * sur son second créneau (TI-3), ou pas de place ; `null` avant.
+   */
+  assignment: { kind: 'assigned'; game: FrontOfficeGameDto } | { kind: 'unassigned' } | null;
+  /**
+   * Le rappel d'IN-5, tant que les inscriptions du créneau sont ouvertes : sa seule inscription est
+   * une partie très demandée. Une partie double ne compte que sur son premier créneau, et celle où
+   * il joue retire le rappel de son second (TI-3).
+   */
+  onlySignUpOversubscribed: boolean;
+};
 
 /**
  * Le seul module du front office qui lit et garde les données du participant (ADR 0011). Les écrans
@@ -130,6 +149,32 @@ export class ParticipantData {
   /** La situation du pseudo : ses inscriptions, et l'état de chaque créneau pour lui. */
   readonly situation = this.lastSituation.asReadonly();
 
+  /** Mes parties : les créneaux à venir, et pour chacun ce qu'il est pour le pseudo. `undefined` sans données. */
+  readonly myTimeSlots = computed<MyTimeSlot[] | undefined>(() => {
+    const schedule = this.schedule();
+    const situation = this.lastSituation();
+    // Une partie double commencée reste l'affectation de son second créneau.
+    const fullSchedule = this.lastRead();
+    if (!schedule || !situation || !fullSchedule) return undefined;
+    return schedule.timeSlots.map((timeSlot) => {
+      const signedUpGames = schedule.games.filter(
+        (game) =>
+          game.timeSlotIds[0] === timeSlot.id && situation.signedUpGameIds.includes(game.id),
+      );
+      const { state } = timeSlotSituationOf(situation, timeSlot.id) ?? {};
+      const assignment = assignmentOf(timeSlot.id, fullSchedule, situation);
+      return {
+        timeSlot,
+        signedUpGames,
+        assignment,
+        // Une partie double où il joue occupe le créneau : ses inscriptions y sont ignorées (TI-3).
+        onlySignUpOversubscribed:
+          !assignment &&
+          state === 'sign-ups-open' && signedUpGames.length === 1 && signedUpGames[0]!.oversubscribed,
+      };
+    });
+  });
+
   /** Le pseudo est inscrit à la partie. */
   isSignedUp(gameId: string): boolean {
     return !!this.lastSituation()?.signedUpGameIds.includes(gameId);
@@ -146,23 +191,14 @@ export class ParticipantData {
     if (!schedule || !situation || !game) return null;
     const signedUp = situation.signedUpGameIds.includes(game.id);
     const gameById = (id: string) => schedule.games.find((candidate) => candidate.id === id);
-    const slotOf = (timeSlotId: string) =>
-      situation.timeSlots.find((slot) => slot.timeSlotId === timeSlotId);
-    const held = situation.timeSlots
-      .map(({ state, drawResult }) =>
-        state === 'published' && drawResult?.kind === 'assigned' ? gameById(drawResult.gameId) : undefined,
-      )
-      .find(
-        (assigned) =>
-          assigned &&
-          assigned.id !== game.id &&
-          assigned.timeSlotIds.length > 1 &&
-          assigned.timeSlotIds.some((id) => game.timeSlotIds.includes(id)),
-      );
+    const held = assignedDoubleGames(schedule, situation).find(
+      (assigned) =>
+        assigned.id !== game.id && assigned.timeSlotIds.some((id) => game.timeSlotIds.includes(id)),
+    );
     if (held) return { kind: 'held', game: held, signedUp };
     const firstTimeSlotId = game.timeSlotIds[0]!;
     const rank = schedule.timeSlots.find(({ id }) => id === firstTimeSlotId)?.rank ?? 0;
-    const slot = slotOf(firstTimeSlotId);
+    const slot = timeSlotSituationOf(situation, firstTimeSlotId);
     if (slot?.state === 'drawing') return { kind: 'drawing', rank, signedUp };
     if (slot?.state === 'published') {
       const result = slot.drawResult;
@@ -287,6 +323,41 @@ export class ParticipantData {
       });
     destroyRef.onDestroy(() => clearInterval(timer));
   }
+}
+
+/** Les parties doubles publiées où le pseudo joue. */
+function assignedDoubleGames(
+  schedule: FrontOfficeScheduleDto,
+  situation: ParticipantSituationDto,
+): FrontOfficeGameDto[] {
+  return situation.timeSlots.flatMap(({ state, drawResult }) => {
+    if (state !== 'published' || drawResult?.kind !== 'assigned') return [];
+    const game = schedule.games.find(({ id }) => id === drawResult.gameId);
+    return game && game.timeSlotIds.length > 1 ? [game] : [];
+  });
+}
+
+/** L'état du créneau pour le pseudo, et le résultat de son tirage. */
+function timeSlotSituationOf(situation: ParticipantSituationDto, timeSlotId: string) {
+  return situation.timeSlots.find((slot) => slot.timeSlotId === timeSlotId);
+}
+
+/** L'affectation publiée du pseudo sur le créneau, ou la partie double publiée qui l'occupe. */
+function assignmentOf(
+  timeSlotId: string,
+  schedule: FrontOfficeScheduleDto,
+  situation: ParticipantSituationDto,
+): MyTimeSlot['assignment'] {
+  const held = assignedDoubleGames(schedule, situation).find((game) =>
+    game.timeSlotIds.includes(timeSlotId),
+  );
+  if (held) return { kind: 'assigned', game: held };
+  const slot = timeSlotSituationOf(situation, timeSlotId);
+  if (slot?.state !== 'published') return null;
+  const result = slot.drawResult;
+  if (result?.kind === 'unassigned') return { kind: 'unassigned' };
+  const game = result && schedule.games.find(({ id }) => id === result.gameId);
+  return game ? { kind: 'assigned', game } : null;
 }
 
 /** `time` (`HH:MM`), le jour `date` (`AAAA-MM-JJ`), est-il passé ? */
