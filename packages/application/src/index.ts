@@ -15,6 +15,7 @@ export type { LinkedPhoneReader } from './linked-phone/linked-phone-reader.js';
 export type { LinkedPhone, LinkedPhoneRepository } from './linked-phone/linked-phone-repository.js';
 export { PhoneNotLinkedError } from './linked-phone/phone-not-linked.error.js';
 export { ReadLinkedPhone } from './linked-phone/read-linked-phone.js';
+export { SavePushSubscription } from './linked-phone/save-push-subscription.js';
 export { UnlinkPhone } from './linked-phone/unlink-phone.js';
 export { MoveGame } from './game/move-game.js';
 export { ReadMovePlacements } from './game/read-move-placements.js';

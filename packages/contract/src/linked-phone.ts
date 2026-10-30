@@ -26,6 +26,8 @@ export type LinkPhoneDto =
 /** Le pseudo auquel le téléphone est relié. */
 export type LinkedPhoneDto = {
   nickname: string;
+  /** Le pseudo est celui d'un MJ (ID-3) : ses notifications disent aussi les parties qu'il mène. */
+  gameMaster: boolean;
 };
 
 /**

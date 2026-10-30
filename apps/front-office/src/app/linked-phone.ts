@@ -23,6 +23,11 @@ export class LinkedPhone {
     return error && readProblem(error).code === 'phone-not-linked' ? null : undefined;
   });
 
+  /** Le pseudo est celui d'un MJ (ID-3) : les notifications disent aussi les parties qu'il mène. */
+  readonly gameMaster = linkedSignal(
+    () => this.linkedPhone.hasValue() && this.linkedPhone.value().gameMaster,
+  );
+
   /** La lecture a échoué pour une autre raison qu'un téléphone relié à aucun pseudo. */
   readonly failed = computed(() => !!this.linkedPhone.error() && this.nickname() === undefined);
 
@@ -39,8 +44,9 @@ export class LinkedPhone {
    * Le téléphone vient d'être relié à ce pseudo. Il relit son lien, pour que le service worker en
    * garde la copie : l'application s'ouvrira hors ligne.
    */
-  linked(nickname: string): void {
+  linked(nickname: string, gameMaster: boolean): void {
     this.nickname.set(nickname);
+    this.gameMaster.set(gameMaster);
     void this.apiCall(linkedPhoneEndpoints.read).catch(() => undefined);
   }
 

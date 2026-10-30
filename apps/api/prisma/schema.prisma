@@ -81,12 +81,16 @@ model Participant {
 }
 
 /// Téléphone relié à un pseudo (ADR 0009), hors de l'agrégat de la convention. Son identifiant,
-/// opaque, est la valeur du cookie du téléphone. Il part avec son participant.
+/// opaque, est la valeur du cookie du téléphone. Il part avec son participant. Son abonnement push,
+/// s'il en a un : un endpoint n'appartient qu'à un seul téléphone relié.
 model LinkedPhone {
   id            String      @id
   participantId String      @db.Uuid
   participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   linkedAt      DateTime    @default(now())
+  pushEndpoint  String?     @unique
+  pushP256dh    String?
+  pushAuth      String?
 
   @@index([participantId])
 }

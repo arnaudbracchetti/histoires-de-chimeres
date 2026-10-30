@@ -78,7 +78,7 @@ describe('Téléphone relié à un pseudo', () => {
       // Sa valeur est l'identifiant opaque du téléphone, jamais le pseudo.
       expect(header).not.toMatch(/lodie/i);
 
-      expect((await read(cookieOf(response)).expect(200)).body).toEqual({ nickname: 'Élodie' });
+      expect((await read(cookieOf(response)).expect(200)).body).toEqual({ nickname: 'Élodie', gameMaster: false });
     });
 
     it('demande une confirmation pour un pseudo existant, sans relier le téléphone', async () => {
@@ -110,8 +110,8 @@ describe('Téléphone relié à un pseudo', () => {
       expect(response.body).toEqual({ status: 'linked', nickname: 'Élodie' });
       const second = cookieOf(response);
       expect(second).not.toBe(first);
-      expect((await read(second).expect(200)).body).toEqual({ nickname: 'Élodie' });
-      expect((await read(first).expect(200)).body).toEqual({ nickname: 'Élodie' });
+      expect((await read(second).expect(200)).body).toEqual({ nickname: 'Élodie', gameMaster: false });
+      expect((await read(first).expect(200)).body).toEqual({ nickname: 'Élodie', gameMaster: false });
     });
 
     it('coupe d’abord le lien d’un téléphone déjà relié : un pseudo par téléphone (ID-8)', async () => {
@@ -119,7 +119,7 @@ describe('Téléphone relié à un pseudo', () => {
 
       const response = await link({ nickname: 'Brann' }, elodie).expect(200);
 
-      expect((await read(cookieOf(response)).expect(200)).body).toEqual({ nickname: 'Brann' });
+      expect((await read(cookieOf(response)).expect(200)).body).toEqual({ nickname: 'Brann', gameMaster: false });
       await read(elodie).expect(401);
     });
 
@@ -198,7 +198,7 @@ describe('Téléphone relié à un pseudo', () => {
       const response = await link({ nickname: 'brann', confirmation: 'game-master' }).expect(200);
 
       expect(response.body).toEqual({ status: 'linked', nickname: 'Brann' });
-      expect((await read(cookieOf(response)).expect(200)).body).toEqual({ nickname: 'Brann' });
+      expect((await read(cookieOf(response)).expect(200)).body).toEqual({ nickname: 'Brann', gameMaster: true });
     });
 
     it('ne crée jamais de participant sous le pseudo d’un MJ, même confirmé « participant »', async () => {
@@ -219,7 +219,7 @@ describe('Téléphone relié à un pseudo', () => {
         .send({ nickname: 'Brann le Rouge' })
         .expect(200);
 
-      expect((await read(phone).expect(200)).body).toEqual({ nickname: 'Brann le Rouge' });
+      expect((await read(phone).expect(200)).body).toEqual({ nickname: 'Brann le Rouge', gameMaster: true });
     });
 
     it('coupe tous les liens d’un MJ supprimé (PR-12, ID-8)', async () => {
@@ -263,7 +263,7 @@ describe('Téléphone relié à un pseudo', () => {
 
       expect(setCookieOf(response)).toMatch(/^linked-phone=;.*Expires=Thu, 01 Jan 1970/);
       await read(first).expect(401);
-      expect((await read(second).expect(200)).body).toEqual({ nickname: 'Élodie' });
+      expect((await read(second).expect(200)).body).toEqual({ nickname: 'Élodie', gameMaster: false });
     });
 
     it('garde le pseudo, qui demande une confirmation quand on le retape', async () => {

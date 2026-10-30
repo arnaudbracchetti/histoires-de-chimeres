@@ -10,8 +10,10 @@ export class PrismaLinkedPhoneReader implements LinkedPhoneReader {
   async read(phoneId: string): Promise<LinkedPhoneDto | null> {
     const phone = await this.prisma.linkedPhone.findUnique({
       where: { id: phoneId },
-      select: { participant: { select: { nickname: true } } },
+      select: { participant: { select: { nickname: true, gameMaster: { select: { id: true } } } } },
     });
-    return phone && { nickname: phone.participant.nickname };
+    return (
+      phone && { nickname: phone.participant.nickname, gameMaster: !!phone.participant.gameMaster }
+    );
   }
 }

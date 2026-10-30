@@ -91,6 +91,8 @@ export type ApiErrorCode =
   | 'too-many-attempts'
   /** Le téléphone n'est relié à aucun pseudo : cookie absent, inconnu ou coupé (ADR 0009). */
   | 'phone-not-linked'
+  /** Le serveur n'a pas de clés VAPID : le push n'est pas pris en charge. */
+  | 'push-not-configured'
   | 'internal-error';
 
 export type ProblemCode = RefusalCode | ApiErrorCode;

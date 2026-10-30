@@ -29,7 +29,7 @@ describe('LinkedPhone', () => {
     const linkedPhone = TestBed.inject(LinkedPhone);
     TestBed.tick();
     const request = http().expectOne({ method: 'GET', url });
-    if (nickname) request.flush({ nickname });
+    if (nickname) request.flush({ nickname, gameMaster: false });
     else {
       request.flush(
         {
@@ -84,10 +84,11 @@ describe('LinkedPhone', () => {
   it('relit son lien une fois relié, pour que le service worker en garde la copie', async () => {
     const linkedPhone = await opened(null);
 
-    linkedPhone.linked('Élodie');
+    linkedPhone.linked('Brann', true);
     TestBed.tick();
-    http().expectOne({ method: 'GET', url }).flush({ nickname: 'Élodie' });
+    http().expectOne({ method: 'GET', url }).flush({ nickname: 'Brann', gameMaster: true });
 
-    expect(linkedPhone.nickname()).toBe('Élodie');
+    expect(linkedPhone.nickname()).toBe('Brann');
+    expect(linkedPhone.gameMaster()).toBe(true);
   });
 });

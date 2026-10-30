@@ -98,3 +98,8 @@ export {
   type TimeSlotHoursBody,
   type TimeSlotParams,
 } from './time-slot.js';
+export {
+  pushSubscriptionEndpoints,
+  type PushPublicKeyDto,
+  type PushSubscriptionBody,
+} from './push-subscription.js';

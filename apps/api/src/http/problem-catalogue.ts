@@ -314,6 +314,12 @@ export const problemCatalogue: Catalogue = {
     detail: () => 'Tape ton pseudo pour continuer.',
     status: 401,
   },
+  'push-not-configured': {
+    title: 'Notifications non prises en charge',
+    detail: () =>
+      fr`Ce serveur n'envoie pas de notifications : reviens voir ta table ici après chaque tirage.`,
+    status: 404,
+  },
   'internal-error': {
     title: 'Erreur interne',
   },

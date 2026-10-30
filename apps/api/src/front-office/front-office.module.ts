@@ -6,6 +6,7 @@ import {
   ReadFrontOfficeSchedule,
   ReadLinkedPhone,
   ReadParticipantSituation,
+  SavePushSubscription,
   SignUpForGame,
   UnlinkPhone,
   WithdrawFromGame,
@@ -25,6 +26,7 @@ import { FrontOfficeScheduleController } from './http/front-office-schedule.cont
 import { FrontOfficeController } from './http/front-office.controller.js';
 import { LinkedPhoneController } from './http/linked-phone.controller.js';
 import { ParticipantSituationController } from './http/participant-situation.controller.js';
+import { PushSubscriptionController } from './http/push-subscription.controller.js';
 import { SignUpController } from './http/sign-up.controller.js';
 import { LINKED_PHONE_READER } from './linked-phone-reader.token.js';
 import { LINKED_PHONE_REPOSITORY } from './linked-phone-repository.token.js';
@@ -32,6 +34,8 @@ import { PrismaFrontOfficeScheduleReader } from './persistence/prisma-front-offi
 import { PrismaLinkedPhoneReader } from './persistence/prisma-linked-phone-reader.js';
 import { PrismaLinkedPhoneRepository } from './persistence/prisma-linked-phone-repository.js';
 import { PresenceCodeAttempts } from './presence-code-attempts.js';
+import { VAPID_KEYS } from './vapid-keys.token.js';
+import { vapidKeysFromEnvironment } from './vapid-keys.js';
 
 /** L'identifiant opaque d'un téléphone relié, valeur de son cookie : 256 bits tirés au hasard. */
 const newPhoneId = () => randomBytes(32).toString('base64url');
@@ -43,6 +47,7 @@ const newPhoneId = () => randomBytes(32).toString('base64url');
     FrontOfficeScheduleController,
     LinkedPhoneController,
     ParticipantSituationController,
+    PushSubscriptionController,
     SignUpController,
   ],
   providers: [
@@ -51,6 +56,7 @@ const newPhoneId = () => randomBytes(32).toString('base64url');
     { provide: LINKED_PHONE_READER, useClass: PrismaLinkedPhoneReader },
     { provide: FRONT_OFFICE_SCHEDULE_READER, useClass: PrismaFrontOfficeScheduleReader },
     PresenceCodeAttempts,
+    { provide: VAPID_KEYS, useFactory: vapidKeysFromEnvironment },
     {
       provide: ReadFrontOffice,
       useFactory: (repository: ConventionRepository, clock: Clock) =>
@@ -113,6 +119,15 @@ const newPhoneId = () => randomBytes(32).toString('base64url');
         phones: LinkedPhoneRepository,
         clock: Clock,
       ) => new Identify(conventions, phones, clock, randomUUID, newPhoneId),
+      inject: [CONVENTION_REPOSITORY, LINKED_PHONE_REPOSITORY, CLOCK],
+    },
+    {
+      provide: SavePushSubscription,
+      useFactory: (
+        conventions: ConventionRepository,
+        phones: LinkedPhoneRepository,
+        clock: Clock,
+      ) => new SavePushSubscription(conventions, phones, clock),
       inject: [CONVENTION_REPOSITORY, LINKED_PHONE_REPOSITORY, CLOCK],
     },
     {

@@ -5,6 +5,8 @@ import { AppUpdate } from './app-update';
 import { ConventionEndedPage } from './convention-ended-page';
 import { NicknamePage } from './identification/nickname-page';
 import { LinkedPhone } from './linked-phone';
+import { EnableNotificationsPage } from './notifications/enable-notifications-page';
+import { PushNotifications } from './notifications/push-notifications';
 import { PresenceCodePage } from './presence-code-page';
 import { PresenceCodeStore } from './presence-code-store';
 import { isNetworkFailure, readProblem } from './problem';
@@ -13,11 +15,19 @@ import { Shell } from './shell/shell';
 
 /**
  * L'entrée du front office : un téléphone relié à un pseudo entre dans la coquille ; sinon, il
- * s'identifie, derrière le code de présence, demandé s'il manque (ADR 0009).
+ * s'identifie, derrière le code de présence, demandé s'il manque (ADR 0009). Juste après, il passe
+ * par « Active les notifications », si le téléphone ne les a encore ni accordées ni refusées (§4.2).
  */
 @Component({
   selector: 'app-root',
-  imports: [AlertStack, ConventionEndedPage, NicknamePage, PresenceCodePage, Shell],
+  imports: [
+    AlertStack,
+    ConventionEndedPage,
+    EnableNotificationsPage,
+    NicknamePage,
+    PresenceCodePage,
+    Shell,
+  ],
   styleUrl: './app.css',
   templateUrl: './app.html',
 })
@@ -25,6 +35,22 @@ export class App {
   protected readonly frontOffice = apiResource(frontOfficeEndpoints.read);
   protected readonly presenceCode = inject(PresenceCodeStore).code;
   protected readonly linkedPhone = inject(LinkedPhone);
+  private readonly push = inject(PushNotifications);
+
+  /** Le téléphone vient d'être relié, sans avoir répondu aux notifications : leur étape est à faire. */
+  private readonly notificationsStepDue = signal(false);
+  protected readonly notificationsStep = computed(
+    () => this.notificationsStepDue() && this.push.status() !== 'unsupported',
+  );
+
+  /** Seul un téléphone qui n'a ni accordé ni refusé les notifications passe par leur étape. */
+  protected linked(): void {
+    this.notificationsStepDue.set(this.push.status() === 'default');
+  }
+
+  protected notificationsDone(): void {
+    this.notificationsStepDue.set(false);
+  }
 
   constructor() {
     inject(AppUpdate);

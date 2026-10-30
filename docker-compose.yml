@@ -43,6 +43,10 @@ services:
     environment:
       # Créée par `prisma migrate deploy` au démarrage du conteneur si elle manque.
       DATABASE_URL: postgresql://chimeres:chimeres@postgres:5432/chimeres_e2e?schema=public
+      # Paire de test, sans valeur ailleurs : avec elle, le front office propose les notifications.
+      VAPID_PUBLIC_KEY: BMXbLlbTNw9LkgEydftW4ItQAwBr29-km3dwRNyGCMn7n1lVj_1_POgKxC3QQlX70s8CVN7C5eqGhe-j0ke7riY
+      VAPID_PRIVATE_KEY: uNAJwgUkFvwCdgTS7SegYNhM5FD5P5ks4rggyO7mOvk
+      VAPID_SUBJECT: mailto:e2e@example.org
     ports:
       - '8081:3000'
 

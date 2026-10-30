@@ -14,6 +14,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, firstValueFrom, map } from 'rxjs';
 import { LinkedPhone } from '../linked-phone';
+import { NotificationsBanner } from '../notifications/notifications-banner';
 import { ParticipantData } from '../participant-data/participant-data';
 import { Icon } from '../ui/icon';
 import { ChangeNicknameDialog } from './change-nickname-dialog';
@@ -22,14 +23,15 @@ import { TabNavigation, TABS } from './tab-navigation';
 
 /**
  * La coquille du front office : en haut, l'emblème, « Histoires de Chimères » et le pseudo ; en
- * bas, les trois onglets. Un tap sur le pseudo ouvre sa boîte, avec « Changer de pseudo ». La
+ * bas, les trois onglets. Sous l'en-tête, le bandeau de NO-6, tant que le téléphone ne reçoit
+ * pas les notifications. Un tap sur le pseudo ouvre sa boîte, avec « Changer de pseudo ». La
  * fiche d'une partie (`sheet`) prend tout l'écran. Les données du participant vivent avec elle :
  * sous l'en-tête, la ligne d'âge dit de quand elles datent, et un tap les relit. À la fin de la
  * convention, la coquille s'efface (`ended`).
  */
 @Component({
   selector: 'app-shell',
-  imports: [Icon, RouterOutlet],
+  imports: [Icon, NotificationsBanner, RouterOutlet],
   providers: [ParticipantData],
   template: `
     @if (sheet()) {
@@ -52,6 +54,7 @@ import { TabNavigation, TABS } from './tab-navigation';
           <span>{{ linkedPhone.nickname() }}</span>
         </button>
       </header>
+      <app-notifications-banner />
       @if (data.ageLine(); as line) {
         <button type="button" class="age-line" (click)="data.reread()">{{ line }}</button>
       }

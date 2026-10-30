@@ -13,6 +13,7 @@ import type { ProblemCode, ProblemDto, RefusalCode, RefusalParams } from '@chime
 import { Refusal } from '@chimeres/domain';
 import { ImageRefusedError } from './image-refused.error.js';
 import { MalformedRequestError } from './malformed-request.error.js';
+import { PushNotConfiguredError } from './push-not-configured.error.js';
 import { TooManyAttemptsError } from './too-many-attempts.error.js';
 import { problemCatalogue } from './problem-catalogue.js';
 
@@ -59,6 +60,9 @@ export class ProblemFilter extends BaseExceptionFilter {
     }
     if (error instanceof PhoneNotLinkedError) {
       return problem(HttpStatus.UNAUTHORIZED, 'phone-not-linked', {});
+    }
+    if (error instanceof PushNotConfiguredError) {
+      return problem(HttpStatus.NOT_FOUND, 'push-not-configured', {});
     }
     if (error instanceof StaleConventionError) {
       return problem(HttpStatus.CONFLICT, 'concurrent-modification', {});

@@ -46,7 +46,7 @@ describe('App', () => {
       { code: 'convention-ended', title: 'La convention est terminée' },
       { status: 410, statusText: 'Gone' },
     );
-  const linked: Respond = (request) => request.flush({ nickname: 'Élodie' });
+  const linked: Respond = (request) => request.flush({ nickname: 'Élodie', gameMaster: false });
   const notLinked: Respond = (request) =>
     request.flush(
       { code: 'phone-not-linked', title: 'Téléphone relié à aucun pseudo' },

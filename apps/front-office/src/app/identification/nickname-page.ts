@@ -121,6 +121,8 @@ import { Icon } from '../ui/icon';
 export class NicknamePage {
   /** L'API dit que la convention est terminée. */
   readonly ended = output<void>();
+  /** Le téléphone vient d'être relié : l'étape des notifications suit. */
+  readonly linked = output<void>();
 
   protected readonly intro = fr`C'est ton nom pour toute la convention : les MJ le voient à leur table. Si tu en as déjà saisi un pour la convention, retape le même pour retrouver tes inscriptions.`;
   protected readonly question = fr`Est-ce bien toi qui l'as créé ?`;
@@ -194,6 +196,9 @@ export class NicknamePage {
     }
     if (result.status === 'confirmation-needed') {
       this.existing.set({ nickname: result.nickname, confirmation: result.confirmation });
-    } else this.linkedPhone.linked(result.nickname);
+    } else {
+      this.linkedPhone.linked(result.nickname, confirmation === 'game-master');
+      this.linked.emit();
+    }
   }
 }

@@ -63,6 +63,23 @@ Avant d'être relié à un pseudo, le téléphone passe par l'identification (ID
 - Deux choix s'empilent sur toute la largeur, le principal au-dessus : « Oui, c'est moi », puis « Non, choisir un autre pseudo ».
 - « Es-tu bien ce MJ ? » dit ce que le lien ouvre (les parties à mener, dans Mes parties, et leurs notifications), puis renvoie vers un Organisateur en cas de doute, comme « Ce pseudo existe déjà ».
 
+## Notifications
+
+Juste après l'identification, un téléphone qui n'a encore ni accordé ni refusé les notifications passe par « Active les notifications » (§4.2). Les autres vont droit à l'Accueil.
+
+- **« Active les notifications »** : écran du parcours (sans coquille), sous le surtitre « Dernière étape ». « C'est par elles que l'application te tient au courant : », puis la liste de ce qu'elles apportent, une icône orange par ligne (`circle-check`, `sparkles`, `triangle-alert`, et `book-open` pour un MJ). Jamais « partie très demandée ». Puis l'exemple, sous le surtitre « Exemple de notification », dans une carte Anthracite 3 avec l'emblème. En texte secondaire : « Ton téléphone va te demander l'autorisation : touche « Autoriser ». » Boutons empilés : « Activer les notifications » (principal, `bell`), puis « Plus tard » (discret). La demande du téléphone ne vient qu'après le tap ; fermée sans réponse, elle laisse l'écran tel quel.
+- **« Continuer sans notifications ? »**, ouvert par « Plus tard » : [dialogue de confirmation](#dialogue-de-confirmation) qui redit ce qu'on perd et que le bandeau le rappellera. « Activer les notifications » d'abord, puis « Continuer sans ». Échap ou un tap à côté revient à l'écran.
+- **« Notifications bloquées »**, après un refus : ce qu'on perd, le chemin des réglages en étapes numérotées (dans Chrome, l'icône `settings` à gauche de l'adresse, puis « Autorisations » ; dans l'application installée, ses infos `info`, puis « Notifications »), et le repli : revenir voir l'application après chaque tirage. Un seul bouton, « Continuer ».
+- Les noms à toucher dans les réglages s'écrivent comme des touches : semi-gras, filet, fond Anthracite 3.
+
+### Bandeau de NO-6
+
+Sous l'en-tête de la coquille, sur chaque onglet, tant que le téléphone ne reçoit pas les notifications. Il ne se ferme pas. Fond jaune teinté à 14 %, texte semi-gras à 13 px.
+
+- Permission pas donnée ou refusée : un bouton sur toute la largeur, `bell-off` en jaune, le texte de NO-6, `chevron-right` à droite. Un tap ouvre le **guide d'activation**, une feuille qui monte du bas : « Active les notifications » (la liste et le bouton) ou « Notifications bloquées » (le chemin des réglages), et « Fermer ».
+- Téléphone qui ne peut pas les recevoir (navigateur sans Push API, ou serveur sans clés VAPID) : un simple texte (`role="status"`), `triangle-alert` en jaune, sans tap.
+- Une permission réactivée dans les réglages se voit au retour au premier plan : le bandeau disparaît.
+
 ## Champs et validation
 
 Le composant `app-field` et les règles de validation sont ceux du back office ([patterns.md](patterns.md#champs)). Sur le téléphone :
@@ -135,7 +152,6 @@ L'onglet suit la journée du pseudo, créneau par créneau à venir (story 86). 
 
 Ces patterns ont été tranchés sur prototype, mais pas encore construits. Chacun se décrit ici avec son premier écran.
 
-- **Bandeau de NO-6** : sous l'en-tête, sur chaque écran tant que le téléphone ne reçoit pas les notifications. Il ne se ferme pas ; un tap ouvre le guide d'activation.
 - **Ligne d'âge** (PRD §6, Fraîcheur) : sous l'en-tête, quand la donnée a plus de 2 minutes : « Pas de connexion · à jour à 14 h 05 ». Un tap relance la lecture.
 - **Alerte de changement** (NO-5) : ce qui change pour le participant sans geste de sa part, en bas de l'écran, avec « Voir ».
 - **Dialogue en bas de l'écran** : la confirmation d'une inscription à une partie très demandée (IN-5), qui monte du bas.

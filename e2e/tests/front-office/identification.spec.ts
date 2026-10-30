@@ -6,7 +6,14 @@ import {
   PRESENCE_CODE_PARAM,
   type LinkPhoneBody,
 } from '@chimeres/contract';
-import { aNickname, identify, nicknameButton, presenceCodeOf } from './identification.js';
+import {
+  aNickname,
+  enterNickname,
+  identify,
+  nicknameButton,
+  presenceCodeOf,
+  skipNotifications,
+} from './identification.js';
 
 test('un pseudo nouveau relie le téléphone, qui le garde à la réouverture (ID-1)', async ({
   page,
@@ -61,7 +68,7 @@ test('un pseudo existant demande une confirmation avant de relier le téléphone
   };
   expect((await request.post(apiUrl(linkedPhoneEndpoints.link), { data: body })).ok()).toBe(true);
 
-  await identify(page, nickname.replace('Élodie', 'elodie'));
+  await enterNickname(page, nickname.replace('Élodie', 'elodie'));
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Ce pseudo existe déjà');
   await expect(page.getByText(nickname, { exact: true })).toBeVisible();
   await expect(page.getByText("demande à un Organisateur, à l'accueil")).toBeVisible();
@@ -74,6 +81,7 @@ test('un pseudo existant demande une confirmation avant de relier le téléphone
 
   await page.getByRole('button', { name: 'Continuer' }).click();
   await page.getByRole('button', { name: "Oui, c'est moi" }).click();
+  await skipNotifications(page);
   // Affiché tel qu'il a été créé.
   await expect(nicknameButton(page)).toHaveText(nickname);
 });
@@ -88,7 +96,7 @@ test('le pseudo d’un MJ demande « Es-tu bien ce MJ ? » avant de relier le t�
     true,
   );
 
-  await identify(page, nickname.toLowerCase());
+  await enterNickname(page, nickname.toLowerCase());
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Es-tu bien ce MJ.\?$/);
   await expect(page.getByText(nickname, { exact: true })).toBeVisible();
   await expect(page.getByText('les parties que tu mènes')).toBeVisible();
@@ -99,6 +107,7 @@ test('le pseudo d’un MJ demande « Es-tu bien ce MJ ? » avant de relier le t�
 
   await page.getByRole('button', { name: 'Continuer' }).click();
   await page.getByRole('button', { name: "Oui, c'est moi" }).click();
+  await skipNotifications(page);
   await expect(nicknameButton(page)).toHaveText(nickname);
 });
 
