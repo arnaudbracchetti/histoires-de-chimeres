@@ -109,6 +109,20 @@ Une confirmation (« Changer de pseudo ? ») suit les règles du back office ([p
 - Le focus initial est sur « Annuler » ; à la fermeture, il revient à ce qui a ouvert le dialogue.
 - L'action n'est pas destructrice au sens du back office : elle reste en bouton principal. Le rouge plein reste réservé à une suppression.
 
+## Barre d'action de la fiche
+
+La fiche d'une partie n'a pas de filigrane : son fond est plein, pour que le texte se lise bien.
+
+Le geste d'inscription (IN-2), fixé en bas de la fiche d'une partie, toujours sous le pouce ([#63](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/63), variante A).
+
+- Collée en bas de l'écran, en Anthracite 1, sous un filet ; le contenu à la largeur maximale, dans la gouttière.
+- **Inscriptions ouvertes** : « S'inscrire » (principal, icône `plus`), sur toute la largeur. Une fois inscrit, sur une ligne : « Inscription enregistrée » (`circle-check` orange), puis « Se désinscrire » (secondaire), qui retire l'inscription d'un tap, sans confirmation.
+- **Pendant l'envoi**, le libellé devient « Inscription… » ou « Désinscription… », et un second tap est sans effet. Le bouton reste actif sans réseau : l'échec se dit en alerte (« Pas de connexion : rien n'a été enregistré. »), et après 10 s sans réponse, « Le réseau ne répond pas : vérifie ton inscription. ». Les données sont relues après chaque geste, réussi ou non.
+- **Geste impossible** : à la place du bouton, un statut (icône, titre en gras, phrase en texte secondaire) dit pourquoi : « Tirage en cours », « Tu joues aux créneaux 3 et 4 », « Tu joues à cette table », « Pas de place pour toi », « Tirage publié ». Quand le pseudo joue à une autre table, « Voir ta partie » (secondaire) ouvre sa fiche.
+- La barre annonce ses changements (`aria-live="polite"`).
+
+Sur une carte du programme, un badge « Inscrit » (`check`, orange teinté à 14 %) se pose en haut à gauche de l'image d'une partie où le pseudo est inscrit.
+
 ## À venir avec leurs écrans
 
 Ces patterns ont été tranchés sur prototype, mais pas encore construits. Chacun se décrit ici avec son premier écran.
@@ -116,6 +130,5 @@ Ces patterns ont été tranchés sur prototype, mais pas encore construits. Chac
 - **Bandeau de NO-6** : sous l'en-tête, sur chaque écran tant que le téléphone ne reçoit pas les notifications. Il ne se ferme pas ; un tap ouvre le guide d'activation.
 - **Ligne d'âge** (PRD §6, Fraîcheur) : sous l'en-tête, quand la donnée a plus de 2 minutes : « Pas de connexion · à jour à 14 h 05 ». Un tap relance la lecture.
 - **Alerte de changement** (NO-5) : ce qui change pour le participant sans geste de sa part, en bas de l'écran, avec « Voir ».
-- **Barre d'action de la fiche** (#63, variante A) : le geste d'inscription, fixé en bas de la fiche d'une partie.
 - **Dialogue en bas de l'écran** : la confirmation d'une inscription à une partie très demandée (IN-5), qui monte du bas.
 - **Bloc de la partie menée** (#54, variante B) : dans Mes parties, sur son créneau, la partie qu'un MJ mène, ses inscrits puis ses joueurs.

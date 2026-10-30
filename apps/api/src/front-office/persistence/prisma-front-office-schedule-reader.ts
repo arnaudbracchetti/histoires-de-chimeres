@@ -22,6 +22,7 @@ export class PrismaFrontOfficeScheduleReader implements FrontOfficeScheduleReade
         games: {
           select: {
             id: true,
+            _count: { select: { signUps: true } },
             scenario: {
               select: {
                 id: true,
@@ -68,9 +69,8 @@ export class PrismaFrontOfficeScheduleReader implements FrontOfficeScheduleReade
               ComparableName.of(b.timeSlots[0]!.table.name),
             ) || a.timeSlots[0]!.timeSlot.startMinute - b.timeSlots[0]!.timeSlot.startMinute,
         )
-        .map(({ id, scenario, timeSlots: gameSlots }): FrontOfficeGameDto => {
-          // Les inscriptions n'existent pas encore (#72) : aucune partie n'a d'inscrit.
-          const signUpCount = 0;
+        .map(({ id, _count, scenario, timeSlots: gameSlots }): FrontOfficeGameDto => {
+          const signUpCount = _count.signUps;
           return {
             id,
             timeSlotIds: gameSlots.map(({ timeSlotId }) => timeSlotId),

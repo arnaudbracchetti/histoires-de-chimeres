@@ -13,6 +13,7 @@ function aConvention(): Convention {
     tables: [],
     gameMasters: [],
     participants: [],
+    signUps: [],
     games: [],
     version: 0,
     presenceCode: PresenceCode.of('K7M2'),

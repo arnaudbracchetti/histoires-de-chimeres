@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { aNickname, identify } from './identification.js';
 import { gameCard, prepare, scheduleTab, timeSlotChip } from './schedule.js';
 
-test('le programme montre les parties créneau par créneau, une partie double sous ses deux créneaux (IN-3)', async ({
+test('le programme montre les parties créneau par créneau, une partie double sous son seul premier créneau (IN-3)', async ({
   page,
 }) => {
   const { brann, brumes, epice } = await prepare(page);
@@ -16,10 +16,11 @@ test('le programme montre les parties créneau par créneau, une partie double s
   await expect(card).toContainText(`Table ${brumes.tableName}`);
   await expect(card).toContainText(`L'Appel de Cthulhu · avec ${brann.nickname}`);
   await expect(card).toContainText(/Aucun inscrit · 5.places/);
-  await expect(gameCard(page, epice.title)).toBeVisible();
+  await expect(gameCard(page, epice.title)).toContainText('créneaux 1 et 2');
 
   await timeSlotChip(page, 2).click();
-  await expect(gameCard(page, epice.title)).toContainText('créneaux 1 et 2');
+  await expect(timeSlotChip(page, 2)).toHaveAttribute('aria-current', 'true');
+  await expect(gameCard(page, epice.title)).toHaveCount(0);
   await expect(gameCard(page, brumes.title)).toHaveCount(0);
 });
 

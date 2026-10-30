@@ -6,7 +6,11 @@ import { apiUrl, frontOfficeEndpoints, linkedPhoneEndpoints } from '@chimeres/co
 const DATA_GROUP = 'front-office';
 
 /** Les lectures propres au pseudo relié. Celle de la convention n'appartient à personne. */
-const PERSONAL_READS = [linkedPhoneEndpoints.read, frontOfficeEndpoints.readSchedule];
+const PERSONAL_READS = [
+  linkedPhoneEndpoints.read,
+  frontOfficeEndpoints.readSchedule,
+  frontOfficeEndpoints.readSituation,
+];
 
 /**
  * La copie hors ligne des données du pseudo, que garde le cache du service worker (ADR 0011). Elle

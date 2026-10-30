@@ -7,6 +7,7 @@ import {
   GameMaster,
   Participant,
   PresenceCode,
+  SignUp,
   Table,
   TimeOfDay,
   TimeSlot,
@@ -42,7 +43,7 @@ export class PrismaConventionRepository implements ConventionRepository {
         timeSlots: true,
         tables: true,
         gameMasters: { include: { availabilities: { select: { timeSlotId: true } } } },
-        participants: true,
+        participants: { include: { signUps: true } },
         games: {
           include: { scenario: { select: { gameMasterId: true } }, timeSlots: true },
           orderBy: { scheduledAt: 'asc' },
@@ -77,6 +78,10 @@ export class PrismaConventionRepository implements ConventionRepository {
           ),
       ),
       participants: [...participantById.values()],
+      signUps: participants
+        .flatMap(({ signUps }) => signUps)
+        .sort((a, b) => a.signedUpAt.getTime() - b.signedUpAt.getTime())
+        .map(({ participantId, gameId }) => new SignUp(participantId, gameId)),
       games: games.map(
         (game) =>
           new Game(
@@ -113,6 +118,7 @@ export class PrismaConventionRepository implements ConventionRepository {
     const gameMasters = changes(loaded.gameMasters, current.gameMasters);
     const availabilities = changes(loaded.availabilities, current.availabilities);
     const participants = changes(loaded.participants, current.participants);
+    const signUps = changes(loaded.signUps, current.signUps);
     const {
       removed: unscheduled,
       added: scheduled,
@@ -131,6 +137,11 @@ export class PrismaConventionRepository implements ConventionRepository {
       });
       if (count === 0) throw new StaleConventionError();
 
+      await tx.signUp.deleteMany({
+        where: {
+          OR: signUps.removed.map(({ participantId, gameId }) => ({ participantId, gameId })),
+        },
+      });
       await tx.gameTimeSlot.deleteMany({ where: { gameId: ids(moved) } });
       await tx.game.deleteMany({ where: { id: ids(unscheduled) } });
       await tx.availability.deleteMany({
@@ -175,6 +186,7 @@ export class PrismaConventionRepository implements ConventionRepository {
       await tx.gameTimeSlot.createMany({
         data: [...scheduled, ...moved].flatMap(({ timeSlots }) => timeSlots),
       });
+      await tx.signUp.createMany({ data: signUps.added });
     });
   }
 }

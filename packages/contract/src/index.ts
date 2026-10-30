@@ -32,7 +32,11 @@ export {
   type FrontOfficeGameDto,
   type FrontOfficeScheduleDto,
   type FrontOfficeTimeSlotDto,
+  type DrawResultDto,
+  type ParticipantSituationDto,
   type PresenceCodeBody,
+  type TimeSlotStateDto,
+  signUpEndpoints,
 } from './front-office.js';
 export { healthEndpoints, type HealthDto } from './health.js';
 export {

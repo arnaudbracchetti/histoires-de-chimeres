@@ -4,8 +4,11 @@ export {
   type ConventionState,
   type Identification,
   type IdentityConfirmation,
+  type DrawResult,
   type MovePlacement,
+  type ParticipantSituation,
   type Placement,
+  type TimeSlotState,
   type Withdrawal,
 } from './convention/convention.js';
 export { Game } from './convention/game.js';
@@ -14,6 +17,7 @@ export { PresenceCode } from './convention/presence-code.js';
 export type { ReserveOfScenario } from './convention/reserve.js';
 export { GameMaster } from './convention/game-master.js';
 export { Participant } from './convention/participant.js';
+export { SignUp } from './convention/sign-up.js';
 export { Table } from './convention/table.js';
 export { TimeOfDay } from './convention/time-of-day.js';
 export { TimeSlot } from './convention/time-slot.js';

@@ -11,6 +11,7 @@ import type { PresenceCode } from './presence-code.js';
 import { Table } from './table.js';
 import { reserveOfEachScenario, type ReserveOfScenario } from './reserve.js';
 import { Schedule, type PlacementCollaborators } from './schedule.js';
+import { SignUp } from './sign-up.js';
 import type { TimeOfDay } from './time-of-day.js';
 import type { TimeSlot } from './time-slot.js';
 import { UniquelyNamedCollection, type NamingRules } from './uniquely-named-collection.js';
@@ -28,6 +29,8 @@ export type ConventionState = {
   gameMasters: GameMaster[];
   /** Dans n'importe quel ordre. Ceux des MJ peuvent y manquer : chaque MJ apporte le sien. */
   participants: Participant[];
+  /** Dans l'ordre où elles ont été prises. */
+  signUps: SignUp[];
   /** Les parties programmées, dans l'ordre de leur programmation. */
   games: Game[];
   /** Numéro de version, pour le verrou optimiste : seul le repository le fait avancer. */
@@ -64,6 +67,7 @@ export class Convention {
     private allGameMasters: UniquelyNamedCollection<GameMaster>,
     private allParticipants: UniquelyNamedCollection<Participant>,
     private gameSchedule: Schedule,
+    private allSignUps: readonly SignUp[],
   ) {}
 
   static restore({
@@ -71,6 +75,7 @@ export class Convention {
     tables,
     gameMasters,
     participants,
+    signUps,
     games,
     ...state
   }: ConventionState): Convention {
@@ -88,6 +93,7 @@ export class Convention {
         PARTICIPANT_NICKNAME_RULES,
       ),
       Schedule.holding(games),
+      signUps,
     );
   }
 
@@ -459,6 +465,74 @@ export class Convention {
     return reserveOfEachScenario(catalogue, this.day, this.gameSchedule, this.allGameMasters);
   }
 
+  /** Les inscriptions, dans l'ordre où elles ont été prises. */
+  get signUps(): readonly SignUp[] {
+    return this.allSignUps;
+  }
+
+  /**
+   * Inscrit le participant à la partie (IN-2), tant que le tirage de son créneau n'est pas lancé.
+   * Plusieurs inscriptions sur un même créneau sont permises. Une partie double compte sur ses deux
+   * créneaux, et ne touche pas aux inscriptions prises sur son second créneau (IN-3, TI-3). Rend
+   * `false` si le participant y était déjà inscrit : rien ne change.
+   */
+  signUp(participantId: string, gameId: string): boolean {
+    const signUp = this.signUpAllowedFor(participantId, gameId);
+    if (this.allSignUps.some((existing) => existing.equals(signUp))) return false;
+    this.allSignUps = [...this.allSignUps, signUp];
+    return true;
+  }
+
+  /**
+   * Retire l'inscription du participant à la partie (IN-2), tant que le tirage de son créneau n'est
+   * pas lancé. Rend `false` s'il n'y était pas inscrit : rien ne change.
+   */
+  withdraw(participantId: string, gameId: string): boolean {
+    const signUp = this.signUpAllowedFor(participantId, gameId);
+    const remaining = this.allSignUps.filter((existing) => !existing.equals(signUp));
+    if (remaining.length === this.allSignUps.length) return false;
+    this.allSignUps = remaining;
+    return true;
+  }
+
+  /**
+   * La situation du participant : ses inscriptions, puis l'état de chaque créneau, dans l'ordre de
+   * la journée, avec le résultat de son tirage.
+   */
+  situationOf(participantId: string): ParticipantSituation {
+    const participant = this.allParticipants.existingItem(participantId);
+    return {
+      signedUpGameIds: this.allSignUps
+        .filter((signUp) => signUp.participantId === participant.id)
+        .map(({ gameId }) => gameId),
+      timeSlots: this.day.timeSlots.map((slot) => ({
+        timeSlotId: slot.id,
+        state: this.stateOfTimeSlot(slot.id),
+        // Le tirage n'existe pas encore : aucun résultat.
+        drawResult: null,
+      })),
+    };
+  }
+
+  /** L'état du créneau. Le tirage n'existant pas encore, ses inscriptions restent ouvertes. */
+  private stateOfTimeSlot(_timeSlotId: string): TimeSlotState {
+    return 'sign-ups-open';
+  }
+
+  /**
+   * L'inscription du participant à la partie, qui doivent exister, ou le refus du geste : le tirage
+   * de son créneau est lancé. Une partie double est tirée avec son premier créneau (TI-3).
+   */
+  private signUpAllowedFor(participantId: string, gameId: string): SignUp {
+    const participant = this.allParticipants.existingItem(participantId);
+    const game = this.gameSchedule.existingGame(gameId);
+    const firstTimeSlotId = game.timeSlotIds[0]!;
+    if (this.stateOfTimeSlot(firstTimeSlotId) !== 'sign-ups-open') {
+      throw new Refusal('sign-ups-closed', { rank: this.rankOfTimeSlot(firstTimeSlotId) });
+    }
+    return new SignUp(participant.id, game.id);
+  }
+
   /** Le Programme après la programmation du scénario sur cette case, ou le refus de PR-5. */
   private scheduleAfterScheduling(
     id: string,
@@ -550,6 +624,24 @@ export type IdentityConfirmation = 'participant' | 'game-master';
 export type Identification =
   | { verdict: 'link'; created: boolean; participant: Participant }
   | { verdict: 'confirm'; confirmation: IdentityConfirmation; nickname: string };
+
+/**
+ * L'état d'un créneau : inscriptions ouvertes, tirage lancé (inscriptions fermées, résultat
+ * provisoire), ou tirage publié (résultat figé).
+ */
+export type TimeSlotState = 'sign-ups-open' | 'drawing' | 'published';
+
+/**
+ * Le résultat publié du tirage d'un créneau pour un participant : sa partie (`assigned`), ou pas de
+ * place (`unassigned`). `null` tant que le tirage n'est pas publié, ou sans inscription.
+ */
+export type DrawResult = { kind: 'assigned'; gameId: string } | { kind: 'unassigned' } | null;
+
+/** La situation d'un participant : voir `Convention.situationOf()`. */
+export type ParticipantSituation = {
+  signedUpGameIds: string[];
+  timeSlots: { timeSlotId: string; state: TimeSlotState; drawResult: DrawResult }[];
+};
 
 /** Le verdict d'une case créneau × table pour un scénario : le refus d'écriture, ou `null`. */
 export type Placement = { timeSlotId: string; tableId: string; refusal: Refusal | null };

@@ -108,7 +108,7 @@ _Avoid_: Admin, staff
 ## Répartition
 
 **Inscription** · `SignUp`:
-Le fait, pour un participant, de se déclarer intéressé par une partie. Un participant peut s'inscrire à plusieurs parties d'un même créneau ; l'inscription n'est pas une garantie de jouer.
+Le fait, pour un participant, de se déclarer intéressé par une partie. Un participant peut s'inscrire à plusieurs parties d'un même créneau ; l'inscription n'est pas une garantie de jouer. On s'inscrit (`signUp`) ; on se désinscrit (`withdraw`).
 _Avoid_: Vœu, choix, réservation, Registration
 
 **Partie très demandée** · `OversubscribedGame`:

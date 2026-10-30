@@ -10,15 +10,16 @@ import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { counterOf, ranksLabelOf, timeSlotsLabelOf } from './game-text';
 import { OversubscribedBadge } from './oversubscribed-badge';
+import { SignUpBar } from './sign-up-bar';
 
 /**
  * La fiche d'une partie, dans l'ordre du §5.3 : image, titre, jeu et MJ, créneau et table, compteur
- * et « Très demandée », avertissements de contenu, présentation. Elle s'empile sur l'écran qui
- * l'ouvre, sans la coquille ; son ‹ y revient.
+ * et « Très demandée », avertissements de contenu, présentation, puis la barre d'inscription,
+ * fixée en bas. Elle s'empile sur l'écran qui l'ouvre, sans la coquille ; son ‹ y revient.
  */
 @Component({
   selector: 'app-game-page',
-  imports: [Button, Icon, OversubscribedBadge, RouterLink, ScenarioIllustration],
+  imports: [Button, Icon, OversubscribedBadge, RouterLink, ScenarioIllustration, SignUpBar],
   template: `
     <div class="bar">
       <button
@@ -73,13 +74,18 @@ import { OversubscribedBadge } from './oversubscribed-badge';
         <p>Chargement…</p>
       }
     </main>
+    @if (view(); as view) {
+      <app-sign-up-bar [game]="view.game" [schedule]="view.schedule" />
+    }
   `,
   styles: `
     @layer components {
+      /* Fond plein : le filigrane nuirait à la lecture de la fiche. */
       :host {
         display: flex;
         flex-direction: column;
         min-height: 100dvh;
+        background: var(--surface-0);
       }
 
       .bar {
@@ -169,6 +175,7 @@ export class GamePage {
     if (!schedule || !game) return null;
     return {
       game,
+      schedule,
       barLabel: `${ranksLabelOf(schedule, game)} · table ${game.tableName}`,
       slotLabel: timeSlotsLabelOf(schedule, game),
       counter: counterOf(game),

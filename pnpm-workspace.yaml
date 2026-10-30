@@ -20,3 +20,6 @@ catalog:
   '@vitest/coverage-v8': ^5.0.0
   oxlint: ^1.58.0
   '@types/node': ^22.20.0
+  # Dépendance de @chimeres/design/presentation, déclarée aussi par les fronts : `ng serve`
+  # exclut @chimeres/design du pré-bundle, et Vite cherche alors marked dans le front.
+  marked: 18.0.14

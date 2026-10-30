@@ -11,6 +11,8 @@ export type LinkedPhone = {
 export interface LinkedPhoneRepository {
   /** Relie un téléphone, sans toucher aux autres téléphones du même pseudo (ID-8). */
   link(phone: LinkedPhone): Promise<void>;
+  /** Le téléphone relié, ou `null` s'il n'est relié à aucun pseudo. */
+  find(phoneId: string): Promise<LinkedPhone | null>;
   /** Coupe le lien du téléphone ; sans effet s'il n'en a pas. */
   unlink(phoneId: string): Promise<void>;
 }

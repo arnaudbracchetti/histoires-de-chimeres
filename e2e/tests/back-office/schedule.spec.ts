@@ -624,7 +624,7 @@ test('échanger une partie double avec une partie simple, puis le refus avec son
   await expect(refused).toContainText('Table prise');
   await expect(refused.locator('.off')).toHaveAttribute(
     'title',
-    'La table « Table 1 » accueille déjà une partie sur le créneau 2 : choisis une autre table.',
+    `La table «${NBSP}Table 1${NBSP}» accueille déjà une partie sur le créneau 2${NBSP}: choisis une autre table.`,
   );
   await expect(placementDialog(page).getByRole('button', { name: /^Échanger/ })).toHaveCount(0);
 });

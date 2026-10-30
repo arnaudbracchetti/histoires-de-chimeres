@@ -66,6 +66,26 @@ export type FrontOfficeScheduleDto = {
   end: { date: string; time: string } | null;
 };
 
+/**
+ * L'état d'un créneau : inscriptions ouvertes, tirage lancé (inscriptions fermées), ou tirage
+ * publié (résultat figé).
+ */
+export type TimeSlotStateDto = 'sign-ups-open' | 'drawing' | 'published';
+
+/**
+ * Le résultat publié du tirage d'un créneau pour le pseudo : sa partie, ou pas de place. `null`
+ * tant que le tirage n'est pas publié, ou sans inscription.
+ */
+export type DrawResultDto = { kind: 'assigned'; gameId: string } | { kind: 'unassigned' } | null;
+
+/** La situation du pseudo du téléphone : ses inscriptions, et l'état de chaque créneau pour lui. */
+export type ParticipantSituationDto = {
+  /** Les parties où il est inscrit. */
+  signedUpGameIds: string[];
+  /** Dans l'ordre de la journée. */
+  timeSlots: { timeSlotId: string; state: TimeSlotStateDto; drawResult: DrawResultDto }[];
+};
+
 /** Le front office se ferme à la fin de la convention : ses endpoints refusent alors avec `convention-ended`. */
 export const frontOfficeEndpoints = {
   read: endpoint<FrontOfficeDto>('GET', 'front-office'),
@@ -73,4 +93,15 @@ export const frontOfficeEndpoints = {
   verifyPresenceCode: endpoint<void, never, PresenceCodeBody>('POST', 'front-office/presence-code'),
   /** Le programme, servi au seul téléphone relié : sinon `phone-not-linked`. */
   readSchedule: endpoint<FrontOfficeScheduleDto>('GET', 'front-office/schedule'),
+  /** La situation du pseudo, servie au seul téléphone relié : sinon `phone-not-linked`. */
+  readSituation: endpoint<ParticipantSituationDto>('GET', 'front-office/situation'),
+};
+
+/**
+ * L'inscription du pseudo du téléphone relié à une partie (IN-2) : une ressource, posée par
+ * `signUp` et retirée par `withdraw`, sans effet si on les répète. 204, ou `phone-not-linked`.
+ */
+export const signUpEndpoints = {
+  signUp: endpoint<void, { gameId: string }>('PUT', 'front-office/games/:gameId/sign-up'),
+  withdraw: endpoint<void, { gameId: string }>('DELETE', 'front-office/games/:gameId/sign-up'),
 };

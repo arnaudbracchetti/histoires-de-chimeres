@@ -27,7 +27,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "marked": "18.0.14"
+    "marked": "catalog:"
   },
   "devDependencies": {
     "oxlint": "catalog:",

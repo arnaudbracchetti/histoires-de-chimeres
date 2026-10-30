@@ -7,10 +7,13 @@ import { provideRouter, Router } from '@angular/router';
 import {
   apiUrl,
   frontOfficeEndpoints,
+  signUpEndpoints,
   type FrontOfficeGameDto,
   type FrontOfficeScheduleDto,
+  type ParticipantSituationDto,
 } from '@chimeres/contract';
 import { LinkedPhone } from '../linked-phone';
+import { Alerts } from '../shell/alerts';
 import { PageVisibility } from './page-visibility';
 import { ParticipantData } from './participant-data';
 import { PhoneClock } from './phone-clock';
@@ -42,17 +45,31 @@ const schedule = (games: FrontOfficeGameDto[]): FrontOfficeScheduleDto => ({
 });
 const brumes = game('Brumes', ['s1']);
 const epice = game('Épice', ['s1', 's2']);
+const neons = game('Néons', ['s2']);
+
+type TimeSlotSituation = ParticipantSituationDto['timeSlots'][number];
+const open = (timeSlotId: string): TimeSlotSituation => ({
+  timeSlotId,
+  state: 'sign-ups-open',
+  drawResult: null,
+});
+/** Inscrit à `signedUpGameIds`, les deux créneaux aux inscriptions ouvertes, sauf ceux donnés. */
+const situation = (
+  signedUpGameIds: string[] = [],
+  ...timeSlots: TimeSlotSituation[]
+): ParticipantSituationDto => ({
+  signedUpGameIds,
+  timeSlots: ['s1', 's2'].map(
+    (id) => timeSlots.find(({ timeSlotId }) => timeSlotId === id) ?? open(id),
+  ),
+});
 
 describe('ParticipantData', () => {
   let now: Date;
   const visible = signal(true);
   const unlinkedByServer = vi.fn();
 
-  beforeEach(() => {
-    vi.useFakeTimers();
-    now = new Date(2027, 2, 14, 8, 0);
-    visible.set(true);
-    unlinkedByServer.mockClear();
+  const configure = () =>
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
@@ -65,6 +82,13 @@ describe('ParticipantData', () => {
         { provide: LinkedPhone, useValue: { unlinkedByServer } },
       ],
     });
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    now = new Date(2027, 2, 14, 8, 0);
+    visible.set(true);
+    unlinkedByServer.mockClear();
+    configure();
   });
 
   afterEach(() => {
@@ -76,24 +100,43 @@ describe('ParticipantData', () => {
   const reads = () => http().match(apiUrl(frontOfficeEndpoints.readSchedule));
 
   /**
-   * Répond à la lecture en attente, et laisse le module la ranger. Une réponse servie porte l'en-tête
-   * `Date` de sa lecture par le serveur, que le cache du service worker garde : l'heure du téléphone
-   * par défaut.
+   * Répond aux lectures en attente, programme et situation, et laisse le module les ranger. Une
+   * réponse servie porte l'en-tête `Date` de sa lecture par le serveur, que le cache du service
+   * worker garde : l'heure du téléphone par défaut.
    */
   async function answer(
     dto: FrontOfficeScheduleDto | 'failure',
     readAt: Date = now,
+    situationDto: ParticipantSituationDto = situation(),
   ): Promise<void> {
     const request = http().expectOne(apiUrl(frontOfficeEndpoints.readSchedule));
-    if (dto === 'failure') request.flush(null, { status: 502, statusText: 'Bad Gateway' });
-    else request.flush(dto, { headers: { Date: readAt.toUTCString() } });
+    const situationRequest = http().expectOne(apiUrl(frontOfficeEndpoints.readSituation));
+    if (dto === 'failure') {
+      request.flush(null, { status: 502, statusText: 'Bad Gateway' });
+      situationRequest.flush(null, { status: 502, statusText: 'Bad Gateway' });
+    } else {
+      request.flush(dto, { headers: { Date: readAt.toUTCString() } });
+      situationRequest.flush(situationDto);
+    }
+    await vi.advanceTimersByTimeAsync(0);
+  }
+
+  /** Les deux lectures refusées par l'API, avec ce Problem Details. */
+  async function refuse(problem: { code: string; title: string; status: number }) {
+    for (const read of [frontOfficeEndpoints.readSchedule, frontOfficeEndpoints.readSituation]) {
+      http().expectOne(apiUrl(read)).flush(problem, { status: problem.status, statusText: '' });
+    }
     await vi.advanceTimersByTimeAsync(0);
   }
 
   /** Le module, ouvert, avec sa première lecture servie. */
-  async function opened(dto = schedule([brumes, epice]), readAt?: Date): Promise<ParticipantData> {
+  async function opened(
+    dto = schedule([brumes, epice, neons]),
+    readAt?: Date,
+    situationDto?: ParticipantSituationDto,
+  ): Promise<ParticipantData> {
     const data = TestBed.inject(ParticipantData);
-    await answer(dto, readAt);
+    await answer(dto, readAt, situationDto);
     // La relecture toutes les 30 s attend que l'application soit stable.
     await TestBed.inject(ApplicationRef).whenStable();
     return data;
@@ -102,7 +145,7 @@ describe('ParticipantData', () => {
   it('lit le programme à l’ouverture', async () => {
     const data = await opened();
 
-    expect(data.schedule()?.games.map(({ id }) => id)).toEqual(['Brumes', 'Épice']);
+    expect(data.schedule()?.games.map(({ id }) => id)).toEqual(['Brumes', 'Épice', 'Néons']);
     expect(data.schedule()?.timeSlots.map(({ rank }) => rank)).toEqual([1, 2]);
   });
 
@@ -145,7 +188,7 @@ describe('ParticipantData', () => {
     await vi.advanceTimersByTimeAsync(30_000);
     await answer('failure');
 
-    expect(data.schedule()?.games.map(({ id }) => id)).toEqual(['Brumes', 'Épice']);
+    expect(data.schedule()?.games.map(({ id }) => id)).toEqual(['Brumes', 'Épice', 'Néons']);
   });
 
   it('n’a pas de programme tant que la première lecture n’a pas abouti', async () => {
@@ -164,7 +207,7 @@ describe('ParticipantData', () => {
     await answer('failure');
 
     expect(data.schedule()?.timeSlots.map(({ rank }) => rank)).toEqual([2]);
-    expect(data.schedule()?.games).toEqual([]);
+    expect(data.schedule()?.games.map(({ id }) => id)).toEqual(['Néons']);
   });
 
   it('cache une partie double dès la fin de son premier créneau : elle a commencé', async () => {
@@ -248,13 +291,7 @@ describe('ParticipantData', () => {
       const data = await opened();
 
       await vi.advanceTimersByTimeAsync(30_000);
-      http()
-        .expectOne(apiUrl(frontOfficeEndpoints.readSchedule))
-        .flush(
-          { code: 'convention-ended', title: 'La convention est terminée.', status: 403 },
-          { status: 403, statusText: 'Forbidden' },
-        );
-      await vi.advanceTimersByTimeAsync(0);
+      await refuse({ code: 'convention-ended', title: 'La convention est terminée.', status: 410 });
 
       expect(data.ended()).toBe(true);
     });
@@ -264,16 +301,175 @@ describe('ParticipantData', () => {
     await opened();
 
     await vi.advanceTimersByTimeAsync(30_000);
-    http().expectOne(apiUrl(frontOfficeEndpoints.readSchedule)).flush(
-      {
-        code: 'phone-not-linked',
-        title: 'Ce téléphone n’est relié à aucun pseudo.',
-        status: 401,
-      },
-      { status: 401, statusText: 'Unauthorized' },
-    );
-    await vi.advanceTimersByTimeAsync(0);
+    await refuse({
+      code: 'phone-not-linked',
+      title: 'Ce téléphone n’est relié à aucun pseudo.',
+      status: 401,
+    });
 
-    expect(unlinkedByServer).toHaveBeenCalledOnce();
+    expect(unlinkedByServer).toHaveBeenCalled();
+  });
+
+  describe('s’inscrire et se désinscrire (IN-2)', () => {
+    const signUpUrl = (gameId: string) => apiUrl(signUpEndpoints.signUp, { gameId });
+    const alerts = () => TestBed.inject(Alerts).notices().map(({ title }) => title);
+
+    it('inscrit, attend pendant l’envoi, puis relit : la barre dit « Inscription enregistrée »', async () => {
+      const data = await opened();
+
+      const gesture = data.signUp('Brumes');
+      expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'open', signedUp: false, pending: true });
+      const request = http().expectOne(signUpUrl('Brumes'));
+      expect(request.request.method).toBe('PUT');
+      request.flush(null, { status: 204, statusText: 'No Content' });
+      await vi.advanceTimersByTimeAsync(0);
+      await answer(schedule([{ ...brumes, signUpCount: 1 }, epice]), now, situation(['Brumes']));
+      await gesture;
+
+      expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'open', signedUp: true, pending: false });
+      expect(data.isSignedUp('Brumes')).toBe(true);
+      expect(data.schedule()?.games[0]?.signUpCount).toBe(1);
+      expect(alerts()).toEqual([]);
+    });
+
+    it('ignore un second tap pendant l’envoi', async () => {
+      const data = await opened();
+
+      void data.signUp('Brumes');
+      void data.signUp('Brumes');
+
+      http().expectOne(signUpUrl('Brumes')).flush(null, { status: 204, statusText: '' });
+      await vi.advanceTimersByTimeAsync(0);
+      await answer(schedule([brumes]), now, situation(['Brumes']));
+    });
+
+    it('désinscrit d’un tap, sans confirmation', async () => {
+      const data = await opened(schedule([brumes]), now, situation(['Brumes']));
+
+      const gesture = data.withdraw('Brumes');
+      const request = http().expectOne(apiUrl(signUpEndpoints.withdraw, { gameId: 'Brumes' }));
+      expect(request.request.method).toBe('DELETE');
+      request.flush(null, { status: 204, statusText: '' });
+      await vi.advanceTimersByTimeAsync(0);
+      await answer(schedule([brumes]), now, situation());
+      await gesture;
+
+      expect(data.isSignedUp('Brumes')).toBe(false);
+    });
+
+    it('sans réseau, dit que rien n’a été enregistré, puis relit', async () => {
+      const data = await opened();
+
+      const gesture = data.signUp('Brumes');
+      http().expectOne(signUpUrl('Brumes')).error(new ProgressEvent('error'), { status: 0 });
+      await vi.advanceTimersByTimeAsync(0);
+      await answer('failure');
+      await gesture;
+
+      expect(alerts()).toEqual(["Pas de connexion\u00a0: rien n'a été enregistré."]);
+      expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'open', signedUp: false, pending: false });
+    });
+
+    it('après 10 s sans réponse, dit de vérifier l’inscription, puis relit', async () => {
+      const data = await opened();
+
+      const gesture = data.signUp('Brumes');
+      const request = http().expectOne(signUpUrl('Brumes'));
+      await vi.advanceTimersByTimeAsync(9_999);
+      expect(alerts()).toEqual([]);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(alerts()).toEqual(['Le réseau ne répond pas\u00a0: vérifie ton inscription.']);
+      // La demande était passée : la relecture le montre.
+      await answer(schedule([brumes]), now, situation(['Brumes']));
+      await gesture;
+
+      expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'open', signedUp: true, pending: false });
+      expect(request.cancelled).toBe(false);
+      request.flush(null, { status: 204, statusText: '' });
+      await vi.advanceTimersByTimeAsync(0);
+      // La réponse tardive est relue, sans nouvelle alerte.
+      await answer(schedule([brumes]), now, situation(['Brumes']));
+      expect(alerts()).toHaveLength(1);
+    });
+
+    it('montre le message de l’API sur un refus, puis relit', async () => {
+      const data = await opened();
+
+      const gesture = data.signUp('Brumes');
+      http()
+        .expectOne(signUpUrl('Brumes'))
+        .flush(
+          {
+            code: 'sign-ups-closed',
+            title: 'Inscriptions fermées',
+            detail: 'Le tirage du créneau 1 est lancé : ses inscriptions sont fermées.',
+            status: 422,
+          },
+          { status: 422, statusText: '' },
+        );
+      await vi.advanceTimersByTimeAsync(0);
+      await answer(schedule([brumes]), now, situation([], { ...open('s1'), state: 'drawing' }));
+      await gesture;
+
+      expect(alerts()).toEqual(['Inscriptions fermées']);
+      expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'drawing', rank: 1, signedUp: false });
+    });
+  });
+
+  describe('barre d’inscription de la fiche', () => {
+    it('n’existe pas pour une partie hors du programme', async () => {
+      const data = await opened();
+
+      expect(data.signUpBarOf('inconnue')).toBeNull();
+    });
+
+    it('dit « Tirage en cours » quand le tirage du premier créneau est lancé', async () => {
+      const data = await opened(
+        undefined,
+        undefined,
+        situation(['Épice'], { ...open('s1'), state: 'drawing' }),
+      );
+
+      expect(data.signUpBarOf('Épice')).toEqual({ kind: 'drawing', rank: 1, signedUp: true });
+      expect(data.signUpBarOf('Néons')).toEqual({ kind: 'open', signedUp: false, pending: false });
+    });
+
+    it('dit « Tu joues aux créneaux 1 et 2 » sur le créneau qu’occupe la partie double publiée', async () => {
+      const data = await opened(
+        undefined,
+        undefined,
+        situation(['Néons'], {
+          timeSlotId: 's1',
+          state: 'published',
+          drawResult: { kind: 'assigned', gameId: 'Épice' },
+        }),
+      );
+
+      expect(data.signUpBarOf('Néons')).toEqual({ kind: 'held', game: epice, signedUp: true });
+    });
+
+    it('dit le résultat publié du tirage du créneau', async () => {
+      const published = (drawResult: TimeSlotSituation['drawResult']) =>
+        opened(
+          schedule([brumes, neons, game('Ruines', ['s1'])]),
+          undefined,
+          situation([], { timeSlotId: 's1', state: 'published', drawResult }),
+        );
+
+      let data = await published({ kind: 'assigned', gameId: 'Brumes' });
+      expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'assigned-here' });
+      expect(data.signUpBarOf('Ruines')).toEqual({ kind: 'assigned-elsewhere', game: brumes });
+      expect(data.signUpBarOf('Néons')).toEqual({ kind: 'open', signedUp: false, pending: false });
+
+      TestBed.resetTestingModule();
+      configure();
+      data = await published({ kind: 'unassigned' });
+      expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'unassigned' });
+
+      TestBed.resetTestingModule();
+      configure();
+      data = await published(null);
+      expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'closed', rank: 1 });
+    });
   });
 });

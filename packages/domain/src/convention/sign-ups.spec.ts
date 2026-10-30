@@ -1,0 +1,176 @@
+import { describe, expect, it } from 'vitest';
+import { Refusal } from '../refusal.js';
+import { Scenario, type Duration } from '../scenario/scenario.js';
+import { Convention } from './convention.js';
+import type { LocalMoment } from './local-moment.js';
+import { PresenceCode } from './presence-code.js';
+import { TimeOfDay } from './time-of-day.js';
+
+const at = TimeOfDay.parse;
+const NOW: LocalMoment = { date: '2027-03-14', time: at('08:00') };
+
+function aScenario(id: string, gameMasterId: string, duration: Duration = 1): Scenario {
+  return Scenario.propose(id, gameMasterId, {
+    title: `Scénario ${id}`,
+    system: 'Cthulhu',
+    presentation: 'Une enquête.',
+    contentWarnings: '',
+    seats: { min: 3, max: 5 },
+    duration,
+  });
+}
+
+/**
+ * Créneaux s1 (9 h – 11 h 30) et s2 (14 h – 16 h 30), tables t1 et t2. Au créneau 1 : « brumes »
+ * (t1) et « épice », partie double des créneaux 1 et 2 (t2). Au créneau 2 : « néons » (t1). Les
+ * participants « Élodie » (p1) et « Lune » (p2) se sont identifiés.
+ */
+function aConvention(): Convention {
+  const convention = Convention.restore({
+    id: 'c1',
+    name: 'Histoires de Chimères',
+    date: null,
+    timeSlots: [],
+    tables: [],
+    gameMasters: [],
+    participants: [],
+    signUps: [],
+    games: [],
+    version: 0,
+    presenceCode: PresenceCode.of('K7M2'),
+  });
+  convention.addTimeSlot('s1', at('09:00'), at('11:30'));
+  convention.addTimeSlot('s2', at('14:00'), at('16:30'));
+  convention.addTable('t1', 'Table 1');
+  convention.addTable('t2', 'Table 2');
+  convention.addGameMaster('g1', 'p-g1', 'Brann');
+  convention.addGameMaster('g2', 'p-g2', 'Kaïros');
+  convention.declareAvailability('g1', 's1');
+  convention.declareAvailability('g1', 's2');
+  convention.declareAvailability('g2', 's1');
+  convention.declareAvailability('g2', 's2');
+  convention.schedule('brumes', aScenario('a', 'g1'), 's1', 't1');
+  convention.schedule('epice', aScenario('b', 'g2', 2), 's1', 't2');
+  convention.schedule('neons', aScenario('c', 'g1'), 's2', 't1');
+  convention.identify('p1', 'K7M2', 'Élodie', null, NOW);
+  convention.identify('p2', 'K7M2', 'Lune', null, NOW);
+  return convention;
+}
+
+function refusalOf(action: () => void): Refusal {
+  try {
+    action();
+  } catch (error) {
+    if (error instanceof Refusal) return error;
+    throw error;
+  }
+  throw new Error("L'action n'a pas été refusée.");
+}
+
+/** Les inscriptions, en « participant partie ». */
+const signUpsOf = (convention: Convention) =>
+  convention.signUps.map(({ participantId, gameId }) => `${participantId} ${gameId}`);
+
+describe('S’inscrire à une partie (IN-2)', () => {
+  it('inscrit le participant à la partie', () => {
+    const convention = aConvention();
+
+    const changed = convention.signUp('p1', 'brumes');
+
+    expect(changed).toBe(true);
+    expect(signUpsOf(convention)).toEqual(['p1 brumes']);
+  });
+
+  it('inscrit à plusieurs parties d’un même créneau', () => {
+    const convention = aConvention();
+
+    convention.signUp('p1', 'brumes');
+    convention.signUp('p1', 'epice');
+
+    expect(signUpsOf(convention)).toEqual(['p1 brumes', 'p1 epice']);
+  });
+
+  it('ne change rien à une inscription répétée', () => {
+    const convention = aConvention();
+    convention.signUp('p1', 'brumes');
+
+    const changed = convention.signUp('p1', 'brumes');
+
+    expect(changed).toBe(false);
+    expect(signUpsOf(convention)).toEqual(['p1 brumes']);
+  });
+
+  it('refuse une partie introuvable', () => {
+    expect(refusalOf(() => aConvention().signUp('p1', 'inconnue')).code).toBe('game-not-found');
+  });
+
+  it('refuse un participant introuvable', () => {
+    expect(refusalOf(() => aConvention().signUp('inconnu', 'brumes')).code).toBe(
+      'participant-not-found',
+    );
+  });
+
+  it('garde les inscriptions prises sur le second créneau d’une partie double (IN-3)', () => {
+    const convention = aConvention();
+    convention.signUp('p1', 'neons');
+
+    convention.signUp('p1', 'epice');
+
+    expect(signUpsOf(convention)).toEqual(['p1 neons', 'p1 epice']);
+  });
+});
+
+describe('Se désinscrire d’une partie (IN-2)', () => {
+  it('retire l’inscription du participant, et elle seule', () => {
+    const convention = aConvention();
+    convention.signUp('p1', 'brumes');
+    convention.signUp('p1', 'epice');
+    convention.signUp('p2', 'brumes');
+
+    const changed = convention.withdraw('p1', 'brumes');
+
+    expect(changed).toBe(true);
+    expect(signUpsOf(convention)).toEqual(['p1 epice', 'p2 brumes']);
+  });
+
+  it('ne change rien pour une partie où le participant n’est pas inscrit', () => {
+    const convention = aConvention();
+
+    const changed = convention.withdraw('p1', 'brumes');
+
+    expect(changed).toBe(false);
+    expect(signUpsOf(convention)).toEqual([]);
+  });
+
+  it('refuse une partie introuvable', () => {
+    expect(refusalOf(() => aConvention().withdraw('p1', 'inconnue')).code).toBe('game-not-found');
+  });
+
+  it('refuse un participant introuvable', () => {
+    expect(refusalOf(() => aConvention().withdraw('inconnu', 'brumes')).code).toBe(
+      'participant-not-found',
+    );
+  });
+});
+
+describe('Situation d’un participant', () => {
+  it('donne ses inscriptions, et chaque créneau aux inscriptions ouvertes, sans résultat de tirage', () => {
+    const convention = aConvention();
+    convention.signUp('p1', 'epice');
+    convention.signUp('p2', 'brumes');
+
+    expect(convention.situationOf('p1')).toEqual({
+      signedUpGameIds: ['epice'],
+      timeSlots: [
+        { timeSlotId: 's1', state: 'sign-ups-open', drawResult: null },
+        { timeSlotId: 's2', state: 'sign-ups-open', drawResult: null },
+      ],
+    });
+  });
+
+  it('refuse un participant introuvable', () => {
+    expect(refusalOf(() => aConvention().situationOf('inconnu')).code).toBe(
+      'participant-not-found',
+    );
+  });
+});

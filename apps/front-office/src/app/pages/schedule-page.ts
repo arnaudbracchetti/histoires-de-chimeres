@@ -12,7 +12,7 @@ const TIME_SLOT_PARAM = 'creneau';
 
 /**
  * Le programme des parties, créneau par créneau : une puce par créneau à venir, puis les parties du
- * créneau choisi, en cartes. Une partie double est sous ses deux créneaux (IN-3).
+ * créneau choisi, en cartes. Une partie double est sous son seul premier créneau (IN-3).
  */
 @Component({
   selector: 'app-schedule-page',
@@ -137,7 +137,7 @@ export class SchedulePage {
   protected readonly games = computed(() => {
     const slot = this.selected();
     return (this.data.schedule()?.games ?? []).filter(
-      (game) => slot && game.timeSlotIds.includes(slot.id),
+      (game) => slot && game.timeSlotIds[0] === slot.id,
     );
   });
 

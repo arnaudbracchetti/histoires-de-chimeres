@@ -5,6 +5,7 @@ import type {
   VerdictRefusalDto,
 } from '@chimeres/contract';
 import type { Refusal } from '@chimeres/domain';
+import { formatCount, fr } from '@chimeres/design';
 
 type ParamsOf<C extends ProblemCode> = C extends RefusalCode
   ? RefusalParams[C]
@@ -76,17 +77,17 @@ export const problemCatalogue: Catalogue = {
   'time-slot-hours-locked': {
     title: 'Heures figées',
     detail: ({ rank, availabilities }) =>
-      `${availabilities > 1 ? `${availabilities} MJ sont disponibles` : 'Un MJ est disponible'} sur le créneau ${rank} : ses heures ne changent plus. Pour les changer, supprime le créneau, puis recrée-le.`,
+      fr`${availabilities > 1 ? `${availabilities} MJ sont disponibles` : 'Un MJ est disponible'} sur le créneau ${rank} : ses heures ne changent plus. Pour les changer, supprime le créneau, puis recrée-le.`,
   },
   'time-slot-hours-locked-by-games': {
     title: 'Heures figées',
     detail: ({ rank, games }) =>
-      `Le créneau ${rank} porte ${games > 1 ? `${games} parties` : 'une partie'} : ses heures ne changent plus. Pour les changer, déprogramme-${games > 1 ? 'les' : 'la'}, supprime le créneau, puis recrée-le.`,
+      fr`Le créneau ${rank} porte ${games > 1 ? `${games} parties` : 'une partie'} : ses heures ne changent plus. Pour les changer, déprogramme-${games > 1 ? 'les' : 'la'}, supprime le créneau, puis recrée-le.`,
   },
   'time-slot-has-games': {
     title: 'Créneau programmé',
     detail: ({ rank, games }) =>
-      `Le créneau ${rank} porte ${games > 1 ? `${games} parties` : 'une partie'} : déprogramme-${games > 1 ? 'les' : 'la'} d'abord.`,
+      fr`Le créneau ${rank} porte ${games > 1 ? `${games} parties` : 'une partie'} : déprogramme-${games > 1 ? 'les' : 'la'} d'abord.`,
   },
   'table-not-found': {
     title: 'Table introuvable',
@@ -111,7 +112,7 @@ export const problemCatalogue: Catalogue = {
   'table-has-games': {
     title: 'Table programmée',
     detail: ({ name, games }) =>
-      `La table « ${name} » porte ${games > 1 ? `${games} parties` : 'une partie'} : déprogramme-${games > 1 ? 'les' : 'la'} d'abord.`,
+      fr`La table « ${name} » porte ${games > 1 ? `${games} parties` : 'une partie'} : déprogramme-${games > 1 ? 'les' : 'la'} d'abord.`,
   },
   'game-master-not-found': {
     title: 'MJ introuvable',
@@ -120,7 +121,7 @@ export const problemCatalogue: Catalogue = {
   },
   'participant-not-found': {
     title: 'Pseudo introuvable',
-    detail: () => "Ce pseudo n'existe plus : tape-le à nouveau.",
+    detail: () => fr`Ce pseudo n'existe plus : tape-le à nouveau.`,
     status: 404,
   },
   'nickname-required': {
@@ -148,23 +149,23 @@ export const problemCatalogue: Catalogue = {
     title: 'MJ avec des scénarios',
     detail: ({ scenarios }) =>
       scenarios > 1
-        ? `Ce MJ a ${scenarios} scénarios : supprime-les d'abord.`
-        : `Ce MJ a un scénario : supprime-le d'abord.`,
+        ? fr`Ce MJ a ${scenarios} scénarios : supprime-les d'abord.`
+        : fr`Ce MJ a un scénario : supprime-le d'abord.`,
   },
   'game-master-unavailable': {
     title: 'MJ indisponible',
     detail: ({ nickname, rank }) =>
-      `${nickname} n'est pas disponible sur le créneau ${rank} : coche d'abord sa disponibilité sur sa fiche.`,
+      fr`${nickname} n'est pas disponible sur le créneau ${rank} : coche d'abord sa disponibilité sur sa fiche.`,
   },
   'game-master-busy': {
     title: 'MJ déjà occupé',
     detail: ({ nickname, rank }) =>
-      `${nickname} mène déjà une partie sur le créneau ${rank} : choisis un autre créneau.`,
+      fr`${nickname} mène déjà une partie sur le créneau ${rank} : choisis un autre créneau.`,
   },
   'availability-has-game': {
     title: 'Disponibilité programmée',
     detail: ({ nickname, rank }) =>
-      `${nickname} mène une partie sur le créneau ${rank} : déprogramme-la d'abord.`,
+      fr`${nickname} mène une partie sur le créneau ${rank} : déprogramme-la d'abord.`,
   },
   'game-master-without-availability': {
     title: 'MJ sans disponibilité',
@@ -179,32 +180,37 @@ export const problemCatalogue: Catalogue = {
   'game-master-without-consecutive-availabilities': {
     title: 'MJ sans créneaux consécutifs',
     detail: ({ nickname }) =>
-      `${nickname} n'est disponible sur aucun créneau suivi d'un autre : un scénario double en demande deux consécutifs. Coche-les sur sa fiche.`,
+      fr`${nickname} n'est disponible sur aucun créneau suivi d'un autre : un scénario double en demande deux consécutifs. Coche-les sur sa fiche.`,
   },
   'table-taken': {
     title: 'Table prise',
     detail: ({ table, rank }) =>
-      `La table « ${table} » accueille déjà une partie sur le créneau ${rank} : choisis une autre table.`,
+      fr`La table « ${table} » accueille déjà une partie sur le créneau ${rank} : choisis une autre table.`,
   },
   'no-next-time-slot': {
     title: 'Pas de créneau suivant',
     detail: ({ rank }) =>
-      `Le créneau ${rank} est le dernier de la journée : une partie double commence au plus tard sur le créneau ${rank - 1}.`,
+      fr`Le créneau ${rank} est le dernier de la journée : une partie double commence au plus tard sur le créneau ${rank - 1}.`,
   },
   'time-slot-splits-two-slot-game': {
     title: 'Partie double coupée',
     detail: ({ rank }) =>
-      `Ce créneau tomberait entre les créneaux ${rank} et ${rank + 1}, qu'occupe une partie double : choisis d'autres heures.`,
+      fr`Ce créneau tomberait entre les créneaux ${rank} et ${rank + 1}, qu'occupe une partie double : choisis d'autres heures.`,
     field: 'start',
   },
   'game-not-found': {
     title: 'Partie introuvable',
-    detail: () => "Cette partie n'existe plus : recharge la page.",
+    detail: () => fr`Cette partie n'existe plus : recharge la page.`,
     status: 404,
+  },
+  'sign-ups-closed': {
+    title: 'Inscriptions fermées',
+    detail: ({ rank }) =>
+      fr`Le tirage du créneau ${rank} est lancé : ses inscriptions sont fermées.`,
   },
   'game-swapped-with-itself': {
     title: 'Même partie',
-    detail: () => "Une partie ne s'échange pas avec elle-même : choisis une autre partie.",
+    detail: () => fr`Une partie ne s'échange pas avec elle-même : choisis une autre partie.`,
   },
   'scenario-not-found': {
     title: 'Scénario introuvable',
@@ -214,12 +220,12 @@ export const problemCatalogue: Catalogue = {
   'scenario-duration-locked': {
     title: 'Durée figée',
     detail: () =>
-      "Ce scénario est programmé : sa durée ne change plus. Déprogramme d'abord ses parties.",
+      fr`Ce scénario est programmé : sa durée ne change plus. Déprogramme d'abord ses parties.`,
     field: 'duration',
   },
   'scenario-has-games': {
     title: 'Scénario programmé',
-    detail: () => "Ce scénario est programmé : déprogramme d'abord ses parties.",
+    detail: () => fr`Ce scénario est programmé : déprogramme d'abord ses parties.`,
   },
   'scenario-title-required': {
     title: 'Titre obligatoire',
@@ -249,7 +255,7 @@ export const problemCatalogue: Catalogue = {
   'presentation-too-long': {
     title: 'Présentation trop longue',
     detail: ({ max }) =>
-      `La présentation fait ${formatCount(max)} caractères au plus : raccourcis-la.`,
+      fr`La présentation fait ${formatCount(max)} caractères au plus : raccourcis-la.`,
     field: 'presentation',
   },
   'content-warnings-too-long': {
@@ -312,11 +318,6 @@ export const problemCatalogue: Catalogue = {
     title: 'Erreur interne',
   },
 };
-
-/** « 1 500 » : espace fine insécable pour les milliers (docs/design/ton.md). */
-function formatCount(count: number): string {
-  return count.toLocaleString('fr-FR').replace(/\s/g, '\u202f');
-}
 
 /** Le motif et la phrase d'un refus du domaine, tels que les Problem Details les donnent. */
 export function messageOf<C extends RefusalCode>(

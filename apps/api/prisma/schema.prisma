@@ -75,6 +75,7 @@ model Participant {
   nickname     String
   gameMaster   GameMaster?
   linkedPhones LinkedPhone[]
+  signUps      SignUp[]
 
   @@index([conventionId])
 }
@@ -146,6 +147,7 @@ model Game {
   /// L'ordre de programmation.
   scheduledAt  DateTime       @default(now())
   timeSlots    GameTimeSlot[]
+  signUps      SignUp[]
 
   @@index([conventionId])
   @@index([scenarioId])
@@ -168,4 +170,17 @@ model GameTimeSlot {
   @@unique([timeSlotId, gameMasterId])
   @@index([tableId])
   @@index([gameMasterId])
+}
+
+/// Inscription d'un participant à une partie (IN-2). Elle part avec son participant ou sa partie.
+model SignUp {
+  participantId String      @db.Uuid
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  gameId        String      @db.Uuid
+  game          Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  /// L'ordre des inscriptions.
+  signedUpAt    DateTime    @default(now())
+
+  @@id([participantId, gameId])
+  @@index([gameId])
 }

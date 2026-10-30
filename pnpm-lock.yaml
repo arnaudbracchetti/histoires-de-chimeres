@@ -170,6 +170,9 @@ catalogs:
     '@vitest/coverage-v8':
       specifier: ^5.0.0
       version: 5.0.5
+    marked:
+      specifier: 18.0.14
+      version: 18.0.14
     oxlint:
       specifier: ^1.58.0
       version: 1.88.0
@@ -199,6 +202,9 @@ importers:
       '@chimeres/contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@chimeres/design':
+        specifier: workspace:*
+        version: link:../../packages/design
       '@chimeres/domain':
         specifier: workspace:*
         version: link:../../packages/domain
@@ -317,6 +323,9 @@ importers:
       '@chimeres/design':
         specifier: workspace:*
         version: link:../../packages/design
+      marked:
+        specifier: 'catalog:'
+        version: 18.0.14
       rxjs:
         specifier: ~7.8.0
         version: 7.8.2
@@ -375,6 +384,9 @@ importers:
       '@chimeres/design':
         specifier: workspace:*
         version: link:../../packages/design
+      marked:
+        specifier: 'catalog:'
+        version: 18.0.14
       rxjs:
         specifier: ~7.8.0
         version: 7.8.2
@@ -459,7 +471,7 @@ importers:
   packages/design:
     dependencies:
       marked:
-        specifier: 18.0.14
+        specifier: 'catalog:'
         version: 18.0.14
     devDependencies:
       oxlint:

@@ -5,7 +5,10 @@ import {
   ReadFrontOffice,
   ReadFrontOfficeSchedule,
   ReadLinkedPhone,
+  ReadParticipantSituation,
+  SignUpForGame,
   UnlinkPhone,
+  WithdrawFromGame,
   VerifyPresenceCode,
   type Clock,
   type ConventionRepository,
@@ -21,6 +24,8 @@ import { FRONT_OFFICE_SCHEDULE_READER } from './front-office-schedule-reader.tok
 import { FrontOfficeScheduleController } from './http/front-office-schedule.controller.js';
 import { FrontOfficeController } from './http/front-office.controller.js';
 import { LinkedPhoneController } from './http/linked-phone.controller.js';
+import { ParticipantSituationController } from './http/participant-situation.controller.js';
+import { SignUpController } from './http/sign-up.controller.js';
 import { LINKED_PHONE_READER } from './linked-phone-reader.token.js';
 import { LINKED_PHONE_REPOSITORY } from './linked-phone-repository.token.js';
 import { PrismaFrontOfficeScheduleReader } from './persistence/prisma-front-office-schedule-reader.js';
@@ -33,7 +38,13 @@ const newPhoneId = () => randomBytes(32).toString('base64url');
 
 @Module({
   imports: [ConventionModule],
-  controllers: [FrontOfficeController, FrontOfficeScheduleController, LinkedPhoneController],
+  controllers: [
+    FrontOfficeController,
+    FrontOfficeScheduleController,
+    LinkedPhoneController,
+    ParticipantSituationController,
+    SignUpController,
+  ],
   providers: [
     { provide: CLOCK, useClass: ParisClock },
     { provide: LINKED_PHONE_REPOSITORY, useClass: PrismaLinkedPhoneRepository },
@@ -67,6 +78,33 @@ const newPhoneId = () => randomBytes(32).toString('base64url');
         clock: Clock,
       ) => new ReadFrontOfficeSchedule(conventions, phones, schedule, clock),
       inject: [CONVENTION_REPOSITORY, LINKED_PHONE_READER, FRONT_OFFICE_SCHEDULE_READER, CLOCK],
+    },
+    {
+      provide: ReadParticipantSituation,
+      useFactory: (
+        conventions: ConventionRepository,
+        phones: LinkedPhoneRepository,
+        clock: Clock,
+      ) => new ReadParticipantSituation(conventions, phones, clock),
+      inject: [CONVENTION_REPOSITORY, LINKED_PHONE_REPOSITORY, CLOCK],
+    },
+    {
+      provide: SignUpForGame,
+      useFactory: (
+        conventions: ConventionRepository,
+        phones: LinkedPhoneRepository,
+        clock: Clock,
+      ) => new SignUpForGame(conventions, phones, clock),
+      inject: [CONVENTION_REPOSITORY, LINKED_PHONE_REPOSITORY, CLOCK],
+    },
+    {
+      provide: WithdrawFromGame,
+      useFactory: (
+        conventions: ConventionRepository,
+        phones: LinkedPhoneRepository,
+        clock: Clock,
+      ) => new WithdrawFromGame(conventions, phones, clock),
+      inject: [CONVENTION_REPOSITORY, LINKED_PHONE_REPOSITORY, CLOCK],
     },
     {
       provide: Identify,

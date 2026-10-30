@@ -1,18 +1,21 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { FrontOfficeGameDto, FrontOfficeScheduleDto } from '@chimeres/contract';
+import { ParticipantData } from '../participant-data/participant-data';
 import { ScenarioIllustration } from '../scenario-illustration';
+import { Icon } from '../ui/icon';
 import { formatTimeSlotRanks } from '@chimeres/design';
 import { counterOf, ranksOf } from './game-text';
 import { OversubscribedBadge } from './oversubscribed-badge';
 
 /**
  * Une partie du programme, en carte 3:2 qui ouvre sa fiche : l'image, puis par-dessus la table, le
- * titre, le jeu et le MJ, le compteur et « Très demandée ».
+ * titre, le jeu et le MJ, le compteur et « Très demandée ». Un badge « Inscrit » se pose sur
+ * l'image d'une partie où le pseudo est inscrit.
  */
 @Component({
   selector: 'app-game-card',
-  imports: [OversubscribedBadge, RouterLink, ScenarioIllustration],
+  imports: [Icon, OversubscribedBadge, RouterLink, ScenarioIllustration],
   template: `
     <a [routerLink]="['/parties', game().id]">
       <app-scenario-illustration
@@ -20,6 +23,9 @@ import { OversubscribedBadge } from './oversubscribed-badge';
         [title]="game().title"
         [imageUrl]="game().imageUrl"
       />
+      @if (signedUp()) {
+        <span class="signed-up"><app-icon name="check" />Inscrit</span>
+      }
       <span class="text">
         <span class="over">
           Table {{ game().tableName }}
@@ -53,8 +59,29 @@ import { OversubscribedBadge } from './oversubscribed-badge';
       }
 
       app-scenario-illustration,
+      .signed-up,
       .text {
         grid-area: 1 / 1;
+      }
+
+      .signed-up {
+        display: inline-flex;
+        gap: var(--space-xs);
+        align-items: center;
+        align-self: start;
+        justify-self: start;
+        margin: var(--space-m);
+        padding: var(--space-xxs) var(--space-s);
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+        color: var(--accent);
+        font-size: var(--font-size-mobile-meta);
+        font-weight: 600;
+      }
+
+      .signed-up app-icon ::ng-deep svg {
+        width: 1rem;
+        height: 1rem;
       }
 
       app-scenario-illustration {
@@ -108,7 +135,10 @@ export class GameCard {
   readonly game = input.required<FrontOfficeGameDto>();
   readonly schedule = input.required<FrontOfficeScheduleDto>();
 
+  private readonly data = inject(ParticipantData);
+
   protected readonly counter = computed(() => counterOf(this.game()));
+  protected readonly signedUp = computed(() => this.data.isSignedUp(this.game().id));
   /** « créneaux 1 et 2 » pour une partie double, sinon rien : la carte est sous son créneau. */
   protected readonly doubleRanks = computed(() => {
     const ranks = ranksOf(this.schedule(), this.game());

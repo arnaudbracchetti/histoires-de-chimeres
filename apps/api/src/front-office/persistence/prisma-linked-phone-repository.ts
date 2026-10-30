@@ -11,6 +11,13 @@ export class PrismaLinkedPhoneRepository implements LinkedPhoneRepository {
     await this.prisma.linkedPhone.create({ data: { id, participantId } });
   }
 
+  async find(phoneId: string): Promise<LinkedPhone | null> {
+    return this.prisma.linkedPhone.findUnique({
+      where: { id: phoneId },
+      select: { id: true, participantId: true },
+    });
+  }
+
   async unlink(phoneId: string): Promise<void> {
     await this.prisma.linkedPhone.deleteMany({ where: { id: phoneId } });
   }

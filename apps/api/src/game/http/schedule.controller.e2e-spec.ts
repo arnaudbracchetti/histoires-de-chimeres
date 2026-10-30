@@ -194,19 +194,19 @@ describe('Programme', () => {
       'MJ indisponible',
       () => ({ scenarioId: brumes.id, timeSlotId: slot(2), tableId: table('Table 1') }),
       'game-master-unavailable',
-      "Kaïros n'est pas disponible sur le créneau 2 : coche d'abord sa disponibilité sur sa fiche.",
+      "Kaïros n'est pas disponible sur le créneau 2\u00a0: coche d'abord sa disponibilité sur sa fiche.",
     ],
     [
       'MJ déjà occupé',
       () => ({ scenarioId: ruines.id, timeSlotId: slot(1), tableId: table('Table 2') }),
       'game-master-busy',
-      'Élodie mène déjà une partie sur le créneau 1 : choisis un autre créneau.',
+      'Élodie mène déjà une partie sur le créneau 1\u00a0: choisis un autre créneau.',
     ],
     [
       'Table prise',
       () => ({ scenarioId: brumes.id, timeSlotId: slot(1), tableId: table('Table 1') }),
       'table-taken',
-      'La table « Table 1 » accueille déjà une partie sur le créneau 1 : choisis une autre table.',
+      'La table «\u00a0Table 1\u00a0» accueille déjà une partie sur le créneau 1\u00a0: choisis une autre table.',
     ],
   ])(
     'refuse « %s » : 422, avec le motif et la phrase (PR-5)',
@@ -290,7 +290,7 @@ describe('Programme', () => {
     expect(timeSlot.body).toMatchObject({
       code: 'time-slot-has-games',
       title: 'Créneau programmé',
-      detail: "Le créneau 1 porte une partie : déprogramme-la d'abord.",
+      detail: "Le créneau 1 porte une partie\u00a0: déprogramme-la d'abord.",
     });
     const tableResponse = await server()
       .delete(apiUrl(tableEndpoints.remove, { tableId: table('Table 1') }))
@@ -298,7 +298,7 @@ describe('Programme', () => {
     expect(tableResponse.body).toMatchObject({
       code: 'table-has-games',
       title: 'Table programmée',
-      detail: "La table « Table 1 » porte une partie : déprogramme-la d'abord.",
+      detail: "La table «\u00a0Table 1\u00a0» porte une partie\u00a0: déprogramme-la d'abord.",
     });
     await server()
       .put(apiUrl(tableEndpoints.rename, { tableId: table('Table 1') }))
@@ -326,7 +326,7 @@ describe('Programme', () => {
       code: 'time-slot-hours-locked-by-games',
       title: 'Heures figées',
       detail:
-        'Le créneau 1 porte une partie : ses heures ne changent plus. Pour les changer, déprogramme-la, supprime le créneau, puis recrée-le.',
+        'Le créneau 1 porte une partie\u00a0: ses heures ne changent plus. Pour les changer, déprogramme-la, supprime le créneau, puis recrée-le.',
     });
   });
 
@@ -354,7 +354,7 @@ describe('Programme', () => {
         {
           field: 'duration',
           message:
-            "Ce scénario est programmé : sa durée ne change plus. Déprogramme d'abord ses parties.",
+            "Ce scénario est programmé\u00a0: sa durée ne change plus. Déprogramme d'abord ses parties.",
         },
       ],
     });
@@ -363,7 +363,7 @@ describe('Programme', () => {
     expect(removal.body).toMatchObject({
       code: 'scenario-has-games',
       title: 'Scénario programmé',
-      detail: "Ce scénario est programmé : déprogramme d'abord ses parties.",
+      detail: "Ce scénario est programmé\u00a0: déprogramme d'abord ses parties.",
     });
 
     await unschedule(gameId);
@@ -382,7 +382,7 @@ describe('Programme', () => {
     expect(response.body).toMatchObject({
       code: 'availability-has-game',
       title: 'Disponibilité programmée',
-      detail: "Élodie mène une partie sur le créneau 1 : déprogramme-la d'abord.",
+      detail: "Élodie mène une partie sur le créneau 1\u00a0: déprogramme-la d'abord.",
     });
 
     await unschedule(gameId);
@@ -404,7 +404,7 @@ describe('Programme', () => {
         refusal: {
           code: 'availability-has-game',
           title: 'Disponibilité programmée',
-          detail: "Élodie mène une partie sur le créneau 1 : déprogramme-la d'abord.",
+          detail: "Élodie mène une partie sur le créneau 1\u00a0: déprogramme-la d'abord.",
         },
       },
       { timeSlotId: slot(2), refusal: null },
@@ -429,7 +429,7 @@ describe('Programme', () => {
           code: 'table-taken',
           title: 'Table prise',
           detail:
-            'La table « Table 1 » accueille déjà une partie sur le créneau 1 : choisis une autre table.',
+            'La table «\u00a0Table 1\u00a0» accueille déjà une partie sur le créneau 1\u00a0: choisis une autre table.',
         },
       },
       { timeSlotId: slot(1), tableId: table('Table 2'), refusal: null },
@@ -488,7 +488,7 @@ describe('Programme', () => {
         code: 'no-next-time-slot',
         title: 'Pas de créneau suivant',
         detail:
-          'Le créneau 2 est le dernier de la journée : une partie double commence au plus tard sur le créneau 1.',
+          'Le créneau 2 est le dernier de la journée\u00a0: une partie double commence au plus tard sur le créneau 1.',
       });
       const verdicts = (await placements(abysses.id).expect(200)).body as PlacementDto[];
       expect(verdicts.map(({ refusal }) => refusal?.code ?? null)).toEqual([
@@ -515,7 +515,7 @@ describe('Programme', () => {
         code: 'time-slot-splits-two-slot-game',
         title: 'Partie double coupée',
         detail:
-          "Ce créneau tomberait entre les créneaux 1 et 2, qu'occupe une partie double : choisis d'autres heures.",
+          "Ce créneau tomberait entre les créneaux 1 et 2, qu'occupe une partie double\u00a0: choisis d'autres heures.",
         errors: [{ field: 'start', code: 'time-slot-splits-two-slot-game' }],
       });
 
@@ -577,13 +577,13 @@ describe('Programme', () => {
         'MJ indisponible',
         () => ({ timeSlotId: slot(2), tableId: table('Table 1') }),
         'game-master-unavailable',
-        "Kaïros n'est pas disponible sur le créneau 2 : coche d'abord sa disponibilité sur sa fiche.",
+        "Kaïros n'est pas disponible sur le créneau 2\u00a0: coche d'abord sa disponibilité sur sa fiche.",
       ],
       [
         'Table prise',
         () => ({ timeSlotId: slot(1), tableId: table('Table 1') }),
         'table-taken',
-        'La table « Table 1 » accueille déjà une partie sur le créneau 1 : choisis une autre table.',
+        'La table «\u00a0Table 1\u00a0» accueille déjà une partie sur le créneau 1\u00a0: choisis une autre table.',
       ],
     ])(
       'refuse « %s » : 422, avec le motif et la phrase (PR-5)',
@@ -614,7 +614,7 @@ describe('Programme', () => {
       expect(response.body).toMatchObject({
         code: 'game-master-busy',
         title: 'MJ déjà occupé',
-        detail: 'Élodie mène déjà une partie sur le créneau 2 : choisis un autre créneau.',
+        detail: 'Élodie mène déjà une partie sur le créneau 2\u00a0: choisis un autre créneau.',
       });
     });
 
@@ -676,7 +676,7 @@ describe('Programme', () => {
           code: 'game-master-unavailable',
           title: 'MJ indisponible',
           detail:
-            "Kaïros n'est pas disponible sur le créneau 2 : coche d'abord sa disponibilité sur sa fiche.",
+            "Kaïros n'est pas disponible sur le créneau 2\u00a0: coche d'abord sa disponibilité sur sa fiche.",
         });
         expect(await read()).toEqual(before);
       });
@@ -689,7 +689,7 @@ describe('Programme', () => {
         expect(response.body).toMatchObject({
           code: 'game-swapped-with-itself',
           title: 'Même partie',
-          detail: "Une partie ne s'échange pas avec elle-même : choisis une autre partie.",
+          detail: "Une partie ne s'échange pas avec elle-même\u00a0: choisis une autre partie.",
         });
       });
 
@@ -767,7 +767,7 @@ describe('Programme', () => {
         expect(response.body).toMatchObject({
           code: 'table-taken',
           detail:
-            'La table « Table 2 » accueille déjà une partie sur le créneau 3 : choisis une autre table.',
+            'La table «\u00a0Table 2\u00a0» accueille déjà une partie sur le créneau 3\u00a0: choisis une autre table.',
         });
       });
 
@@ -779,7 +779,7 @@ describe('Programme', () => {
         expect(response.body).toMatchObject({
           code: 'game-master-unavailable',
           detail:
-            "Élodie n'est pas disponible sur le créneau 3 : coche d'abord sa disponibilité sur sa fiche.",
+            "Élodie n'est pas disponible sur le créneau 3\u00a0: coche d'abord sa disponibilité sur sa fiche.",
         });
       });
 
