@@ -106,19 +106,32 @@ test('changer de pseudo oublie la copie hors ligne de l’ancien pseudo (ID-9)',
   await expect(page.getByText(nickname)).toHaveCount(0);
 });
 
+/** Les fichiers du groupe « app » (installMode: prefetch), téléchargés à l'installation, que la page s'en serve ou non. */
+const prefetched = (page: Page) =>
+  page.evaluate(async () => {
+    const paths: string[] = [];
+    for (const name of await caches.keys()) {
+      if (!name.includes(':app:')) continue;
+      const cache = await caches.open(name);
+      for (const request of await cache.keys()) paths.push(new URL(request.url).pathname);
+    }
+    return paths.sort();
+  });
+
 test('le service worker précharge les polices', async ({ page }) => {
   await installServiceWorker(page);
 
-  // Le groupe « app » (installMode: prefetch) les télécharge à l'installation, que la page s'en serve ou non.
-  const prefetched = () =>
-    page.evaluate(async () => {
-      const urls: string[] = [];
-      for (const name of await caches.keys()) {
-        if (!name.includes(':app:')) continue;
-        const cache = await caches.open(name);
-        for (const request of await cache.keys()) urls.push(new URL(request.url).pathname);
-      }
-      return urls.filter((url) => url.endsWith('.woff2')).length;
-    });
-  await expect.poll(prefetched).toBe(2);
+  await expect
+    .poll(async () => (await prefetched(page)).filter((path) => path.endsWith('.woff2')).length)
+    .toBe(2);
+});
+
+test('le service worker précharge les sprites SVG, pour que les icônes restent hors ligne', async ({
+  page,
+}) => {
+  await installServiceWorker(page);
+
+  await expect
+    .poll(() => prefetched(page))
+    .toEqual(expect.arrayContaining(['/emblem.svg', '/icons.svg', '/illustration.svg']));
 });
