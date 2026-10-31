@@ -1,13 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { aNickname, identify } from './identification.js';
 import {
-  apiUrl,
-  frontOfficeEndpoints,
-  linkedPhoneEndpoints,
-  signUpEndpoints,
-  type FrontOfficeScheduleDto,
-} from '@chimeres/contract';
-import { aNickname, identify, presenceCodeOf } from './identification.js';
-import { gameCard, prepare, scheduleTab, timeSlotChip } from './schedule.js';
+  gameCard,
+  prepare,
+  scheduleTab,
+  signUpFromAnotherPhone,
+  timeSlotChip,
+} from './schedule.js';
 
 test('Mes parties montre les inscriptions du créneau, avec le rappel « partie très demandée » (IN-5)', async ({
   page,
@@ -21,20 +20,8 @@ test('Mes parties montre les inscriptions du créneau, avec le rappel « partie 
   await page.getByRole('button', { name: "S'inscrire" }).click();
   await expect(page.getByText('Inscription enregistrée')).toBeVisible();
 
-  // Un autre téléphone, avec ses propres cookies, fait passer la partie au-dessus de sa place.
-  const link = await request.post(apiUrl(linkedPhoneEndpoints.link), {
-    data: {
-      presenceCode: await presenceCodeOf(request),
-      nickname: aNickname('Yanis'),
-      confirmation: null,
-    },
-  });
-  expect(link.ok()).toBe(true);
-  const schedule = (await (
-    await request.get(apiUrl(frontOfficeEndpoints.readSchedule))
-  ).json()) as FrontOfficeScheduleDto;
-  const gameId = schedule.games.find(({ title }) => title === brumes.title)!.id;
-  expect((await request.put(apiUrl(signUpEndpoints.signUp, { gameId }))).ok()).toBe(true);
+  // Un autre téléphone fait passer la partie au-dessus de sa place.
+  await signUpFromAnotherPhone(request, brumes.title);
 
   await page.goto('/mes-parties');
   const timeSlot = page.getByRole('region', { name: /^Créneau 1\b/ });

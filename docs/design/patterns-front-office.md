@@ -125,6 +125,7 @@ Une confirmation (« Changer de pseudo ? ») suit les règles du back office ([p
 - Les deux boutons s'empilent sur toute la largeur : l'action au-dessus, « Annuler » (secondaire) dessous.
 - Le focus initial est sur « Annuler » ; à la fermeture, il revient à ce qui a ouvert le dialogue.
 - L'action n'est pas destructrice au sens du back office : elle reste en bouton principal. Le rouge plein reste réservé à une suppression.
+- Exception : la confirmation « Partie très demandée » monte du bas de l'écran, et son « Annuler » passe en discret sous deux autres choix (voir [Barre d'action de la fiche](#barre-daction-de-la-fiche)).
 
 ## Barre d'action de la fiche
 
@@ -138,6 +139,7 @@ Le geste d'inscription (IN-2), fixé en bas de la fiche d'une partie, toujours s
 - **Geste impossible** : à la place du bouton, un statut (icône, titre en gras, phrase en texte secondaire) dit pourquoi : « Tirage en cours », « Tu joues aux créneaux 3 et 4 », « Tu joues à cette table », « Pas de place pour toi », « Tirage publié ». Quand le pseudo joue à une autre table, « Voir ta partie » (secondaire) ouvre sa fiche.
 - **MJ** (IN-4, §5.7), avec `book-open` orange : sur sa propre partie, « Tu mènes cette partie » et « Voir dans Mes parties » (secondaire), qui ouvre Mes parties sur son créneau ; sur une autre partie d'un créneau où il mène, partie double comprise, « Tu mènes une partie sur ce créneau » avec le titre et la table de sa partie.
 - La barre annonce ses changements (`aria-live="polite"`).
+- **Partie très demandée** (IN-5) : quand l'inscription laisserait la partie au-dessus de ses places maximum, ou l'y ferait passer, « S'inscrire » ouvre d'abord une confirmation qui monte du bas de l'écran (`role="alertdialog"`, sur le fond assombri). Anthracite 3, rayon de carte en haut seulement, filet du haut jaune ; « Partie très demandée » avec `triangle-alert` en jaune, puis « *Titre* a déjà 5 inscrits pour 5 places : tu risques de ne pas avoir de place. Inscris-toi aussi à d'autres parties du créneau 2, pour avoir plus de chances de jouer. » Trois boutons empilés : « S'inscrire quand même » (principal), « Voir les autres parties » (secondaire), qui ouvre le programme du créneau sans inscrire, et « Annuler » (discret), qui a le focus initial.
 
 Sur une carte du programme, un badge « Inscrit » (`check`, orange teinté à 14 %) se pose en haut à gauche de l'image d'une partie où le pseudo est inscrit, et « Tu mènes » (`book-open`) sur celle que mène son MJ.
 
@@ -188,4 +190,3 @@ Ces patterns ont été tranchés sur prototype, mais pas encore construits. Chac
 
 - **Ligne d'âge** (PRD §6, Fraîcheur) : sous l'en-tête, quand la donnée a plus de 2 minutes : « Pas de connexion · à jour à 14 h 05 ». Un tap relance la lecture.
 - **Alerte de changement** (NO-5) : ce qui change pour le participant sans geste de sa part, en bas de l'écran, avec « Voir ».
-- **Dialogue en bas de l'écran** : la confirmation d'une inscription à une partie très demandée (IN-5), qui monte du bas.

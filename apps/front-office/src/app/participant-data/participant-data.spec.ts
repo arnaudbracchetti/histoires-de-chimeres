@@ -326,7 +326,12 @@ describe('ParticipantData', () => {
       const data = await opened();
 
       const gesture = data.signUp('Brumes');
-      expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'open', signedUp: false, pending: true });
+      expect(data.signUpBarOf('Brumes')).toEqual({
+        kind: 'open',
+        signedUp: false,
+        pending: true,
+        oversubscribedAfterSignUp: false,
+      });
       const request = http().expectOne(signUpUrl('Brumes'));
       expect(request.request.method).toBe('PUT');
       request.flush(null, { status: 204, statusText: 'No Content' });
@@ -334,7 +339,12 @@ describe('ParticipantData', () => {
       await answer(schedule([{ ...brumes, signUpCount: 1 }, epice]), now, situation(['Brumes']));
       await gesture;
 
-      expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'open', signedUp: true, pending: false });
+      expect(data.signUpBarOf('Brumes')).toEqual({
+        kind: 'open',
+        signedUp: true,
+        pending: false,
+        oversubscribedAfterSignUp: false,
+      });
       expect(data.isSignedUp('Brumes')).toBe(true);
       expect(data.schedule()?.games[0]?.signUpCount).toBe(1);
       expect(alerts()).toEqual([]);
@@ -375,7 +385,12 @@ describe('ParticipantData', () => {
       await gesture;
 
       expect(alerts()).toEqual(["Pas de connexion\u00a0: rien n'a été enregistré."]);
-      expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'open', signedUp: false, pending: false });
+      expect(data.signUpBarOf('Brumes')).toEqual({
+        kind: 'open',
+        signedUp: false,
+        pending: false,
+        oversubscribedAfterSignUp: false,
+      });
     });
 
     it('après 10 s sans réponse, dit de vérifier l’inscription, puis relit', async () => {
@@ -391,7 +406,12 @@ describe('ParticipantData', () => {
       await answer(schedule([brumes]), now, situation(['Brumes']));
       await gesture;
 
-      expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'open', signedUp: true, pending: false });
+      expect(data.signUpBarOf('Brumes')).toEqual({
+        kind: 'open',
+        signedUp: true,
+        pending: false,
+        oversubscribedAfterSignUp: false,
+      });
       expect(request.cancelled).toBe(false);
       request.flush(null, { status: 204, statusText: '' });
       await vi.advanceTimersByTimeAsync(0);
@@ -429,6 +449,39 @@ describe('ParticipantData', () => {
       expect(data.signUpBarOf('inconnue')).toBeNull();
     });
 
+    describe('confirmation « Partie très demandée » avant l’inscription (IN-5)', () => {
+      const withSignUps = (dto: FrontOfficeGameDto, signUpCount: number) => ({
+        ...dto,
+        signUpCount,
+        oversubscribed: signUpCount > dto.seats.max,
+      });
+      const confirmationBefore = async (signUpCount: number, signedUpGameIds: string[] = []) => {
+        const data = await opened(
+          schedule([withSignUps(brumes, signUpCount)]),
+          now,
+          situation(signedUpGameIds),
+        );
+        const bar = data.signUpBarOf('Brumes');
+        return bar?.kind === 'open' && bar.oversubscribedAfterSignUp;
+      };
+
+      it('vient quand l’inscription ferait passer la partie au-dessus de ses places maximum', async () => {
+        expect(await confirmationBefore(5)).toBe(true);
+      });
+
+      it('vient quand la partie est déjà très demandée', async () => {
+        expect(await confirmationBefore(7)).toBe(true);
+      });
+
+      it('ne vient pas tant que l’inscription tient dans les places maximum', async () => {
+        expect(await confirmationBefore(4)).toBe(false);
+      });
+
+      it('ne vient pas pour un inscrit, qui ne peut que se désinscrire', async () => {
+        expect(await confirmationBefore(7, ['Brumes'])).toBe(false);
+      });
+    });
+
     it('dit « Tirage en cours » quand le tirage du premier créneau est lancé', async () => {
       const data = await opened(
         undefined,
@@ -437,7 +490,12 @@ describe('ParticipantData', () => {
       );
 
       expect(data.signUpBarOf('Épice')).toEqual({ kind: 'drawing', rank: 1, signedUp: true });
-      expect(data.signUpBarOf('Néons')).toEqual({ kind: 'open', signedUp: false, pending: false });
+      expect(data.signUpBarOf('Néons')).toEqual({
+        kind: 'open',
+        signedUp: false,
+        pending: false,
+        oversubscribedAfterSignUp: false,
+      });
     });
 
     it('dit « Tu joues aux créneaux 1 et 2 » sur le créneau qu’occupe la partie double publiée', async () => {
@@ -465,7 +523,12 @@ describe('ParticipantData', () => {
       let data = await published({ kind: 'assigned', gameId: 'Brumes' });
       expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'assigned-here' });
       expect(data.signUpBarOf('Ruines')).toEqual({ kind: 'assigned-elsewhere', game: brumes });
-      expect(data.signUpBarOf('Néons')).toEqual({ kind: 'open', signedUp: false, pending: false });
+      expect(data.signUpBarOf('Néons')).toEqual({
+        kind: 'open',
+        signedUp: false,
+        pending: false,
+        oversubscribedAfterSignUp: false,
+      });
 
       TestBed.resetTestingModule();
       configure();
@@ -794,6 +857,7 @@ describe('ParticipantData', () => {
           kind: 'open',
           signedUp: false,
           pending: false,
+          oversubscribedAfterSignUp: false,
         });
       });
 
@@ -813,6 +877,7 @@ describe('ParticipantData', () => {
           kind: 'open',
           signedUp: false,
           pending: false,
+          oversubscribedAfterSignUp: false,
         });
         expect(data.ledGameOn('s2')).toBeNull();
         expect(data.signUpBarOf('Néons')).toEqual({ kind: 'own-game', rank: 2 });

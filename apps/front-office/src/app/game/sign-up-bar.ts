@@ -1,5 +1,8 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Dialog } from '@angular/cdk/dialog';
+import { createGlobalPositionStrategy } from '@angular/cdk/overlay';
+import { Component, computed, inject, Injector, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import {
   frontOfficePaths,
   frontOfficeUrls,
@@ -13,6 +16,11 @@ import { TabNavigation } from '../shell/tab-navigation';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { ranksOf, timeSlotsOf } from './game-text';
+import {
+  OversubscribedDialog,
+  type OversubscribedChoice,
+  type OversubscribedDialogData,
+} from './oversubscribed-dialog';
 
 /** Un statut de la barre : son icône, son ton, son titre, sa phrase, et la partie à voir. */
 type Status = {
@@ -30,7 +38,7 @@ type Status = {
  * La barre fixée en bas de la fiche d'une partie (§5.3, variante A de #63) : « S'inscrire », ou
  * « Inscription enregistrée » et « Se désinscrire », toujours à portée du pouce. Quand le geste est
  * impossible, elle dit pourquoi à la place du bouton. Le bouton reste actif sans réseau : l'échec
- * se dit en alerte.
+ * se dit en alerte. Avant de s'inscrire à une partie très demandée, une confirmation (IN-5).
  */
 @Component({
   selector: 'app-sign-up-bar',
@@ -59,7 +67,7 @@ type Status = {
               appButton="primary"
               class="block"
               [attr.aria-disabled]="bar.pending || null"
-              (click)="data.signUp(game().id)"
+              (click)="confirmThenSignUp()"
             >
               @if (!bar.pending) {
                 <app-icon name="plus" />
@@ -167,6 +175,8 @@ export class SignUpBar {
   protected readonly myGamesUrl = frontOfficeUrls.myGamesOnTimeSlot;
 
   private readonly navigation = inject(TabNavigation);
+  private readonly dialog = inject(Dialog);
+  private readonly injector = inject(Injector);
   protected readonly bar = computed(() => this.data.signUpBarOf(this.game().id));
 
   /** Pourquoi le geste est impossible, quand il l'est. */
@@ -245,6 +255,39 @@ export class SignUpBar {
         };
     }
   });
+
+  /**
+   * S'inscrire, après la confirmation « Partie très demandée » quand l'inscription laisserait la
+   * partie au-dessus de ses places maximum (IN-5). « Voir les autres parties » ouvre le programme
+   * de son premier créneau, sans inscrire.
+   */
+  protected async confirmThenSignUp(): Promise<void> {
+    const bar = this.bar();
+    const game = this.game();
+    // Pendant l'envoi, un second tap est sans effet : il ne rouvre pas la confirmation.
+    if (bar?.kind !== 'open' || bar.pending) return;
+    if (!bar.oversubscribedAfterSignUp) return this.data.signUp(game.id);
+    const firstRank = ranksOf(this.schedule(), game)[0]!;
+    const ref = this.dialog.open<OversubscribedChoice, OversubscribedDialogData>(
+      OversubscribedDialog,
+      {
+        data: { game, firstRank },
+        role: 'alertdialog',
+        ariaLabelledBy: 'oversubscribed-title',
+        autoFocus: '.cancel',
+        backdropClass: 'scrim',
+        restoreFocus: true,
+        positionStrategy: createGlobalPositionStrategy(this.injector)
+          .bottom('0')
+          .centerHorizontally(),
+      },
+    );
+    const choice = await firstValueFrom(ref.closed);
+    if (choice === 'sign-up') return this.data.signUp(game.id);
+    if (choice === 'see-other-games') {
+      this.navigation.go(frontOfficePaths.schedule, { [TIME_SLOT_PARAM]: firstRank });
+    }
+  }
 
   /** Mes parties, sur le créneau de sa partie : un onglet, qui ne s'empile pas (§5.7). */
   protected openMyGames(rank: number): void {

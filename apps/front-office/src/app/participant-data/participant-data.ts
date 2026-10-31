@@ -39,7 +39,8 @@ const SLOW_NETWORK = fr`Le réseau ne répond pas : vérifie ton inscription.`;
  * Ce que la barre du bas de la fiche montre pour une partie (§5.3) : le geste, quand les
  * inscriptions de son créneau sont ouvertes, ou pourquoi il est impossible.
  * - `open` : « S'inscrire », ou « Inscription enregistrée » et « Se désinscrire » ; `pending`
- *   pendant l'envoi ;
+ *   pendant l'envoi ; `oversubscribedAfterSignUp` quand l'inscription laisserait la partie très
+ *   demandée, ou l'y ferait passer : la confirmation d'IN-5 vient d'abord ;
  * - `own-game` : « Tu mènes cette partie », avec Mes parties sur son créneau `rank` (§5.7) ;
  * - `leading` : le MJ du pseudo mène `game` sur l'un des créneaux de celle-ci (IN-4) ;
  * - `held` : le pseudo joue à `game`, partie double publiée qui occupe un créneau de celle-ci ;
@@ -48,7 +49,7 @@ const SLOW_NETWORK = fr`Le réseau ne répond pas : vérifie ton inscription.`;
  *   table sur ce créneau), `unassigned` (« Pas de place pour toi »), `closed` (sans inscription).
  */
 export type SignUpBarState =
-  | { kind: 'open'; signedUp: boolean; pending: boolean }
+  | { kind: 'open'; signedUp: boolean; pending: boolean; oversubscribedAfterSignUp: boolean }
   | { kind: 'own-game'; rank: number }
   | { kind: 'leading'; game: FrontOfficeGameDto }
   | { kind: 'held'; game: FrontOfficeGameDto; signedUp: boolean }
@@ -315,7 +316,12 @@ export class ParticipantData {
       const assigned = result?.kind === 'assigned' ? gameById(result.gameId) : undefined;
       return assigned ? { kind: 'assigned-elsewhere', game: assigned } : { kind: 'closed', rank };
     }
-    return { kind: 'open', signedUp, pending: this.pending().has(game.id) };
+    return {
+      kind: 'open',
+      signedUp,
+      pending: this.pending().has(game.id),
+      oversubscribedAfterSignUp: !signedUp && game.signUpCount + 1 > game.seats.max,
+    };
   }
 
   /** S'inscrire à la partie (IN-2). */

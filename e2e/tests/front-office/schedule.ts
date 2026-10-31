@@ -3,19 +3,23 @@ import {
   apiUrl,
   availabilityEndpoints,
   conventionEndpoints,
+  frontOfficeEndpoints,
   gameMasterEndpoints,
+  linkedPhoneEndpoints,
   scenarioEndpoints,
   scheduleEndpoints,
+  signUpEndpoints,
   tableEndpoints,
   timeSlotEndpoints,
   type ConventionDto,
+  type FrontOfficeScheduleDto,
   type GameMasterDto,
   type ScenarioBody,
   type ScenarioDto,
   type ScheduleDto,
   type SeatsDto,
 } from '@chimeres/contract';
-import { aNickname } from './identification.js';
+import { aNickname, presenceCodeOf } from './identification.js';
 
 /**
  * Une écriture de préparation, qui doit réussir. Les tests du projet `mobile` écrivent en parallèle
@@ -106,6 +110,26 @@ export async function prepare(page: Page, { brumesSeats }: { brumesSeats?: Seats
     duration: 2,
   });
   return { brann, kairos, brumes, epice };
+}
+
+/** Un autre téléphone, avec ses propres cookies (`request` n'est pas `page.request`), s'inscrit à la partie. */
+export async function signUpFromAnotherPhone(
+  request: APIRequestContext,
+  title: string,
+): Promise<void> {
+  const link = await request.post(apiUrl(linkedPhoneEndpoints.link), {
+    data: {
+      presenceCode: await presenceCodeOf(request),
+      nickname: aNickname('Yanis'),
+      confirmation: null,
+    },
+  });
+  expect(link.ok()).toBe(true);
+  const schedule = await send<FrontOfficeScheduleDto>(() =>
+    request.get(apiUrl(frontOfficeEndpoints.readSchedule)),
+  );
+  const gameId = schedule.games.find((game) => game.title === title)!.id;
+  expect((await request.put(apiUrl(signUpEndpoints.signUp, { gameId }))).ok()).toBe(true);
 }
 
 export const timeSlotChip = (page: Page, rank: number) =>
