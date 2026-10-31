@@ -2,7 +2,7 @@
   "name": "@chimeres/design",
   "version": "0.0.0",
   "private": true,
-  "description": "Identité commune aux deux fronts : jetons CSS, polices, sprites SVG, icônes de PWA, typographie française, initiale de l'illustration par défaut, rendu de la présentation.",
+  "description": "Identité commune aux deux fronts : jetons CSS, polices, sprites SVG, icônes de PWA, typographie française, textes des notifications, initiale de l'illustration par défaut, rendu de la présentation.",
   "type": "module",
   "exports": {
     ".": {

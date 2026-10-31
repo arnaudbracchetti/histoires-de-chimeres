@@ -1,6 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import { inject, Injectable } from '@angular/core';
 import { SwPush } from '@angular/service-worker';
+import { EMPTY, type Observable } from 'rxjs';
 import type { PushSubscriptionBody } from '@chimeres/contract';
 
 /**
@@ -11,6 +12,12 @@ import type { PushSubscriptionBody } from '@chimeres/contract';
 export class BrowserPush {
   private readonly window = inject(DOCUMENT).defaultView;
   private readonly swPush = inject(SwPush, { optional: true });
+
+  /**
+   * Les notifications reçues, quand le téléphone les transmet à la page : sur Android, pas les
+   * notifications déclaratives de Safari (ADR 0011). Rien sans service worker.
+   */
+  readonly messages: Observable<object> = this.swPush?.isEnabled ? this.swPush.messages : EMPTY;
 
   /** Le service worker tourne (pas en dev), et le navigateur connaît le push. */
   supported(): boolean {

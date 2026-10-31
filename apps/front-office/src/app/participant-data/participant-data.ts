@@ -7,6 +7,7 @@ import {
   Injectable,
   signal,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
 import {
@@ -20,10 +21,12 @@ import {
 } from '@chimeres/contract';
 import { formatDayAndMonth, formatTimeOfDay, fr } from '@chimeres/design';
 import { injectApiCall, injectApiRead } from '../api-call';
-import { timeSlotsOf } from '../game/game-text';
+import { gamesWithSeatsOn, timeSlotsOf } from '../game/game-text';
 import { LinkedPhone } from '../linked-phone';
+import { BrowserPush } from '../notifications/browser-push';
 import { readProblem, type Problem } from '../problem';
 import { Alerts } from '../shell/alerts';
+import { changesBetween, type Reading } from './change-alerts';
 import { PageVisibility } from './page-visibility';
 import { PhoneClock } from './phone-clock';
 
@@ -161,6 +164,11 @@ export class ParticipantData {
   private readonly refusedAsEnded = signal(false);
   /** La lecture en cours : une autre, demandée pendant qu'elle court, s'y joint. */
   private currentRead: Promise<void> | null = null;
+  /**
+   * Les parties dont le pseudo s'est désinscrit, jusqu'à la lecture qui le montre : ce retrait-là
+   * n'est pas un changement à signaler (NO-5).
+   */
+  private readonly ownWithdrawals = new Set<string>();
 
   /**
    * Le programme sans les créneaux terminés, selon l'heure du téléphone, même hors ligne (story 53),
@@ -326,6 +334,7 @@ export class ParticipantData {
 
   /** S'inscrire à la partie (IN-2). */
   signUp(gameId: string): Promise<void> {
+    this.ownWithdrawals.delete(gameId);
     return this.sendGesture(gameId, () =>
       this.apiCall(signUpEndpoints.signUp, { params: { gameId } }),
     );
@@ -333,6 +342,7 @@ export class ParticipantData {
 
   /** Se désinscrire de la partie (IN-2), d'un tap, sans confirmation. */
   withdraw(gameId: string): Promise<void> {
+    this.ownWithdrawals.add(gameId);
     return this.sendGesture(gameId, () =>
       this.apiCall(signUpEndpoints.withdraw, { params: { gameId } }),
     );
@@ -342,6 +352,7 @@ export class ParticipantData {
     void this.reread();
     this.rereadOnEachScreen();
     this.rereadInForeground();
+    this.rereadOnPushMessage();
   }
 
   /** Relit le programme et la situation. Une lecture déjà en cours suffit. */
@@ -357,12 +368,27 @@ export class ParticipantData {
         this.apiRead(frontOfficeEndpoints.readSchedule),
         this.apiRead(frontOfficeEndpoints.readSituation),
       ]);
+      this.alertChanges({ schedule: body, situation: situation.body });
       this.lastRead.set(body);
       this.lastSituation.set(situation.body);
       this.readAt.set(servedAt ?? this.clock.now());
     } catch (error) {
       // Sinon, la dernière valeur reste à l'écran (502 pendant un redéploiement, pas de réseau).
       this.followRefusal(readProblem(error));
+    }
+  }
+
+  /** Signale ce qui change depuis la lecture précédente (NO-5). La première ne signale rien. */
+  private alertChanges(after: Reading): void {
+    const schedule = this.lastRead();
+    const situation = this.lastSituation();
+    if (!schedule || !situation) return;
+    const ownWithdrawals = [...this.ownWithdrawals].filter(
+      (gameId) => !after.situation.signedUpGameIds.includes(gameId),
+    );
+    ownWithdrawals.forEach((gameId) => this.ownWithdrawals.delete(gameId));
+    for (const change of changesBetween({ schedule, situation }, after, ownWithdrawals)) {
+      this.alerts.change(change);
     }
   }
 
@@ -408,9 +434,20 @@ export class ParticipantData {
     });
   }
 
+  /** Une notification dit que quelque chose a changé : la relecture le montre, alerte comprise. */
+  private rereadOnPushMessage(): void {
+    inject(BrowserPush)
+      .messages.pipe(takeUntilDestroyed())
+      .subscribe(() => void this.reread());
+  }
+
   private rereadOnEachScreen(): void {
     inject(Router)
-      .events.pipe(filter((event) => event instanceof NavigationEnd))
+      .events.pipe(
+        filter((event) => event instanceof NavigationEnd),
+        // Sinon, parti avec la coquille, il relirait encore, et doublerait les alertes.
+        takeUntilDestroyed(),
+      )
       .subscribe(() => void this.reread());
   }
 
@@ -474,14 +511,6 @@ function assignmentOf(
   }
   const game = result?.kind === 'assigned' && schedule.games.find(({ id }) => id === result.gameId);
   return game ? { kind: 'assigned', game } : null;
-}
-
-/** Les parties qui commencent sur ce créneau publié, où il reste de la place. */
-function gamesWithSeatsOn(timeSlotId: string, schedule: FrontOfficeScheduleDto) {
-  return schedule.games.filter(
-    ({ timeSlotIds, playerCount, seats }) =>
-      timeSlotIds[0] === timeSlotId && playerCount !== null && playerCount < seats.max,
-  );
 }
 
 /** Le rang du créneau dans la journée. */

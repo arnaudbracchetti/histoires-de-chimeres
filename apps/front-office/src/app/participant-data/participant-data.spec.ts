@@ -1,7 +1,12 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideLocationMocks } from '@angular/common/testing';
-import { ApplicationRef, signal } from '@angular/core';
+import {
+  ApplicationRef,
+  createEnvironmentInjector,
+  EnvironmentInjector,
+  signal,
+} from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import {
@@ -13,7 +18,10 @@ import {
   type FrontOfficeTimeSlotDto,
   type ParticipantSituationDto,
 } from '@chimeres/contract';
+import { NBSP, THIN_NBSP } from '@chimeres/design';
+import { Subject } from 'rxjs';
 import { LinkedPhone } from '../linked-phone';
+import { BrowserPush } from '../notifications/browser-push';
 import { Alerts } from '../shell/alerts';
 import { PageVisibility } from './page-visibility';
 import { ParticipantData } from './participant-data';
@@ -73,6 +81,7 @@ describe('ParticipantData', () => {
   let now: Date;
   const visible = signal(true);
   const unlinkedByServer = vi.fn();
+  let pushMessages: Subject<object>;
 
   const configure = () =>
     TestBed.configureTestingModule({
@@ -85,6 +94,7 @@ describe('ParticipantData', () => {
         { provide: PhoneClock, useValue: { now: () => now } },
         { provide: PageVisibility, useValue: { visible } },
         { provide: LinkedPhone, useValue: { unlinkedByServer } },
+        { provide: BrowserPush, useValue: { messages: pushMessages } },
       ],
     });
 
@@ -93,6 +103,7 @@ describe('ParticipantData', () => {
     now = new Date(2027, 2, 14, 8, 0);
     visible.set(true);
     unlinkedByServer.mockClear();
+    pushMessages = new Subject();
     configure();
   });
 
@@ -185,6 +196,31 @@ describe('ParticipantData', () => {
     await answer(schedule([]));
 
     expect(data.schedule()?.games).toEqual([]);
+  });
+
+  it('ne relit plus une fois parti avec la coquille, même à l’ouverture d’un écran', async () => {
+    const injector = createEnvironmentInjector(
+      [ParticipantData],
+      TestBed.inject(EnvironmentInjector),
+    );
+    injector.get(ParticipantData);
+    await answer(schedule([brumes]));
+
+    injector.destroy();
+    await TestBed.inject(Router).navigateByUrl('/programme');
+    pushMessages.next({});
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    expect(reads()).toHaveLength(0);
+  });
+
+  it('relit à la réception d’une notification, quand le téléphone la transmet à la page', async () => {
+    const data = await opened();
+
+    pushMessages.next({ title: 'Créneau 1\u00a0: partie retirée du programme' });
+    await answer(schedule([neons]));
+
+    expect(data.schedule()?.games.map(({ id }) => id)).toEqual(['Néons']);
   });
 
   it('garde la dernière valeur quand une lecture échoue', async () => {
@@ -997,6 +1033,238 @@ describe('ParticipantData', () => {
           led: { game: epice, started: false, outcome: { kind: 'drawing' } },
         });
       });
+    });
+  });
+
+  describe('alerte de changement (NO-5)', () => {
+    /** Les alertes posées : titre, détail, et l'adresse de « Voir ». */
+    const changeAlerts = () =>
+      TestBed.inject(Alerts)
+        .notices()
+        .map(({ title, detail, see }) => ({ title, detail, see }));
+
+    /** La relecture des 30 s, servie avec ce programme et cette situation. */
+    async function rereadWith(dto: FrontOfficeScheduleDto, situationDto: ParticipantSituationDto) {
+      await vi.advanceTimersByTimeAsync(30_000);
+      await answer(dto, now, situationDto);
+    }
+
+    it('signale une inscription retirée avec sa partie, et « Voir » mène aux parties du créneau', async () => {
+      await opened(schedule([brumes, neons]), now, situation(['Brumes']));
+
+      await rereadWith(schedule([neons]), situation());
+
+      expect(changeAlerts()).toEqual([
+        {
+          title: `Créneau 1${NBSP}: partie retirée du programme`,
+          detail: `Brumes est retirée${NBSP}: ton inscription est supprimée.`,
+          see: '/programme?creneau=1',
+        },
+      ]);
+    });
+
+    it('signale une inscription retirée par le déplacement de sa partie sur un autre créneau (IN-6)', async () => {
+      await opened(schedule([brumes]), now, situation(['Brumes']));
+
+      await rereadWith(schedule([{ ...brumes, timeSlotIds: ['s2'] }]), situation());
+
+      expect(changeAlerts()).toEqual([
+        {
+          title: `Créneau 1${NBSP}: partie déplacée`,
+          detail: `Brumes passe au créneau 2${NBSP}: ton inscription est retirée. Réinscris-toi si l'horaire te va.`,
+          see: '/programme?creneau=1',
+        },
+      ]);
+    });
+
+    describe('tirage publié, et « Voir » mène à l’Accueil', () => {
+      const published = (drawResult: GivenTimeSlot['drawResult'], ledGameId?: string) =>
+        ({ timeSlotId: 's1', state: 'published', drawResult, ledGameId }) as const;
+      const full = { ...brumes, playerCount: 5 };
+      const withSeats = { ...epice, tableName: 'Licorne', playerCount: 4 };
+
+      it('signale l’affectation, une partie double une seule fois', async () => {
+        await opened(
+          schedule([brumes, epice]),
+          now,
+          situation(['Épice'], { ...open('s1'), state: 'drawing' }),
+        );
+
+        await rereadWith(
+          schedule([full, withSeats]),
+          situation(['Épice'], published({ kind: 'assigned', gameId: 'Épice' })),
+        );
+
+        expect(changeAlerts()).toEqual([
+          {
+            title: `Créneaux 1 et 2${NBSP}: table Licorne`,
+            detail: 'Tu joues à Épice, avec Brann.',
+            see: '/',
+          },
+        ]);
+      });
+
+      it('signale « Pas de place pour toi », avec les tables où il reste de la place', async () => {
+        await opened(schedule([brumes, epice]), now, situation(['Brumes']));
+
+        await rereadWith(
+          schedule([full, withSeats]),
+          situation(['Brumes'], published({ kind: 'unassigned' })),
+        );
+
+        expect(changeAlerts()).toEqual([
+          {
+            title: `Créneau 1${NBSP}: pas de place pour toi`,
+            detail: `Les parties que tu avais choisies sont complètes. Il reste de la place à la table Licorne${NBSP}: va voir son MJ.`,
+            see: '/',
+          },
+        ]);
+      });
+
+      it('signale au MJ ses joueurs, ou sa partie annulée (TI-6)', async () => {
+        await opened(
+          schedule([brumes, neons]),
+          now,
+          situation(
+            [],
+            { ...open('s1'), ledGameId: 'Brumes' },
+            { ...open('s2'), ledGameId: 'Néons' },
+          ),
+        );
+
+        await rereadWith(
+          schedule([full, { ...neons, tableName: 'Dragon' }]),
+          situation([], published({ kind: 'leading', players: ['Ana', 'Yanis'] }, 'Brumes'), {
+            timeSlotId: 's2',
+            state: 'published',
+            drawResult: { kind: 'cancelled' },
+            ledGameId: 'Néons',
+          }),
+        );
+
+        expect(changeAlerts()).toEqual([
+          {
+            title: `Créneau 1${NBSP}: tu mènes à la table Griffon`,
+            detail: `Brumes, avec 2${NBSP}joueurs.`,
+            see: '/',
+          },
+          {
+            title: `Créneau 2${NBSP}: ta partie est annulée`,
+            detail:
+              "Néons n'a pas atteint son minimum. Toutes les parties du créneau sont complètes.",
+            see: '/',
+          },
+        ]);
+      });
+
+      it('ne signale rien sur un créneau publié sans inscription, ni sur un créneau déjà publié', async () => {
+        const assigned = situation(['Brumes'], published({ kind: 'assigned', gameId: 'Brumes' }));
+        await opened(schedule([brumes]), now, assigned);
+
+        await rereadWith(
+          schedule([full]),
+          situation(['Brumes'], published({ kind: 'assigned', gameId: 'Brumes' }), {
+            timeSlotId: 's2',
+            state: 'published',
+            drawResult: null,
+          }),
+        );
+
+        expect(changeAlerts()).toEqual([]);
+      });
+    });
+
+    it('ne signale ni une nouvelle partie, ni une partie devenue très demandée (NO-5)', async () => {
+      await opened(schedule([brumes]), now, situation(['Brumes']));
+
+      await rereadWith(
+        schedule([{ ...brumes, signUpCount: 6, oversubscribed: true }, neons]),
+        situation(['Brumes']),
+      );
+
+      expect(changeAlerts()).toEqual([]);
+    });
+
+    describe('MJ', () => {
+      /** Il mène `gameId` sur ces créneaux. */
+      const leading = (gameId: string, ...timeSlotIds: string[]) =>
+        situation([], ...timeSlotIds.map((id) => ({ ...open(id), ledGameId: gameId })));
+
+      it('signale une partie à mener ajoutée, et « Voir » mène à Mes parties sur son créneau', async () => {
+        await opened(schedule([brumes]), now, situation());
+
+        await rereadWith(schedule([brumes, epice]), leading('Épice', 's1', 's2'));
+
+        expect(changeAlerts()).toEqual([
+          {
+            title: `Créneaux 1 et 2${NBSP}: tu mènes une partie`,
+            detail: `Épice, table Griffon, 9${NBSP}h${NBSP}00${THIN_NBSP}–${THIN_NBSP}18${NBSP}h${NBSP}30.`,
+            see: '/mes-parties?creneau=1',
+          },
+        ]);
+      });
+
+      it('signale une seule fois une partie à mener déplacée sur un autre créneau', async () => {
+        await opened(schedule([brumes]), now, leading('Brumes', 's1'));
+
+        await rereadWith(schedule([{ ...brumes, timeSlotIds: ['s2'] }]), leading('Brumes', 's2'));
+
+        expect(changeAlerts()).toEqual([
+          {
+            title: `Créneau 2${NBSP}: tu mènes une partie`,
+            detail: `Brumes, table Griffon, 14${NBSP}h${NBSP}00${THIN_NBSP}–${THIN_NBSP}18${NBSP}h${NBSP}30.`,
+            see: '/mes-parties?creneau=2',
+          },
+        ]);
+      });
+
+      it('signale une partie à mener retirée, et « Voir » mène aux parties du créneau', async () => {
+        await opened(schedule([brumes, neons]), now, leading('Néons', 's2'));
+
+        await rereadWith(schedule([brumes]), situation());
+
+        expect(changeAlerts()).toEqual([
+          {
+            title: `Créneau 2${NBSP}: partie retirée du programme`,
+            detail: `Néons est retirée${NBSP}: tu peux t'inscrire sur ce créneau.`,
+            see: '/programme?creneau=2',
+          },
+        ]);
+      });
+
+      it('ne signale pas comme retirée son inscription suspendue par une partie à mener (IN-4)', async () => {
+        await opened(schedule([brumes, epice]), now, situation(['Brumes']));
+
+        await rereadWith(schedule([brumes, epice]), leading('Épice', 's1', 's2'));
+
+        expect(changeAlerts().map(({ title }) => title)).toEqual([
+          `Créneaux 1 et 2${NBSP}: tu mènes une partie`,
+        ]);
+      });
+
+      it('ne signale rien quand sa partie change de table', async () => {
+        await opened(schedule([brumes]), now, leading('Brumes', 's1'));
+
+        await rereadWith(schedule([{ ...brumes, tableName: 'Dragon' }]), leading('Brumes', 's1'));
+
+        expect(changeAlerts()).toEqual([]);
+      });
+    });
+
+    it('ne signale pas une désinscription du participant lui-même, même relue plus tard', async () => {
+      const data = await opened(schedule([brumes]), now, situation(['Brumes']));
+
+      // Une relecture des 30 s, en cours pendant l'envoi, voit déjà l'inscription retirée.
+      await vi.advanceTimersByTimeAsync(30_000);
+      const gesture = data.withdraw('Brumes');
+      http()
+        .expectOne(apiUrl(signUpEndpoints.withdraw, { gameId: 'Brumes' }))
+        .flush(null, { status: 204, statusText: '' });
+      await answer(schedule([brumes]), now, situation());
+      await answer(schedule([brumes]), now, situation());
+      await gesture;
+
+      expect(changeAlerts()).toEqual([]);
     });
   });
 });

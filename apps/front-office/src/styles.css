@@ -15,6 +15,11 @@
     --presentation-heading-3: var(--font-size-mobile-meta);
   }
 
+  /* Les alertes se posent au-dessus de la barre des onglets : elles ne la cachent pas. */
+  :root:has(app-shell > nav) {
+    --alerts-offset: var(--bar-height);
+  }
+
   body {
     /* Taille de base du front office : 15 px. */
     font-size: var(--font-size-mobile-body);

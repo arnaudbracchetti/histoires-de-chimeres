@@ -21,3 +21,20 @@ export {
   timeOf,
   timeSlotLabel,
 } from './typography/time.js';
+export {
+  buildAssignedText,
+  buildCancelledText,
+  buildGameMovedText,
+  buildGameOversubscribedText,
+  buildGameUnscheduledText,
+  buildLeadingText,
+  buildOwnGameScheduledText,
+  buildOwnGameUnscheduledText,
+  buildUnassignedText,
+  formatCancelledBody,
+  formatCapitalizedTimeSlotRanks,
+  formatPlayerCount,
+  formatSeatsLeft,
+  formatUnassignedBody,
+  type ChangeText,
+} from './typography/change-texts.js';

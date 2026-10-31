@@ -87,7 +87,7 @@ _Avoid_: Session, appareil, connexion
 
 **Notification** · `Notification`:
 Message envoyé aux téléphones reliés à un pseudo, que le téléphone affiche même quand l'application est fermée.
-_Avoid_: Push, alerte (réservé au message d'erreur affiché dans une page)
+_Avoid_: Push, alerte (réservé à ce que la page affiche elle-même : un message d'erreur, ou l'alerte de changement de NO-5, application ouverte)
 
 **Fusionner** · `merge`:
 Geste d'un Organisateur qui fait passer les inscriptions et le résultat des tirages d'un pseudo de participant sur un autre pseudo, puis supprime le premier.

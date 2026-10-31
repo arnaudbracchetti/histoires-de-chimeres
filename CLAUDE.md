@@ -42,7 +42,7 @@ Pièges :
 | `packages/application` | Commandes, ports (`<Concept>Reader`, `<Aggregate>Repository`) | `domain`, `contract` |
 | `packages/contract` | DTO de l'API et descripteurs de ses endpoints (`<concept>Endpoints.<action>`) | rien |
 | `apps/api` | NestJS : controllers (`<module>/http/`), implémentations Prisma des ports (`<module>/persistence/`), câblage (`<module>.module.ts`) | tout |
-| `packages/design` | Identité commune aux fronts : jetons CSS, polices, sprites SVG, icônes de PWA, typographie française, `initialOf`, `renderPresentation` ([ADR 0006](docs/adr/0006-interface-sans-bibliotheque-de-composants.md)) | `marked` |
+| `packages/design` | Identité commune aux fronts : jetons CSS, polices, sprites SVG, icônes de PWA, typographie française, textes des notifications de NO-2 (repris par l'alerte de changement), `initialOf`, `renderPresentation` ([ADR 0006](docs/adr/0006-interface-sans-bibliotheque-de-composants.md)) | `marked` |
 | `apps/front-office`, `apps/back-office` | Angular, CDK et Aria, CSS natif, sans bibliothèque de composants | `contract`, `design` |
 
 - **Pas de code en double entre le back office et le front office.** Deux copies finissent par diverger (« 1 500 » dans un front, « 1500 » dans l'autre). Avant d'écrire dans un front une logique que l'autre a déjà, la mettre en commun : sans framework, dans `packages/design` (typographie, heures et dates, rendu de la présentation, `initialOf`) ; pour l'API, dans `contract`. Une dépendance lourde y prend sa propre entrée (`@chimeres/design/presentation`), pour ne pas peser sur le chargement initial des fronts.

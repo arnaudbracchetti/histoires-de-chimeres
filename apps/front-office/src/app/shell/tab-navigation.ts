@@ -40,11 +40,12 @@ export class TabNavigation {
 
   /**
    * Depuis l'Accueil, l'onglet s'empile ; depuis un onglet, il le remplace ; l'Accueil se retrouve
-   * en reculant. `queryParams` y choisit ce qu'il montre (le créneau du programme).
+   * en reculant. `queryParams` y choisit ce qu'il montre (le créneau du programme), même sur
+   * l'onglet affiché.
    */
   go(path: string, queryParams?: Params): void {
     const current = this.currentPath();
-    if (path === current) return;
+    if (path === current && (!queryParams || path === HOME)) return;
     if (path === HOME) {
       this.location.back();
       return;

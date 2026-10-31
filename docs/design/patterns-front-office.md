@@ -120,9 +120,11 @@ Les dessins sont ceux du back office ([patterns.md](patterns.md#boutons)), à la
 
 Une erreur hors formulaire (coupure réseau, refus sans champ, 500) s'affiche en alerte, comme dans le back office ([patterns.md](patterns.md#erreur-hors-formulaire)), mais **en bas de l'écran**, sous le pouce :
 
-- fixée en bas, dans la gouttière, à la largeur du contenu, au-dessus de tout ;
+- fixée en bas, dans la gouttière, à la largeur du contenu, au-dessus de tout, mais posée sur la barre des onglets, qu'elle ne cache pas ;
 - bordée de rouge brique, en Anthracite 2 : le `title` en gras, le `detail` dessous en texte secondaire, et ✕ à droite ;
 - elle reste jusqu'à ce qu'on la ferme ; trois au plus, la plus ancienne part au-delà.
+
+**Alerte de changement** (NO-5) : ce qui change pour le participant sans geste de sa part (tirage publié qui le concerne, inscription retirée, partie à mener ajoutée ou retirée), vu en comparant deux lectures. Même alerte, bordée d'orange, avec le titre et le corps de la notification de NO-2, et « Voir » (bouton discret, orange) avant ✕. « Voir » ouvre l'écran du changement et ferme l'alerte : l'Accueil pour un tirage publié, les parties du créneau pour une inscription ou une partie à mener retirée, Mes parties sur le créneau pour une partie à mener ajoutée.
 
 ## Dialogue de confirmation
 
@@ -197,4 +199,3 @@ L'onglet suit la journée du pseudo, créneau par créneau à venir (story 86). 
 Ces patterns ont été tranchés sur prototype, mais pas encore construits. Chacun se décrit ici avec son premier écran.
 
 - **Ligne d'âge** (PRD §6, Fraîcheur) : sous l'en-tête, quand la donnée a plus de 2 minutes : « Pas de connexion · à jour à 14 h 05 ». Un tap relance la lecture.
-- **Alerte de changement** (NO-5) : ce qui change pour le participant sans geste de sa part, en bas de l'écran, avec « Voir ».

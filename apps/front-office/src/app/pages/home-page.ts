@@ -12,6 +12,7 @@ import {
   counterOf,
   gamesWithSeatsOf,
   seatsLeftText,
+  unassignedText,
   signUpsForSeatsOf,
   timeSlotsLabel,
   withPlayersOf,
@@ -436,12 +437,7 @@ export class HomePage {
     return fr`Tu mènes ${game.title} à la table ${game.tableName} : ${signUpsForSeatsOf(game)}.`;
   }
 
-  /** « Pas de place pour toi » : où il reste de la place, ou que tout est complet (story 55). */
-  protected unassignedText(gamesWithSeats: FrontOfficeGameDto[]): string {
-    if (!gamesWithSeats.length) return seatsLeftText(gamesWithSeats);
-    const gameMaster = gamesWithSeats.length > 1 ? 'leur MJ' : 'son MJ';
-    return fr`Les parties que tu avais choisies sont complètes. ${seatsLeftText(gamesWithSeats)} : va voir ${gameMaster}.`;
-  }
+  protected readonly unassignedText = unassignedText;
 
   /** « Tirage en cours » : les inscriptions qui comptent pour ce tirage (story 57). */
   protected drawingText(signedUpGames: FrontOfficeGameDto[]): string {

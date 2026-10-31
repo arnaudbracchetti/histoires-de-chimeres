@@ -3,7 +3,17 @@ import type {
   FrontOfficeScheduleDto,
   FrontOfficeTimeSlotDto,
 } from '@chimeres/contract';
-import { countOf, formatList, formatTimeRange, formatTimeSlotRanks, fr } from '@chimeres/design';
+import {
+  countOf,
+  formatCancelledBody,
+  formatCapitalizedTimeSlotRanks,
+  formatPlayerCount,
+  formatSeatsLeft,
+  formatTimeRange,
+  formatTimeSlotRanks,
+  formatUnassignedBody,
+  fr,
+} from '@chimeres/design';
 import type { LedGame } from '../participant-data/participant-data';
 
 /** « Aucun inscrit · 5 places », « 6 inscrits · 4 places » : les places maximum (§5.3). */
@@ -41,16 +51,12 @@ export function timeSlotsLabelOf(
 /** « Créneau 2 · 14 h 00 – 18 h 30 », « Créneaux 3 et 4 · 14 h 00 – 23 h 00 » : des créneaux qui se suivent. */
 export function timeSlotsLabel(slots: FrontOfficeTimeSlotDto[]): string {
   const range = formatTimeRange(slots[0]!.start, slots.at(-1)!.end);
-  return `${capitalized(formatTimeSlotRanks(slots.map(({ rank }) => rank)))} · ${range}`;
+  return `${formatCapitalizedTimeSlotRanks(slots.map(({ rank }) => rank))} · ${range}`;
 }
 
 /** « Créneau 2 », ou « Créneaux 3 et 4 » pour une partie double. */
 export function ranksLabelOf(schedule: FrontOfficeScheduleDto, game: FrontOfficeGameDto): string {
-  return capitalized(formatTimeSlotRanks(ranksOf(schedule, game)));
-}
-
-function capitalized(label: string): string {
-  return label.charAt(0).toUpperCase() + label.slice(1);
+  return formatCapitalizedTimeSlotRanks(ranksOf(schedule, game));
 }
 
 /** « créneaux 1 et 2 » pour une partie double, `null` sinon : une partie simple est sous son créneau. */
@@ -77,11 +83,25 @@ export function oversubscribedReminderOf(rank: number): string {
 
 /** « Il reste de la place aux tables Dragon et Licorne », ou que tout est complet (PRD §5.4). */
 export function seatsLeftText(gamesWithSeats: FrontOfficeGameDto[]): string {
-  if (!gamesWithSeats.length) return 'Toutes les parties du créneau sont complètes.';
-  const names = formatList(gamesWithSeats.map(({ tableName }) => tableName));
-  return gamesWithSeats.length > 1
-    ? `Il reste de la place aux tables ${names}`
-    : `Il reste de la place à la table ${names}`;
+  return formatSeatsLeft(tableNamesOf(gamesWithSeats));
+}
+
+/** « Pas de place pour toi » : où il reste de la place, ou que tout est complet (story 55). */
+export function unassignedText(gamesWithSeats: FrontOfficeGameDto[]): string {
+  return formatUnassignedBody(tableNamesOf(gamesWithSeats));
+}
+
+/** Les tables de ces parties. */
+export function tableNamesOf(games: FrontOfficeGameDto[]): string[] {
+  return games.map(({ tableName }) => tableName);
+}
+
+/** Les parties qui commencent sur ce créneau publié, où il reste de la place. */
+export function gamesWithSeatsOn(timeSlotId: string, schedule: FrontOfficeScheduleDto) {
+  return schedule.games.filter(
+    ({ timeSlotIds, playerCount, seats }) =>
+      timeSlotIds[0] === timeSlotId && playerCount !== null && playerCount < seats.max,
+  );
 }
 
 /** Les joueurs publiés de la partie qu'il mène, ou aucun avant la publication. */
@@ -91,8 +111,7 @@ export function playersOf({ outcome }: LedGame): string[] {
 
 /** « avec 5 joueurs », ou « sans joueur » : ses joueurs publiés (story 56). */
 export function withPlayersOf(led: LedGame): string {
-  const players = playersOf(led).length;
-  return players ? `avec ${countOf(players, 'joueur', 'joueurs')}` : 'sans joueur';
+  return formatPlayerCount(playersOf(led).length);
 }
 
 /** Les parties du créneau où il reste de la place, quand la partie qu'il mène est annulée. */
@@ -105,9 +124,5 @@ export function gamesWithSeatsOf({ outcome }: LedGame): FrontOfficeGameDto[] {
  * ou que tout est complet.
  */
 export function cancelledGameText(led: LedGame): string {
-  const { title } = led.game;
-  const gamesWithSeats = gamesWithSeatsOf(led);
-  if (!gamesWithSeats.length) return fr`${title} n'a pas atteint son minimum. ${seatsLeftText([])}`;
-  const gameMaster = gamesWithSeats.length > 1 ? 'leur MJ' : 'son MJ';
-  return fr`${title} n'a pas atteint son minimum. ${seatsLeftText(gamesWithSeats)} : va voir ${gameMaster}.`;
+  return formatCancelledBody(led.game.title, tableNamesOf(gamesWithSeatsOf(led)));
 }
