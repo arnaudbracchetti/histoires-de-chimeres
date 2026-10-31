@@ -28,6 +28,7 @@ export {
   buildGameOversubscribedText,
   buildGameUnscheduledText,
   buildLeadingText,
+  buildNewGameText,
   buildOwnGameScheduledText,
   buildOwnGameUnscheduledText,
   buildUnassignedText,

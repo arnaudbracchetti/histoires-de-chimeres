@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Scenario, type Duration } from '../scenario/scenario.js';
+import type { Notification, NotificationCode } from '../notification.js';
 import { Convention } from './convention.js';
 import type { LocalMoment } from './local-moment.js';
 import { PresenceCode } from './presence-code.js';
@@ -75,7 +76,7 @@ const endOfDay = (time: string): LocalMoment => ({ date: '2027-03-14', time: at(
  * La convention, avec en plus des inscriptions d'un MJ prises avant la programmation de ses
  * parties : elles restent, sans compter (IN-4), alors que `signUpForGame()` les refuserait aujourd'hui.
  */
-function withGameMasterSignUps(convention: Convention, ...signUps: SignUp[]): Convention {
+function restoreWithGameMasterSignUps(convention: Convention, ...signUps: SignUp[]): Convention {
   return Convention.restore({
     id: convention.id,
     name: convention.name,
@@ -90,6 +91,76 @@ function withGameMasterSignUps(convention: Convention, ...signUps: SignUp[]): Co
     presenceCode: convention.presenceCode,
   });
 }
+
+/** La convention, avec Sven (g3, p-g3), MJ disponible sur les trois créneaux, sans partie. */
+function addSvenAvailableEverywhere(convention: Convention): Convention {
+  convention.addGameMaster('g3', 'p-g3', 'Sven');
+  for (const timeSlotId of ['s1', 's2', 's3']) {
+    convention.declareGameMasterAvailability('g3', timeSlotId);
+  }
+  return convention;
+}
+
+describe('Notifications d’une partie programmée (NO-2)', () => {
+  it('préviennent tout le monde d’une nouvelle partie, sauf les MJ qui mènent sur le créneau, et son MJ qu’il la mène', () => {
+    const convention = addSvenAvailableEverywhere(aConvention());
+
+    const notifications = convention.scheduleScenario('songe', aScenario('d', 'g3'), 's2', 't3');
+
+    expect(notifications).toEqual([
+      {
+        code: 'new-game',
+        params: { gameId: 'songe', scenarioId: 'd', ranks: [2], tableName: 'Table 3' },
+        recipients: { kind: 'everyone-except', participantIds: ['p-g1', 'p-g2', 'p-g3'] },
+        deadline: endOfDay('16:30'),
+      },
+      {
+        code: 'own-game-scheduled',
+        params: {
+          scenarioId: 'd',
+          ranks: [2],
+          tableName: 'Table 3',
+          start: '14:00',
+          end: '16:30',
+        },
+        recipients: { kind: 'participants', participantIds: ['p-g3'] },
+        deadline: endOfDay('16:30'),
+      },
+    ]);
+  });
+
+  it('une partie double se désigne par ses deux créneaux, et écarte les MJ qui mènent sur le second', () => {
+    const convention = addSvenAvailableEverywhere(aConvention());
+    convention.unscheduleGame('epice');
+
+    const [newGame, ownGame] = convention.scheduleScenario(
+      'songe',
+      aScenario('d', 'g3', 2),
+      's2',
+      't3',
+    );
+
+    expect(newGame).toMatchObject({
+      params: { ranks: [2, 3] },
+      recipients: { participantIds: ['p-g1', 'p-g3'] },
+      deadline: endOfDay('20:30'),
+    });
+    expect(ownGame).toMatchObject({
+      params: { ranks: [2, 3], start: '14:00', end: '20:30' },
+      recipients: { participantIds: ['p-g3'] },
+    });
+  });
+
+  it('gardent les inscriptions de son MJ sur le créneau, sans qu’elles comptent (IN-4)', () => {
+    const convention = addSvenAvailableEverywhere(aConvention());
+    convention.signUpForGame('p-g3', 'neons', CATALOGUE);
+
+    convention.scheduleScenario('songe', aScenario('d', 'g3'), 's2', 't3');
+
+    expect(convention.signUps.map(({ gameId }) => gameId)).toEqual(['neons']);
+    expect(convention.computeParticipantSituation('p-g3').signedUpGameIds).toEqual([]);
+  });
+});
 
 describe('Notifications d’une partie déprogrammée (NO-2)', () => {
   it('préviennent ses inscrits, et son MJ avec un autre code, jusqu’à la fin de son créneau', () => {
@@ -141,7 +212,7 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
   });
 
   it('le MJ ne reçoit que la sienne, même inscrit à sa partie : la plus précise (NO-1)', () => {
-    const convention = withGameMasterSignUps(aConvention(), new SignUp('p-g1', 'brumes'));
+    const convention = restoreWithGameMasterSignUps(aConvention(), new SignUp('p-g1', 'brumes'));
     convention.signUpForGame('p1', 'brumes', CATALOGUE);
 
     const notifications = convention.unscheduleGame('brumes');
@@ -153,6 +224,11 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
   });
 });
 
+/** Les notifications de ce code. */
+function filterByCode(notifications: readonly Notification[], code: NotificationCode) {
+  return notifications.filter((notification) => notification.code === code);
+}
+
 describe('Notifications d’une partie déplacée (NO-2)', () => {
   it('préviennent ses inscrits quand elle passe à un autre créneau, jusqu’à la fin du plus tardif', () => {
     const convention = aConvention();
@@ -161,7 +237,7 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
 
     const notifications = convention.moveGame('brumes', 's3', 't2');
 
-    expect(notifications).toEqual([
+    expect(filterByCode(notifications, 'game-moved')).toEqual([
       {
         code: 'game-moved',
         params: { gameId: 'brumes', scenarioId: 'a', fromRanks: [1], toRanks: [3] },
@@ -187,6 +263,41 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
     expect(moved?.deadline).toEqual(endOfDay('16:30'));
   });
 
+  it('préviennent de la nouvelle partie tous ceux qui peuvent s’y inscrire, sauf ses inscrits, et son MJ qu’il la mène', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+
+    const notifications = convention.moveGame('brumes', 's3', 't2');
+
+    expect(notifications.map(({ code }) => code)).toEqual([
+      'game-moved',
+      'new-game',
+      'own-game-scheduled',
+    ]);
+    expect(filterByCode(notifications, 'new-game')).toEqual([
+      {
+        code: 'new-game',
+        params: { gameId: 'brumes', scenarioId: 'a', ranks: [3], tableName: 'Table 2' },
+        recipients: { kind: 'everyone-except', participantIds: ['p-g1', 'p1'] },
+        deadline: endOfDay('20:30'),
+      },
+    ]);
+    expect(filterByCode(notifications, 'own-game-scheduled')).toEqual([
+      {
+        code: 'own-game-scheduled',
+        params: {
+          scenarioId: 'a',
+          ranks: [3],
+          tableName: 'Table 2',
+          start: '18:00',
+          end: '20:30',
+        },
+        recipients: { kind: 'participants', participantIds: ['p-g1'] },
+        deadline: endOfDay('20:30'),
+      },
+    ]);
+  });
+
   it('ne partent pas quand elle change seulement de table (NO-4)', () => {
     const convention = aConvention();
     convention.signUpForGame('p1', 'brumes', CATALOGUE);
@@ -194,14 +305,18 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
     expect(convention.moveGame('brumes', 's1', 't3')).toEqual([]);
   });
 
-  it('ne partent pas sans inscrit', () => {
-    expect(aConvention().moveGame('brumes', 's3', 't1')).toEqual([]);
+  it('sans inscrit, seules partent « nouvelle partie » et celle du MJ', () => {
+    expect(
+      aConvention()
+        .moveGame('brumes', 's3', 't1')
+        .map(({ code }) => code),
+    ).toEqual(['new-game', 'own-game-scheduled']);
   });
 
   it('ne vont pas à une inscription qui ne compte pas (IN-4)', () => {
-    const convention = withGameMasterSignUps(aConvention(), new SignUp('p-g1', 'epice'));
+    const convention = restoreWithGameMasterSignUps(aConvention(), new SignUp('p-g1', 'epice'));
 
-    expect(convention.moveGame('epice', 's2', 't2')).toEqual([]);
+    expect(filterByCode(convention.moveGame('epice', 's2', 't2'), 'game-moved')).toEqual([]);
   });
 });
 
@@ -215,7 +330,11 @@ describe('Notifications de deux parties échangées (NO-2)', () => {
     const notifications = convention.swapGames('brumes', 'neons');
 
     expect(
-      notifications.map(({ code, params, recipients }) => ({ code, params, recipients })),
+      filterByCode(notifications, 'game-moved').map(({ code, params, recipients }) => ({
+        code,
+        params,
+        recipients,
+      })),
     ).toEqual([
       {
         code: 'game-moved',
@@ -226,6 +345,48 @@ describe('Notifications de deux parties échangées (NO-2)', () => {
         code: 'game-moved',
         params: { gameId: 'neons', scenarioId: 'c', fromRanks: [2], toRanks: [1] },
         recipients: { kind: 'participants', participantIds: ['p1', 'p2'] },
+      },
+    ]);
+  });
+
+  it('entre deux créneaux, une « nouvelle partie » et une « tu mènes une partie » par partie, sauf à ceux qui reçoivent plus précis (NO-1)', () => {
+    const convention = addSvenAvailableEverywhere(aConvention());
+    convention.scheduleScenario('songe', aScenario('d', 'g3'), 's3', 't3');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+
+    const notifications = convention.swapGames('brumes', 'songe');
+
+    expect(
+      notifications.map(({ code, params, recipients }) => ({
+        code,
+        ranks: 'ranks' in params ? params.ranks : null,
+        recipients,
+      })),
+    ).toEqual([
+      {
+        code: 'game-moved',
+        ranks: null,
+        recipients: { kind: 'participants', participantIds: ['p1'] },
+      },
+      {
+        code: 'new-game',
+        ranks: [3],
+        recipients: { kind: 'everyone-except', participantIds: ['p-g1', 'p1', 'p-g3'] },
+      },
+      {
+        code: 'new-game',
+        ranks: [1],
+        recipients: { kind: 'everyone-except', participantIds: ['p-g2', 'p-g3', 'p1', 'p-g1'] },
+      },
+      {
+        code: 'own-game-scheduled',
+        ranks: [3],
+        recipients: { kind: 'participants', participantIds: ['p-g1'] },
+      },
+      {
+        code: 'own-game-scheduled',
+        ranks: [1],
+        recipients: { kind: 'participants', participantIds: ['p-g3'] },
       },
     ]);
   });
@@ -343,7 +504,7 @@ describe('Notification d’une partie très demandée par une inscription (NO-2,
   });
 
   it('ne compte pas l’inscription d’un MJ sur un créneau où il mène, ni ne le prévient (IN-4)', () => {
-    const convention = withGameMasterSignUps(aConvention(), new SignUp('p-g1', 'epice'));
+    const convention = restoreWithGameMasterSignUps(aConvention(), new SignUp('p-g1', 'epice'));
     const catalogue = catalogueWithMaxSeats({ b: 1 });
 
     expect(convention.signUpForGame('p1', 'epice', catalogue)).toEqual([]);

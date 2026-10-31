@@ -37,6 +37,7 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
   /** « Néons » d'Élodie, au créneau 1 (9 h – 11 h 30), table Griffon, de 3 à 5 places. */
   let gameId: string;
   let scenario: ScenarioDto;
+  let gameMasterId: string;
   /** Les abonnements des téléphones reliés à Lune, inscrite à « Néons », à Sven, et à Élodie, MJ. */
   let lune: PushSubscriptionBody;
   let sven: PushSubscriptionBody;
@@ -101,6 +102,30 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
 
   const slot = (rank: number) => convention.timeSlots[rank - 1]!.id;
 
+  /** Programme « Songe » d'Élodie, au créneau 2, table Griffon : l'id de la partie. */
+  const scheduleSonge = async () => {
+    const songe = (
+      await server()
+        .post(apiUrl(scenarioEndpoints.propose, { gameMasterId }))
+        .send({
+          title: 'Songe',
+          system: 'Rêve de dragon',
+          presentation: 'Un rêve.',
+          contentWarnings: '',
+          seats: { min: 3, max: 5 },
+          duration: 1,
+        })
+        .expect(201)
+    ).body as ScenarioDto;
+    const scheduled = (
+      await server()
+        .post(apiUrl(scheduleEndpoints.schedule))
+        .send({ scenarioId: songe.id, timeSlotId: slot(2), tableId: convention.tables[0]!.id })
+        .expect(201)
+    ).body as ScheduleDto;
+    return scheduled.games.find(({ scenario }) => scenario.id === songe.id)!.id;
+  };
+
   const filterReceivedBySubscription = (
     received: ReceivedPush[],
     subscription: PushSubscriptionBody,
@@ -131,6 +156,7 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
     const [gameMaster] = (
       await server().post(apiUrl(gameMasterEndpoints.add)).send({ nickname: 'Élodie' }).expect(201)
     ).body as GameMasterDto[];
+    gameMasterId = gameMaster!.id;
     for (const timeSlotId of [slot(1), slot(2)]) {
       await server()
         .put(apiUrl(availabilityEndpoints.declare, { gameMasterId: gameMaster!.id, timeSlotId }))
@@ -248,8 +274,11 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
         .send({ timeSlotId: slot(2), tableId: convention.tables[0]!.id })
         .expect(200);
 
-      const [{ message }] = (await push.receivedAtLeast(1)) as [ReceivedPush];
-      expect(push.received.map(({ endpoint }) => endpoint)).toEqual([lune.endpoint]);
+      const received = await push.receivedAtLeast(3);
+      expect(received.map(({ endpoint }) => endpoint).sort()).toEqual(
+        [lune.endpoint, sven.endpoint, elodie.endpoint].sort(),
+      );
+      const [{ message }] = filterReceivedBySubscription(received, lune) as [ReceivedPush];
       expect(message).toMatchObject({
         notification: {
           title: 'Créneau 1\u00a0: partie déplacée',
@@ -261,6 +290,64 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
             },
           },
         },
+      });
+      expect(filterReceivedBySubscription(received, sven)[0]).toMatchObject({
+        message: { notification: { title: 'Créneau 2\u00a0: nouvelle partie' } },
+      });
+      expect(filterReceivedBySubscription(received, elodie)[0]).toMatchObject({
+        message: { notification: { title: 'Créneau 2\u00a0: tu mènes une partie' } },
+      });
+    });
+
+    describe('partie programmée (NO-2)', () => {
+      it('prévient tout le monde d’une nouvelle partie, qui remplace celles du créneau sans son', async () => {
+        const songeId = await scheduleSonge();
+
+        const received = await push.receivedAtLeast(3);
+        await quietPeriod();
+        expect(push.received).toHaveLength(3);
+        for (const subscription of [lune, sven]) {
+          const [{ message, headers }] = filterReceivedBySubscription(received, subscription) as [
+            ReceivedPush,
+          ];
+          expect(message).toMatchObject({
+            notification: {
+              title: 'Créneau 2\u00a0: nouvelle partie',
+              body: "Songe · Rêve de dragon, table Griffon. Tu peux t'y inscrire.",
+              navigate: `${PUBLIC_URL}/parties/${songeId}`,
+              tag: 'new-game-2',
+              renotify: false,
+            },
+          });
+          expect(headers.topic).toBe('new-game-2');
+        }
+      });
+
+      it('prévient son MJ qu’il la mène, et le tap ouvre Mes parties sur ce créneau', async () => {
+        await scheduleSonge();
+
+        const received = await push.receivedAtLeast(3);
+        const [{ message, headers }] = filterReceivedBySubscription(received, elodie) as [
+          ReceivedPush,
+        ];
+        expect(message).toMatchObject({
+          notification: {
+            title: 'Créneau 2\u00a0: tu mènes une partie',
+            body: 'Songe, table Griffon, 14\u00a0h\u00a000\u202f–\u202f16\u00a0h\u00a030.',
+            navigate: `${PUBLIC_URL}/mes-parties?creneau=2`,
+          },
+        });
+        expect(message).not.toHaveProperty('notification.tag');
+        expect(headers.topic).toBeUndefined();
+      });
+
+      it('n’envoie rien après la fin de son créneau (NO-3)', async () => {
+        await setDate('2020-01-15');
+
+        await scheduleSonge();
+        await quietPeriod();
+
+        expect(push.received).toEqual([]);
       });
     });
 

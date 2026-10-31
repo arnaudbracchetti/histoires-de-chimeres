@@ -83,6 +83,20 @@ export function buildGameOversubscribedText(rank: number, gameTitle: string): Ch
   };
 }
 
+/**
+ * Ceux qui peuvent s'y inscrire : une partie est programmée, ou déplacée, sur un créneau pas encore
+ * publié. `system` : le jeu de son scénario.
+ */
+export function buildNewGameText(
+  ranks: readonly number[],
+  game: NamedGame & { system: string },
+): ChangeText {
+  return {
+    title: fr`${formatCapitalizedTimeSlotRanks(ranks)} : nouvelle partie`,
+    body: fr`${game.title} · ${game.system}, table ${game.tableName}. Tu peux t'y inscrire.`,
+  };
+}
+
 /** Son MJ : la partie est programmée, ou déplacée, de `start` à `end` (`HH:MM`). */
 export function buildOwnGameScheduledText(
   ranks: readonly number[],

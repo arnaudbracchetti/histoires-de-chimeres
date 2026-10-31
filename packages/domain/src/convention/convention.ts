@@ -420,29 +420,41 @@ export class Convention {
 
   /**
    * Programme le scénario sur un créneau et une table (PR-3), dans le respect de PR-5. Une partie
-   * double se programme sur son premier créneau, et prend le suivant, à la même table.
+   * double se programme sur son premier créneau, et prend le suivant, à la même table. Les
+   * inscriptions de son MJ sur ses créneaux restent, sans compter (IN-4). Rend « nouvelle partie »
+   * et « tu mènes une partie » (`buildGamePlacedNotifications()`).
    */
-  scheduleScenario(id: string, scenario: Scenario, timeSlotId: string, tableId: string): void {
+  scheduleScenario(
+    id: string,
+    scenario: Scenario,
+    timeSlotId: string,
+    tableId: string,
+  ): Notification[] {
     this.replaceScheduleAndPruneSignUps(
       this.throwIfRefused(
         this.getScheduleAfterSchedulingScenario(id, scenario, timeSlotId, tableId),
       ),
     );
+    return this.buildGamePlacedNotifications([this.gameSchedule.findExistingGameById(id)], []);
   }
 
   /**
    * Déplace la partie sur un créneau et une table (PR-17), dans le respect de PR-5, sans compter la
    * partie elle-même. Une partie double se déplace par son premier créneau, et prend le suivant.
    * Elle reste la même partie, à son rang dans le programme. Sur un autre créneau, elle perd ses
-   * inscriptions ; à une autre table du même créneau, elle les garde (IN-6). Rend les
-   * notifications de ses inscrits (`buildGameMovedNotifications()`).
+   * inscriptions ; à une autre table du même créneau, elle les garde (IN-6). Sur un autre créneau,
+   * rend « partie déplacée » à ses inscrits (`buildGameMovedNotifications()`), puis « nouvelle
+   * partie » et « tu mènes une partie » (`buildGamePlacedNotifications()`).
    */
   moveGame(gameId: string, timeSlotId: string, tableId: string): Notification[] {
     const game = this.gameSchedule.findExistingGameById(gameId);
     const next = this.throwIfRefused(this.getScheduleAfterMovingGame(game, timeSlotId, tableId));
-    const notifications = this.buildGameMovedNotifications(next, [game]);
+    const moved = this.buildGameMovedNotifications(next, [game]);
     this.replaceScheduleAndPruneSignUps(next);
-    return notifications;
+    return [
+      ...moved,
+      ...this.buildGamePlacedNotifications(this.listGamesOnOtherTimeSlots([game]), moved),
+    ];
   }
 
   /**
@@ -450,16 +462,20 @@ export class Convention {
    * seul geste. Les deux places sont vérifiées ensemble contre PR-5, sans compter les deux parties à
    * leur ancienne place. Chacune reste la même partie, à son rang dans le programme. Échangées entre
    * deux créneaux, elles perdent leurs inscriptions ; sur un même créneau, elles les gardent (IN-6).
-   * Rend les notifications des inscrits de chacune (`buildGameMovedNotifications()`) : un inscrit aux
-   * deux en reçoit une par partie.
+   * Rend « partie déplacée » aux inscrits de chacune (`buildGameMovedNotifications()`) : un inscrit
+   * aux deux en reçoit une par partie. Puis, pour chacune, « nouvelle partie » et « tu mènes une
+   * partie » (`buildGamePlacedNotifications()`).
    */
   swapGames(gameId: string, otherGameId: string): Notification[] {
     const game = this.gameSchedule.findExistingGameById(gameId);
     const other = this.gameSchedule.findExistingGameById(otherGameId);
     const next = this.throwIfRefused(this.getScheduleAfterSwappingGames(game, other));
-    const notifications = this.buildGameMovedNotifications(next, [game, other]);
+    const moved = this.buildGameMovedNotifications(next, [game, other]);
     this.replaceScheduleAndPruneSignUps(next);
-    return notifications;
+    return [
+      ...moved,
+      ...this.buildGamePlacedNotifications(this.listGamesOnOtherTimeSlots([game, other]), moved),
+    ];
   }
 
   /**
@@ -682,6 +698,81 @@ export class Convention {
         },
       ];
     });
+  }
+
+  /**
+   * Pour chacune de ces parties, à sa place dans le Programme : « tu mènes une partie » à son MJ, et,
+   * avant la publication de son créneau, « nouvelle partie » à tous ceux qui peuvent s'y inscrire.
+   * En sont écartés les MJ qui mènent sur l'un de ses créneaux (IN-4), et ceux qui reçoivent du même
+   * geste une notification plus précise : « tu mènes une partie », ou l'une de `moreSpecific`
+   * (NO-1). Les joueurs d'une partie double publiée qui occupe le créneau le seront aussi, quand le
+   * tirage existera. Chacune court jusqu'à la fin du dernier créneau de sa partie (NO-3).
+   */
+  private buildGamePlacedNotifications(
+    games: readonly Game[],
+    moreSpecific: readonly Notification[],
+  ): Notification[] {
+    const placed = games.map((game) => ({
+      game,
+      ranks: this.getTimeSlotRanks(game.timeSlotIds),
+      tableName: this.allTables.findExistingItemById(game.tableId).name.text,
+      deadline: this.computeEndOfTimeSlots(game.timeSlotIds),
+      gameMasterParticipantId: this.allGameMasters.findExistingItemById(game.gameMasterId)
+        .participant.id,
+    }));
+    const excluded = [
+      ...moreSpecific.flatMap(({ recipients }) => recipients.participantIds),
+      ...placed.map(({ gameMasterParticipantId }) => gameMasterParticipantId),
+    ];
+    const newGames = placed
+      .filter(({ game }) => this.getTimeSlotState(game.timeSlotIds[0]!) !== 'published')
+      .map(({ game, ranks, tableName, deadline }): Notification => ({
+        code: 'new-game',
+        params: { gameId: game.id, scenarioId: game.scenarioId, ranks, tableName },
+        recipients: {
+          kind: 'everyone-except',
+          participantIds: [
+            ...new Set([
+              ...this.listParticipantIdsLeadingOnTimeSlots(game.timeSlotIds),
+              ...excluded,
+            ]),
+          ],
+        },
+        deadline,
+      }));
+    const toGameMasters = placed.map(
+      ({ game, ranks, tableName, deadline, gameMasterParticipantId }): Notification => ({
+        code: 'own-game-scheduled',
+        params: {
+          scenarioId: game.scenarioId,
+          ranks,
+          tableName,
+          start: this.day.findExistingTimeSlotById(game.timeSlotIds[0]!).start.toString(),
+          end: this.day.findExistingTimeSlotById(game.timeSlotIds.at(-1)!).end.toString(),
+        },
+        recipients: toParticipantRecipients([gameMasterParticipantId]),
+        deadline,
+      }),
+    );
+    return [...newGames, ...toGameMasters];
+  }
+
+  /** Celles de ces parties qui ne sont plus sur les mêmes créneaux, telles que le Programme les a. */
+  private listGamesOnOtherTimeSlots(previous: readonly Game[]): Game[] {
+    return previous
+      .filter((game) => !this.gameSchedule.hasGameOnSameTimeSlots(game))
+      .map((game) => this.gameSchedule.findExistingGameById(game.id));
+  }
+
+  /** Les participants des MJ qui mènent sur l'un de ces créneaux, dans l'ordre naturel de leur pseudo. */
+  private listParticipantIdsLeadingOnTimeSlots(timeSlotIds: readonly string[]): string[] {
+    return this.allGameMasters.itemsInNaturalOrder
+      .filter((gameMaster) =>
+        timeSlotIds.some((slotId) =>
+          this.gameSchedule.isGameMasterLeadingOnTimeSlot(gameMaster.id, slotId),
+        ),
+      )
+      .map((gameMaster) => gameMaster.participant.id);
   }
 
   /**

@@ -3,6 +3,8 @@ import {
   buildGameMovedText,
   buildGameOversubscribedText,
   buildGameUnscheduledText,
+  buildNewGameText,
+  buildOwnGameScheduledText,
   buildOwnGameUnscheduledText,
   type ChangeText,
 } from '@chimeres/design';
@@ -19,7 +21,10 @@ export type NotificationText = ChangeText & {
   replacement?: { tag: string; renotify: boolean };
 };
 
-type Writer<P> = (params: P, scenarioTitle: string) => NotificationText;
+/** Le scénario d'une notification, tel que le nomment ses textes : son titre et son jeu. */
+export type NotifiedScenario = { title: string; system: string };
+
+type Writer<P> = (params: P, scenario: NotifiedScenario) => NotificationText;
 
 /**
  * Les textes des notifications, en français, un par code (ADR 0010), ceux de NO-2. Un code sans
@@ -29,22 +34,31 @@ type Writer<P> = (params: P, scenarioTitle: string) => NotificationText;
 export const notificationCatalogue: {
   [C in NotificationCode]: Writer<NotificationParams[C]>;
 } = {
-  'game-unscheduled': ({ ranks }, title) => ({
+  'game-unscheduled': ({ ranks }, { title }) => ({
     ...buildGameUnscheduledText(ranks, title),
     url: frontOfficeUrls.timeSlotGames(ranks[0]!),
   }),
-  'own-game-unscheduled': ({ ranks }, title) => ({
+  'own-game-unscheduled': ({ ranks }, { title }) => ({
     ...buildOwnGameUnscheduledText(ranks, title),
     url: frontOfficeUrls.timeSlotGames(ranks[0]!),
   }),
-  'game-moved': ({ gameId, fromRanks, toRanks }, title) => ({
+  'game-moved': ({ gameId, fromRanks, toRanks }, { title }) => ({
     ...buildGameMovedText(fromRanks, toRanks, title),
     url: frontOfficeUrls.game(gameId),
   }),
-  'game-oversubscribed': ({ rank }, title) => ({
+  'game-oversubscribed': ({ rank }, { title }) => ({
     ...buildGameOversubscribedText(rank, title),
     url: frontOfficeUrls.timeSlotGames(rank),
     // Un `Topic` tient en 32 caractères base64url.
     replacement: { tag: `oversubscribed-${rank}`, renotify: true },
+  }),
+  'new-game': ({ gameId, ranks, tableName }, { title, system }) => ({
+    ...buildNewGameText(ranks, { title, system, tableName }),
+    url: frontOfficeUrls.game(gameId),
+    replacement: { tag: `new-game-${ranks[0]!}`, renotify: false },
+  }),
+  'own-game-scheduled': ({ ranks, tableName, start, end }, { title }) => ({
+    ...buildOwnGameScheduledText(ranks, { title, tableName }, start, end),
+    url: frontOfficeUrls.myGamesOnTimeSlot(ranks[0]!),
   }),
 };

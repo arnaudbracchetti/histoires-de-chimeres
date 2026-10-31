@@ -20,6 +20,22 @@ export type NotificationParams = {
    * inscription sur le créneau (IN-5). `rank` : le rang de son premier créneau.
    */
   'game-oversubscribed': { scenarioId: string; rank: number };
+  /**
+   * À tous ceux qui peuvent s'inscrire sur les créneaux d'une partie programmée ou déplacée, avant
+   * leur publication. `tableName` : le nom de sa table.
+   */
+  'new-game': { gameId: string; scenarioId: string; ranks: number[]; tableName: string };
+  /**
+   * Au MJ d'une partie programmée, ou déplacée sur d'autres créneaux. `start` et `end` (`HH:MM`) :
+   * le début de son premier créneau et la fin du dernier.
+   */
+  'own-game-scheduled': {
+    scenarioId: string;
+    ranks: number[];
+    tableName: string;
+    start: string;
+    end: string;
+  };
 };
 
 export type NotificationCode = keyof NotificationParams;

@@ -45,9 +45,12 @@ import { SCHEDULE_READER } from './schedule-reader.token.js';
     },
     {
       provide: ScheduleGame,
-      useFactory: (conventions: ConventionRepository, scenarios: ScenarioRepository) =>
-        new ScheduleGame(conventions, scenarios, randomUUID),
-      inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY],
+      useFactory: (
+        conventions: ConventionRepository,
+        scenarios: ScenarioRepository,
+        notifications: NotificationSender,
+      ) => new ScheduleGame(conventions, scenarios, notifications, randomUUID),
+      inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY, NOTIFICATION_SENDER],
     },
     {
       provide: ReadMovePlacements,
