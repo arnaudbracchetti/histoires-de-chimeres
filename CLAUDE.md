@@ -63,6 +63,7 @@ En production (`docker-compose.prod.yml`), le serveur a un Caddy « edge » mutu
 
 - `GLOSSARY.md` : le langage ubiquitaire, en français avec le terme anglais du code (Créneau · `TimeSlot`). À lire avant de nommer quoi que ce soit du domaine (code, textes d'interface, docs). Les termes listés en _Avoid_ sont exclus : employer le terme canonique, et n'inventer aucune autre traduction.
 - `docs/prd.md` : le besoin. Les exigences portent un identifiant (ID-1, PR-5, TI-4…) à citer dans les tests, les commits et les échanges. Le §7 liste ce qui est hors V1. Le §8 liste les points ouverts : les soumettre à l'utilisateur au lieu de les trancher.
+- `docs/Regles-ecriture-de-code.md` : les règles d'écriture du code (nommage des méthodes, règles métier, textes visibles). À lire avant d'écrire ou de renommer du code, et à compléter dès qu'on fixe une nouvelle règle.
 - `docs/design/` : la charte d'IHM (identité, jetons, ton, patterns du back office, écriture du CSS). À lire avant d'écrire un écran, un composant ou un texte d'interface.
 - `docs/adr/` : les décisions d'architecture, nommées `NNNN-slug.md`. Le format et les critères pour proposer un ADR se trouvent dans le skill `domain-modeling`.
 
