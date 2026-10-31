@@ -43,11 +43,12 @@ export class WebPushNotificationSender implements NotificationSender {
     delivery: PushDelivery,
     notifications: readonly Notification[],
   ): Promise<void> {
-    const titles = await this.scenarioTitlesOf(notifications);
+    const titles = await this.findScenarioTitles(notifications);
     const deliveries: {
       subscription: PushSubscriptionBody;
       payload: string;
       expiresAt: number | null;
+      topic: string | null;
     }[] = [];
     for (const notification of notifications) {
       const expiresAt = notification.deadline
@@ -55,13 +56,22 @@ export class WebPushNotificationSender implements NotificationSender {
         : null;
       const title = titles.get(notification.params.scenarioId);
       if ((expiresAt !== null && expiresAt <= Date.now()) || title === undefined) continue;
-      const payload = JSON.stringify(this.messageOf(textOf(notification, title)));
-      for (const subscription of await this.phones.pushSubscriptionsOf(notification.recipients)) {
-        deliveries.push({ subscription, payload, expiresAt });
+      const text = writeNotificationText(notification, title);
+      const payload = JSON.stringify(this.buildPushMessage(text));
+      const topic = text.replacement?.tag ?? null;
+      for (const subscription of await this.phones.listPushSubscriptionsOfRecipients(
+        notification.recipients,
+      )) {
+        deliveries.push({ subscription, payload, expiresAt, topic });
       }
     }
     await inParallel(deliveries, CONCURRENT_DELIVERIES, async (item) => {
-      const outcome = await delivery.deliver(item.subscription, item.payload, item.expiresAt);
+      const outcome = await delivery.deliver(
+        item.subscription,
+        item.payload,
+        item.expiresAt,
+        item.topic,
+      );
       if (outcome === 'gone') await this.phones.erasePushSubscription(item.subscription.endpoint);
     });
   }
@@ -70,7 +80,7 @@ export class WebPushNotificationSender implements NotificationSender {
    * Un seul JSON pour les deux formats : Declarative Web Push (`web_push`, `navigate`) pour Safari,
    * et `data.onActionClick` pour le service worker d'Angular ailleurs (ADR 0010).
    */
-  private messageOf({ title, body, url }: NotificationText): object {
+  private buildPushMessage({ title, body, url, replacement }: NotificationText): object {
     const origin = this.settings!.publicUrl;
     return {
       web_push: 8030,
@@ -81,13 +91,14 @@ export class WebPushNotificationSender implements NotificationSender {
         lang: 'fr',
         icon: `${origin}/icons/icon-192.png`,
         badge: `${origin}/icons/badge-96.png`,
+        ...replacement,
         data: { onActionClick: { default: { operation: 'navigateLastFocusedOrOpen', url } } },
       },
     };
   }
 
   /** Les titres des scénarios des notifications, par identifiant. */
-  private async scenarioTitlesOf(
+  private async findScenarioTitles(
     notifications: readonly Notification[],
   ): Promise<Map<string, string>> {
     const scenarios = await this.prisma.scenario.findMany({
@@ -99,7 +110,10 @@ export class WebPushNotificationSender implements NotificationSender {
 }
 
 /** Le texte de la notification, par le catalogue de son code. */
-function textOf(notification: Notification, scenarioTitle: string): NotificationText {
+function writeNotificationText(
+  notification: Notification,
+  scenarioTitle: string,
+): NotificationText {
   const write = notificationCatalogue[notification.code] as (
     params: Notification['params'],
     title: string,

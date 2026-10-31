@@ -30,12 +30,14 @@ export class PushDelivery {
 
   /**
    * `expiresAt` : l'instant, en millisecondes, après lequel le message ne doit plus être livré, ou
-   * `null` sans échéance (4 semaines).
+   * `null` sans échéance (4 semaines). `topic` : un message en attente de même `Topic` est remplacé
+   * par celui-ci chez le service push, ou `null`.
    */
   async deliver(
     subscription: PushSubscriptionBody,
     payload: string,
     expiresAt: number | null,
+    topic: string | null,
   ): Promise<DeliveryOutcome> {
     const { cipherText } = webpush.encrypt(
       subscription.keys.p256dh,
@@ -44,22 +46,28 @@ export class PushDelivery {
       'aes128gcm',
     );
     for (let attempt = 1; ; attempt++) {
-      const ttl =
-        expiresAt === null ? FOUR_WEEKS_S : Math.floor((expiresAt - this.now()) / 1000);
+      const ttl = expiresAt === null ? FOUR_WEEKS_S : Math.floor((expiresAt - this.now()) / 1000);
       if (ttl <= 0) return 'failed';
-      const status = await this.post(subscription.endpoint, cipherText, ttl);
+      const status = await this.post(subscription.endpoint, cipherText, ttl, topic);
       if (status !== null && status >= 200 && status < 300) return 'delivered';
       if (status === 404 || status === 410) return 'gone';
       const retriable = status === null || status === 429 || status >= 500;
       if (!retriable || attempt === 2) {
-        this.logger.warn(`Envoi push refusé (${status ?? 'erreur réseau'}) : ${subscription.endpoint}`);
+        this.logger.warn(
+          `Envoi push refusé (${status ?? 'erreur réseau'}) : ${subscription.endpoint}`,
+        );
         return 'failed';
       }
     }
   }
 
   /** Le statut de la réponse, ou `null` sur une erreur réseau ou un délai dépassé. */
-  private async post(endpoint: string, body: Buffer, ttl: number): Promise<number | null> {
+  private async post(
+    endpoint: string,
+    body: Buffer,
+    ttl: number,
+    topic: string | null,
+  ): Promise<number | null> {
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -69,6 +77,7 @@ export class PushDelivery {
           'Content-Encoding': 'aes128gcm',
           'Content-Type': 'application/octet-stream',
           Authorization: this.vapidAuthorizationFor(new URL(endpoint).origin),
+          ...(topic && { Topic: topic }),
         },
         body: new Uint8Array(body),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),

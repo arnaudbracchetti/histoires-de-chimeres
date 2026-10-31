@@ -3,6 +3,7 @@ import type { Notification } from '../notification.js';
 import { Refusal } from '../refusal.js';
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Scenario, type ScenarioDetails } from '../scenario/scenario.js';
+import type { Seats } from '../scenario/seats.js';
 import { Day } from './day.js';
 import type { Game } from './game.js';
 import { GameMaster } from './game-master.js';
@@ -231,7 +232,9 @@ export class Convention {
   }
 
   addTimeSlot(id: string, start: TimeOfDay, end: TimeOfDay): void {
-    this.day = this.verifyTwoSlotGamesStayConsecutive(this.day.getDayAfterAddingTimeSlot(id, start, end));
+    this.day = this.verifyTwoSlotGamesStayConsecutive(
+      this.day.getDayAfterAddingTimeSlot(id, start, end),
+    );
   }
 
   /** Les heures d'un créneau qui porte une partie ou une disponibilité ne se modifient plus (PR-11). */
@@ -252,7 +255,9 @@ export class Convention {
         availabilities,
       });
     }
-    this.day = this.verifyTwoSlotGamesStayConsecutive(this.day.getDayAfterChangingTimeSlotHours(id, start, end));
+    this.day = this.verifyTwoSlotGamesStayConsecutive(
+      this.day.getDayAfterChangingTimeSlotHours(id, start, end),
+    );
   }
 
   /**
@@ -284,12 +289,16 @@ export class Convention {
 
   /** Ajoute une table, au nom obligatoire, borné et unique dans la convention (PR-9). */
   addTable(id: string, name: string): void {
-    this.allTables = this.allTables.getCollectionAfterAddingItem(new Table(id, ComparableName.createFromText(name)));
+    this.allTables = this.allTables.getCollectionAfterAddingItem(
+      new Table(id, ComparableName.createFromText(name)),
+    );
   }
 
   /** Renomme une table, même si elle porte des parties. */
   renameTable(id: string, name: string): void {
-    this.allTables = this.allTables.getCollectionAfterReplacingItem(new Table(id, ComparableName.createFromText(name)));
+    this.allTables = this.allTables.getCollectionAfterReplacingItem(
+      new Table(id, ComparableName.createFromText(name)),
+    );
   }
 
   /** Supprime une table. Une table qui porte des parties reste (PR-10). */
@@ -315,7 +324,9 @@ export class Convention {
       new Participant(participantId, ComparableName.createFromText(nickname)),
     );
     const gameMasters = this.allGameMasters.getCollectionAfterAddingItem(gameMaster);
-    this.allParticipants = this.allParticipants.getCollectionAfterAddingItem(gameMaster.participant);
+    this.allParticipants = this.allParticipants.getCollectionAfterAddingItem(
+      gameMaster.participant,
+    );
     this.allGameMasters = gameMasters;
   }
 
@@ -324,9 +335,13 @@ export class Convention {
    * participant, dont les téléphones restent reliés (PR-12).
    */
   changeGameMasterNickname(id: string, nickname: string): void {
-    const renamed = this.allGameMasters.findExistingItemById(id).getGameMasterAfterChangingNickname(ComparableName.createFromText(nickname));
+    const renamed = this.allGameMasters
+      .findExistingItemById(id)
+      .getGameMasterAfterChangingNickname(ComparableName.createFromText(nickname));
     const gameMasters = this.allGameMasters.getCollectionAfterReplacingItem(renamed);
-    this.allParticipants = this.allParticipants.getCollectionAfterReplacingItem(renamed.participant);
+    this.allParticipants = this.allParticipants.getCollectionAfterReplacingItem(
+      renamed.participant,
+    );
     this.allGameMasters = gameMasters;
   }
 
@@ -339,7 +354,9 @@ export class Convention {
     const scenarios = catalogue.countScenariosOfGameMaster(id);
     if (scenarios > 0) throw new Refusal('game-master-has-scenarios', { scenarios });
     this.allGameMasters = this.allGameMasters.getCollectionAfterRemovingItem(id);
-    this.allParticipants = this.allParticipants.getCollectionAfterRemovingItem(gameMaster.participant.id);
+    this.allParticipants = this.allParticipants.getCollectionAfterRemovingItem(
+      gameMaster.participant.id,
+    );
     this.allSignUps = this.allSignUps.filter(
       (signUp) => signUp.participantId !== gameMaster.participant.id,
     );
@@ -407,7 +424,9 @@ export class Convention {
    */
   scheduleScenario(id: string, scenario: Scenario, timeSlotId: string, tableId: string): void {
     this.replaceScheduleAndPruneSignUps(
-      this.throwIfRefused(this.getScheduleAfterSchedulingScenario(id, scenario, timeSlotId, tableId)),
+      this.throwIfRefused(
+        this.getScheduleAfterSchedulingScenario(id, scenario, timeSlotId, tableId),
+      ),
     );
   }
 
@@ -479,7 +498,12 @@ export class Convention {
         timeSlotId: slot.id,
         tableId: table.id,
         refusal: this.extractRefusal(
-          this.getScheduleAfterSchedulingScenario(HYPOTHETICAL_GAME_ID, scenario, slot.id, table.id),
+          this.getScheduleAfterSchedulingScenario(
+            HYPOTHETICAL_GAME_ID,
+            scenario,
+            slot.id,
+            table.id,
+          ),
         ),
       })),
     );
@@ -495,11 +519,7 @@ export class Convention {
     const game = this.gameSchedule.findExistingGameById(gameId);
     return this.day.timeSlots.flatMap((slot) =>
       this.tables.map((table) => {
-        const other = this.gameSchedule.findOtherGameStartingAt(
-          game,
-          slot.id,
-          table.id,
-        );
+        const other = this.gameSchedule.findOtherGameStartingAt(game, slot.id, table.id);
         return {
           timeSlotId: slot.id,
           tableId: table.id,
@@ -528,15 +548,43 @@ export class Convention {
    * Inscrit le participant à la partie (IN-2), tant que le tirage de son créneau n'est pas lancé.
    * Plusieurs inscriptions sur un même créneau sont permises. Une partie double compte sur ses deux
    * créneaux, et ne touche pas aux inscriptions prises sur son second créneau (IN-3, TI-3). Un MJ
-   * ne s'inscrit pas sur un créneau où il mène, sa propre partie comprise (IN-4). Rend `false` si
-   * le participant y était déjà inscrit : rien ne change.
+   * ne s'inscrit pas sur un créneau où il mène, sa propre partie comprise (IN-4). Le catalogue, entier,
+   * donne les places maximum de la partie. Rend « partie très demandée » si l'inscription la fait
+   * passer au-dessus, pour ses autres inscrits (NO-2), ou `null` si le participant y était déjà
+   * inscrit : rien ne change.
    */
-  signUpForGame(participantId: string, gameId: string): boolean {
+  signUpForGame(
+    participantId: string,
+    gameId: string,
+    catalogue: ScenarioCatalogue,
+  ): Notification[] | null {
     const signUp = this.buildSignUpIfOpen(participantId, gameId);
     this.verifyNotLeadingDuringGame(participantId, signUp.gameId);
-    if (this.allSignUps.some((existing) => existing.equals(signUp))) return false;
+    if (this.allSignUps.some((existing) => existing.equals(signUp))) return null;
     this.allSignUps = [...this.allSignUps, signUp];
-    return true;
+    const game = this.gameSchedule.findExistingGameById(gameId);
+    const { maxSeats } = catalogue.findExistingEntryById(game.scenarioId);
+    if (this.listCountedSignUpParticipantIds(game).length !== maxSeats + 1) return [];
+    return this.buildOversubscribedNotifications(game, participantId);
+  }
+
+  /**
+   * « Partie très demandée » pour chaque partie du scénario que la baisse de ses places, depuis
+   * `previousSeats`, fait passer au-dessus du maximum, avant le tirage de son créneau (NO-2, PR-4).
+   * La convention n'en change pas : le scénario est un autre agrégat (ADR 0010).
+   */
+  buildOversubscribedNotificationsAfterSeatsChange(
+    scenario: Scenario,
+    previousSeats: Seats,
+  ): Notification[] {
+    return this.gameSchedule.games
+      .filter((game) => game.scenarioId === scenario.id)
+      .filter((game) => this.getTimeSlotState(game.timeSlotIds[0]!) === 'sign-ups-open')
+      .filter((game) => {
+        const count = this.listCountedSignUpParticipantIds(game).length;
+        return count > scenario.seats.max && count <= previousSeats.max;
+      })
+      .flatMap((game) => this.buildOversubscribedNotifications(game, null));
   }
 
   /**
@@ -560,7 +608,9 @@ export class Convention {
     const participant = this.allParticipants.findExistingItemById(participantId);
     return {
       signedUpGameIds: this.allSignUps
-        .filter((signUp) => signUp.participantId === participant.id && !this.isSignUpSuspended(signUp))
+        .filter(
+          (signUp) => signUp.participantId === participant.id && !this.isSignUpSuspended(signUp),
+        )
         .map(({ gameId }) => gameId),
       timeSlots: this.day.timeSlots.map((slot) => ({
         timeSlotId: slot.id,
@@ -578,7 +628,9 @@ export class Convention {
     timeSlotId: string,
   ): Game | undefined {
     const gameMaster = this.findGameMasterOfParticipant(participantId);
-    return gameMaster && this.gameSchedule.findGameLedByGameMasterOnTimeSlot(gameMaster.id, timeSlotId);
+    return (
+      gameMaster && this.gameSchedule.findGameLedByGameMasterOnTimeSlot(gameMaster.id, timeSlotId)
+    );
   }
 
   /**
@@ -630,6 +682,36 @@ export class Convention {
         },
       ];
     });
+  }
+
+  /**
+   * « Partie très demandée » à ses inscrits dont c'est la seule inscription sur son créneau, sauf
+   * `authorId`, l'auteur de l'inscription qui l'y fait passer : il vient de voir la confirmation
+   * (IN-5). Une partie double ne compte que sur son premier créneau. Rien sans destinataire.
+   */
+  private buildOversubscribedNotifications(game: Game, authorId: string | null): Notification[] {
+    const firstTimeSlotId = game.timeSlotIds[0]!;
+    const recipients = this.listCountedSignUpParticipantIds(game).filter(
+      (participantId) =>
+        participantId !== authorId &&
+        !this.allSignUps.some(
+          (signUp) =>
+            signUp.participantId === participantId &&
+            signUp.gameId !== game.id &&
+            this.gameSchedule.findExistingGameById(signUp.gameId).timeSlotIds[0] ===
+              firstTimeSlotId &&
+            !this.isSignUpSuspended(signUp),
+        ),
+    );
+    if (!recipients.length) return [];
+    return [
+      {
+        code: 'game-oversubscribed',
+        params: { scenarioId: game.scenarioId, rank: this.getTimeSlotRank(firstTimeSlotId) },
+        recipients: toParticipantRecipients(recipients),
+        deadline: this.computeEndOfTimeSlots(game.timeSlotIds),
+      },
+    ];
   }
 
   /** Les participants inscrits à la partie, dans l'ordre de leur inscription, sauf ceux dont l'inscription ne compte pas (IN-4). */
@@ -689,7 +771,11 @@ export class Convention {
   }
 
   /** Le Programme après le déplacement de la partie sur cette case, ou le refus de PR-5. */
-  private getScheduleAfterMovingGame(game: Game, timeSlotId: string, tableId: string): Schedule | Refusal {
+  private getScheduleAfterMovingGame(
+    game: Game,
+    timeSlotId: string,
+    tableId: string,
+  ): Schedule | Refusal {
     this.day.verifyTimeSlotExists(timeSlotId);
     return this.gameSchedule.getScheduleAfterMovingGame(
       game,

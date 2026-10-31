@@ -30,17 +30,19 @@ const FOUR_WEEKS = 4 * 7 * 24 * 3600;
 /** Un délai où un envoi aurait eu le temps d'arriver : pour vérifier que rien ne part. */
 const quietPeriod = () => new Promise((resolve) => setTimeout(resolve, 300));
 
-describe('Notifications des gestes de programmation (NO-2, ADR 0010)', () => {
+describe('Notifications des gestes de programmation et des inscriptions (NO-2, ADR 0010)', () => {
   let app: INestApplication<App>;
   let push: FakePushService;
   let convention: ConventionDto;
-  /** « Néons » d'Élodie, au créneau 1 (9 h – 11 h 30), table Griffon. */
+  /** « Néons » d'Élodie, au créneau 1 (9 h – 11 h 30), table Griffon, de 3 à 5 places. */
   let gameId: string;
+  let scenario: ScenarioDto;
   /** Les abonnements des téléphones reliés à Lune, inscrite à « Néons », à Sven, et à Élodie, MJ. */
   let lune: PushSubscriptionBody;
   let sven: PushSubscriptionBody;
   let elodie: PushSubscriptionBody;
   let lunePhone: string;
+  let svenPhone: string;
 
   const server = () => request(app.getHttpServer());
 
@@ -76,12 +78,33 @@ describe('Notifications des gestes de programmation (NO-2, ADR 0010)', () => {
       .expect(200);
 
   const unschedule = (id = gameId) =>
-    server().delete(apiUrl(scheduleEndpoints.unschedule, { gameId: id })).expect(200);
+    server()
+      .delete(apiUrl(scheduleEndpoints.unschedule, { gameId: id }))
+      .expect(200);
+
+  const signUp = (cookie: string) =>
+    server().put(apiUrl(signUpEndpoints.signUp, { gameId })).set('Cookie', cookie).expect(204);
+
+  /** Fixe les places de « Néons » : de 1 à `max`. */
+  const changeMaxSeats = (max: number) =>
+    server()
+      .put(apiUrl(scenarioEndpoints.update, { scenarioId: scenario.id }))
+      .send({
+        title: scenario.title,
+        system: scenario.system,
+        presentation: scenario.presentation,
+        contentWarnings: scenario.contentWarnings,
+        seats: { min: 1, max },
+        duration: scenario.duration,
+      })
+      .expect(200);
 
   const slot = (rank: number) => convention.timeSlots[rank - 1]!.id;
 
-  const sentTo = (received: ReceivedPush[], subscription: PushSubscriptionBody) =>
-    received.filter(({ endpoint }) => endpoint === subscription.endpoint);
+  const filterReceivedBySubscription = (
+    received: ReceivedPush[],
+    subscription: PushSubscriptionBody,
+  ) => received.filter(({ endpoint }) => endpoint === subscription.endpoint);
 
   const startWithPush = async () => {
     vi.stubEnv('VAPID_PUBLIC_KEY', vapidKeys.publicKey);
@@ -113,7 +136,7 @@ describe('Notifications des gestes de programmation (NO-2, ADR 0010)', () => {
         .put(apiUrl(availabilityEndpoints.declare, { gameMasterId: gameMaster!.id, timeSlotId }))
         .expect(200);
     }
-    const scenario = (
+    scenario = (
       await server()
         .post(apiUrl(scenarioEndpoints.propose, { gameMasterId: gameMaster!.id }))
         .send({
@@ -135,7 +158,7 @@ describe('Notifications des gestes de programmation (NO-2, ADR 0010)', () => {
     gameId = scheduled.games[0]!.id;
     [lune, sven, elodie] = [push.subscription(), push.subscription(), push.subscription()];
     lunePhone = await linkPhone('Lune', lune);
-    await linkPhone('Sven', sven);
+    svenPhone = await linkPhone('Sven', sven);
     await linkPhone('Élodie', elodie, 'game-master');
     await server()
       .put(apiUrl(signUpEndpoints.signUp, { gameId }))
@@ -156,9 +179,9 @@ describe('Notifications des gestes de programmation (NO-2, ADR 0010)', () => {
       await unschedule();
 
       const received = await push.receivedAtLeast(2);
-      expect(sentTo(received, sven)).toEqual([]);
+      expect(filterReceivedBySubscription(received, sven)).toEqual([]);
       const tap = '/programme?creneau=1';
-      expect(sentTo(received, lune).map(({ message }) => message)).toEqual([
+      expect(filterReceivedBySubscription(received, lune).map(({ message }) => message)).toEqual([
         {
           web_push: 8030,
           notification: {
@@ -168,11 +191,13 @@ describe('Notifications des gestes de programmation (NO-2, ADR 0010)', () => {
             lang: 'fr',
             icon: `${PUBLIC_URL}/icons/icon-192.png`,
             badge: `${PUBLIC_URL}/icons/badge-96.png`,
-            data: { onActionClick: { default: { operation: 'navigateLastFocusedOrOpen', url: tap } } },
+            data: {
+              onActionClick: { default: { operation: 'navigateLastFocusedOrOpen', url: tap } },
+            },
           },
         },
       ]);
-      expect(sentTo(received, elodie).map(({ message }) => message)).toEqual([
+      expect(filterReceivedBySubscription(received, elodie).map(({ message }) => message)).toEqual([
         expect.objectContaining({
           notification: expect.objectContaining({
             title: 'Créneau 1\u00a0: partie retirée du programme',
@@ -185,7 +210,9 @@ describe('Notifications des gestes de programmation (NO-2, ADR 0010)', () => {
     it('chiffre, signe, et envoie en urgence, 4 semaines tant que la convention n’a pas de date', async () => {
       await unschedule();
 
-      const [{ headers }] = sentTo(await push.receivedAtLeast(2), lune) as [ReceivedPush];
+      const [{ headers }] = filterReceivedBySubscription(await push.receivedAtLeast(2), lune) as [
+        ReceivedPush,
+      ];
       expect(headers).toMatchObject({
         ttl: String(FOUR_WEEKS),
         urgency: 'high',
@@ -200,7 +227,9 @@ describe('Notifications des gestes de programmation (NO-2, ADR 0010)', () => {
 
       await unschedule();
 
-      const [{ headers }] = sentTo(await push.receivedAtLeast(2), lune) as [ReceivedPush];
+      const [{ headers }] = filterReceivedBySubscription(await push.receivedAtLeast(2), lune) as [
+        ReceivedPush,
+      ];
       const expected = (Date.parse('2099-01-15T11:30:00+01:00') - Date.now()) / 1000;
       expect(Math.abs(Number(headers.ttl) - expected)).toBeLessThan(10);
     });
@@ -236,7 +265,10 @@ describe('Notifications des gestes de programmation (NO-2, ADR 0010)', () => {
     });
 
     it('va au pseudo relié au moment de l’envoi (NO-1)', async () => {
-      await server().delete(apiUrl(linkedPhoneEndpoints.unlink)).set('Cookie', lunePhone).expect(204);
+      await server()
+        .delete(apiUrl(linkedPhoneEndpoints.unlink))
+        .set('Cookie', lunePhone)
+        .expect(204);
       await linkPhone('Zoé', lune);
 
       await unschedule();
@@ -271,7 +303,45 @@ describe('Notifications des gestes de programmation (NO-2, ADR 0010)', () => {
 
       await push.receivedAtLeast(3);
       await quietPeriod();
-      expect(sentTo(push.received, lune)).toHaveLength(2);
+      expect(filterReceivedBySubscription(push.received, lune)).toHaveLength(2);
+    });
+
+    describe('partie très demandée (IN-5)', () => {
+      const oversubscribed = {
+        title: 'Créneau 1\u00a0: partie très demandée',
+        body: "Néons est une partie très demandée, et c'est ta seule inscription sur ce créneau. Inscris-toi à d'autres parties pour éviter de te retrouver sans table où jouer.",
+        navigate: `${PUBLIC_URL}/programme?creneau=1`,
+        tag: 'oversubscribed-1',
+        renotify: true,
+      };
+
+      it('une inscription qui la fait passer au-dessus de ses places prévient les autres inscrits', async () => {
+        await changeMaxSeats(1);
+        await quietPeriod();
+
+        await signUp(svenPhone);
+
+        const [{ message, headers }] = (await push.receivedAtLeast(1)) as [ReceivedPush];
+        await quietPeriod();
+        expect(push.received.map(({ endpoint }) => endpoint)).toEqual([lune.endpoint]);
+        expect(message).toMatchObject({ notification: oversubscribed });
+        expect(headers.topic).toBe('oversubscribed-1');
+      });
+
+      it('une baisse des places de son scénario prévient ses inscrits', async () => {
+        await signUp(svenPhone);
+
+        await changeMaxSeats(1);
+
+        const received = await push.receivedAtLeast(2);
+        expect(received.map(({ endpoint }) => endpoint).sort()).toEqual(
+          [lune.endpoint, sven.endpoint].sort(),
+        );
+        expect(filterReceivedBySubscription(received, sven)[0]).toMatchObject({
+          message: { notification: oversubscribed },
+          headers: { topic: 'oversubscribed-1' },
+        });
+      });
     });
 
     it('le geste répond sans attendre l’envoi', async () => {

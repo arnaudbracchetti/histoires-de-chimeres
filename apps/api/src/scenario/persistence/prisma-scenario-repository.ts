@@ -33,10 +33,14 @@ export class PrismaScenarioRepository implements ScenarioRepository {
 
   async catalogue(): Promise<ScenarioCatalogue> {
     const rows = await this.prisma.scenario.findMany({
-      select: { id: true, gameMasterId: true, duration: true },
+      select: { id: true, gameMasterId: true, duration: true, seatsMax: true },
     });
     return ScenarioCatalogue.restore(
-      rows.map((row) => ({ ...row, duration: row.duration as Duration })),
+      rows.map(({ seatsMax, ...row }) => ({
+        ...row,
+        duration: row.duration as Duration,
+        maxSeats: seatsMax,
+      })),
     );
   }
 

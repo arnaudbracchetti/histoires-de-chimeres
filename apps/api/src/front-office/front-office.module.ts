@@ -16,12 +16,17 @@ import {
   type FrontOfficeScheduleReader,
   type LinkedPhoneReader,
   type LinkedPhoneRepository,
+  type NotificationSender,
+  type ScenarioRepository,
 } from '@chimeres/application';
 import { CLOCK } from '../clock/clock.token.js';
 import { ParisClock } from '../clock/paris-clock.js';
 import { CONVENTION_REPOSITORY } from '../convention/convention-repository.token.js';
 import { ConventionModule } from '../convention/convention.module.js';
+import { NOTIFICATION_SENDER } from '../notification/notification-sender.token.js';
 import { NotificationModule } from '../notification/notification.module.js';
+import { SCENARIO_REPOSITORY } from '../scenario/scenario-repository.token.js';
+import { ScenarioModule } from '../scenario/scenario.module.js';
 import { FRONT_OFFICE_SCHEDULE_READER } from './front-office-schedule-reader.token.js';
 import { FrontOfficeScheduleController } from './http/front-office-schedule.controller.js';
 import { FrontOfficeController } from './http/front-office.controller.js';
@@ -40,7 +45,7 @@ import { PresenceCodeAttempts } from './presence-code-attempts.js';
 const newPhoneId = () => randomBytes(32).toString('base64url');
 
 @Module({
-  imports: [ConventionModule, NotificationModule],
+  imports: [ConventionModule, NotificationModule, ScenarioModule],
   controllers: [
     FrontOfficeController,
     FrontOfficeScheduleController,
@@ -97,9 +102,17 @@ const newPhoneId = () => randomBytes(32).toString('base64url');
       useFactory: (
         conventions: ConventionRepository,
         phones: LinkedPhoneRepository,
+        scenarios: ScenarioRepository,
+        notifications: NotificationSender,
         clock: Clock,
-      ) => new SignUpForGame(conventions, phones, clock),
-      inject: [CONVENTION_REPOSITORY, LINKED_PHONE_REPOSITORY, CLOCK],
+      ) => new SignUpForGame(conventions, phones, scenarios, notifications, clock),
+      inject: [
+        CONVENTION_REPOSITORY,
+        LINKED_PHONE_REPOSITORY,
+        SCENARIO_REPOSITORY,
+        NOTIFICATION_SENDER,
+        CLOCK,
+      ],
     },
     {
       provide: WithdrawFromGame,

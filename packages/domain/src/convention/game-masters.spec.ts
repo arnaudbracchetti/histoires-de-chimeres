@@ -185,7 +185,9 @@ describe('MJ de la convention', () => {
     const convention = aConvention();
     convention.addGameMaster('g1', 'p-g1', 'Élodie');
     convention.addGameMaster('g2', 'p-g2', 'Kaïros');
-    const catalogue = ScenarioCatalogue.restore([{ id: 's1', gameMasterId: 'g2', duration: 1 }]);
+    const catalogue = ScenarioCatalogue.restore([
+      { id: 's1', gameMasterId: 'g2', duration: 1, maxSeats: 5 },
+    ]);
 
     convention.removeGameMaster('g1', catalogue);
 
@@ -196,8 +198,8 @@ describe('MJ de la convention', () => {
     const convention = aConvention();
     convention.addGameMaster('g1', 'p-g1', 'Élodie');
     const catalogue = ScenarioCatalogue.restore([
-      { id: 's1', gameMasterId: 'g1', duration: 1 },
-      { id: 's2', gameMasterId: 'g1', duration: 1 },
+      { id: 's1', gameMasterId: 'g1', duration: 1, maxSeats: 5 },
+      { id: 's2', gameMasterId: 'g1', duration: 1, maxSeats: 5 },
     ]);
 
     const refusal = refusalOf(() => convention.removeGameMaster('g1', catalogue));

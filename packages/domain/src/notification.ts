@@ -15,6 +15,11 @@ export type NotificationParams = {
    * `fromRanks` : ses anciens créneaux ; `toRanks` : les nouveaux.
    */
   'game-moved': { gameId: string; scenarioId: string; fromRanks: number[]; toRanks: number[] };
+  /**
+   * Aux inscrits d'une partie passée au-dessus de ses places maximum, dont c'est la seule
+   * inscription sur le créneau (IN-5). `rank` : le rang de son premier créneau.
+   */
+  'game-oversubscribed': { scenarioId: string; rank: number };
 };
 
 export type NotificationCode = keyof NotificationParams;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Scenario, type Duration } from '../scenario/scenario.js';
 import { Convention } from './convention.js';
 import type { LocalMoment } from './local-moment.js';
@@ -61,6 +62,13 @@ function aConvention(date: string | null = '2027-03-14'): Convention {
   return convention;
 }
 
+/** Les scénarios a, b et c, à 5 places maximum. */
+const CATALOGUE = ScenarioCatalogue.restore([
+  { id: 'a', gameMasterId: 'g1', duration: 1, maxSeats: 5 },
+  { id: 'b', gameMasterId: 'g2', duration: 2, maxSeats: 5 },
+  { id: 'c', gameMasterId: 'g1', duration: 1, maxSeats: 5 },
+]);
+
 const endOfDay = (time: string): LocalMoment => ({ date: '2027-03-14', time: at(time) });
 
 /**
@@ -86,9 +94,9 @@ function withGameMasterSignUps(convention: Convention, ...signUps: SignUp[]): Co
 describe('Notifications d’une partie déprogrammée (NO-2)', () => {
   it('préviennent ses inscrits, et son MJ avec un autre code, jusqu’à la fin de son créneau', () => {
     const convention = aConvention();
-    convention.signUpForGame('p1', 'brumes');
-    convention.signUpForGame('p2', 'brumes');
-    convention.signUpForGame('p2', 'neons');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'neons', CATALOGUE);
 
     const notifications = convention.unscheduleGame('brumes');
 
@@ -110,7 +118,7 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
 
   it('une partie double se désigne par ses deux créneaux, et court jusqu’à la fin du second', () => {
     const convention = aConvention();
-    convention.signUpForGame('p1', 'epice');
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
 
     const [toSignedUp] = convention.unscheduleGame('epice');
 
@@ -134,7 +142,7 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
 
   it('le MJ ne reçoit que la sienne, même inscrit à sa partie : la plus précise (NO-1)', () => {
     const convention = withGameMasterSignUps(aConvention(), new SignUp('p-g1', 'brumes'));
-    convention.signUpForGame('p1', 'brumes');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
 
     const notifications = convention.unscheduleGame('brumes');
 
@@ -148,8 +156,8 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
 describe('Notifications d’une partie déplacée (NO-2)', () => {
   it('préviennent ses inscrits quand elle passe à un autre créneau, jusqu’à la fin du plus tardif', () => {
     const convention = aConvention();
-    convention.signUpForGame('p1', 'brumes');
-    convention.signUpForGame('p2', 'neons');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'neons', CATALOGUE);
 
     const notifications = convention.moveGame('brumes', 's3', 't2');
 
@@ -166,7 +174,7 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
   it('courent jusqu’à la fin de son ancien créneau quand elle avance', () => {
     const convention = aConvention();
     convention.unscheduleGame('brumes');
-    convention.signUpForGame('p1', 'neons');
+    convention.signUpForGame('p1', 'neons', CATALOGUE);
 
     const [moved] = convention.moveGame('neons', 's1', 't3');
 
@@ -181,7 +189,7 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
 
   it('ne partent pas quand elle change seulement de table (NO-4)', () => {
     const convention = aConvention();
-    convention.signUpForGame('p1', 'brumes');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
 
     expect(convention.moveGame('brumes', 's1', 't3')).toEqual([]);
   });
@@ -200,9 +208,9 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
 describe('Notifications de deux parties échangées (NO-2)', () => {
   it('préviennent les inscrits de chacune, une notification par partie', () => {
     const convention = aConvention();
-    convention.signUpForGame('p1', 'brumes');
-    convention.signUpForGame('p1', 'neons');
-    convention.signUpForGame('p2', 'neons');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p1', 'neons', CATALOGUE);
+    convention.signUpForGame('p2', 'neons', CATALOGUE);
 
     const notifications = convention.swapGames('brumes', 'neons');
 
@@ -224,10 +232,178 @@ describe('Notifications de deux parties échangées (NO-2)', () => {
 
   it('ne partent pas pour deux parties d’un même créneau (NO-4)', () => {
     const convention = aConvention();
-    convention.signUpForGame('p1', 'brumes');
-    convention.signUpForGame('p2', 'epice');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'epice', CATALOGUE);
     convention.unscheduleGame('neons');
 
     expect(convention.swapGames('brumes', 'epice')).toEqual([]);
+  });
+});
+
+/** Le catalogue, avec ces places maximum pour certains scénarios. */
+function catalogueWithMaxSeats(maxSeats: Record<string, number>): ScenarioCatalogue {
+  return ScenarioCatalogue.restore(
+    CATALOGUE.listEntries().map((entry) => ({
+      ...entry,
+      maxSeats: maxSeats[entry.id] ?? entry.maxSeats,
+    })),
+  );
+}
+
+/** Identifie ces participants en plus, sous l'identifiant de leur pseudo. */
+function identify(convention: Convention, ...nicknames: string[]): void {
+  for (const nickname of nicknames)
+    convention.identifyByNickname(nickname, 'K7M2', nickname, null, NOW);
+}
+
+describe('Notification d’une partie très demandée par une inscription (NO-2, IN-5)', () => {
+  it('prévient ses inscrits, sauf l’auteur, quand elle passe au-dessus de ses places maximum', () => {
+    const convention = aConvention();
+    const catalogue = catalogueWithMaxSeats({ a: 2 });
+    convention.signUpForGame('p1', 'brumes', catalogue);
+    convention.signUpForGame('p2', 'brumes', catalogue);
+    identify(convention, 'Zoé');
+
+    const notifications = convention.signUpForGame('Zoé', 'brumes', catalogue);
+
+    expect(notifications).toEqual([
+      {
+        code: 'game-oversubscribed',
+        params: { scenarioId: 'a', rank: 1 },
+        recipients: { kind: 'participants', participantIds: ['p1', 'p2'] },
+        deadline: endOfDay('11:30'),
+      },
+    ]);
+  });
+
+  it('repart à chaque nouveau dépassement, même après une redescente', () => {
+    const convention = aConvention();
+    const catalogue = catalogueWithMaxSeats({ a: 1 });
+    convention.signUpForGame('p1', 'brumes', catalogue);
+    convention.signUpForGame('p2', 'brumes', catalogue);
+    convention.withdrawFromGame('p2', 'brumes');
+
+    const notifications = convention.signUpForGame('p2', 'brumes', catalogue);
+
+    expect(notifications?.map(({ recipients }) => recipients.participantIds)).toEqual([['p1']]);
+  });
+
+  it('ne part pas tant que la partie reste sous ses places maximum, ni quand elle les a déjà dépassées', () => {
+    const convention = aConvention();
+    const catalogue = catalogueWithMaxSeats({ a: 1 });
+    identify(convention, 'Zoé');
+
+    expect(convention.signUpForGame('p1', 'brumes', catalogue)).toEqual([]);
+    convention.signUpForGame('p2', 'brumes', catalogue);
+    expect(convention.signUpForGame('Zoé', 'brumes', catalogue)).toEqual([]);
+  });
+
+  it('ne part pas pour une inscription répétée : rien ne change', () => {
+    const convention = aConvention();
+    const catalogue = catalogueWithMaxSeats({ a: 1 });
+    convention.signUpForGame('p1', 'brumes', catalogue);
+    convention.signUpForGame('p2', 'brumes', catalogue);
+
+    expect(convention.signUpForGame('p2', 'brumes', catalogue)).toBeNull();
+  });
+
+  it('ne va pas à un inscrit qui a une autre inscription sur le créneau', () => {
+    const convention = aConvention();
+    const catalogue = catalogueWithMaxSeats({ a: 1 });
+    convention.signUpForGame('p1', 'brumes', catalogue);
+    convention.signUpForGame('p1', 'epice', catalogue);
+
+    expect(convention.signUpForGame('p2', 'brumes', catalogue)).toEqual([]);
+  });
+
+  it('une partie double se désigne par son premier créneau, et compte les inscriptions qui y commencent', () => {
+    const convention = aConvention();
+    const catalogue = catalogueWithMaxSeats({ b: 1 });
+    convention.signUpForGame('p1', 'epice', catalogue);
+    convention.signUpForGame('p1', 'neons', catalogue);
+
+    const [notification] = convention.signUpForGame('p2', 'epice', catalogue) ?? [];
+
+    expect(notification).toMatchObject({
+      params: { scenarioId: 'b', rank: 1 },
+      recipients: { participantIds: ['p1'] },
+      deadline: endOfDay('16:30'),
+    });
+  });
+
+  it('une inscription à une partie double ne compte pas sur son second créneau', () => {
+    const convention = aConvention();
+    const catalogue = catalogueWithMaxSeats({ c: 1 });
+    convention.signUpForGame('p1', 'neons', catalogue);
+    convention.signUpForGame('p1', 'epice', catalogue);
+
+    const notifications = convention.signUpForGame('p2', 'neons', catalogue);
+
+    expect(notifications?.map(({ params }) => params)).toEqual([{ scenarioId: 'c', rank: 2 }]);
+  });
+
+  it('ne compte pas l’inscription d’un MJ sur un créneau où il mène, ni ne le prévient (IN-4)', () => {
+    const convention = withGameMasterSignUps(aConvention(), new SignUp('p-g1', 'epice'));
+    const catalogue = catalogueWithMaxSeats({ b: 1 });
+
+    expect(convention.signUpForGame('p1', 'epice', catalogue)).toEqual([]);
+    expect(
+      convention
+        .signUpForGame('p2', 'epice', catalogue)
+        ?.map(({ recipients }) => recipients.participantIds),
+    ).toEqual([['p1']]);
+  });
+});
+
+describe('Notification d’une partie très demandée par une baisse des places (NO-2, PR-4)', () => {
+  /** Le scénario a de « brumes », à ces places maximum. */
+  const scenarioA = (max: number) => {
+    const scenario = aScenario('a', 'g1');
+    scenario.changeSeats({ min: 1, max });
+    return scenario;
+  };
+
+  it('prévient tous ses inscrits sans autre inscription sur le créneau', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'epice', CATALOGUE);
+
+    const notifications = convention.buildOversubscribedNotificationsAfterSeatsChange(
+      scenarioA(1),
+      scenarioA(5).seats,
+    );
+
+    expect(notifications).toEqual([
+      {
+        code: 'game-oversubscribed',
+        params: { scenarioId: 'a', rank: 1 },
+        recipients: { kind: 'participants', participantIds: ['p1'] },
+        deadline: endOfDay('11:30'),
+      },
+    ]);
+  });
+
+  it('ne part pas pour une partie déjà au-dessus de ses places maximum, ni qui reste en dessous', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'brumes', CATALOGUE);
+
+    expect(
+      convention.buildOversubscribedNotificationsAfterSeatsChange(scenarioA(1), scenarioA(1).seats),
+    ).toEqual([]);
+    expect(
+      convention.buildOversubscribedNotificationsAfterSeatsChange(scenarioA(2), scenarioA(5).seats),
+    ).toEqual([]);
+  });
+
+  it('ne part pas quand les places montent', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'brumes', CATALOGUE);
+
+    expect(
+      convention.buildOversubscribedNotificationsAfterSeatsChange(scenarioA(5), scenarioA(1).seats),
+    ).toEqual([]);
   });
 });

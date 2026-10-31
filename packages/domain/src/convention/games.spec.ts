@@ -186,7 +186,9 @@ describe('Programmer une partie double (PR-5, PR-8)', () => {
   });
 
   it('refuse le dernier créneau : pas de créneau suivant', () => {
-    expect(refusalOf(() => withThreeSlots().scheduleScenario('p1', double, 's3', 't1'))).toMatchObject({
+    expect(
+      refusalOf(() => withThreeSlots().scheduleScenario('p1', double, 's3', 't1')),
+    ).toMatchObject({
       code: 'no-next-time-slot',
       params: { rank: 3 },
     });
@@ -351,7 +353,9 @@ describe('Une disponibilité qui porte une partie (PR-15)', () => {
     expect(withdrawals[1]!.refusal).toEqual(
       refusalOf(() => convention.withdrawGameMasterAvailability('g1', 's2')),
     );
-    expect(convention.computeWithdrawalVerdicts('g2')).toEqual([{ timeSlotId: 's1', refusal: null }]);
+    expect(convention.computeWithdrawalVerdicts('g2')).toEqual([
+      { timeSlotId: 's1', refusal: null },
+    ]);
   });
 });
 
@@ -433,7 +437,9 @@ describe('Verdicts de placement', () => {
     for (const { timeSlotId, tableId, refusal } of verdicts) {
       const copy = withOneGame();
       if (refusal)
-        expect(refusalOf(() => copy.scheduleScenario('p2', brumes, timeSlotId, tableId))).toEqual(refusal);
+        expect(refusalOf(() => copy.scheduleScenario('p2', brumes, timeSlotId, tableId))).toEqual(
+          refusal,
+        );
       else expect(() => copy.scheduleScenario('p2', brumes, timeSlotId, tableId)).not.toThrow();
     }
   });
@@ -479,8 +485,13 @@ describe('Déplacer une partie (PR-17)', () => {
         new Table('t2', ComparableName.createFromText('Table 2')),
       ],
       gameMasters: [
-        new GameMaster('g1', new Participant('p-g1', ComparableName.createFromText('Élodie')), ['s1', 's2']),
-        new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), ['s1']),
+        new GameMaster('g1', new Participant('p-g1', ComparableName.createFromText('Élodie')), [
+          's1',
+          's2',
+        ]),
+        new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), [
+          's1',
+        ]),
       ],
       participants: [],
       signUps: [],
@@ -609,8 +620,14 @@ describe('Échanger deux parties (PR-17)', () => {
       ],
       tables: [new Table('t1', ComparableName.createFromText('Table 1'))],
       gameMasters: [
-        new GameMaster('g1', new Participant('p-g1', ComparableName.createFromText('Élodie')), ['s1', 's2']),
-        new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), ['s1', 's2']),
+        new GameMaster('g1', new Participant('p-g1', ComparableName.createFromText('Élodie')), [
+          's1',
+          's2',
+        ]),
+        new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), [
+          's1',
+          's2',
+        ]),
       ],
       participants: [],
       signUps: [],
@@ -675,9 +692,18 @@ describe('Échanger deux parties (PR-17)', () => {
           new Table('t2', ComparableName.createFromText('Table 2')),
         ],
         gameMasters: [
-          new GameMaster('g1', new Participant('p-g1', ComparableName.createFromText('Élodie')), elodie),
-          new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), ['s1', 's2']),
-          new GameMaster('g3', new Participant('p-g3', ComparableName.createFromText('Moïra')), ['s3']),
+          new GameMaster(
+            'g1',
+            new Participant('p-g1', ComparableName.createFromText('Élodie')),
+            elodie,
+          ),
+          new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), [
+            's1',
+            's2',
+          ]),
+          new GameMaster('g3', new Participant('p-g3', ComparableName.createFromText('Moïra')), [
+            's3',
+          ]),
         ],
         participants: [],
         signUps: [],
@@ -734,7 +760,10 @@ describe('Échanger deux parties (PR-17)', () => {
             's2',
             's3',
           ]),
-          new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), ['s1', 's2']),
+          new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), [
+            's1',
+            's2',
+          ]),
         ],
         participants: [],
         signUps: [],
@@ -764,7 +793,7 @@ describe('Déprogrammer une partie (PR-17)', () => {
 
     expect(convention.games.map(({ id }) => id)).toEqual(['p2']);
     const catalogue = ScenarioCatalogue.restore([
-      { id: neons.id, gameMasterId: 'g1', duration: 1 },
+      { id: neons.id, gameMasterId: 'g1', duration: 1, maxSeats: 5 },
     ]);
     expect(convention.computeReserve(catalogue)[0]!.timeSlots[0]).toMatchObject({
       inReserve: true,
@@ -856,8 +885,14 @@ describe('Verdicts de déplacement', () => {
         new Table('t2', ComparableName.createFromText('Table 2')),
       ],
       gameMasters: [
-        new GameMaster('g1', new Participant('p-g1', ComparableName.createFromText('Élodie')), ['s1', 's2']),
-        new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), ['s1', 's2']),
+        new GameMaster('g1', new Participant('p-g1', ComparableName.createFromText('Élodie')), [
+          's1',
+          's2',
+        ]),
+        new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), [
+          's1',
+          's2',
+        ]),
       ],
       participants: [],
       signUps: [],
@@ -887,11 +922,14 @@ describe('Verdicts de déplacement', () => {
 
 describe('Réserve (PR-6)', () => {
   const catalogue = ScenarioCatalogue.restore(
-    [neons, ruines, brumes, aScenario('d', 'g1', 2)].map(({ id, gameMasterId, duration }) => ({
-      id,
-      gameMasterId,
-      duration,
-    })),
+    [neons, ruines, brumes, aScenario('d', 'g1', 2)].map(
+      ({ id, gameMasterId, duration, seats }) => ({
+        id,
+        gameMasterId,
+        duration,
+        maxSeats: seats.max,
+      }),
+    ),
   );
 
   /** `réserve` ou `programmé` par créneau, `-` pour ni l'un ni l'autre. */
@@ -964,10 +1002,11 @@ describe('Réserve (PR-6)', () => {
   it('… ou son MJ mène déjà une autre partie sur chacune de ses disponibilités', () => {
     const abysses = aScenario('e', 'g2');
     const withAbysses = ScenarioCatalogue.restore(
-      [neons, ruines, brumes, abysses].map(({ id, gameMasterId, duration }) => ({
+      [neons, ruines, brumes, abysses].map(({ id, gameMasterId, duration, seats }) => ({
         id,
         gameMasterId,
         duration,
+        maxSeats: seats.max,
       })),
     );
     const convention = aConvention();
@@ -985,7 +1024,7 @@ describe('Réserve (PR-6)', () => {
   describe('un scénario double', () => {
     const double = aScenario('e', 'g2', 2);
     const withDouble = ScenarioCatalogue.restore([
-      { id: double.id, gameMasterId: 'g2', duration: 2 },
+      { id: double.id, gameMasterId: 'g2', duration: 2, maxSeats: 5 },
     ]);
     /** Kaïros (g2) disponible sur s1 et s2, puis s3 (17 h – 19 h 30), sans disponibilité. */
     const withThreeSlots = () => {

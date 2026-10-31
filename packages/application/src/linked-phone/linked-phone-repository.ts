@@ -24,7 +24,9 @@ export interface LinkedPhoneRepository {
    */
   savePushSubscription(phoneId: string, subscription: PushSubscriptionBody): Promise<void>;
   /** Les abonnements push des téléphones reliés, à cet instant, aux destinataires (NO-1). */
-  pushSubscriptionsOf(recipients: NotificationRecipients): Promise<PushSubscriptionBody[]>;
+  listPushSubscriptionsOfRecipients(
+    recipients: NotificationRecipients,
+  ): Promise<PushSubscriptionBody[]>;
   /** Efface l'abonnement mort (404 ou 410 du service push) ; le lien du téléphone reste. */
   erasePushSubscription(endpoint: string): Promise<void>;
 }
