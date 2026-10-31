@@ -114,6 +114,20 @@ _Avoid_: Vœu, choix, réservation, Registration
 **Partie très demandée** · `OversubscribedGame`:
 Partie dont le nombre d'inscrits dépasse le nombre de places maximum.
 
+**Partie sûre** · `SafeGame`:
+Partie dont le nombre d'inscrits est entre ses places minimum et maximum.
+
+**Demande** · `Demand`:
+Nombre de participants qui ont au moins une inscription qui compte sur un créneau. Un participant inscrit à plusieurs parties du créneau compte pour un.
+
+**Capacité** · `Capacity`:
+Places d'un créneau : de la somme des places minimum à la somme des places maximum des parties qui y commencent.
+_Avoid_: Plancher
+
+**Avertissement de suivi** · `SignUpWarning`:
+Signal qui attire l'œil d'un Organisateur, avant le tirage, sur un créneau, une partie ou un participant qui demande peut-être un ajustement : places qui manquent, trop de parties, partie sous son minimum, participant qui risque de rester sans table.
+_Avoid_: Avertissement (seul, réservé aux avertissements de contenu), alerte
+
 **Tirage** · `Draw`:
 Répartition aléatoire des participants inscrits sur les parties d'un créneau, en respectant leurs inscriptions, avec pour objectif que chaque inscrit puisse jouer. Son résultat reste provisoire tant qu'un Organisateur ne l'a pas publié.
 _Avoid_: Loterie, matching, draft, Lottery
