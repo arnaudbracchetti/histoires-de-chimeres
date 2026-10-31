@@ -33,7 +33,7 @@ export class Identify {
     const identification = await changeConvention(
       this.conventions,
       (convention) =>
-        convention.identify(participantId, presenceCode, nickname, confirmation, this.clock.now()),
+        convention.identifyByNickname(participantId, presenceCode, nickname, confirmation, this.clock.now()),
       (identification) => identification.verdict === 'link' && identification.created,
     );
     if (identification.verdict === 'confirm') {

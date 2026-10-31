@@ -10,7 +10,7 @@ export class ContentWarnings {
     readonly text: string,
   ) {}
 
-  static of(text: string): ContentWarnings {
+  static createFromText(text: string): ContentWarnings {
     const trimmed = text.trim();
     if (trimmed.length > ContentWarnings.MAX_LENGTH) {
       throw new Refusal('content-warnings-too-long', { max: ContentWarnings.MAX_LENGTH });

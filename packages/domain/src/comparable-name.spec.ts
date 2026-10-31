@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ComparableName } from './comparable-name.js';
 
-const name = ComparableName.of;
+const name = ComparableName.createFromText;
 
 describe('ComparableName (ID-7, PR-9)', () => {
   it.each(['dragon', 'Dragón', '  Dragon  ', 'DRAGON'])(

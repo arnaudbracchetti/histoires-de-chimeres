@@ -18,9 +18,9 @@ export class ReadParticipantSituation {
   /** `phoneId` : le cookie du téléphone. Sans cookie, ou relié à aucun pseudo : `PhoneNotLinkedError`. */
   async execute(phoneId: string | null): Promise<ParticipantSituationDto> {
     const convention = await this.conventions.get();
-    convention.verifyOpenAt(this.clock.now());
+    convention.verifyStillOpenAt(this.clock.now());
     const phone = phoneId ? await this.phones.find(phoneId) : null;
     if (!phone) throw new PhoneNotLinkedError();
-    return convention.situationOf(phone.participantId);
+    return convention.computeParticipantSituation(phone.participantId);
   }
 }

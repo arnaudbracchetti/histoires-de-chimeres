@@ -30,7 +30,7 @@ function aConvention(): Convention {
     signUps: [],
     games: [],
     version: 0,
-    presenceCode: PresenceCode.of('K7M2'),
+    presenceCode: PresenceCode.parse('K7M2'),
   });
   convention.addTimeSlot('s1', at('09:00'), at('11:30'));
   convention.addTimeSlot('s2', at('14:00'), at('16:30'));
@@ -38,9 +38,9 @@ function aConvention(): Convention {
   convention.addTable('t2', 'Table 2');
   convention.addGameMaster('g1', 'p-g1', 'Élodie');
   convention.addGameMaster('g2', 'p-g2', 'Kaïros');
-  convention.declareAvailability('g1', 's1');
-  convention.declareAvailability('g1', 's2');
-  convention.declareAvailability('g2', 's1');
+  convention.declareGameMasterAvailability('g1', 's1');
+  convention.declareGameMasterAvailability('g1', 's2');
+  convention.declareGameMasterAvailability('g2', 's1');
   return convention;
 }
 
@@ -73,7 +73,7 @@ describe('Programmer une partie (PR-3)', () => {
   it('programme un scénario sur un créneau et une table', () => {
     const convention = aConvention();
 
-    convention.schedule('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
 
     expect(convention.games).toEqual([
       expect.objectContaining({
@@ -89,8 +89,8 @@ describe('Programmer une partie (PR-3)', () => {
   it('programme plusieurs fois le même scénario', () => {
     const convention = aConvention();
 
-    convention.schedule('p1', neons, 's1', 't1');
-    convention.schedule('p2', neons, 's2', 't1');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p2', neons, 's2', 't1');
 
     expect(convention.games.map(({ id }) => id)).toEqual(['p1', 'p2']);
   });
@@ -98,10 +98,10 @@ describe('Programmer une partie (PR-3)', () => {
   it('refuse un créneau ou une table inconnus', () => {
     const convention = aConvention();
 
-    expect(refusalOf(() => convention.schedule('p1', neons, 'x', 't1')).code).toBe(
+    expect(refusalOf(() => convention.scheduleScenario('p1', neons, 'x', 't1')).code).toBe(
       'time-slot-not-found',
     );
-    expect(refusalOf(() => convention.schedule('p1', neons, 's1', 'x')).code).toBe(
+    expect(refusalOf(() => convention.scheduleScenario('p1', neons, 's1', 'x')).code).toBe(
       'table-not-found',
     );
   });
@@ -109,7 +109,7 @@ describe('Programmer une partie (PR-3)', () => {
 
 describe('Contraintes de programmation (PR-5)', () => {
   it('refuse un créneau où le MJ est indisponible', () => {
-    const refusal = refusalOf(() => aConvention().schedule('p1', brumes, 's2', 't1'));
+    const refusal = refusalOf(() => aConvention().scheduleScenario('p1', brumes, 's2', 't1'));
 
     expect(refusal).toMatchObject({
       code: 'game-master-unavailable',
@@ -119,9 +119,9 @@ describe('Contraintes de programmation (PR-5)', () => {
 
   it('refuse un MJ qui mène déjà une partie sur le créneau', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
 
-    const refusal = refusalOf(() => convention.schedule('p2', ruines, 's1', 't2'));
+    const refusal = refusalOf(() => convention.scheduleScenario('p2', ruines, 's1', 't2'));
 
     expect(refusal).toMatchObject({
       code: 'game-master-busy',
@@ -131,9 +131,9 @@ describe('Contraintes de programmation (PR-5)', () => {
 
   it('refuse une table déjà prise sur le créneau', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
 
-    const refusal = refusalOf(() => convention.schedule('p2', brumes, 's1', 't1'));
+    const refusal = refusalOf(() => convention.scheduleScenario('p2', brumes, 's1', 't1'));
 
     expect(refusal).toMatchObject({
       code: 'table-taken',
@@ -143,19 +143,19 @@ describe('Contraintes de programmation (PR-5)', () => {
 
   it('donne le MJ occupé avant la table prise', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
-    convention.schedule('p2', brumes, 's1', 't2');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p2', brumes, 's1', 't2');
 
-    expect(refusalOf(() => convention.schedule('p3', ruines, 's1', 't2')).code).toBe(
+    expect(refusalOf(() => convention.scheduleScenario('p3', ruines, 's1', 't2')).code).toBe(
       'game-master-busy',
     );
   });
 
   it("donne l'indisponibilité avant la table prise", () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's2', 't1');
+    convention.scheduleScenario('p1', neons, 's2', 't1');
 
-    expect(refusalOf(() => convention.schedule('p2', brumes, 's2', 't1')).code).toBe(
+    expect(refusalOf(() => convention.scheduleScenario('p2', brumes, 's2', 't1')).code).toBe(
       'game-master-unavailable',
     );
   });
@@ -171,14 +171,14 @@ describe('Programmer une partie double (PR-5, PR-8)', () => {
   const withThreeSlots = () => {
     const convention = aConvention();
     convention.addTimeSlot('s3', at('16:30'), at('19:00'));
-    convention.declareAvailability('g1', 's3');
+    convention.declareGameMasterAvailability('g1', 's3');
     return convention;
   };
 
   it('prend le créneau consécutif, sur la même table, même séparé par une pause', () => {
     const convention = withThreeSlots();
 
-    convention.schedule('p1', double, 's1', 't1');
+    convention.scheduleScenario('p1', double, 's1', 't1');
 
     expect(convention.games).toEqual([
       expect.objectContaining({ id: 'p1', tableId: 't1', timeSlotIds: ['s1', 's2'] }),
@@ -186,7 +186,7 @@ describe('Programmer une partie double (PR-5, PR-8)', () => {
   });
 
   it('refuse le dernier créneau : pas de créneau suivant', () => {
-    expect(refusalOf(() => withThreeSlots().schedule('p1', double, 's3', 't1'))).toMatchObject({
+    expect(refusalOf(() => withThreeSlots().scheduleScenario('p1', double, 's3', 't1'))).toMatchObject({
       code: 'no-next-time-slot',
       params: { rank: 3 },
     });
@@ -194,9 +194,9 @@ describe('Programmer une partie double (PR-5, PR-8)', () => {
 
   it('refuse un MJ qui mène déjà une partie sur le second créneau', () => {
     const convention = withThreeSlots();
-    convention.schedule('p1', neons, 's2', 't2');
+    convention.scheduleScenario('p1', neons, 's2', 't2');
 
-    expect(refusalOf(() => convention.schedule('p2', double, 's1', 't1'))).toMatchObject({
+    expect(refusalOf(() => convention.scheduleScenario('p2', double, 's1', 't1'))).toMatchObject({
       code: 'game-master-busy',
       params: { nickname: 'Élodie', rank: 2 },
     });
@@ -204,10 +204,10 @@ describe('Programmer une partie double (PR-5, PR-8)', () => {
 
   it('refuse une table prise sur le second créneau', () => {
     const convention = withThreeSlots();
-    convention.declareAvailability('g2', 's2');
-    convention.schedule('p1', brumes, 's2', 't1');
+    convention.declareGameMasterAvailability('g2', 's2');
+    convention.scheduleScenario('p1', brumes, 's2', 't1');
 
-    expect(refusalOf(() => convention.schedule('p2', double, 's1', 't1'))).toMatchObject({
+    expect(refusalOf(() => convention.scheduleScenario('p2', double, 's1', 't1'))).toMatchObject({
       code: 'table-taken',
       params: { table: 'Table 1', rank: 2 },
     });
@@ -215,9 +215,9 @@ describe('Programmer une partie double (PR-5, PR-8)', () => {
 
   it('refuse un MJ indisponible sur le second créneau', () => {
     const convention = withThreeSlots();
-    convention.withdrawAvailability('g1', 's2');
+    convention.withdrawGameMasterAvailability('g1', 's2');
 
-    expect(refusalOf(() => convention.schedule('p1', double, 's1', 't1'))).toMatchObject({
+    expect(refusalOf(() => convention.scheduleScenario('p1', double, 's1', 't1'))).toMatchObject({
       code: 'game-master-unavailable',
       params: { nickname: 'Élodie', rank: 2 },
     });
@@ -225,7 +225,7 @@ describe('Programmer une partie double (PR-5, PR-8)', () => {
 
   it("donne pour chaque case le refus même de l'écriture", () => {
     const verdicts = withThreeSlots()
-      .placementsOfScenario(double)
+      .computePlacementVerdicts(double)
       .map(({ timeSlotId, tableId, refusal }) => [timeSlotId, tableId, refusal?.code ?? null]);
 
     expect(verdicts).toEqual([
@@ -243,7 +243,7 @@ describe('Créneau inséré dans une partie double (PR-11)', () => {
   /** « p1 » double sur s1 (9 h – 11 h 30) et s2 (14 h – 16 h 30), à la table t1. */
   const withDouble = () => {
     const convention = aConvention();
-    convention.schedule('p1', aScenario('d', 'g1', 2), 's1', 't1');
+    convention.scheduleScenario('p1', aScenario('d', 'g1', 2), 's1', 't1');
     return convention;
   };
 
@@ -279,8 +279,8 @@ describe('Créneau inséré dans une partie double (PR-11)', () => {
 describe('Ce qui porte des parties (PR-10)', () => {
   it('refuse de supprimer un créneau qui porte des parties, avec leur nombre', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
-    convention.schedule('p2', brumes, 's1', 't2');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p2', brumes, 's1', 't2');
 
     expect(refusalOf(() => convention.removeTimeSlot('s1'))).toMatchObject({
       code: 'time-slot-has-games',
@@ -288,15 +288,15 @@ describe('Ce qui porte des parties (PR-10)', () => {
     });
     convention.removeTimeSlot('s2');
     expect(convention.timeSlots.map(({ id }) => id)).toEqual(['s1']);
-    convention.unschedule('p1');
-    convention.unschedule('p2');
+    convention.unscheduleGame('p1');
+    convention.unscheduleGame('p2');
     convention.removeTimeSlot('s1');
     expect(convention.timeSlots).toEqual([]);
   });
 
   it('refuse de supprimer une table qui porte des parties, avec leur nombre', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
 
     expect(refusalOf(() => convention.removeTable('t1'))).toMatchObject({
       code: 'table-has-games',
@@ -306,7 +306,7 @@ describe('Ce qui porte des parties (PR-10)', () => {
     expect(convention.tables.map(({ id }) => id)).toEqual(['t1']);
     convention.renameTable('t1', 'Dragon');
     expect(convention.tables[0]!.name.text).toBe('Dragon');
-    convention.unschedule('p1');
+    convention.unscheduleGame('p1');
     convention.removeTable('t1');
     expect(convention.tables).toEqual([]);
   });
@@ -315,22 +315,22 @@ describe('Ce qui porte des parties (PR-10)', () => {
 describe('Une disponibilité qui porte une partie (PR-15)', () => {
   it('refuse de la retirer, puis accepte après la déprogrammation', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
 
-    expect(refusalOf(() => convention.withdrawAvailability('g1', 's1'))).toMatchObject({
+    expect(refusalOf(() => convention.withdrawGameMasterAvailability('g1', 's1'))).toMatchObject({
       code: 'availability-has-game',
       params: { nickname: 'Élodie', rank: 1 },
     });
-    convention.unschedule('p1');
-    convention.withdrawAvailability('g1', 's1');
+    convention.unscheduleGame('p1');
+    convention.withdrawGameMasterAvailability('g1', 's1');
     expect(convention.gameMasters[0]!.isAvailableOnTimeSlot('s1')).toBe(false);
   });
 
   it('refuse de retirer le second créneau d’une partie double', () => {
     const convention = aConvention();
-    convention.schedule('p1', aScenario('d', 'g1', 2), 's1', 't1');
+    convention.scheduleScenario('p1', aScenario('d', 'g1', 2), 's1', 't1');
 
-    expect(refusalOf(() => convention.withdrawAvailability('g1', 's2'))).toMatchObject({
+    expect(refusalOf(() => convention.withdrawGameMasterAvailability('g1', 's2'))).toMatchObject({
       code: 'availability-has-game',
       params: { rank: 2 },
     });
@@ -338,9 +338,9 @@ describe('Une disponibilité qui porte une partie (PR-15)', () => {
 
   it('donne, pour chaque disponibilité du MJ, le refus même du retrait, ou rien', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's2', 't1');
+    convention.scheduleScenario('p1', neons, 's2', 't1');
 
-    const withdrawals = convention.withdrawalsOfGameMaster('g1');
+    const withdrawals = convention.computeWithdrawalVerdicts('g1');
 
     expect(
       withdrawals.map(({ timeSlotId, refusal }) => [timeSlotId, refusal?.code ?? null]),
@@ -349,17 +349,17 @@ describe('Une disponibilité qui porte une partie (PR-15)', () => {
       ['s2', 'availability-has-game'],
     ]);
     expect(withdrawals[1]!.refusal).toEqual(
-      refusalOf(() => convention.withdrawAvailability('g1', 's2')),
+      refusalOf(() => convention.withdrawGameMasterAvailability('g1', 's2')),
     );
-    expect(convention.withdrawalsOfGameMaster('g2')).toEqual([{ timeSlotId: 's1', refusal: null }]);
+    expect(convention.computeWithdrawalVerdicts('g2')).toEqual([{ timeSlotId: 's1', refusal: null }]);
   });
 });
 
 describe('Heures d’un créneau qui porte une partie (PR-11)', () => {
   it('refuse de les changer, avec le nombre de parties', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
-    convention.schedule('p2', brumes, 's1', 't2');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p2', brumes, 's1', 't2');
 
     expect(
       refusalOf(() => convention.changeTimeSlotHours('s1', at('08:00'), at('10:30'))),
@@ -368,10 +368,10 @@ describe('Heures d’un créneau qui porte une partie (PR-11)', () => {
 
   it('les accepte une fois les parties déprogrammées et les disponibilités retirées', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
-    convention.unschedule('p1');
-    convention.withdrawAvailability('g1', 's1');
-    convention.withdrawAvailability('g2', 's1');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
+    convention.unscheduleGame('p1');
+    convention.withdrawGameMasterAvailability('g1', 's1');
+    convention.withdrawGameMasterAvailability('g2', 's1');
 
     convention.changeTimeSlotHours('s1', at('08:00'), at('10:30'));
 
@@ -383,28 +383,28 @@ describe('Scénario qui a des parties (PR-14)', () => {
   it('refuse de changer sa durée, puis accepte après la déprogrammation', () => {
     const convention = aConvention();
     const scenario = aScenario('e', 'g1');
-    convention.schedule('p1', scenario, 's1', 't1');
+    convention.scheduleScenario('p1', scenario, 's1', 't1');
 
     expect(refusalOf(() => scenario.changeDuration(2, convention))).toMatchObject({
       code: 'scenario-duration-locked',
     });
     scenario.changeDuration(1, convention);
-    convention.unschedule('p1');
+    convention.unscheduleGame('p1');
     scenario.changeDuration(2, convention);
     expect(scenario.duration).toBe(2);
   });
 
   it('refuse de le supprimer, puis accepte après la déprogrammation', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
 
-    expect(refusalOf(() => neons.remove(convention))).toMatchObject({
+    expect(refusalOf(() => neons.verifyRemovable(convention))).toMatchObject({
       code: 'scenario-has-games',
     });
-    expect(convention.scenarioHasGames('a')).toBe(true);
-    expect(convention.scenarioHasGames('b')).toBe(false);
-    convention.unschedule('p1');
-    expect(() => neons.remove(convention)).not.toThrow();
+    expect(convention.isScenarioScheduled('a')).toBe(true);
+    expect(convention.isScenarioScheduled('b')).toBe(false);
+    convention.unscheduleGame('p1');
+    expect(() => neons.verifyRemovable(convention)).not.toThrow();
   });
 });
 
@@ -412,11 +412,11 @@ describe('Verdicts de placement', () => {
   it("donne, pour chaque case, le refus même de l'écriture, ou rien", () => {
     const withOneGame = () => {
       const convention = aConvention();
-      convention.schedule('p1', neons, 's1', 't1');
+      convention.scheduleScenario('p1', neons, 's1', 't1');
       return convention;
     };
 
-    const verdicts = withOneGame().placementsOfScenario(brumes);
+    const verdicts = withOneGame().computePlacementVerdicts(brumes);
 
     expect(
       verdicts.map(({ timeSlotId, tableId, refusal }) => [
@@ -433,8 +433,8 @@ describe('Verdicts de placement', () => {
     for (const { timeSlotId, tableId, refusal } of verdicts) {
       const copy = withOneGame();
       if (refusal)
-        expect(refusalOf(() => copy.schedule('p2', brumes, timeSlotId, tableId))).toEqual(refusal);
-      else expect(() => copy.schedule('p2', brumes, timeSlotId, tableId)).not.toThrow();
+        expect(refusalOf(() => copy.scheduleScenario('p2', brumes, timeSlotId, tableId))).toEqual(refusal);
+      else expect(() => copy.scheduleScenario('p2', brumes, timeSlotId, tableId)).not.toThrow();
     }
   });
 });
@@ -448,7 +448,7 @@ describe('Déplacer une partie (PR-17)', () => {
 
   it('déplace une partie vers un autre créneau, puis vers une autre table', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
 
     convention.moveGame('p1', 's2', 't1');
     expect(placeOf(convention, 'p1')).toEqual(['t1', ['s2']]);
@@ -458,7 +458,7 @@ describe('Déplacer une partie (PR-17)', () => {
 
   it('accepte sa propre case, sans rien changer', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
 
     convention.moveGame('p1', 's1', 't1');
 
@@ -475,18 +475,18 @@ describe('Déplacer une partie (PR-17)', () => {
         new TimeSlot('s2', at('14:00'), at('16:30')),
       ],
       tables: [
-        new Table('t1', ComparableName.of('Table 1')),
-        new Table('t2', ComparableName.of('Table 2')),
+        new Table('t1', ComparableName.createFromText('Table 1')),
+        new Table('t2', ComparableName.createFromText('Table 2')),
       ],
       gameMasters: [
-        new GameMaster('g1', new Participant('p-g1', ComparableName.of('Élodie')), ['s1', 's2']),
-        new GameMaster('g2', new Participant('p-g2', ComparableName.of('Kaïros')), ['s1']),
+        new GameMaster('g1', new Participant('p-g1', ComparableName.createFromText('Élodie')), ['s1', 's2']),
+        new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), ['s1']),
       ],
       participants: [],
       signUps: [],
       games: [new Game('p1', 'a', 'g1', 't1', ['s1']), new Game('p2', 'c', 'g2', 't2', ['s1'])],
       version: 0,
-      presenceCode: PresenceCode.of('K7M2'),
+      presenceCode: PresenceCode.parse('K7M2'),
     });
 
     convention.moveGame('p1', 's2', 't1');
@@ -499,8 +499,8 @@ describe('Déplacer une partie (PR-17)', () => {
 
   it('refuse une case prise par une autre partie', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
-    convention.schedule('p2', brumes, 's1', 't2');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p2', brumes, 's1', 't2');
 
     expect(refusalOf(() => convention.moveGame('p1', 's1', 't2'))).toMatchObject({
       code: 'table-taken',
@@ -510,8 +510,8 @@ describe('Déplacer une partie (PR-17)', () => {
 
   it('refuse un créneau où le MJ mène déjà une partie', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
-    convention.schedule('p2', ruines, 's2', 't1');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p2', ruines, 's2', 't1');
 
     expect(refusalOf(() => convention.moveGame('p1', 's2', 't2'))).toMatchObject({
       code: 'game-master-busy',
@@ -521,7 +521,7 @@ describe('Déplacer une partie (PR-17)', () => {
 
   it('refuse un créneau où le MJ est indisponible', () => {
     const convention = aConvention();
-    convention.schedule('p1', brumes, 's1', 't1');
+    convention.scheduleScenario('p1', brumes, 's1', 't1');
 
     expect(refusalOf(() => convention.moveGame('p1', 's2', 't1')).code).toBe(
       'game-master-unavailable',
@@ -530,7 +530,7 @@ describe('Déplacer une partie (PR-17)', () => {
 
   it('refuse une partie, un créneau ou une table inconnus', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
 
     expect(refusalOf(() => convention.moveGame('x', 's1', 't1')).code).toBe('game-not-found');
     expect(refusalOf(() => convention.moveGame('p1', 'x', 't1')).code).toBe('time-slot-not-found');
@@ -549,9 +549,9 @@ describe('Déplacer une partie (PR-17)', () => {
           new TimeSlot('s1', at('09:00'), at('11:30')),
           new TimeSlot('s2', at('14:00'), at('16:30')),
         ],
-        tables: [new Table('t1', ComparableName.of('Table 1'))],
+        tables: [new Table('t1', ComparableName.createFromText('Table 1'))],
         gameMasters: [
-          new GameMaster('g1', new Participant('p-g1', ComparableName.of('Élodie')), [
+          new GameMaster('g1', new Participant('p-g1', ComparableName.createFromText('Élodie')), [
             's1',
             's2',
             's3',
@@ -561,7 +561,7 @@ describe('Déplacer une partie (PR-17)', () => {
         signUps: [],
         games: [new Game('p1', 'd', 'g1', 't1', ['s1', 's2'])],
         version: 0,
-        presenceCode: PresenceCode.of('K7M2'),
+        presenceCode: PresenceCode.parse('K7M2'),
       });
 
     it('se déplace par son premier créneau, et prend le suivant avec lui', () => {
@@ -589,8 +589,8 @@ describe('Échanger deux parties (PR-17)', () => {
 
   it('échange deux parties sur deux tables', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
-    convention.schedule('p2', brumes, 's1', 't2');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p2', brumes, 's1', 't2');
 
     convention.swapGames('p1', 'p2');
 
@@ -607,16 +607,16 @@ describe('Échanger deux parties (PR-17)', () => {
         new TimeSlot('s1', at('09:00'), at('11:30')),
         new TimeSlot('s2', at('14:00'), at('16:30')),
       ],
-      tables: [new Table('t1', ComparableName.of('Table 1'))],
+      tables: [new Table('t1', ComparableName.createFromText('Table 1'))],
       gameMasters: [
-        new GameMaster('g1', new Participant('p-g1', ComparableName.of('Élodie')), ['s1', 's2']),
-        new GameMaster('g2', new Participant('p-g2', ComparableName.of('Kaïros')), ['s1', 's2']),
+        new GameMaster('g1', new Participant('p-g1', ComparableName.createFromText('Élodie')), ['s1', 's2']),
+        new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), ['s1', 's2']),
       ],
       participants: [],
       signUps: [],
       games: [new Game('p1', 'a', 'g1', 't1', ['s1']), new Game('p2', 'c', 'g2', 't1', ['s2'])],
       version: 0,
-      presenceCode: PresenceCode.of('K7M2'),
+      presenceCode: PresenceCode.parse('K7M2'),
     });
 
     convention.swapGames('p2', 'p1');
@@ -629,8 +629,8 @@ describe('Échanger deux parties (PR-17)', () => {
 
   it("refuse si l'une des deux ne peut pas prendre la place de l'autre, sans rien changer", () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's2', 't1');
-    convention.schedule('p2', brumes, 's1', 't2');
+    convention.scheduleScenario('p1', neons, 's2', 't1');
+    convention.scheduleScenario('p2', brumes, 's1', 't2');
 
     for (const [a, b] of [
       ['p1', 'p2'],
@@ -647,7 +647,7 @@ describe('Échanger deux parties (PR-17)', () => {
 
   it('refuse une partie avec elle-même, ou une partie inconnue', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
 
     expect(refusalOf(() => convention.swapGames('p1', 'p1')).code).toBe('game-swapped-with-itself');
     expect(refusalOf(() => convention.swapGames('p1', 'x')).code).toBe('game-not-found');
@@ -671,13 +671,13 @@ describe('Échanger deux parties (PR-17)', () => {
           new TimeSlot('s3', at('17:00'), at('19:30')),
         ],
         tables: [
-          new Table('t1', ComparableName.of('Table 1')),
-          new Table('t2', ComparableName.of('Table 2')),
+          new Table('t1', ComparableName.createFromText('Table 1')),
+          new Table('t2', ComparableName.createFromText('Table 2')),
         ],
         gameMasters: [
-          new GameMaster('g1', new Participant('p-g1', ComparableName.of('Élodie')), elodie),
-          new GameMaster('g2', new Participant('p-g2', ComparableName.of('Kaïros')), ['s1', 's2']),
-          new GameMaster('g3', new Participant('p-g3', ComparableName.of('Moïra')), ['s3']),
+          new GameMaster('g1', new Participant('p-g1', ComparableName.createFromText('Élodie')), elodie),
+          new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), ['s1', 's2']),
+          new GameMaster('g3', new Participant('p-g3', ComparableName.createFromText('Moïra')), ['s3']),
         ],
         participants: [],
         signUps: [],
@@ -686,7 +686,7 @@ describe('Échanger deux parties (PR-17)', () => {
           new Game('p2', 'c', 'g2', 't2', ['s2']),
         ],
         version: 0,
-        presenceCode: PresenceCode.of('K7M2'),
+        presenceCode: PresenceCode.parse('K7M2'),
       });
 
     it('la partie double prend le premier créneau de l’autre, et le suivant avec lui', () => {
@@ -700,7 +700,7 @@ describe('Échanger deux parties (PR-17)', () => {
 
     it('refuse une table prise sur le créneau suivant', () => {
       const convention = withDouble();
-      convention.schedule('p3', aScenario('m', 'g3'), 's3', 't2');
+      convention.scheduleScenario('p3', aScenario('m', 'g3'), 's3', 't2');
 
       expect(refusalOf(() => convention.swapGames('p2', 'p1'))).toMatchObject({
         code: 'table-taken',
@@ -727,14 +727,14 @@ describe('Échanger deux parties (PR-17)', () => {
           new TimeSlot('s2', at('14:00'), at('16:30')),
           new TimeSlot('s3', at('17:00'), at('19:30')),
         ],
-        tables: [new Table('t1', ComparableName.of('Table 1'))],
+        tables: [new Table('t1', ComparableName.createFromText('Table 1'))],
         gameMasters: [
-          new GameMaster('g1', new Participant('p-g1', ComparableName.of('Élodie')), [
+          new GameMaster('g1', new Participant('p-g1', ComparableName.createFromText('Élodie')), [
             's1',
             's2',
             's3',
           ]),
-          new GameMaster('g2', new Participant('p-g2', ComparableName.of('Kaïros')), ['s1', 's2']),
+          new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), ['s1', 's2']),
         ],
         participants: [],
         signUps: [],
@@ -743,7 +743,7 @@ describe('Échanger deux parties (PR-17)', () => {
           new Game('p2', 'c', 'g2', 't1', ['s1']),
         ],
         version: 0,
-        presenceCode: PresenceCode.of('K7M2'),
+        presenceCode: PresenceCode.parse('K7M2'),
       });
 
       expect(refusalOf(() => convention.swapGames('p1', 'p2'))).toMatchObject({
@@ -757,23 +757,23 @@ describe('Échanger deux parties (PR-17)', () => {
 describe('Déprogrammer une partie (PR-17)', () => {
   it('retire la partie du programme : son scénario revient dans la réserve', () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
-    convention.schedule('p2', brumes, 's1', 't2');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p2', brumes, 's1', 't2');
 
-    convention.unschedule('p1');
+    convention.unscheduleGame('p1');
 
     expect(convention.games.map(({ id }) => id)).toEqual(['p2']);
     const catalogue = ScenarioCatalogue.restore([
       { id: neons.id, gameMasterId: 'g1', duration: 1 },
     ]);
-    expect(convention.reserve(catalogue)[0]!.timeSlots[0]).toMatchObject({
+    expect(convention.computeReserve(catalogue)[0]!.timeSlots[0]).toMatchObject({
       inReserve: true,
       scheduled: false,
     });
   });
 
   it('refuse une partie inconnue', () => {
-    expect(refusalOf(() => aConvention().unschedule('x')).code).toBe('game-not-found');
+    expect(refusalOf(() => aConvention().unscheduleGame('x')).code).toBe('game-not-found');
   });
 });
 
@@ -781,12 +781,12 @@ describe('Verdicts de déplacement', () => {
   it('donne, pour chaque case, le refus même du déplacement, sans compter la partie elle-même', () => {
     const withTwoGames = () => {
       const convention = aConvention();
-      convention.schedule('p1', neons, 's1', 't1');
-      convention.schedule('p2', brumes, 's1', 't2');
+      convention.scheduleScenario('p1', neons, 's1', 't1');
+      convention.scheduleScenario('p2', brumes, 's1', 't2');
       return convention;
     };
 
-    const verdicts = withTwoGames().movePlacementsOfGame('p2');
+    const verdicts = withTwoGames().computeMoveVerdicts('p2');
 
     expect(
       verdicts
@@ -813,13 +813,13 @@ describe('Verdicts de déplacement', () => {
      */
     const withThreeGames = () => {
       const convention = aConvention();
-      convention.schedule('p1', neons, 's1', 't1');
-      convention.schedule('p2', brumes, 's1', 't2');
-      convention.schedule('p3', ruines, 's2', 't2');
+      convention.scheduleScenario('p1', neons, 's1', 't1');
+      convention.scheduleScenario('p2', brumes, 's1', 't2');
+      convention.scheduleScenario('p3', ruines, 's2', 't2');
       return convention;
     };
 
-    const verdicts = withThreeGames().movePlacementsOfGame('p2');
+    const verdicts = withThreeGames().computeMoveVerdicts('p2');
 
     expect(
       verdicts.map(({ timeSlotId, tableId, swapWith, refusal }) => [
@@ -852,12 +852,12 @@ describe('Verdicts de déplacement', () => {
         new TimeSlot('s2', at('14:00'), at('16:30')),
       ],
       tables: [
-        new Table('t1', ComparableName.of('Table 1')),
-        new Table('t2', ComparableName.of('Table 2')),
+        new Table('t1', ComparableName.createFromText('Table 1')),
+        new Table('t2', ComparableName.createFromText('Table 2')),
       ],
       gameMasters: [
-        new GameMaster('g1', new Participant('p-g1', ComparableName.of('Élodie')), ['s1', 's2']),
-        new GameMaster('g2', new Participant('p-g2', ComparableName.of('Kaïros')), ['s1', 's2']),
+        new GameMaster('g1', new Participant('p-g1', ComparableName.createFromText('Élodie')), ['s1', 's2']),
+        new GameMaster('g2', new Participant('p-g2', ComparableName.createFromText('Kaïros')), ['s1', 's2']),
       ],
       participants: [],
       signUps: [],
@@ -866,12 +866,12 @@ describe('Verdicts de déplacement', () => {
         new Game('p2', 'c', 'g2', 't2', ['s1']),
       ],
       version: 0,
-      presenceCode: PresenceCode.of('K7M2'),
+      presenceCode: PresenceCode.parse('K7M2'),
     });
 
     expect(
       convention
-        .movePlacementsOfGame('p2')
+        .computeMoveVerdicts('p2')
         .filter(({ tableId }) => tableId === 't1')
         .map(({ swapWith, refusal }) => [swapWith, refusal?.code ?? null]),
     ).toEqual([
@@ -881,7 +881,7 @@ describe('Verdicts de déplacement', () => {
   });
 
   it('refuse une partie inconnue', () => {
-    expect(refusalOf(() => aConvention().movePlacementsOfGame('x')).code).toBe('game-not-found');
+    expect(refusalOf(() => aConvention().computeMoveVerdicts('x')).code).toBe('game-not-found');
   });
 });
 
@@ -898,7 +898,7 @@ describe('Réserve (PR-6)', () => {
   const placesOf = (convention: Convention, scenarios = catalogue) =>
     Object.fromEntries(
       convention
-        .reserve(scenarios)
+        .computeReserve(scenarios)
         .map(({ scenarioId, timeSlots }) => [
           scenarioId,
           timeSlots.map(({ inReserve, scheduled }) =>
@@ -914,7 +914,7 @@ describe('Réserve (PR-6)', () => {
       c: ['réserve', '-'],
       d: ['réserve', '-'],
     });
-    expect(aConvention().reserve(catalogue)[0]).toEqual({
+    expect(aConvention().computeReserve(catalogue)[0]).toEqual({
       scenarioId: 'a',
       timeSlots: [
         { timeSlotId: 's1', inReserve: true, scheduled: false },
@@ -926,7 +926,7 @@ describe('Réserve (PR-6)', () => {
 
   it("retire d'un créneau les scénarios dont le MJ y mène déjà une partie", () => {
     const convention = aConvention();
-    convention.schedule('p1', neons, 's1', 't1');
+    convention.scheduleScenario('p1', neons, 's1', 't1');
 
     expect(placesOf(convention)).toEqual({
       a: ['programmé', 'réserve'],
@@ -938,8 +938,8 @@ describe('Réserve (PR-6)', () => {
 
   it('garde un scénario programmé ailleurs, et ignore les tables libres', () => {
     const convention = aConvention();
-    convention.schedule('p1', brumes, 's1', 't1');
-    convention.schedule('p2', neons, 's1', 't2');
+    convention.scheduleScenario('p1', brumes, 's1', 't1');
+    convention.scheduleScenario('p2', neons, 's1', 't2');
 
     expect(placesOf(convention)).toEqual({
       a: ['programmé', 'réserve'],
@@ -951,9 +951,9 @@ describe('Réserve (PR-6)', () => {
 
   it("dit pourquoi un scénario n'a aucun créneau possible : son MJ n'a aucune disponibilité", () => {
     const convention = aConvention();
-    convention.withdrawAvailability('g2', 's1');
+    convention.withdrawGameMasterAvailability('g2', 's1');
 
-    const [, , brumesReserve] = convention.reserve(catalogue);
+    const [, , brumesReserve] = convention.computeReserve(catalogue);
     expect(brumesReserve!.timeSlots.some(({ inReserve }) => inReserve)).toBe(false);
     expect(brumesReserve!.unschedulable).toMatchObject({
       code: 'game-master-without-availability',
@@ -971,9 +971,9 @@ describe('Réserve (PR-6)', () => {
       })),
     );
     const convention = aConvention();
-    convention.schedule('p1', brumes, 's1', 't1');
+    convention.scheduleScenario('p1', brumes, 's1', 't1');
 
-    const [, , brumesReserve, abyssesReserve] = convention.reserve(withAbysses);
+    const [, , brumesReserve, abyssesReserve] = convention.computeReserve(withAbysses);
     expect(abyssesReserve!.unschedulable).toMatchObject({
       code: 'game-master-busy-everywhere',
       params: { nickname: 'Kaïros' },
@@ -991,22 +991,22 @@ describe('Réserve (PR-6)', () => {
     const withThreeSlots = () => {
       const convention = aConvention();
       convention.addTimeSlot('s3', at('17:00'), at('19:30'));
-      convention.declareAvailability('g2', 's2');
+      convention.declareGameMasterAvailability('g2', 's2');
       return convention;
     };
 
     it("n'est en réserve que si son MJ est aussi disponible et libre sur le créneau suivant", () => {
       const convention = withThreeSlots();
-      convention.declareAvailability('g2', 's3');
+      convention.declareGameMasterAvailability('g2', 's3');
       expect(placesOf(convention, withDouble)).toEqual({ e: ['réserve', 'réserve', '-'] });
 
-      convention.schedule('p1', brumes, 's2', 't1');
+      convention.scheduleScenario('p1', brumes, 's2', 't1');
       expect(placesOf(convention, withDouble)).toEqual({ e: ['-', '-', '-'] });
     });
 
     it('est programmé sur ses deux créneaux', () => {
       const convention = withThreeSlots();
-      convention.schedule('p1', double, 's1', 't1');
+      convention.scheduleScenario('p1', double, 's1', 't1');
 
       expect(placesOf(convention, withDouble)).toEqual({ e: ['programmé', 'programmé', '-'] });
     });
@@ -1014,7 +1014,7 @@ describe('Réserve (PR-6)', () => {
     it("dit pourquoi il n'a aucun créneau possible : son MJ n'a pas deux créneaux consécutifs", () => {
       const convention = aConvention();
 
-      expect(convention.reserve(withDouble)[0]!.unschedulable).toMatchObject({
+      expect(convention.computeReserve(withDouble)[0]!.unschedulable).toMatchObject({
         code: 'game-master-without-consecutive-availabilities',
         params: { nickname: 'Kaïros' },
       });
@@ -1022,9 +1022,9 @@ describe('Réserve (PR-6)', () => {
 
     it('… ou son MJ mène déjà une partie sur chacune de ses paires de créneaux consécutifs', () => {
       const convention = withThreeSlots();
-      convention.schedule('p1', brumes, 's1', 't1');
+      convention.scheduleScenario('p1', brumes, 's1', 't1');
 
-      expect(convention.reserve(withDouble)[0]!.unschedulable).toMatchObject({
+      expect(convention.computeReserve(withDouble)[0]!.unschedulable).toMatchObject({
         code: 'game-master-busy-everywhere',
         params: { nickname: 'Kaïros' },
       });

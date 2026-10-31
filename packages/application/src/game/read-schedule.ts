@@ -25,7 +25,7 @@ export class ReadSchedule {
       this.reader.games(),
     ]);
     const places = new Map(
-      convention.reserve(catalogue).map(({ scenarioId, ...place }) => [scenarioId, place]),
+      convention.computeReserve(catalogue).map(({ scenarioId, ...place }) => [scenarioId, place]),
     );
     const scenarios = await this.reader.scenarios([...places.keys()]);
     return {

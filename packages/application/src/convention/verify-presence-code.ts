@@ -10,6 +10,6 @@ export class VerifyPresenceCode {
 
   async execute(presented: string): Promise<void> {
     const convention = await this.repository.get();
-    convention.verifyPresenceCode(presented, this.clock.now());
+    convention.verifyEntryAllowed(presented, this.clock.now());
   }
 }

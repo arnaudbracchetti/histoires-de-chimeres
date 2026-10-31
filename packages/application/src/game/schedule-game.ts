@@ -17,7 +17,7 @@ export class ScheduleGame {
     if (!scenario) throw new Refusal('scenario-not-found', {});
     const id = this.newId();
     await changeConvention(this.conventions, (convention) =>
-      convention.schedule(id, scenario, timeSlotId, tableId),
+      convention.scheduleScenario(id, scenario, timeSlotId, tableId),
     );
   }
 }

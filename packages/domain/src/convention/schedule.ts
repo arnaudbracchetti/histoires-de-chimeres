@@ -21,34 +21,34 @@ export class Schedule {
   private constructor(readonly games: readonly Game[]) {}
 
   /** `games`, dans l'ordre de leur programmation. */
-  static holding(games: Iterable<Game>): Schedule {
+  static createFromGames(games: Iterable<Game>): Schedule {
     return new Schedule([...games]);
   }
 
   /** La partie, qui doit exister. */
-  existingGame(gameId: string): Game {
+  findExistingGameById(gameId: string): Game {
     const game = this.games.find((candidate) => candidate.id === gameId);
     if (!game) throw new Refusal('game-not-found', {});
     return game;
   }
 
   /** La partie y est encore, sur les mêmes créneaux : ses inscriptions restent (IN-6). */
-  keepsSignUpsOf(game: Game): boolean {
+  hasGameOnSameTimeSlots(game: Game): boolean {
     return this.games.some(
       (candidate) => candidate.id === game.id && candidate.isOnSameTimeSlotsAs(game),
     );
   }
 
-  gameCountOnTimeSlot(timeSlotId: string): number {
+  countGamesOnTimeSlot(timeSlotId: string): number {
     return this.games.filter((game) => game.isOnTimeSlot(timeSlotId)).length;
   }
 
-  gameCountAtTable(tableId: string): number {
+  countGamesAtTable(tableId: string): number {
     return this.games.filter((game) => game.tableId === tableId).length;
   }
 
   /** Le scénario a au moins une partie programmée (PR-14). */
-  scenarioHasGames(scenarioId: string): boolean {
+  isScenarioScheduled(scenarioId: string): boolean {
     return this.games.some((game) => game.scenarioId === scenarioId);
   }
 
@@ -58,33 +58,33 @@ export class Schedule {
     );
   }
 
-  gameMasterRunsGameOnTimeSlot(gameMasterId: string, timeSlotId: string): boolean {
-    return this.gameRunByGameMasterOnTimeSlot(gameMasterId, timeSlotId) !== undefined;
+  isGameMasterLeadingOnTimeSlot(gameMasterId: string, timeSlotId: string): boolean {
+    return this.findGameLedByGameMasterOnTimeSlot(gameMasterId, timeSlotId) !== undefined;
   }
 
   /** La partie que le MJ mène sur ce créneau, ou `undefined`. */
-  gameRunByGameMasterOnTimeSlot(gameMasterId: string, timeSlotId: string): Game | undefined {
+  findGameLedByGameMasterOnTimeSlot(gameMasterId: string, timeSlotId: string): Game | undefined {
     return this.games.find(
       (game) => game.gameMasterId === gameMasterId && game.isOnTimeSlot(timeSlotId),
     );
   }
 
   /** Les créneaux où le MJ mène une partie. */
-  timeSlotIdsLedBy(gameMasterId: string): string[] {
+  listTimeSlotIdsLedByGameMaster(gameMasterId: string): string[] {
     return this.games
       .filter((game) => game.gameMasterId === gameMasterId)
       .flatMap((game) => game.timeSlotIds);
   }
 
   /** La partie, autre que `game`, dont c'est la première case, ou `undefined`. */
-  otherGameStartingAtTimeSlotAndTable(
+  findOtherGameStartingAt(
     game: Game,
     timeSlotId: string,
     tableId: string,
   ): Game | undefined {
     return this.games.find(
       (candidate) =>
-        candidate.id !== game.id && candidate.startsAtTimeSlotAndTable(timeSlotId, tableId),
+        candidate.id !== game.id && candidate.isStartingAt(timeSlotId, tableId),
     );
   }
 
@@ -92,16 +92,16 @@ export class Schedule {
    * Le Programme après la programmation du scénario à partir de ce créneau (PR-3), ou le refus de
    * PR-5. Une partie double prend aussi le créneau suivant, à la même table.
    */
-  afterScheduling(
+  getScheduleAfterSchedulingScenario(
     id: string,
     scenario: Scenario,
     timeSlotId: string,
     collaborators: PlacementCollaborators,
     day: Day,
   ): Schedule | Refusal {
-    const timeSlotIds = day.consecutiveTimeSlotIdsFrom(timeSlotId, scenario.duration);
+    const timeSlotIds = day.findConsecutiveTimeSlotIds(timeSlotId, scenario.duration);
     if (!timeSlotIds)
-      return new Refusal('no-next-time-slot', { rank: day.rankOfTimeSlot(timeSlotId) });
+      return new Refusal('no-next-time-slot', { rank: day.getTimeSlotRank(timeSlotId) });
     const game = new Game(
       id,
       scenario.id,
@@ -110,23 +110,23 @@ export class Schedule {
       timeSlotIds,
     );
     const next = new Schedule([...this.games, game]);
-    return next.placementRefusalOf(game, collaborators, day) ?? next;
+    return next.findPlacementRefusal(game, collaborators, day) ?? next;
   }
 
   /**
    * Le Programme après le déplacement de la partie à partir de ce créneau (PR-17), ou le refus de
    * PR-5. Elle reste la même partie, avec ses places, à son rang dans le programme.
    */
-  afterMoving(
+  getScheduleAfterMovingGame(
     game: Game,
     timeSlotId: string,
     collaborators: PlacementCollaborators,
     day: Day,
   ): Schedule | Refusal {
-    const moved = this.gameAfterMovingTo(game, timeSlotId, collaborators.table.id, day);
+    const moved = this.getGameAfterMoving(game, timeSlotId, collaborators.table.id, day);
     if (moved instanceof Refusal) return moved;
-    const next = this.afterReplacingGames([moved]);
-    return next.placementRefusalOf(moved, collaborators, day) ?? next;
+    const next = this.getScheduleAfterReplacingGames([moved]);
+    return next.findPlacementRefusal(moved, collaborators, day) ?? next;
   }
 
   /**
@@ -135,7 +135,7 @@ export class Schedule {
    * deux à leur nouvelle place. `otherCollaborators` : le MJ de l'autre partie, et la table de la
    * première.
    */
-  afterSwapping(
+  getScheduleAfterSwappingGames(
     game: Game,
     collaborators: PlacementCollaborators,
     other: Game,
@@ -143,21 +143,21 @@ export class Schedule {
     day: Day,
   ): Schedule | Refusal {
     if (game.id === other.id) return new Refusal('game-swapped-with-itself', {});
-    const moved = this.gameAfterMovingTo(game, other.timeSlotIds[0]!, other.tableId, day);
+    const moved = this.getGameAfterMoving(game, other.timeSlotIds[0]!, other.tableId, day);
     if (moved instanceof Refusal) return moved;
-    const otherMoved = this.gameAfterMovingTo(other, game.timeSlotIds[0]!, game.tableId, day);
+    const otherMoved = this.getGameAfterMoving(other, game.timeSlotIds[0]!, game.tableId, day);
     if (otherMoved instanceof Refusal) return otherMoved;
-    const next = this.afterReplacingGames([moved, otherMoved]);
+    const next = this.getScheduleAfterReplacingGames([moved, otherMoved]);
     return (
-      next.placementRefusalOf(moved, collaborators, day) ??
-      next.placementRefusalOf(otherMoved, otherCollaborators, day) ??
+      next.findPlacementRefusal(moved, collaborators, day) ??
+      next.findPlacementRefusal(otherMoved, otherCollaborators, day) ??
       next
     );
   }
 
   /** Le Programme après le retrait de la partie (PR-17). */
-  afterUnscheduling(gameId: string): Schedule {
-    const game = this.existingGame(gameId);
+  getScheduleAfterUnschedulingGame(gameId: string): Schedule {
+    const game = this.findExistingGameById(gameId);
     return new Schedule(this.games.filter((candidate) => candidate !== game));
   }
 
@@ -166,10 +166,10 @@ export class Schedule {
    * (PR-11). Le refus donne le rang de la partie dans la journée actuelle.
    */
   verifyTwoSlotGamesStayConsecutive(currentDay: Day, nextDay: Day): void {
-    const split = this.games.find((game) => !game.isConsecutiveIn(nextDay));
+    const split = this.games.find((game) => !game.hasConsecutiveTimeSlotsIn(nextDay));
     if (split) {
       throw new Refusal('time-slot-splits-two-slot-game', {
-        rank: currentDay.rankOfTimeSlot(split.timeSlotIds[0]!),
+        rank: currentDay.getTimeSlotRank(split.timeSlotIds[0]!),
       });
     }
   }
@@ -179,7 +179,7 @@ export class Schedule {
    * chacun de ses créneaux, les motifs s'excluent dans cet ordre : MJ indisponible, MJ déjà occupé,
    * table prise.
    */
-  private placementRefusalOf(
+  private findPlacementRefusal(
     game: Game,
     { gameMaster, table }: PlacementCollaborators,
     day: Day,
@@ -187,7 +187,7 @@ export class Schedule {
     const others = this.games.filter((candidate) => candidate.id !== game.id);
     const nickname = gameMaster.nickname.text;
     for (const slotId of game.timeSlotIds) {
-      const rank = day.rankOfTimeSlot(slotId);
+      const rank = day.getTimeSlotRank(slotId);
       if (!gameMaster.isAvailableOnTimeSlot(slotId)) {
         return new Refusal('game-master-unavailable', { nickname, rank });
       }
@@ -204,20 +204,20 @@ export class Schedule {
   }
 
   /** La même partie, sur la table et à partir du créneau donnés, ou le refus s'ils ne permettent pas sa durée. */
-  private gameAfterMovingTo(
+  private getGameAfterMoving(
     game: Game,
     timeSlotId: string,
     tableId: string,
     day: Day,
   ): Game | Refusal {
-    const timeSlotIds = day.consecutiveTimeSlotIdsFrom(timeSlotId, game.timeSlotIds.length);
+    const timeSlotIds = day.findConsecutiveTimeSlotIds(timeSlotId, game.timeSlotIds.length);
     if (!timeSlotIds)
-      return new Refusal('no-next-time-slot', { rank: day.rankOfTimeSlot(timeSlotId) });
-    return game.afterMovingTo(tableId, timeSlotIds);
+      return new Refusal('no-next-time-slot', { rank: day.getTimeSlotRank(timeSlotId) });
+    return game.getGameAfterMovingTo(tableId, timeSlotIds);
   }
 
   /** Ce Programme, où chaque partie de `moved` remplace celle de même id, à son rang. */
-  private afterReplacingGames(moved: readonly Game[]): Schedule {
+  private getScheduleAfterReplacingGames(moved: readonly Game[]): Schedule {
     return new Schedule(
       this.games.map((game) => moved.find((candidate) => candidate.id === game.id) ?? game),
     );

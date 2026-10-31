@@ -11,7 +11,7 @@ export class UnscheduleGame {
 
   async execute(gameId: string): Promise<void> {
     this.notifications.send(
-      await changeConvention(this.repository, (convention) => convention.unschedule(gameId)),
+      await changeConvention(this.repository, (convention) => convention.unscheduleGame(gameId)),
     );
   }
 }

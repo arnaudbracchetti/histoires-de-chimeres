@@ -17,7 +17,7 @@ function aConvention(): Convention {
     signUps: [],
     games: [],
     version: 0,
-    presenceCode: PresenceCode.of('K7M2'),
+    presenceCode: PresenceCode.parse('K7M2'),
   });
 }
 
@@ -40,7 +40,7 @@ function at(moment: string): LocalMoment {
 /** Une convention le 14 mars 2027, de 9 h 00 à 18 h 30, en deux créneaux. */
 function aConventionOnMarch14(): Convention {
   const convention = aConvention();
-  convention.setDate('2027-03-14');
+  convention.changeDate('2027-03-14');
   convention.addTimeSlot('s2', TimeOfDay.parse('14:00'), TimeOfDay.parse('18:30'));
   convention.addTimeSlot('s1', TimeOfDay.parse('09:00'), TimeOfDay.parse('11:30'));
   return convention;
@@ -78,17 +78,17 @@ describe('Convention', () => {
   it('fixe sa date, puis la change', () => {
     const convention = aConvention();
 
-    convention.setDate('2027-03-14');
-    convention.setDate('2027-03-21');
+    convention.changeDate('2027-03-14');
+    convention.changeDate('2027-03-21');
 
     expect(convention.date).toBe('2027-03-21');
   });
 
   it('efface sa date', () => {
     const convention = aConvention();
-    convention.setDate('2027-03-14');
+    convention.changeDate('2027-03-14');
 
-    convention.setDate(null);
+    convention.changeDate(null);
 
     expect(convention.date).toBeNull();
   });
@@ -101,12 +101,12 @@ describe('Convention', () => {
     it('accepte son code, en minuscules comme en majuscules', () => {
       const convention = aConvention();
 
-      expect(() => convention.verifyPresenceCode('k7m2', at('2027-03-14 10:00'))).not.toThrow();
+      expect(() => convention.verifyEntryAllowed('k7m2', at('2027-03-14 10:00'))).not.toThrow();
     });
 
     it('refuse un autre code', () => {
       const refusal = refusalOf(() =>
-        aConvention().verifyPresenceCode('K7M3', at('2027-03-14 10:00')),
+        aConvention().verifyEntryAllowed('K7M3', at('2027-03-14 10:00')),
       );
 
       expect(refusal.code).toBe('presence-code-wrong');
@@ -114,7 +114,7 @@ describe('Convention', () => {
 
     it('refuse même son code, une fois terminée', () => {
       const refusal = refusalOf(() =>
-        aConventionOnMarch14().verifyPresenceCode('K7M2', at('2027-03-14 18:30')),
+        aConventionOnMarch14().verifyEntryAllowed('K7M2', at('2027-03-14 18:30')),
       );
 
       expect(refusal.code).toBe('convention-ended');
@@ -122,7 +122,7 @@ describe('Convention', () => {
 
     it('dit qu’elle est terminée avant de regarder le code', () => {
       const refusal = refusalOf(() =>
-        aConventionOnMarch14().verifyPresenceCode('K7M3', at('2027-03-15 08:00')),
+        aConventionOnMarch14().verifyEntryAllowed('K7M3', at('2027-03-15 08:00')),
       );
 
       expect(refusal.code).toBe('convention-ended');
@@ -136,9 +136,9 @@ describe('Convention', () => {
 
     it('n’a pas de fin sans date ou sans créneau', () => {
       const withoutDate = aConventionOnMarch14();
-      withoutDate.setDate(null);
+      withoutDate.changeDate(null);
       const withoutTimeSlot = aConvention();
-      withoutTimeSlot.setDate('2027-03-14');
+      withoutTimeSlot.changeDate('2027-03-14');
 
       expect(withoutDate.end).toBeNull();
       expect(withoutTimeSlot.end).toBeNull();
@@ -159,14 +159,14 @@ describe('Convention', () => {
 
     it('ne se termine pas sans date', () => {
       const convention = aConventionOnMarch14();
-      convention.setDate(null);
+      convention.changeDate(null);
 
       expect(convention.hasEndedAt(at('2030-01-01 00:00'))).toBe(false);
     });
 
     it('ne se termine pas sans créneau', () => {
       const convention = aConvention();
-      convention.setDate('2027-03-14');
+      convention.changeDate('2027-03-14');
 
       expect(convention.hasEndedAt(at('2030-01-01 00:00'))).toBe(false);
     });
@@ -174,8 +174,8 @@ describe('Convention', () => {
     it('refuse, une fois terminée, ce qu’elle ouvre au front office', () => {
       const convention = aConventionOnMarch14();
 
-      expect(() => convention.verifyOpenAt(at('2027-03-14 18:29'))).not.toThrow();
-      expect(refusalOf(() => convention.verifyOpenAt(at('2027-03-14 18:30'))).code).toBe(
+      expect(() => convention.verifyStillOpenAt(at('2027-03-14 18:29'))).not.toThrow();
+      expect(refusalOf(() => convention.verifyStillOpenAt(at('2027-03-14 18:30'))).code).toBe(
         'convention-ended',
       );
     });

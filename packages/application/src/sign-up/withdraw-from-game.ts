@@ -21,9 +21,9 @@ export class WithdrawFromGame {
     await changeConvention(
       this.conventions,
       (convention) => {
-        convention.verifyOpenAt(this.clock.now());
+        convention.verifyStillOpenAt(this.clock.now());
         if (!phone) throw new PhoneNotLinkedError();
-        return convention.withdraw(phone.participantId, gameId);
+        return convention.withdrawFromGame(phone.participantId, gameId);
       },
       (changed) => changed,
     );

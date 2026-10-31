@@ -15,7 +15,7 @@ export class RemoveScenario {
   async execute(scenarioId: string): Promise<void> {
     const scenario = await this.scenarios.findById(scenarioId);
     if (!scenario) throw new Refusal('scenario-not-found', {});
-    scenario.remove(await this.conventions.get());
+    scenario.verifyRemovable(await this.conventions.get());
     await this.scenarios.remove(scenario);
   }
 }

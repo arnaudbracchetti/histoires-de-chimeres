@@ -21,9 +21,9 @@ export class SignUpForGame {
     await changeConvention(
       this.conventions,
       (convention) => {
-        convention.verifyOpenAt(this.clock.now());
+        convention.verifyStillOpenAt(this.clock.now());
         if (!phone) throw new PhoneNotLinkedError();
-        return convention.signUp(phone.participantId, gameId);
+        return convention.signUpForGame(phone.participantId, gameId);
       },
       (changed) => changed,
     );

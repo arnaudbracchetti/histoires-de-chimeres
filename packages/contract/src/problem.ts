@@ -57,7 +57,7 @@ export type RefusalParams = {
   /** `rank` : le rang du créneau, dont le tirage est lancé (IN-2). */
   'sign-ups-closed': { rank: number };
   /** `rank` : le rang du créneau où le MJ mène ; `table` : la table de sa partie (IN-4). */
-  'runs-game-on-time-slot': { rank: number; table: string };
+  'leads-game-on-time-slot': { rank: number; table: string };
   /** Une partie ne s'échange pas avec elle-même (PR-17). */
   'game-swapped-with-itself': Record<string, never>;
   'scenario-not-found': Record<string, never>;

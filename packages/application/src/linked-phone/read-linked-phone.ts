@@ -14,7 +14,7 @@ export class ReadLinkedPhone {
 
   /** `phoneId` : le cookie du téléphone. Sans cookie, ou relié à aucun pseudo : `PhoneNotLinkedError`. */
   async execute(phoneId: string | null): Promise<LinkedPhoneDto> {
-    (await this.conventions.get()).verifyOpenAt(this.clock.now());
+    (await this.conventions.get()).verifyStillOpenAt(this.clock.now());
     const phone = phoneId ? await this.reader.read(phoneId) : null;
     if (!phone) throw new PhoneNotLinkedError();
     return phone;

@@ -1,10 +1,10 @@
 import type { GameMasterDto } from '@chimeres/contract';
-import type { Withdrawal } from '@chimeres/domain';
+import type { WithdrawalVerdict } from '@chimeres/domain';
 import type { ConventionRepository } from '../convention/convention-repository.js';
 import type { GameMasterReader } from './game-master-reader.js';
 
 /** La fiche d'un MJ : sa lecture, et le verdict de retrait de chaque disponibilité. */
-export type GameMasterSheet = GameMasterDto & { withdrawals: Withdrawal[] };
+export type GameMasterSheet = GameMasterDto & { withdrawals: WithdrawalVerdict[] };
 
 /** La fiche d'un MJ, avec les verdicts de retrait que la convention calcule (PR-15). */
 export class ReadGameMaster {
@@ -17,7 +17,7 @@ export class ReadGameMaster {
   async execute(gameMasterId: string): Promise<GameMasterSheet | null> {
     const gameMaster = await this.reader.read(gameMasterId);
     if (!gameMaster) return null;
-    const withdrawals = (await this.conventions.get()).withdrawalsOfGameMaster(gameMasterId);
+    const withdrawals = (await this.conventions.get()).computeWithdrawalVerdicts(gameMasterId);
     return { ...gameMaster, withdrawals };
   }
 }

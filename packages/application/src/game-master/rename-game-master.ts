@@ -8,7 +8,7 @@ export class RenameGameMaster {
 
   execute(gameMasterId: string, { nickname }: GameMasterNicknameBody): Promise<void> {
     return changeConvention(this.repository, (convention) =>
-      convention.renameGameMaster(gameMasterId, nickname),
+      convention.changeGameMasterNickname(gameMasterId, nickname),
     );
   }
 }

@@ -9,7 +9,7 @@ export {
   type ParticipantSituation,
   type Placement,
   type TimeSlotState,
-  type Withdrawal,
+  type WithdrawalVerdict,
 } from './convention/convention.js';
 export { Game } from './convention/game.js';
 export type { LocalMoment } from './convention/local-moment.js';

@@ -19,12 +19,12 @@ export class ScenarioCatalogue {
     return new ScenarioCatalogue([...entries]);
   }
 
-  entries(): readonly CatalogueEntry[] {
+  listEntries(): readonly CatalogueEntry[] {
     return this.all;
   }
 
   /** Nombre de scénarios du MJ. */
-  scenarioCountOfGameMaster(gameMasterId: string): number {
+  countScenariosOfGameMaster(gameMasterId: string): number {
     return this.all.filter((entry) => entry.gameMasterId === gameMasterId).length;
   }
 }

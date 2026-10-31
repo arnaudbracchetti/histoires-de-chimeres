@@ -131,7 +131,7 @@ describe('Inscriptions du front office (IN-2)', () => {
     const response = await signUp(gameId, brann).expect(422);
 
     expect(response.body).toMatchObject({
-      code: 'runs-game-on-time-slot',
+      code: 'leads-game-on-time-slot',
       detail: 'Tu mènes une partie au créneau 1, table Griffon\u00a0: tu ne peux pas y jouer.',
     });
     expect(await signUpCountOf(gameId, brann)).toBe(0);

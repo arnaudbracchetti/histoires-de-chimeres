@@ -7,7 +7,7 @@ export class WithdrawAvailability {
 
   execute(gameMasterId: string, timeSlotId: string): Promise<void> {
     return changeConvention(this.repository, (convention) =>
-      convention.withdrawAvailability(gameMasterId, timeSlotId),
+      convention.withdrawGameMasterAvailability(gameMasterId, timeSlotId),
     );
   }
 }

@@ -31,16 +31,16 @@ export class PrismaConventionReader implements ConventionReader {
       timeSlots: timeSlots.map((slot, index) => ({
         id: slot.id,
         rank: index + 1,
-        start: TimeOfDay.fromMinutes(slot.startMinute).toString(),
-        end: TimeOfDay.fromMinutes(slot.endMinute).toString(),
+        start: TimeOfDay.createFromMinutes(slot.startMinute).toString(),
+        end: TimeOfDay.createFromMinutes(slot.endMinute).toString(),
         availabilityCount: slot._count.availabilities,
       })),
       // L'ordre naturel est celui du domaine, que PostgreSQL ne sait pas reproduire.
-      tables: tables.sort((a, b) => ComparableName.of(a.name).compareTo(ComparableName.of(b.name))),
+      tables: tables.sort((a, b) => ComparableName.createFromText(a.name).compareTo(ComparableName.createFromText(b.name))),
       end: endDtoOf(
-        Convention.endOf(
+        Convention.computeEnd(
           fromDatabaseDate(date),
-          timeSlots.map((slot) => TimeOfDay.fromMinutes(slot.endMinute)),
+          timeSlots.map((slot) => TimeOfDay.createFromMinutes(slot.endMinute)),
         ),
       ),
       presenceCode,

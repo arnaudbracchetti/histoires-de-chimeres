@@ -6,7 +6,7 @@ import type { Refusal } from '../refusal.js';
  * de chaque motif. Les refus viennent de l'appelant, qui connaît ses codes.
  */
 export type NamingRules<T> = {
-  nameOf: (item: T) => ComparableName;
+  getName: (item: T) => ComparableName;
   maxLength: number;
   refuseMissingItem: () => Refusal;
   refuseEmptyName: () => Refusal;
@@ -27,7 +27,7 @@ export class UniquelyNamedCollection<T extends { readonly id: string }> {
   ) {}
 
   /** `items`, dans n'importe quel ordre. */
-  static holding<T extends { readonly id: string }>(
+  static createFromItems<T extends { readonly id: string }>(
     items: Iterable<T>,
     rules: NamingRules<T>,
   ): UniquelyNamedCollection<T> {
@@ -35,48 +35,48 @@ export class UniquelyNamedCollection<T extends { readonly id: string }> {
   }
 
   /** Les éléments, dans l'ordre naturel de leur nom : « Table 2 » avant « Table 10 ». */
-  get inNaturalOrder(): readonly T[] {
-    return [...this.items].sort((a, b) => this.rules.nameOf(a).compareTo(this.rules.nameOf(b)));
+  get itemsInNaturalOrder(): readonly T[] {
+    return [...this.items].sort((a, b) => this.rules.getName(a).compareTo(this.rules.getName(b)));
   }
 
   /** L'élément, qui doit exister. */
-  existingItem(id: string): T {
+  findExistingItemById(id: string): T {
     const item = this.items.find((candidate) => candidate.id === id);
     if (!item) throw this.rules.refuseMissingItem();
     return item;
   }
 
   /** L'élément qui porte ce nom, à la comparaison de `ComparableName` près, ou `undefined`. */
-  itemNamed(name: ComparableName): T | undefined {
-    return this.items.find((item) => this.rules.nameOf(item).equals(name));
+  findItemWithSameName(name: ComparableName): T | undefined {
+    return this.items.find((item) => this.rules.getName(item).equals(name));
   }
 
   verifyItemExists(id: string): void {
-    this.existingItem(id);
+    this.findExistingItemById(id);
   }
 
   /** La collection après l'ajout d'un élément, dont le nom doit être valide et libre. */
-  afterAdding(item: T): UniquelyNamedCollection<T> {
-    return new UniquelyNamedCollection([...this.items, this.verifyName(item)], this.rules);
+  getCollectionAfterAddingItem(item: T): UniquelyNamedCollection<T> {
+    return new UniquelyNamedCollection([...this.items, this.verifyNameValidAndFree(item)], this.rules);
   }
 
   /**
    * La collection après le remplacement de l'élément de même id, qui doit exister, par `item`, dont
    * le nom doit être valide et libre.
    */
-  afterReplacing(item: T): UniquelyNamedCollection<T> {
+  getCollectionAfterReplacingItem(item: T): UniquelyNamedCollection<T> {
     this.verifyItemExists(item.id);
-    const verified = this.verifyName(item);
-    return this.afterReplacingEach((current) => (current.id === item.id ? verified : current));
+    const verified = this.verifyNameValidAndFree(item);
+    return this.getCollectionAfterReplacingEachItem((current) => (current.id === item.id ? verified : current));
   }
 
   /** La collection après le remplacement de chaque élément par `replace(élément)`, du même nom. */
-  afterReplacingEach(replace: (item: T) => T): UniquelyNamedCollection<T> {
+  getCollectionAfterReplacingEachItem(replace: (item: T) => T): UniquelyNamedCollection<T> {
     return new UniquelyNamedCollection(this.items.map(replace), this.rules);
   }
 
   /** La collection après le retrait d'un élément, qui doit exister. */
-  afterRemoving(id: string): UniquelyNamedCollection<T> {
+  getCollectionAfterRemovingItem(id: string): UniquelyNamedCollection<T> {
     this.verifyItemExists(id);
     return new UniquelyNamedCollection(
       this.items.filter((item) => item.id !== id),
@@ -85,14 +85,14 @@ export class UniquelyNamedCollection<T extends { readonly id: string }> {
   }
 
   /** Vérifie le nom de `candidate` : obligatoire, borné, et porté par aucun autre élément. */
-  private verifyName(candidate: T): T {
-    const name = this.rules.nameOf(candidate);
+  private verifyNameValidAndFree(candidate: T): T {
+    const name = this.rules.getName(candidate);
     if (!name.text) throw this.rules.refuseEmptyName();
     if (name.text.length > this.rules.maxLength) {
       throw this.rules.refuseTooLongName(this.rules.maxLength);
     }
     const namesake = this.items.find(
-      (item) => item.id !== candidate.id && this.rules.nameOf(item).equals(name),
+      (item) => item.id !== candidate.id && this.rules.getName(item).equals(name),
     );
     if (namesake) throw this.rules.refuseTakenName(namesake);
     return candidate;

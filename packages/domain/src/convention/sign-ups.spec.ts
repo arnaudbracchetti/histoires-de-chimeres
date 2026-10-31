@@ -38,7 +38,7 @@ function aConvention(): Convention {
     signUps: [],
     games: [],
     version: 0,
-    presenceCode: PresenceCode.of('K7M2'),
+    presenceCode: PresenceCode.parse('K7M2'),
   });
   convention.addTimeSlot('s1', at('09:00'), at('11:30'));
   convention.addTimeSlot('s2', at('14:00'), at('16:30'));
@@ -46,15 +46,15 @@ function aConvention(): Convention {
   convention.addTable('t2', 'Table 2');
   convention.addGameMaster('g1', 'p-g1', 'Brann');
   convention.addGameMaster('g2', 'p-g2', 'Kaïros');
-  convention.declareAvailability('g1', 's1');
-  convention.declareAvailability('g1', 's2');
-  convention.declareAvailability('g2', 's1');
-  convention.declareAvailability('g2', 's2');
-  convention.schedule('brumes', aScenario('a', 'g1'), 's1', 't1');
-  convention.schedule('epice', aScenario('b', 'g2', 2), 's1', 't2');
-  convention.schedule('neons', aScenario('c', 'g1'), 's2', 't1');
-  convention.identify('p1', 'K7M2', 'Élodie', null, NOW);
-  convention.identify('p2', 'K7M2', 'Lune', null, NOW);
+  convention.declareGameMasterAvailability('g1', 's1');
+  convention.declareGameMasterAvailability('g1', 's2');
+  convention.declareGameMasterAvailability('g2', 's1');
+  convention.declareGameMasterAvailability('g2', 's2');
+  convention.scheduleScenario('brumes', aScenario('a', 'g1'), 's1', 't1');
+  convention.scheduleScenario('epice', aScenario('b', 'g2', 2), 's1', 't2');
+  convention.scheduleScenario('neons', aScenario('c', 'g1'), 's2', 't1');
+  convention.identifyByNickname('p1', 'K7M2', 'Élodie', null, NOW);
+  convention.identifyByNickname('p2', 'K7M2', 'Lune', null, NOW);
   return convention;
 }
 
@@ -76,7 +76,7 @@ describe('S’inscrire à une partie (IN-2)', () => {
   it('inscrit le participant à la partie', () => {
     const convention = aConvention();
 
-    const changed = convention.signUp('p1', 'brumes');
+    const changed = convention.signUpForGame('p1', 'brumes');
 
     expect(changed).toBe(true);
     expect(signUpsOf(convention)).toEqual(['p1 brumes']);
@@ -85,37 +85,37 @@ describe('S’inscrire à une partie (IN-2)', () => {
   it('inscrit à plusieurs parties d’un même créneau', () => {
     const convention = aConvention();
 
-    convention.signUp('p1', 'brumes');
-    convention.signUp('p1', 'epice');
+    convention.signUpForGame('p1', 'brumes');
+    convention.signUpForGame('p1', 'epice');
 
     expect(signUpsOf(convention)).toEqual(['p1 brumes', 'p1 epice']);
   });
 
   it('ne change rien à une inscription répétée', () => {
     const convention = aConvention();
-    convention.signUp('p1', 'brumes');
+    convention.signUpForGame('p1', 'brumes');
 
-    const changed = convention.signUp('p1', 'brumes');
+    const changed = convention.signUpForGame('p1', 'brumes');
 
     expect(changed).toBe(false);
     expect(signUpsOf(convention)).toEqual(['p1 brumes']);
   });
 
   it('refuse une partie introuvable', () => {
-    expect(refusalOf(() => aConvention().signUp('p1', 'inconnue')).code).toBe('game-not-found');
+    expect(refusalOf(() => aConvention().signUpForGame('p1', 'inconnue')).code).toBe('game-not-found');
   });
 
   it('refuse un participant introuvable', () => {
-    expect(refusalOf(() => aConvention().signUp('inconnu', 'brumes')).code).toBe(
+    expect(refusalOf(() => aConvention().signUpForGame('inconnu', 'brumes')).code).toBe(
       'participant-not-found',
     );
   });
 
   it('garde les inscriptions prises sur le second créneau d’une partie double (IN-3)', () => {
     const convention = aConvention();
-    convention.signUp('p1', 'neons');
+    convention.signUpForGame('p1', 'neons');
 
-    convention.signUp('p1', 'epice');
+    convention.signUpForGame('p1', 'epice');
 
     expect(signUpsOf(convention)).toEqual(['p1 neons', 'p1 epice']);
   });
@@ -124,11 +124,11 @@ describe('S’inscrire à une partie (IN-2)', () => {
 describe('Se désinscrire d’une partie (IN-2)', () => {
   it('retire l’inscription du participant, et elle seule', () => {
     const convention = aConvention();
-    convention.signUp('p1', 'brumes');
-    convention.signUp('p1', 'epice');
-    convention.signUp('p2', 'brumes');
+    convention.signUpForGame('p1', 'brumes');
+    convention.signUpForGame('p1', 'epice');
+    convention.signUpForGame('p2', 'brumes');
 
-    const changed = convention.withdraw('p1', 'brumes');
+    const changed = convention.withdrawFromGame('p1', 'brumes');
 
     expect(changed).toBe(true);
     expect(signUpsOf(convention)).toEqual(['p1 epice', 'p2 brumes']);
@@ -137,18 +137,18 @@ describe('Se désinscrire d’une partie (IN-2)', () => {
   it('ne change rien pour une partie où le participant n’est pas inscrit', () => {
     const convention = aConvention();
 
-    const changed = convention.withdraw('p1', 'brumes');
+    const changed = convention.withdrawFromGame('p1', 'brumes');
 
     expect(changed).toBe(false);
     expect(signUpsOf(convention)).toEqual([]);
   });
 
   it('refuse une partie introuvable', () => {
-    expect(refusalOf(() => aConvention().withdraw('p1', 'inconnue')).code).toBe('game-not-found');
+    expect(refusalOf(() => aConvention().withdrawFromGame('p1', 'inconnue')).code).toBe('game-not-found');
   });
 
   it('refuse un participant introuvable', () => {
-    expect(refusalOf(() => aConvention().withdraw('inconnu', 'brumes')).code).toBe(
+    expect(refusalOf(() => aConvention().withdrawFromGame('inconnu', 'brumes')).code).toBe(
       'participant-not-found',
     );
   });
@@ -157,11 +157,11 @@ describe('Se désinscrire d’une partie (IN-2)', () => {
 describe('Gestes de programmation et inscriptions (IN-6)', () => {
   it('une partie déprogrammée perd ses inscriptions, et elles seules', () => {
     const convention = aConvention();
-    convention.signUp('p1', 'brumes');
-    convention.signUp('p1', 'epice');
-    convention.signUp('p2', 'brumes');
+    convention.signUpForGame('p1', 'brumes');
+    convention.signUpForGame('p1', 'epice');
+    convention.signUpForGame('p2', 'brumes');
 
-    convention.unschedule('brumes');
+    convention.unscheduleGame('brumes');
 
     expect(signUpsOf(convention)).toEqual(['p1 epice']);
   });
@@ -169,9 +169,9 @@ describe('Gestes de programmation et inscriptions (IN-6)', () => {
   it('une partie déplacée sur un autre créneau perd ses inscriptions', () => {
     const convention = aConvention();
     convention.addTimeSlot('s3', at('18:00'), at('20:30'));
-    convention.declareAvailability('g1', 's3');
-    convention.signUp('p1', 'brumes');
-    convention.signUp('p1', 'epice');
+    convention.declareGameMasterAvailability('g1', 's3');
+    convention.signUpForGame('p1', 'brumes');
+    convention.signUpForGame('p1', 'epice');
 
     convention.moveGame('brumes', 's3', 't1');
 
@@ -181,7 +181,7 @@ describe('Gestes de programmation et inscriptions (IN-6)', () => {
   it('une partie qui change de table garde ses inscriptions', () => {
     const convention = aConvention();
     convention.addTable('t3', 'Table 3');
-    convention.signUp('p1', 'brumes');
+    convention.signUpForGame('p1', 'brumes');
 
     convention.moveGame('brumes', 's1', 't3');
 
@@ -190,9 +190,9 @@ describe('Gestes de programmation et inscriptions (IN-6)', () => {
 
   it('deux parties échangées entre deux créneaux perdent leurs inscriptions', () => {
     const convention = aConvention();
-    convention.signUp('p1', 'brumes');
-    convention.signUp('p1', 'neons');
-    convention.signUp('p1', 'epice');
+    convention.signUpForGame('p1', 'brumes');
+    convention.signUpForGame('p1', 'neons');
+    convention.signUpForGame('p1', 'epice');
 
     convention.swapGames('brumes', 'neons');
 
@@ -201,9 +201,9 @@ describe('Gestes de programmation et inscriptions (IN-6)', () => {
 
   it('deux parties échangées sur un même créneau gardent leurs inscriptions', () => {
     const convention = aConvention();
-    convention.unschedule('neons');
-    convention.signUp('p1', 'brumes');
-    convention.signUp('p2', 'epice');
+    convention.unscheduleGame('neons');
+    convention.signUpForGame('p1', 'brumes');
+    convention.signUpForGame('p2', 'epice');
 
     convention.swapGames('brumes', 'epice');
 
@@ -220,19 +220,19 @@ describe('Un MJ qui mène sur un créneau où il est inscrit (IN-4)', () => {
     const convention = aConvention();
     convention.addTable('t3', 'Table 3');
     convention.addGameMaster('g3', 'p-g3', 'Mira');
-    convention.declareAvailability('g3', 's1');
-    convention.declareAvailability('g3', 's2');
-    convention.signUp('p-g3', 'brumes');
-    convention.signUp('p-g3', 'neons');
+    convention.declareGameMasterAvailability('g3', 's1');
+    convention.declareGameMasterAvailability('g3', 's2');
+    convention.signUpForGame('p-g3', 'brumes');
+    convention.signUpForGame('p-g3', 'neons');
     return convention;
   }
   const signedUpGameIdsOfMira = (convention: Convention) =>
-    convention.situationOf('p-g3').signedUpGameIds;
+    convention.computeParticipantSituation('p-g3').signedUpGameIds;
 
   it('garde ses inscriptions sur le créneau de sa partie, sans les montrer dans sa situation', () => {
     const convention = aConventionWithMira();
 
-    convention.schedule('ombres', aScenario('d', 'g3'), 's1', 't3');
+    convention.scheduleScenario('ombres', aScenario('d', 'g3'), 's1', 't3');
 
     expect(signUpsOf(convention)).toEqual(['p-g3 brumes', 'p-g3 neons']);
     expect(signedUpGameIdsOfMira(convention)).toEqual(['neons']);
@@ -240,7 +240,7 @@ describe('Un MJ qui mène sur un créneau où il est inscrit (IN-4)', () => {
 
   it('les lui rend quand sa partie quitte le créneau, et suspend celles du nouveau', () => {
     const convention = aConventionWithMira();
-    convention.schedule('ombres', aScenario('d', 'g3'), 's1', 't3');
+    convention.scheduleScenario('ombres', aScenario('d', 'g3'), 's1', 't3');
 
     convention.moveGame('ombres', 's2', 't3');
 
@@ -250,9 +250,9 @@ describe('Un MJ qui mène sur un créneau où il est inscrit (IN-4)', () => {
 
   it('les lui rend toutes quand sa partie est déprogrammée', () => {
     const convention = aConventionWithMira();
-    convention.schedule('ombres', aScenario('d', 'g3'), 's1', 't3');
+    convention.scheduleScenario('ombres', aScenario('d', 'g3'), 's1', 't3');
 
-    convention.unschedule('ombres');
+    convention.unscheduleGame('ombres');
 
     expect(signedUpGameIdsOfMira(convention)).toEqual(['brumes', 'neons']);
   });
@@ -260,12 +260,12 @@ describe('Un MJ qui mène sur un créneau où il est inscrit (IN-4)', () => {
   it('les lui rend quand sa partie est échangée avec une partie d’un autre créneau', () => {
     const convention = aConventionWithMira();
     convention.addTimeSlot('s3', at('18:00'), at('20:30'));
-    convention.declareAvailability('g3', 's3');
+    convention.declareGameMasterAvailability('g3', 's3');
     convention.addGameMaster('g4', 'p-g4', 'Sven');
-    convention.declareAvailability('g4', 's1');
-    convention.declareAvailability('g4', 's3');
-    convention.schedule('ombres', aScenario('d', 'g3'), 's1', 't3');
-    convention.schedule('lanternes', aScenario('e', 'g4'), 's3', 't3');
+    convention.declareGameMasterAvailability('g4', 's1');
+    convention.declareGameMasterAvailability('g4', 's3');
+    convention.scheduleScenario('ombres', aScenario('d', 'g3'), 's1', 't3');
+    convention.scheduleScenario('lanternes', aScenario('e', 'g4'), 's3', 't3');
 
     convention.swapGames('ombres', 'lanternes');
 
@@ -274,9 +274,9 @@ describe('Un MJ qui mène sur un créneau où il est inscrit (IN-4)', () => {
 
   it('suspend son inscription à une partie double dont l’un des créneaux est celui de sa partie', () => {
     const convention = aConventionWithMira();
-    convention.signUp('p-g3', 'epice');
+    convention.signUpForGame('p-g3', 'epice');
 
-    convention.schedule('ombres', aScenario('d', 'g3'), 's2', 't3');
+    convention.scheduleScenario('ombres', aScenario('d', 'g3'), 's2', 't3');
 
     expect(signedUpGameIdsOfMira(convention)).toEqual(['brumes']);
   });
@@ -284,15 +284,15 @@ describe('Un MJ qui mène sur un créneau où il est inscrit (IN-4)', () => {
 
 describe('Un MJ qui s’inscrit sur un créneau où il mène (IN-4)', () => {
   it('est refusé sur le créneau de sa partie, avec le créneau et la table de sa partie', () => {
-    const refusal = refusalOf(() => aConvention().signUp('p-g2', 'brumes'));
+    const refusal = refusalOf(() => aConvention().signUpForGame('p-g2', 'brumes'));
 
-    expect(refusal.code).toBe('runs-game-on-time-slot');
+    expect(refusal.code).toBe('leads-game-on-time-slot');
     expect(refusal.params).toEqual({ rank: 1, table: 'Table 2' });
   });
 
   it('est refusé sur sa propre partie', () => {
-    expect(refusalOf(() => aConvention().signUp('p-g2', 'epice')).code).toBe(
-      'runs-game-on-time-slot',
+    expect(refusalOf(() => aConvention().signUpForGame('p-g2', 'epice')).code).toBe(
+      'leads-game-on-time-slot',
     );
   });
 
@@ -300,12 +300,12 @@ describe('Un MJ qui s’inscrit sur un créneau où il mène (IN-4)', () => {
     const convention = aConvention();
     convention.addTable('t3', 'Table 3');
     convention.addGameMaster('g3', 'p-g3', 'Mira');
-    convention.declareAvailability('g3', 's2');
-    convention.schedule('ombres', aScenario('d', 'g3'), 's2', 't3');
+    convention.declareGameMasterAvailability('g3', 's2');
+    convention.scheduleScenario('ombres', aScenario('d', 'g3'), 's2', 't3');
 
-    const refusal = refusalOf(() => convention.signUp('p-g3', 'epice'));
+    const refusal = refusalOf(() => convention.signUpForGame('p-g3', 'epice'));
 
-    expect(refusal.code).toBe('runs-game-on-time-slot');
+    expect(refusal.code).toBe('leads-game-on-time-slot');
     expect(refusal.params).toEqual({ rank: 2, table: 'Table 3' });
   });
 
@@ -313,10 +313,10 @@ describe('Un MJ qui s’inscrit sur un créneau où il mène (IN-4)', () => {
     const convention = aConvention();
     convention.addTable('t3', 'Table 3');
     convention.addGameMaster('g3', 'p-g3', 'Mira');
-    convention.declareAvailability('g3', 's2');
-    convention.schedule('ombres', aScenario('d', 'g3'), 's2', 't3');
+    convention.declareGameMasterAvailability('g3', 's2');
+    convention.scheduleScenario('ombres', aScenario('d', 'g3'), 's2', 't3');
 
-    convention.signUp('p-g3', 'brumes');
+    convention.signUpForGame('p-g3', 'brumes');
 
     expect(signUpsOf(convention)).toEqual(['p-g3 brumes']);
   });
@@ -326,8 +326,8 @@ describe('Supprimer un MJ (PR-12)', () => {
   it('efface ses inscriptions, et elles seules', () => {
     const convention = aConvention();
     convention.addGameMaster('g3', 'p-g3', 'Mira');
-    convention.signUp('p-g3', 'brumes');
-    convention.signUp('p1', 'brumes');
+    convention.signUpForGame('p-g3', 'brumes');
+    convention.signUpForGame('p1', 'brumes');
 
     convention.removeGameMaster('g3', ScenarioCatalogue.restore([]));
 
@@ -338,10 +338,10 @@ describe('Supprimer un MJ (PR-12)', () => {
 describe('Situation d’un participant', () => {
   it('donne ses inscriptions, et chaque créneau aux inscriptions ouvertes, sans résultat de tirage', () => {
     const convention = aConvention();
-    convention.signUp('p1', 'epice');
-    convention.signUp('p2', 'brumes');
+    convention.signUpForGame('p1', 'epice');
+    convention.signUpForGame('p2', 'brumes');
 
-    expect(convention.situationOf('p1')).toEqual({
+    expect(convention.computeParticipantSituation('p1')).toEqual({
       signedUpGameIds: ['epice'],
       timeSlots: [
         { timeSlotId: 's1', state: 'sign-ups-open', ledGameId: null, drawResult: null },
@@ -353,18 +353,18 @@ describe('Situation d’un participant', () => {
   it('donne à un MJ la partie qu’il mène sur chaque créneau, partie double comprise (IN-4)', () => {
     const convention = aConvention();
 
-    expect(convention.situationOf('p-g2').timeSlots.map(({ ledGameId }) => ledGameId)).toEqual([
+    expect(convention.computeParticipantSituation('p-g2').timeSlots.map(({ ledGameId }) => ledGameId)).toEqual([
       'epice',
       'epice',
     ]);
-    expect(convention.situationOf('p-g1').timeSlots.map(({ ledGameId }) => ledGameId)).toEqual([
+    expect(convention.computeParticipantSituation('p-g1').timeSlots.map(({ ledGameId }) => ledGameId)).toEqual([
       'brumes',
       'neons',
     ]);
   });
 
   it('refuse un participant introuvable', () => {
-    expect(refusalOf(() => aConvention().situationOf('inconnu')).code).toBe(
+    expect(refusalOf(() => aConvention().computeParticipantSituation('inconnu')).code).toBe(
       'participant-not-found',
     );
   });

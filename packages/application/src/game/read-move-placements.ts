@@ -10,6 +10,6 @@ export class ReadMovePlacements {
 
   /** Une partie inconnue est un refus du domaine (`game-not-found`). */
   async execute(gameId: string): Promise<MovePlacement[]> {
-    return (await this.conventions.get()).movePlacementsOfGame(gameId);
+    return (await this.conventions.get()).computeMoveVerdicts(gameId);
   }
 }

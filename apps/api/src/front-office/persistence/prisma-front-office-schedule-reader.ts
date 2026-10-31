@@ -55,31 +55,31 @@ export class PrismaFrontOfficeScheduleReader implements FrontOfficeScheduleReade
       },
     });
     const conventionDate = fromDatabaseDate(date);
-    const end = Convention.endOf(
+    const end = Convention.computeEnd(
       conventionDate,
-      timeSlots.map((slot) => TimeOfDay.fromMinutes(slot.endMinute)),
+      timeSlots.map((slot) => TimeOfDay.createFromMinutes(slot.endMinute)),
     );
     return {
       date: conventionDate,
       timeSlots: timeSlots.map((slot, index) => ({
         id: slot.id,
         rank: index + 1,
-        start: TimeOfDay.fromMinutes(slot.startMinute).toString(),
-        end: TimeOfDay.fromMinutes(slot.endMinute).toString(),
+        start: TimeOfDay.createFromMinutes(slot.startMinute).toString(),
+        end: TimeOfDay.createFromMinutes(slot.endMinute).toString(),
       })),
       games: games
         // L'ordre naturel des tables est celui du domaine, que PostgreSQL ne sait pas reproduire.
         .sort(
           (a, b) =>
-            ComparableName.of(a.timeSlots[0]!.table.name).compareTo(
-              ComparableName.of(b.timeSlots[0]!.table.name),
+            ComparableName.createFromText(a.timeSlots[0]!.table.name).compareTo(
+              ComparableName.createFromText(b.timeSlots[0]!.table.name),
             ) || a.timeSlots[0]!.timeSlot.startMinute - b.timeSlots[0]!.timeSlot.startMinute,
         )
         .map(({ id, signUps, scenario, timeSlots: gameSlots }): FrontOfficeGameDto => {
           const timeSlotIds = gameSlots.map(({ timeSlotId }) => timeSlotId);
           const signUpCount = signUps.filter(
             ({ participant }) =>
-              !Convention.isSignUpSuspended(
+              !Convention.isSignUpSuspendedByLedTimeSlots(
                 timeSlotIds,
                 participant.gameMaster?.games.map(({ timeSlotId }) => timeSlotId) ?? [],
               ),

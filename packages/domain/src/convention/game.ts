@@ -30,20 +30,20 @@ export class Game {
   }
 
   /** Elle commence sur ce créneau, à cette table : c'est sa première case. */
-  startsAtTimeSlotAndTable(timeSlotId: string, tableId: string): boolean {
+  isStartingAt(timeSlotId: string, tableId: string): boolean {
     return this.timeSlotIds[0] === timeSlotId && this.tableId === tableId;
   }
 
   /** Ses créneaux se suivent dans la journée : aucun autre ne s'est glissé entre eux (PR-11). */
-  isConsecutiveIn(day: Day): boolean {
-    const following = day.consecutiveTimeSlotIdsFrom(this.timeSlotIds[0]!, this.timeSlotIds.length);
+  hasConsecutiveTimeSlotsIn(day: Day): boolean {
+    const following = day.findConsecutiveTimeSlotIds(this.timeSlotIds[0]!, this.timeSlotIds.length);
     return (
       following !== null && following.every((slotId, offset) => this.timeSlotIds[offset] === slotId)
     );
   }
 
   /** La même partie, sur une autre table et d'autres créneaux (PR-17). */
-  afterMovingTo(tableId: string, timeSlotIds: readonly string[]): Game {
+  getGameAfterMovingTo(tableId: string, timeSlotIds: readonly string[]): Game {
     return new Game(this.id, this.scenarioId, this.gameMasterId, tableId, timeSlotIds);
   }
 }

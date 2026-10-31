@@ -17,7 +17,7 @@ function aConvention(): Convention {
     signUps: [],
     games: [],
     version: 0,
-    presenceCode: PresenceCode.of('K7M2'),
+    presenceCode: PresenceCode.parse('K7M2'),
   });
 }
 
@@ -90,7 +90,7 @@ describe('MJ de la convention', () => {
     convention.addGameMaster('g1', 'p-g1', 'Alix');
     convention.addGameMaster('g2', 'p-g2', 'Brune');
 
-    convention.renameGameMaster('g1', 'Céleste');
+    convention.changeGameMasterNickname('g1', 'Céleste');
 
     expect(gameMastersOf(convention)).toEqual(['g2 Brune', 'g1 Céleste']);
   });
@@ -99,7 +99,7 @@ describe('MJ de la convention', () => {
     const convention = aConvention();
     convention.addGameMaster('g1', 'p-g1', 'Élodie');
 
-    convention.renameGameMaster('g1', 'elodie');
+    convention.changeGameMasterNickname('g1', 'elodie');
 
     expect(gameMastersOf(convention)).toEqual(['g1 elodie']);
   });
@@ -109,7 +109,7 @@ describe('MJ de la convention', () => {
     convention.addGameMaster('g1', 'p-g1', 'Élodie');
     convention.addGameMaster('g2', 'p-g2', 'Kaïros');
 
-    const refusal = refusalOf(() => convention.renameGameMaster('g2', 'ELODIE'));
+    const refusal = refusalOf(() => convention.changeGameMasterNickname('g2', 'ELODIE'));
 
     expect(refusal.code).toBe('nickname-taken');
     expect(gameMastersOf(convention)).toEqual(['g1 Élodie', 'g2 Kaïros']);
@@ -134,7 +134,7 @@ describe('MJ de la convention', () => {
       const convention = aConvention();
       convention.addGameMaster('g1', 'p-g1', 'Élodie');
 
-      convention.renameGameMaster('g1', 'Céleste');
+      convention.changeGameMasterNickname('g1', 'Céleste');
 
       expect(participantsOf(convention)).toEqual(['p-g1 Céleste']);
     });
@@ -153,7 +153,7 @@ describe('MJ de la convention', () => {
     /** Une convention où le participant « Élodie » s'est identifié. */
     function withParticipantElodie(): Convention {
       const convention = aConvention();
-      convention.identify('p1', 'K7M2', 'Élodie', null, {
+      convention.identifyByNickname('p1', 'K7M2', 'Élodie', null, {
         date: '2027-03-14',
         time: TimeOfDay.parse('10:00'),
       });
@@ -174,7 +174,7 @@ describe('MJ de la convention', () => {
       const convention = withParticipantElodie();
       convention.addGameMaster('g1', 'p-g1', 'Kaïros');
 
-      const refusal = refusalOf(() => convention.renameGameMaster('g1', 'elodie'));
+      const refusal = refusalOf(() => convention.changeGameMasterNickname('g1', 'elodie'));
 
       expect(refusal.code).toBe('nickname-taken-by-participant');
       expect(gameMastersOf(convention)).toEqual(['g1 Kaïros']);
@@ -210,7 +210,7 @@ describe('MJ de la convention', () => {
   it.each([
     [
       'changer le pseudo d’un',
-      (convention: Convention) => convention.renameGameMaster('x', 'Alix'),
+      (convention: Convention) => convention.changeGameMasterNickname('x', 'Alix'),
     ],
     [
       'supprimer un',

@@ -16,7 +16,7 @@ function aConvention(): Convention {
     signUps: [],
     games: [],
     version: 0,
-    presenceCode: PresenceCode.of('K7M2'),
+    presenceCode: PresenceCode.parse('K7M2'),
   });
 }
 
@@ -35,7 +35,7 @@ const at = TimeOfDay.parse;
 /** Les créneaux dans l'ordre de la journée : rang, identifiant et heures. */
 function scheduleOf(convention: Convention): string[] {
   return convention.timeSlots.map(
-    (slot) => `${convention.rankOfTimeSlot(slot.id)} ${slot.id} ${slot.start}-${slot.end}`,
+    (slot) => `${convention.getTimeSlotRank(slot.id)} ${slot.id} ${slot.start}-${slot.end}`,
   );
 }
 
@@ -171,7 +171,7 @@ describe('Créneaux de la convention', () => {
 describe('TimeOfDay', () => {
   it('lit et écrit une heure HH:MM', () => {
     expect(at('09:05').minutes).toBe(545);
-    expect(TimeOfDay.fromMinutes(545).toString()).toBe('09:05');
+    expect(TimeOfDay.createFromMinutes(545).toString()).toBe('09:05');
   });
 
   it.each(['24:00', '9:00', '12:60', ''])(

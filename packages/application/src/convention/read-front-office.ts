@@ -11,7 +11,7 @@ export class ReadFrontOffice {
 
   async execute(): Promise<FrontOfficeDto> {
     const convention = await this.repository.get();
-    convention.verifyOpenAt(this.clock.now());
+    convention.verifyStillOpenAt(this.clock.now());
     return { conventionName: convention.name };
   }
 }

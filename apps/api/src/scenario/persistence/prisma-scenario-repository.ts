@@ -24,8 +24,8 @@ export class PrismaScenarioRepository implements ScenarioRepository {
       title: row.title,
       system: row.system,
       presentation: row.presentation,
-      contentWarnings: ContentWarnings.of(row.contentWarnings),
-      seats: Seats.of(row.seatsMin, row.seatsMax),
+      contentWarnings: ContentWarnings.createFromText(row.contentWarnings),
+      seats: Seats.createBetween(row.seatsMin, row.seatsMax),
       duration: row.duration as Duration,
       imageId: row.imageId,
     });

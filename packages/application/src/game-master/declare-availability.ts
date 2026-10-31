@@ -7,7 +7,7 @@ export class DeclareAvailability {
 
   execute(gameMasterId: string, timeSlotId: string): Promise<void> {
     return changeConvention(this.repository, (convention) =>
-      convention.declareAvailability(gameMasterId, timeSlotId),
+      convention.declareGameMasterAvailability(gameMasterId, timeSlotId),
     );
   }
 }

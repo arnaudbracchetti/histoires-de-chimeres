@@ -45,7 +45,7 @@ export class PrismaGameMasterReader implements GameMasterReader {
     // L'ordre naturel est celui du domaine, que PostgreSQL ne sait pas reproduire.
     return gameMasters
       .map(toDto)
-      .sort((a, b) => ComparableName.of(a.nickname).compareTo(ComparableName.of(b.nickname)));
+      .sort((a, b) => ComparableName.createFromText(a.nickname).compareTo(ComparableName.createFromText(b.nickname)));
   }
 
   async read(gameMasterId: string): Promise<GameMasterDto | null> {

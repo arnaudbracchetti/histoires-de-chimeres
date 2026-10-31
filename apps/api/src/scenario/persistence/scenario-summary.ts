@@ -42,5 +42,5 @@ export function toScenarioSummary({
 
 /** L'ordre naturel des titres, que PostgreSQL ne sait pas reproduire : « Scénario 2 » avant « Scénario 10 ». */
 export function byTitle(a: ScenarioSummaryDto, b: ScenarioSummaryDto): number {
-  return ComparableName.of(a.title).compareTo(ComparableName.of(b.title));
+  return ComparableName.createFromText(a.title).compareTo(ComparableName.createFromText(b.title));
 }

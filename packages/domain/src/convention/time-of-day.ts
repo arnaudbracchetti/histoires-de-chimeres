@@ -12,7 +12,7 @@ export class TimeOfDay {
   }
 
   /** Minutes depuis minuit, de 0 à 1439. */
-  static fromMinutes(minutes: number): TimeOfDay {
+  static createFromMinutes(minutes: number): TimeOfDay {
     if (!Number.isInteger(minutes) || minutes < 0 || minutes >= 24 * 60) {
       throw new RangeError(`Heure invalide : ${minutes} minutes`);
     }

@@ -13,6 +13,6 @@ export class ReadPlacements {
   async execute(scenarioId: string): Promise<Placement[] | null> {
     const scenario = await this.scenarios.findById(scenarioId);
     if (!scenario) return null;
-    return (await this.conventions.get()).placementsOfScenario(scenario);
+    return (await this.conventions.get()).computePlacementVerdicts(scenario);
   }
 }

@@ -9,12 +9,12 @@ export class TimeSlot {
   ) {}
 
   /** Deux créneaux bout à bout ne se chevauchent pas : la fin est exclue de la plage. */
-  overlaps(other: TimeSlot): boolean {
+  overlapsTimeSlot(other: TimeSlot): boolean {
     return this.start.isBefore(other.end) && other.start.isBefore(this.end);
   }
 
   /** L'heure tombe pendant le créneau, fin exclue. */
-  includes(time: TimeOfDay): boolean {
+  includesTime(time: TimeOfDay): boolean {
     return !time.isBefore(this.start) && time.isBefore(this.end);
   }
 }

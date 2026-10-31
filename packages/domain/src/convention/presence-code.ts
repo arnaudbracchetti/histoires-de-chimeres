@@ -11,13 +11,13 @@ export class PresenceCode {
   private constructor(readonly text: string) {}
 
   /** Lit un code bien formé. Une autre forme est une erreur de l'appelant, pas un refus. */
-  static of(text: string): PresenceCode {
+  static parse(text: string): PresenceCode {
     if (!PATTERN.test(text)) throw new RangeError(`Code de présence invalide : ${text}`);
     return new PresenceCode(text);
   }
 
   /** Le code présenté est celui-ci, à la casse et aux espaces du début et de la fin près. */
-  matches(presented: string): boolean {
+  matchesPresentedCode(presented: string): boolean {
     return presented.trim().toUpperCase() === this.text;
   }
 }

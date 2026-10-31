@@ -27,7 +27,7 @@ export class GameMaster {
   }
 
   /** Le MJ après le renommage de son participant, qui garde son identifiant. */
-  afterRenaming(nickname: ComparableName): GameMaster {
+  getGameMasterAfterChangingNickname(nickname: ComparableName): GameMaster {
     return new GameMaster(
       this.id,
       new Participant(this.participant.id, nickname),
@@ -35,11 +35,11 @@ export class GameMaster {
     );
   }
 
-  afterDeclaringAvailability(timeSlotId: string): GameMaster {
+  getGameMasterAfterDeclaringAvailability(timeSlotId: string): GameMaster {
     return new GameMaster(this.id, this.participant, [...this.availabilities, timeSlotId]);
   }
 
-  afterWithdrawingAvailability(timeSlotId: string): GameMaster {
+  getGameMasterAfterWithdrawingAvailability(timeSlotId: string): GameMaster {
     return new GameMaster(
       this.id,
       this.participant,

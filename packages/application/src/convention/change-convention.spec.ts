@@ -23,7 +23,7 @@ class FakeConventionRepository implements ConventionRepository {
       signUps: [],
       games: [],
       version: 0,
-      presenceCode: PresenceCode.of('K7M2'),
+      presenceCode: PresenceCode.parse('K7M2'),
     });
   }
 

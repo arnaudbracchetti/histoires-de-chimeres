@@ -53,7 +53,7 @@ export class PrismaConventionRepository implements ConventionRepository {
     const participantById = new Map(
       participants.map((participant) => [
         participant.id,
-        new Participant(participant.id, ComparableName.of(participant.nickname)),
+        new Participant(participant.id, ComparableName.createFromText(participant.nickname)),
       ]),
     );
     const convention = Convention.restore({
@@ -64,11 +64,11 @@ export class PrismaConventionRepository implements ConventionRepository {
         (slot) =>
           new TimeSlot(
             slot.id,
-            TimeOfDay.fromMinutes(slot.startMinute),
-            TimeOfDay.fromMinutes(slot.endMinute),
+            TimeOfDay.createFromMinutes(slot.startMinute),
+            TimeOfDay.createFromMinutes(slot.endMinute),
           ),
       ),
-      tables: tables.map((table) => new Table(table.id, ComparableName.of(table.name))),
+      tables: tables.map((table) => new Table(table.id, ComparableName.createFromText(table.name))),
       gameMasters: gameMasters.map(
         (gameMaster) =>
           new GameMaster(
@@ -96,7 +96,7 @@ export class PrismaConventionRepository implements ConventionRepository {
           ),
       ),
       version,
-      presenceCode: PresenceCode.of(presenceCode),
+      presenceCode: PresenceCode.parse(presenceCode),
     });
     this.loaded.set(convention, rowsOf(convention));
     return convention;

@@ -14,7 +14,7 @@ export class ComparableName {
     private readonly key: string,
   ) {}
 
-  static of(text: string): ComparableName {
+  static createFromText(text: string): ComparableName {
     const trimmed = text.trim();
     const key = trimmed.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ');
     return new ComparableName(trimmed, key);

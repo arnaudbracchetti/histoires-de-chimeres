@@ -16,7 +16,7 @@ function aConvention(): Convention {
     signUps: [],
     games: [],
     version: 0,
-    presenceCode: PresenceCode.of('K7M2'),
+    presenceCode: PresenceCode.parse('K7M2'),
   });
   convention.addGameMaster('g1', 'p-g1', 'Kaïros');
   return convention;
@@ -207,7 +207,7 @@ describe('Modifier un scénario (PR-14)', () => {
   it('se supprime tant qu’il n’a aucune partie (PR-14)', () => {
     const scenario = aScenario();
 
-    expect(() => scenario.remove(aConvention())).not.toThrow();
+    expect(() => scenario.verifyRemovable(aConvention())).not.toThrow();
   });
 
   it('naît sans image (PR-7)', () => {

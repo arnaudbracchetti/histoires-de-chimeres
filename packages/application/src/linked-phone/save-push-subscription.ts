@@ -17,7 +17,7 @@ export class SavePushSubscription {
 
   /** `phoneId` : le cookie du téléphone. Sans cookie, ou relié à aucun pseudo : `PhoneNotLinkedError`. */
   async execute(phoneId: string | null, subscription: PushSubscriptionBody): Promise<void> {
-    (await this.conventions.get()).verifyOpenAt(this.clock.now());
+    (await this.conventions.get()).verifyStillOpenAt(this.clock.now());
     const phone = phoneId ? await this.phones.find(phoneId) : null;
     if (!phone) throw new PhoneNotLinkedError();
     await this.phones.savePushSubscription(phone.id, subscription);

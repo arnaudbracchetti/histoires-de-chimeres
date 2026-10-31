@@ -9,7 +9,7 @@ export class UpdateConvention {
   execute({ name, date }: UpdateConventionBody): Promise<void> {
     return changeConvention(this.repository, (convention) => {
       convention.rename(name);
-      convention.setDate(date);
+      convention.changeDate(date);
     });
   }
 }

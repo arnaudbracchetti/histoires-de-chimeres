@@ -15,7 +15,7 @@ export class UnlinkPhone {
 
   /** `phoneId` : le cookie du téléphone ; sans cookie, rien à couper. */
   async execute(phoneId: string | null): Promise<void> {
-    (await this.conventions.get()).verifyOpenAt(this.clock.now());
+    (await this.conventions.get()).verifyStillOpenAt(this.clock.now());
     if (phoneId) await this.phones.unlink(phoneId);
   }
 }

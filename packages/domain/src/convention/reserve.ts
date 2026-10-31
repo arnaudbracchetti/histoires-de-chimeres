@@ -26,17 +26,17 @@ export type ReserveOfScenario = {
  * Un scénario ni en réserve ni programmé nulle part donne la raison dans `unschedulable`.
  * Les scénarios suivent l'ordre du catalogue.
  */
-export function reserveOfEachScenario(
+export function computeReserve(
   catalogue: ScenarioCatalogue,
   day: Day,
   schedule: Schedule,
   gameMasters: UniquelyNamedCollection<GameMaster>,
 ): ReserveOfScenario[] {
-  return catalogue.entries().map((entry) => {
-    const gameMaster = gameMasters.existingItem(entry.gameMasterId);
+  return catalogue.listEntries().map((entry) => {
+    const gameMaster = gameMasters.findExistingItemById(entry.gameMasterId);
     const timeSlots = day.timeSlots.map((slot) => ({
       timeSlotId: slot.id,
-      inReserve: isAvailableAndFreeFrom(gameMaster, slot.id, entry.duration, day, schedule),
+      inReserve: isGameMasterFreeFrom(gameMaster, slot.id, entry.duration, day, schedule),
       scheduled: schedule.isScenarioScheduledOnTimeSlot(entry.id, slot.id),
     }));
     return {
@@ -44,7 +44,7 @@ export function reserveOfEachScenario(
       timeSlots,
       unschedulable: timeSlots.some(({ inReserve, scheduled }) => inReserve || scheduled)
         ? null
-        : unschedulableRefusalOf(gameMaster, entry.duration, day),
+        : buildUnschedulableRefusal(gameMaster, entry.duration, day),
     };
   });
 }
@@ -53,33 +53,33 @@ export function reserveOfEachScenario(
  * Le MJ est disponible et ne mène aucune partie sur les `length` créneaux consécutifs à partir de
  * `timeSlotId`, qui existent.
  */
-function isAvailableAndFreeFrom(
+function isGameMasterFreeFrom(
   gameMaster: GameMaster,
   timeSlotId: string,
   length: number,
   day: Day,
   schedule: Schedule,
 ): boolean {
-  const timeSlotIds = day.consecutiveTimeSlotIdsFrom(timeSlotId, length);
+  const timeSlotIds = day.findConsecutiveTimeSlotIds(timeSlotId, length);
   return (
     timeSlotIds !== null &&
     timeSlotIds.every(
       (slotId) =>
         gameMaster.isAvailableOnTimeSlot(slotId) &&
-        !schedule.gameMasterRunsGameOnTimeSlot(gameMaster.id, slotId),
+        !schedule.isGameMasterLeadingOnTimeSlot(gameMaster.id, slotId),
     )
   );
 }
 
 /** Pourquoi un scénario de `length` créneaux du MJ n'est ni en réserve ni programmé nulle part. */
-function unschedulableRefusalOf(gameMaster: GameMaster, length: number, day: Day): Refusal {
+function buildUnschedulableRefusal(gameMaster: GameMaster, length: number, day: Day): Refusal {
   const nickname = gameMaster.nickname.text;
   if (!day.timeSlots.some((slot) => gameMaster.isAvailableOnTimeSlot(slot.id))) {
     return new Refusal('game-master-without-availability', { nickname });
   }
   const available = day.timeSlots.some((slot) =>
     day
-      .consecutiveTimeSlotIdsFrom(slot.id, length)
+      .findConsecutiveTimeSlotIds(slot.id, length)
       ?.every((slotId) => gameMaster.isAvailableOnTimeSlot(slotId)),
   );
   return available

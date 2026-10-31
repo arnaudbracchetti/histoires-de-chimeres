@@ -16,7 +16,7 @@ export class ReadFrontOfficeSchedule {
 
   /** `phoneId` : le cookie du téléphone. Sans cookie, ou relié à aucun pseudo : `PhoneNotLinkedError`. */
   async execute(phoneId: string | null): Promise<FrontOfficeScheduleDto> {
-    (await this.conventions.get()).verifyOpenAt(this.clock.now());
+    (await this.conventions.get()).verifyStillOpenAt(this.clock.now());
     if (!phoneId || !(await this.phones.read(phoneId))) throw new PhoneNotLinkedError();
     return this.schedule.read();
   }

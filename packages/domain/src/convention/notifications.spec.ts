@@ -38,7 +38,7 @@ function aConvention(date: string | null = '2027-03-14'): Convention {
     signUps: [],
     games: [],
     version: 0,
-    presenceCode: PresenceCode.of('K7M2'),
+    presenceCode: PresenceCode.parse('K7M2'),
   });
   convention.addTimeSlot('s1', at('09:00'), at('11:30'));
   convention.addTimeSlot('s2', at('14:00'), at('16:30'));
@@ -50,14 +50,14 @@ function aConvention(date: string | null = '2027-03-14'): Convention {
   convention.addGameMaster('g2', 'p-g2', 'Kaïros');
   for (const gameMasterId of ['g1', 'g2']) {
     for (const timeSlotId of ['s1', 's2', 's3']) {
-      convention.declareAvailability(gameMasterId, timeSlotId);
+      convention.declareGameMasterAvailability(gameMasterId, timeSlotId);
     }
   }
-  convention.schedule('brumes', aScenario('a', 'g1'), 's1', 't1');
-  convention.schedule('epice', aScenario('b', 'g2', 2), 's1', 't2');
-  convention.schedule('neons', aScenario('c', 'g1'), 's2', 't1');
-  convention.identify('p1', 'K7M2', 'Élodie', null, NOW);
-  convention.identify('p2', 'K7M2', 'Lune', null, NOW);
+  convention.scheduleScenario('brumes', aScenario('a', 'g1'), 's1', 't1');
+  convention.scheduleScenario('epice', aScenario('b', 'g2', 2), 's1', 't2');
+  convention.scheduleScenario('neons', aScenario('c', 'g1'), 's2', 't1');
+  convention.identifyByNickname('p1', 'K7M2', 'Élodie', null, NOW);
+  convention.identifyByNickname('p2', 'K7M2', 'Lune', null, NOW);
   return convention;
 }
 
@@ -65,7 +65,7 @@ const endOfDay = (time: string): LocalMoment => ({ date: '2027-03-14', time: at(
 
 /**
  * La convention, avec en plus des inscriptions d'un MJ prises avant la programmation de ses
- * parties : elles restent, sans compter (IN-4), alors que `signUp()` les refuserait aujourd'hui.
+ * parties : elles restent, sans compter (IN-4), alors que `signUpForGame()` les refuserait aujourd'hui.
  */
 function withGameMasterSignUps(convention: Convention, ...signUps: SignUp[]): Convention {
   return Convention.restore({
@@ -86,11 +86,11 @@ function withGameMasterSignUps(convention: Convention, ...signUps: SignUp[]): Co
 describe('Notifications d’une partie déprogrammée (NO-2)', () => {
   it('préviennent ses inscrits, et son MJ avec un autre code, jusqu’à la fin de son créneau', () => {
     const convention = aConvention();
-    convention.signUp('p1', 'brumes');
-    convention.signUp('p2', 'brumes');
-    convention.signUp('p2', 'neons');
+    convention.signUpForGame('p1', 'brumes');
+    convention.signUpForGame('p2', 'brumes');
+    convention.signUpForGame('p2', 'neons');
 
-    const notifications = convention.unschedule('brumes');
+    const notifications = convention.unscheduleGame('brumes');
 
     expect(notifications).toEqual([
       {
@@ -110,9 +110,9 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
 
   it('une partie double se désigne par ses deux créneaux, et court jusqu’à la fin du second', () => {
     const convention = aConvention();
-    convention.signUp('p1', 'epice');
+    convention.signUpForGame('p1', 'epice');
 
-    const [toSignedUp] = convention.unschedule('epice');
+    const [toSignedUp] = convention.unscheduleGame('epice');
 
     expect(toSignedUp?.params).toEqual({ scenarioId: 'b', ranks: [1, 2] });
     expect(toSignedUp?.deadline).toEqual(endOfDay('16:30'));
@@ -121,7 +121,7 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
   it('sans inscrit, seul le MJ est prévenu', () => {
     expect(
       aConvention()
-        .unschedule('brumes')
+        .unscheduleGame('brumes')
         .map(({ code }) => code),
     ).toEqual(['own-game-unscheduled']);
   });
@@ -129,14 +129,14 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
   it('n’ont pas d’échéance tant que la convention n’a pas de date', () => {
     const convention = aConvention(null);
 
-    expect(convention.unschedule('brumes').map(({ deadline }) => deadline)).toEqual([null]);
+    expect(convention.unscheduleGame('brumes').map(({ deadline }) => deadline)).toEqual([null]);
   });
 
   it('le MJ ne reçoit que la sienne, même inscrit à sa partie : la plus précise (NO-1)', () => {
     const convention = withGameMasterSignUps(aConvention(), new SignUp('p-g1', 'brumes'));
-    convention.signUp('p1', 'brumes');
+    convention.signUpForGame('p1', 'brumes');
 
-    const notifications = convention.unschedule('brumes');
+    const notifications = convention.unscheduleGame('brumes');
 
     expect(notifications.map(({ recipients }) => recipients)).toEqual([
       { kind: 'participants', participantIds: ['p1'] },
@@ -148,8 +148,8 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
 describe('Notifications d’une partie déplacée (NO-2)', () => {
   it('préviennent ses inscrits quand elle passe à un autre créneau, jusqu’à la fin du plus tardif', () => {
     const convention = aConvention();
-    convention.signUp('p1', 'brumes');
-    convention.signUp('p2', 'neons');
+    convention.signUpForGame('p1', 'brumes');
+    convention.signUpForGame('p2', 'neons');
 
     const notifications = convention.moveGame('brumes', 's3', 't2');
 
@@ -165,8 +165,8 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
 
   it('courent jusqu’à la fin de son ancien créneau quand elle avance', () => {
     const convention = aConvention();
-    convention.unschedule('brumes');
-    convention.signUp('p1', 'neons');
+    convention.unscheduleGame('brumes');
+    convention.signUpForGame('p1', 'neons');
 
     const [moved] = convention.moveGame('neons', 's1', 't3');
 
@@ -181,7 +181,7 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
 
   it('ne partent pas quand elle change seulement de table (NO-4)', () => {
     const convention = aConvention();
-    convention.signUp('p1', 'brumes');
+    convention.signUpForGame('p1', 'brumes');
 
     expect(convention.moveGame('brumes', 's1', 't3')).toEqual([]);
   });
@@ -200,9 +200,9 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
 describe('Notifications de deux parties échangées (NO-2)', () => {
   it('préviennent les inscrits de chacune, une notification par partie', () => {
     const convention = aConvention();
-    convention.signUp('p1', 'brumes');
-    convention.signUp('p1', 'neons');
-    convention.signUp('p2', 'neons');
+    convention.signUpForGame('p1', 'brumes');
+    convention.signUpForGame('p1', 'neons');
+    convention.signUpForGame('p2', 'neons');
 
     const notifications = convention.swapGames('brumes', 'neons');
 
@@ -224,9 +224,9 @@ describe('Notifications de deux parties échangées (NO-2)', () => {
 
   it('ne partent pas pour deux parties d’un même créneau (NO-4)', () => {
     const convention = aConvention();
-    convention.signUp('p1', 'brumes');
-    convention.signUp('p2', 'epice');
-    convention.unschedule('neons');
+    convention.signUpForGame('p1', 'brumes');
+    convention.signUpForGame('p2', 'epice');
+    convention.unscheduleGame('neons');
 
     expect(convention.swapGames('brumes', 'epice')).toEqual([]);
   });

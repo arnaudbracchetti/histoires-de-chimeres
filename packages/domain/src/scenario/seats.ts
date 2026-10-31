@@ -8,7 +8,7 @@ export class Seats {
   ) {}
 
   /** Des nombres entiers : l'API refuse tout autre nombre avant le domaine. */
-  static of(min: number, max: number): Seats {
+  static createBetween(min: number, max: number): Seats {
     if (!Number.isInteger(min) || !Number.isInteger(max)) {
       throw new RangeError(`Places non entières : ${min} à ${max}.`);
     }

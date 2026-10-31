@@ -58,7 +58,7 @@ export class Scenario {
       id,
       gameMasterId,
       ...verifyContent(details),
-      seats: Seats.of(details.seats.min, details.seats.max),
+      seats: Seats.createBetween(details.seats.min, details.seats.max),
       duration: details.duration,
       imageId: null,
     });
@@ -106,13 +106,13 @@ export class Scenario {
   }
 
   changeSeats({ min, max }: { min: number; max: number }): void {
-    this.state.seats = Seats.of(min, max);
+    this.state.seats = Seats.createBetween(min, max);
   }
 
   /** La durée ne change plus dès qu'une partie du scénario est programmée (PR-14). */
   changeDuration(duration: Duration, convention: Convention): void {
     if (duration === this.state.duration) return;
-    if (convention.scenarioHasGames(this.id)) throw new Refusal('scenario-duration-locked', {});
+    if (convention.isScenarioScheduled(this.id)) throw new Refusal('scenario-duration-locked', {});
     this.state.duration = duration;
   }
 
@@ -129,26 +129,26 @@ export class Scenario {
    * Vérifie que le scénario peut être supprimé : il n'a aucune partie (PR-14). Le repository le
    * supprime ensuite.
    */
-  remove(convention: Convention): void {
-    if (convention.scenarioHasGames(this.id)) throw new Refusal('scenario-has-games', {});
+  verifyRemovable(convention: Convention): void {
+    if (convention.isScenarioScheduled(this.id)) throw new Refusal('scenario-has-games', {});
   }
 }
 
 /** Vérifie le contenu, champ par champ dans l'ordre de la saisie, et le renvoie sans les espaces autour. */
 function verifyContent(content: ScenarioContent) {
   return {
-    title: verifyText(content.title, Scenario.TITLE_MAX_LENGTH, 'scenario-title'),
-    system: verifyText(content.system, Scenario.SYSTEM_MAX_LENGTH, 'system'),
-    presentation: verifyText(
+    title: verifyRequiredText(content.title, Scenario.TITLE_MAX_LENGTH, 'scenario-title'),
+    system: verifyRequiredText(content.system, Scenario.SYSTEM_MAX_LENGTH, 'system'),
+    presentation: verifyRequiredText(
       content.presentation,
       Scenario.PRESENTATION_MAX_LENGTH,
       'presentation',
     ),
-    contentWarnings: ContentWarnings.of(content.contentWarnings),
+    contentWarnings: ContentWarnings.createFromText(content.contentWarnings),
   };
 }
 
-function verifyText(
+function verifyRequiredText(
   text: string,
   max: number,
   codePrefix: 'scenario-title' | 'system' | 'presentation',
