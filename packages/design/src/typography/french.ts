@@ -47,6 +47,12 @@ export function countOf(count: number, singular: string, pluralForm: string): st
   return `${formatCount(count)}${NBSP}${plural(count, singular, pluralForm)}`;
 }
 
+/** « 3 à 5 places », ou « 4 places » quand minimum et maximum sont égaux : les places d'un scénario. */
+export function formatSeats({ min, max }: { min: number; max: number }): string {
+  if (min === max) return countOf(min, 'place', 'places');
+  return `${formatCount(min)} à ${formatCount(max)}${NBSP}places`;
+}
+
 const LIST = new Intl.ListFormat('fr', { type: 'conjunction' });
 
 /** « Dragon », « Dragon et Licorne », « Dragon, Licorne et Griffon ». */

@@ -3,12 +3,23 @@ import type {
   FrontOfficeScheduleDto,
   FrontOfficeTimeSlotDto,
 } from '@chimeres/contract';
-import { countOf, formatTimeRange, formatTimeSlotRanks, fr } from '@chimeres/design';
+import { countOf, formatList, formatTimeRange, formatTimeSlotRanks, fr } from '@chimeres/design';
+import type { LedGame } from '../participant-data/participant-data';
 
 /** « Aucun inscrit · 5 places », « 6 inscrits · 4 places » : les places maximum (§5.3). */
-export function counterOf({ signUpCount, seats }: FrontOfficeGameDto): string {
-  const signUps = signUpCount ? countOf(signUpCount, 'inscrit', 'inscrits') : 'Aucun inscrit';
-  return `${signUps} · ${countOf(seats.max, 'place', 'places')}`;
+export function counterOf(game: FrontOfficeGameDto): string {
+  return `${signUpCountOf(game)} · ${countOf(game.seats.max, 'place', 'places')}`;
+}
+
+/** « 6 inscrits », ou « Aucun inscrit ». */
+export function signUpCountOf({ signUpCount }: FrontOfficeGameDto): string {
+  return signUpCount ? countOf(signUpCount, 'inscrit', 'inscrits') : 'Aucun inscrit';
+}
+
+/** « 7 inscrits pour 5 places », « aucun inscrit pour 5 places » : dans une phrase. */
+export function signUpsForSeatsOf(game: FrontOfficeGameDto): string {
+  const signUps = game.signUpCount ? signUpCountOf(game) : 'aucun inscrit';
+  return `${signUps} pour ${countOf(game.seats.max, 'place', 'places')}`;
 }
 
 /** Les créneaux d'une partie, dans l'ordre de la journée, tels que le programme les donne. */
@@ -62,4 +73,41 @@ export function ranksOf(schedule: FrontOfficeScheduleDto, game: FrontOfficeGameD
  */
 export function oversubscribedReminderOf(rank: number): string {
   return fr`Ta seule inscription du créneau ${rank} est une partie très demandée : inscris-toi aussi à une autre partie.`;
+}
+
+/** « Il reste de la place aux tables Dragon et Licorne », ou que tout est complet (PRD §5.4). */
+export function seatsLeftText(gamesWithSeats: FrontOfficeGameDto[]): string {
+  if (!gamesWithSeats.length) return 'Toutes les parties du créneau sont complètes.';
+  const names = formatList(gamesWithSeats.map(({ tableName }) => tableName));
+  return gamesWithSeats.length > 1
+    ? `Il reste de la place aux tables ${names}`
+    : `Il reste de la place à la table ${names}`;
+}
+
+/** Les joueurs publiés de la partie qu'il mène, ou aucun avant la publication. */
+export function playersOf({ outcome }: LedGame): string[] {
+  return outcome.kind === 'players' ? outcome.players : [];
+}
+
+/** « avec 5 joueurs », ou « sans joueur » : ses joueurs publiés (story 56). */
+export function withPlayersOf(led: LedGame): string {
+  const players = playersOf(led).length;
+  return players ? `avec ${countOf(players, 'joueur', 'joueurs')}` : 'sans joueur';
+}
+
+/** Les parties du créneau où il reste de la place, quand la partie qu'il mène est annulée. */
+export function gamesWithSeatsOf({ outcome }: LedGame): FrontOfficeGameDto[] {
+  return outcome.kind === 'cancelled' ? outcome.gamesWithSeats : [];
+}
+
+/**
+ * « Partie annulée » (TI-6) : la partie n'a pas atteint son minimum, et où il reste de la place,
+ * ou que tout est complet.
+ */
+export function cancelledGameText(led: LedGame): string {
+  const { title } = led.game;
+  const gamesWithSeats = gamesWithSeatsOf(led);
+  if (!gamesWithSeats.length) return fr`${title} n'a pas atteint son minimum. ${seatsLeftText([])}`;
+  const gameMaster = gamesWithSeats.length > 1 ? 'leur MJ' : 'son MJ';
+  return fr`${title} n'a pas atteint son minimum. ${seatsLeftText(gamesWithSeats)} : va voir ${gameMaster}.`;
 }

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { countOf, formatCount, formatList, fr, NBSP, plural, THIN_NBSP } from './french.js';
+import {
+  countOf,
+  formatCount,
+  formatList,
+  formatSeats,
+  fr,
+  NBSP,
+  plural,
+  THIN_NBSP,
+} from './french.js';
 
 describe('Typographie française', () => {
   it('nomme les espaces de ton.md par leur point de code', () => {
@@ -49,5 +58,10 @@ describe('Typographie française', () => {
     expect(formatList(['Dragon'])).toBe('Dragon');
     expect(formatList(['Dragon', 'Licorne'])).toBe('Dragon et Licorne');
     expect(formatList(['Dragon', 'Licorne', 'Griffon'])).toBe('Dragon, Licorne et Griffon');
+  });
+
+  it('donne les places d’un scénario, « 4 places » quand minimum et maximum sont égaux', () => {
+    expect(formatSeats({ min: 3, max: 5 })).toBe(`3 à 5${NBSP}places`);
+    expect(formatSeats({ min: 4, max: 4 })).toBe(`4${NBSP}places`);
   });
 });

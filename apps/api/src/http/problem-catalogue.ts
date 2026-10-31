@@ -208,6 +208,11 @@ export const problemCatalogue: Catalogue = {
     detail: ({ rank }) =>
       fr`Le tirage du créneau ${rank} est lancé : ses inscriptions sont fermées.`,
   },
+  'runs-game-on-time-slot': {
+    title: 'Tu mènes sur ce créneau',
+    detail: ({ rank, table }) =>
+      fr`Tu mènes une partie au créneau ${rank}, table ${table} : tu ne peux pas y jouer.`,
+  },
   'game-swapped-with-itself': {
     title: 'Même partie',
     detail: () => fr`Une partie ne s'échange pas avec elle-même : choisis une autre partie.`,

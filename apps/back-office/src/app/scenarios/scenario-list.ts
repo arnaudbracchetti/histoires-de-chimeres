@@ -1,6 +1,7 @@
 import { Component, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { scenarioEndpoints, type ScenarioListItemDto } from '@chimeres/contract';
+import { formatSeats } from '@chimeres/design';
 import { apiResource, currentValue } from '../api-resource';
 import { Loadable } from '../shell/loadable';
 import { Button } from '../ui/button';
@@ -9,7 +10,7 @@ import { ScenarioIllustration } from '../ui/scenario-illustration';
 import { SortableHeader } from '../ui/sortable-header';
 import { TableFilter } from '../ui/table-filter';
 import { tableView } from '../ui/table-view';
-import { formatScenarioDuration, formatSeats } from './scenario-format';
+import { formatScenarioDuration } from './scenario-format';
 
 /** Les colonnes triables, chacune avec le texte qu'elle compare. */
 const SORT_KEYS = {

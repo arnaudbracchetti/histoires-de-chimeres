@@ -50,7 +50,9 @@ const epice = game('Épice', ['s1', 's2']);
 const neons = game('Néons', ['s2']);
 
 type TimeSlotSituation = ParticipantSituationDto['timeSlots'][number];
-const open = (timeSlotId: string): TimeSlotSituation => ({
+/** Un créneau de la situation, où le pseudo ne mène rien sauf `ledGameId`. */
+type GivenTimeSlot = Omit<TimeSlotSituation, 'ledGameId'> & { ledGameId?: string | null };
+const open = (timeSlotId: string): GivenTimeSlot => ({
   timeSlotId,
   state: 'sign-ups-open',
   drawResult: null,
@@ -58,12 +60,13 @@ const open = (timeSlotId: string): TimeSlotSituation => ({
 /** Inscrit à `signedUpGameIds`, les deux créneaux aux inscriptions ouvertes, sauf ceux donnés. */
 const situation = (
   signedUpGameIds: string[] = [],
-  ...timeSlots: TimeSlotSituation[]
+  ...timeSlots: GivenTimeSlot[]
 ): ParticipantSituationDto => ({
   signedUpGameIds,
-  timeSlots: ['s1', 's2'].map(
-    (id) => timeSlots.find(({ timeSlotId }) => timeSlotId === id) ?? open(id),
-  ),
+  timeSlots: ['s1', 's2'].map((id) => ({
+    ledGameId: null,
+    ...(timeSlots.find(({ timeSlotId }) => timeSlotId === id) ?? open(id)),
+  })),
 });
 
 describe('ParticipantData', () => {
@@ -761,6 +764,174 @@ describe('ParticipantData', () => {
         'drawing',
         'sign-ups-open',
       ]);
+    });
+  });
+
+  describe('MJ qui mène une partie (IN-4, §5.7)', () => {
+    /** Il mène « Épice », partie double des créneaux 1 et 2, dont le premier est dans cet état. */
+    const leadingEpice = (first: Partial<GivenTimeSlot> = {}) =>
+      situation(
+        [],
+        { ...open('s1'), ledGameId: 'Épice', ...first },
+        { ...open('s2'), ledGameId: 'Épice' },
+      );
+    const [slot1, slot2] = schedule([]).timeSlots as [
+      FrontOfficeTimeSlotDto,
+      FrontOfficeTimeSlotDto,
+    ];
+
+    describe('barre d’inscription de la fiche', () => {
+      it('dit « Tu mènes cette partie » sur sa partie, et « Tu mènes une partie sur ce créneau » ailleurs, partie double comprise', async () => {
+        const data = await opened(
+          undefined,
+          undefined,
+          situation([], { ...open('s2'), ledGameId: 'Néons' }),
+        );
+
+        expect(data.signUpBarOf('Néons')).toEqual({ kind: 'own-game', rank: 2 });
+        expect(data.signUpBarOf('Épice')).toEqual({ kind: 'leading', game: neons });
+        expect(data.signUpBarOf('Brumes')).toEqual({
+          kind: 'open',
+          signedUp: false,
+          pending: false,
+        });
+      });
+
+      it('rouvre le créneau d’une partie annulée, qui reste la sienne (TI-6)', async () => {
+        const data = await opened(
+          undefined,
+          undefined,
+          situation([], {
+            timeSlotId: 's2',
+            state: 'published',
+            ledGameId: 'Néons',
+            drawResult: { kind: 'cancelled' },
+          }),
+        );
+
+        expect(data.signUpBarOf('Épice')).toEqual({
+          kind: 'open',
+          signedUp: false,
+          pending: false,
+        });
+        expect(data.ledGameOn('s2')).toBeNull();
+        expect(data.signUpBarOf('Néons')).toEqual({ kind: 'own-game', rank: 2 });
+      });
+    });
+
+    it('donne au programme la partie qu’il mène sur chaque créneau, partie double comprise', async () => {
+      const data = await opened(undefined, undefined, leadingEpice());
+
+      expect(data.ledGameOn('s1')).toEqual(epice);
+      expect(data.ledGameOn('s2')).toEqual(epice);
+    });
+
+    describe('Mes parties', () => {
+      const ledOf = (data: ParticipantData) => data.myTimeSlots()?.map(({ led }) => led);
+
+      it('déplie sa partie sur chacun de ses créneaux, avec le nombre d’inscrits avant le tirage', async () => {
+        const data = await opened(undefined, undefined, leadingEpice());
+
+        const led = { game: epice, started: false, outcome: { kind: 'sign-ups-open' } };
+        expect(ledOf(data)).toEqual([led, led]);
+      });
+
+      it('dit « Maintenant » dès le début de sa partie, et la garde sur son second créneau', async () => {
+        const data = await opened(undefined, undefined, leadingEpice());
+
+        now = new Date(2027, 2, 14, 11, 30);
+        await vi.advanceTimersByTimeAsync(30_000);
+        await answer('failure');
+
+        expect(ledOf(data)).toEqual([
+          { game: epice, started: true, outcome: { kind: 'sign-ups-open' } },
+        ]);
+      });
+
+      it('dit « Tirage en cours » pendant le tirage de son premier créneau, sans résultat provisoire', async () => {
+        const data = await opened(undefined, undefined, leadingEpice({ state: 'drawing' }));
+
+        expect(ledOf(data)?.map((led) => led?.outcome)).toEqual([
+          { kind: 'drawing' },
+          { kind: 'drawing' },
+        ]);
+      });
+
+      it('donne ses joueurs à la publication, et les garde hors ligne', async () => {
+        const data = await opened(
+          undefined,
+          undefined,
+          leadingEpice({
+            state: 'published',
+            drawResult: { kind: 'leading', players: ['Élodie', 'Lune'] },
+          }),
+        );
+        await vi.advanceTimersByTimeAsync(30_000);
+        await answer('failure');
+
+        expect(ledOf(data)?.[0]?.outcome).toEqual({ kind: 'players', players: ['Élodie', 'Lune'] });
+      });
+
+      it('dit « Partie annulée », avec les parties du créneau où il reste de la place (TI-6)', async () => {
+        const withSeats = { ...brumes, playerCount: 3 };
+        const data = await opened(
+          schedule([withSeats, { ...game('Ruines', ['s1']), playerCount: 5 }, epice, neons]),
+          undefined,
+          leadingEpice({ state: 'published', drawResult: { kind: 'cancelled' } }),
+        );
+
+        expect(ledOf(data)?.[0]?.outcome).toEqual({
+          kind: 'cancelled',
+          gamesWithSeats: [withSeats],
+        });
+      });
+
+      it('ne déplie rien sur un créneau où il ne mène pas', async () => {
+        const data = await opened(undefined, undefined, situation(['Brumes']));
+
+        expect(ledOf(data)).toEqual([null, null]);
+      });
+    });
+
+    describe('Accueil', () => {
+      it('montre « Tu mènes à la table » quand le dernier tirage publié est celui de sa partie (story 56)', async () => {
+        const data = await opened(
+          undefined,
+          undefined,
+          leadingEpice({ state: 'published', drawResult: { kind: 'leading', players: ['Lune'] } }),
+        );
+
+        expect(data.home()?.card).toEqual({
+          kind: 'leading',
+          led: { game: epice, started: false, outcome: { kind: 'players', players: ['Lune'] } },
+          timeSlots: [slot1, slot2],
+        });
+        expect(data.home()?.timeSlots).toEqual([]);
+      });
+
+      it('montre « Ta partie est annulée » quand le dernier tirage publié l’annule (TI-6)', async () => {
+        const data = await opened(
+          undefined,
+          undefined,
+          leadingEpice({ state: 'published', drawResult: { kind: 'cancelled' } }),
+        );
+
+        expect(data.home()?.card).toEqual({
+          kind: 'cancelled',
+          timeSlot: slot1,
+          led: { game: epice, started: false, outcome: { kind: 'cancelled', gamesWithSeats: [] } },
+        });
+      });
+
+      it('montre « Tirage en cours » avec la partie qu’il mène (story 58)', async () => {
+        const data = await opened(undefined, undefined, leadingEpice({ state: 'drawing' }));
+
+        expect(data.home()?.card).toEqual({
+          kind: 'leading-drawing',
+          timeSlot: slot1,
+          led: { game: epice, started: false, outcome: { kind: 'drawing' } },
+        });
+      });
     });
   });
 });

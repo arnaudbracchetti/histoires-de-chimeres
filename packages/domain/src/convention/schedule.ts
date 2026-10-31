@@ -59,7 +59,12 @@ export class Schedule {
   }
 
   gameMasterRunsGameOnTimeSlot(gameMasterId: string, timeSlotId: string): boolean {
-    return this.games.some(
+    return this.gameRunByGameMasterOnTimeSlot(gameMasterId, timeSlotId) !== undefined;
+  }
+
+  /** La partie que le MJ mène sur ce créneau, ou `undefined`. */
+  gameRunByGameMasterOnTimeSlot(gameMasterId: string, timeSlotId: string): Game | undefined {
+    return this.games.find(
       (game) => game.gameMasterId === gameMasterId && game.isOnTimeSlot(timeSlotId),
     );
   }

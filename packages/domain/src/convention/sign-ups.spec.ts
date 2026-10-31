@@ -282,6 +282,46 @@ describe('Un MJ qui mène sur un créneau où il est inscrit (IN-4)', () => {
   });
 });
 
+describe('Un MJ qui s’inscrit sur un créneau où il mène (IN-4)', () => {
+  it('est refusé sur le créneau de sa partie, avec le créneau et la table de sa partie', () => {
+    const refusal = refusalOf(() => aConvention().signUp('p-g2', 'brumes'));
+
+    expect(refusal.code).toBe('runs-game-on-time-slot');
+    expect(refusal.params).toEqual({ rank: 1, table: 'Table 2' });
+  });
+
+  it('est refusé sur sa propre partie', () => {
+    expect(refusalOf(() => aConvention().signUp('p-g2', 'epice')).code).toBe(
+      'runs-game-on-time-slot',
+    );
+  });
+
+  it('est refusé sur une partie double dont il mène le second créneau', () => {
+    const convention = aConvention();
+    convention.addTable('t3', 'Table 3');
+    convention.addGameMaster('g3', 'p-g3', 'Mira');
+    convention.declareAvailability('g3', 's2');
+    convention.schedule('ombres', aScenario('d', 'g3'), 's2', 't3');
+
+    const refusal = refusalOf(() => convention.signUp('p-g3', 'epice'));
+
+    expect(refusal.code).toBe('runs-game-on-time-slot');
+    expect(refusal.params).toEqual({ rank: 2, table: 'Table 3' });
+  });
+
+  it('s’inscrit sur un créneau où il ne mène pas', () => {
+    const convention = aConvention();
+    convention.addTable('t3', 'Table 3');
+    convention.addGameMaster('g3', 'p-g3', 'Mira');
+    convention.declareAvailability('g3', 's2');
+    convention.schedule('ombres', aScenario('d', 'g3'), 's2', 't3');
+
+    convention.signUp('p-g3', 'brumes');
+
+    expect(signUpsOf(convention)).toEqual(['p-g3 brumes']);
+  });
+});
+
 describe('Supprimer un MJ (PR-12)', () => {
   it('efface ses inscriptions, et elles seules', () => {
     const convention = aConvention();
@@ -304,10 +344,23 @@ describe('Situation d’un participant', () => {
     expect(convention.situationOf('p1')).toEqual({
       signedUpGameIds: ['epice'],
       timeSlots: [
-        { timeSlotId: 's1', state: 'sign-ups-open', drawResult: null },
-        { timeSlotId: 's2', state: 'sign-ups-open', drawResult: null },
+        { timeSlotId: 's1', state: 'sign-ups-open', ledGameId: null, drawResult: null },
+        { timeSlotId: 's2', state: 'sign-ups-open', ledGameId: null, drawResult: null },
       ],
     });
+  });
+
+  it('donne à un MJ la partie qu’il mène sur chaque créneau, partie double comprise (IN-4)', () => {
+    const convention = aConvention();
+
+    expect(convention.situationOf('p-g2').timeSlots.map(({ ledGameId }) => ledGameId)).toEqual([
+      'epice',
+      'epice',
+    ]);
+    expect(convention.situationOf('p-g1').timeSlots.map(({ ledGameId }) => ledGameId)).toEqual([
+      'brumes',
+      'neons',
+    ]);
   });
 
   it('refuse un participant introuvable', () => {

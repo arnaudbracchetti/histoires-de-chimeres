@@ -6,10 +6,23 @@ import {
   TIME_SLOT_PARAM,
   type FrontOfficeGameDto,
 } from '@chimeres/contract';
-import { countOf, formatList, formatTime, fr, plural, timeSlotLabel } from '@chimeres/design';
-import { timeSlotsLabel } from '../game/game-text';
+import { countOf, formatList, formatTime, fr, timeSlotLabel } from '@chimeres/design';
+import {
+  cancelledGameText,
+  counterOf,
+  gamesWithSeatsOf,
+  seatsLeftText,
+  signUpsForSeatsOf,
+  timeSlotsLabel,
+  withPlayersOf,
+} from '../game/game-text';
+import { GamesWithSeats } from '../game/games-with-seats';
 import { OversubscribedReminder } from '../game/oversubscribed-reminder';
-import { ParticipantData, type MyTimeSlot } from '../participant-data/participant-data';
+import {
+  ParticipantData,
+  type LedGame,
+  type MyTimeSlot,
+} from '../participant-data/participant-data';
 import { ScenarioIllustration } from '../scenario-illustration';
 import { TabNavigation } from '../shell/tab-navigation';
 import { Button } from '../ui/button';
@@ -25,12 +38,13 @@ type ProgrammeLine = {
 
 /**
  * L'Accueil, racine de l'historique : en tête, la dernière affectation publiée ou une carte d'état
- * (stories 54, 55, 57, 59), puis « Ton programme », une ligne par autre créneau à venir, qui mène à
- * la fiche de sa table ou au programme du créneau, avec le rappel d'IN-5 (stories 60, 61).
+ * (stories 54, 55, 57, 59), celles du MJ comprises (stories 56, 58), puis « Ton programme », une
+ * ligne par autre créneau à venir, qui mène à la fiche de sa table, à Mes parties sur un créneau où
+ * il mène, ou au programme du créneau, avec le rappel d'IN-5 (stories 60, 61).
  */
 @Component({
   selector: 'app-home-page',
-  imports: [Button, Icon, OversubscribedReminder, RouterLink, ScenarioIllustration],
+  imports: [Button, GamesWithSeats, Icon, OversubscribedReminder, RouterLink, ScenarioIllustration],
   template: `
     <h1 class="visually-hidden">Accueil</h1>
     @if (data.home(); as home) {
@@ -57,30 +71,73 @@ type ProgrammeLine = {
             <span class="meta">{{ card.game.system }}</span>
           </span>
         </a>
+      } @else if (card.kind === 'leading') {
+        @let game = card.led.game;
+        <a
+          class="assignment"
+          [href]="myGamesUrl(card.timeSlots[0]!.rank)"
+          (click)="$event.preventDefault(); openMyGames(card.timeSlots[0]!.rank)"
+        >
+          <app-scenario-illustration
+            format="card"
+            [title]="game.title"
+            [imageUrl]="game.imageUrl"
+          />
+          <span class="when">
+            <app-icon name="clock" />
+            {{
+              card.led.started ? 'Maintenant' : 'Début à ' + formatTime(card.timeSlots[0]!.start)
+            }}
+          </span>
+          <span class="text">
+            <span class="over">{{ timeSlotsLabel(card.timeSlots) }}</span>
+            <span class="table">Tu mènes à la table {{ game.tableName }}</span>
+            <span
+              ><strong>{{ game.title }}</strong
+              >, {{ withPlayersOf(card.led) }}.</span
+            >
+            <span class="meta">{{ game.system }}</span>
+          </span>
+        </a>
+        <a
+          appButton="secondary"
+          [href]="myGamesUrl(card.timeSlots[0]!.rank)"
+          (click)="$event.preventDefault(); openMyGames(card.timeSlots[0]!.rank)"
+        >
+          <app-icon name="users" />Voir tes joueurs
+        </a>
+      } @else if (card.kind === 'cancelled') {
+        <section class="card warning" aria-labelledby="cancelled">
+          <span class="over">{{ timeSlotLabel(card.timeSlot) }}</span>
+          <h2 id="cancelled">Ta partie est annulée</h2>
+          <p>{{ cancelledGameText(card.led) }}</p>
+          @if (gamesWithSeatsOf(card.led).length) {
+            <app-games-with-seats [games]="gamesWithSeatsOf(card.led)" />
+          }
+        </section>
+      } @else if (card.kind === 'leading-drawing') {
+        <section class="card" aria-labelledby="drawing">
+          <span class="over">{{ timeSlotLabel(card.timeSlot) }}</span>
+          <h2 id="drawing">Tirage en cours</h2>
+          <p>{{ leadingDrawingText(card.led) }}</p>
+          <p class="meta">Tes joueurs s'afficheront dès la publication.</p>
+          <div>
+            <a
+              appButton="secondary"
+              [href]="myGamesUrl(card.timeSlot.rank)"
+              (click)="$event.preventDefault(); openMyGames(card.timeSlot.rank)"
+            >
+              <app-icon name="book-open" />Voir ta partie
+            </a>
+          </div>
+        </section>
       } @else if (card.kind === 'unassigned') {
         <section class="card warning" aria-labelledby="unassigned">
           <span class="over">{{ timeSlotLabel(card.timeSlot) }}</span>
           <h2 id="unassigned">Pas de place pour toi</h2>
           <p>{{ unassignedText(card.gamesWithSeats) }}</p>
           @if (card.gamesWithSeats.length) {
-            <ul aria-label="Parties où il reste de la place">
-              @for (game of card.gamesWithSeats; track game.id) {
-                <li>
-                  <a [routerLink]="['/parties', game.id]">
-                    <app-scenario-illustration
-                      format="thumb"
-                      [title]="game.title"
-                      [imageUrl]="game.imageUrl"
-                    />
-                    <span class="text">
-                      <span class="title">Table {{ game.tableName }}</span>
-                      <span class="meta">{{ game.title }}, avec {{ game.gameMasterNickname }}</span>
-                    </span>
-                    <span class="seats">{{ seatsLeftOf(game) }}</span>
-                  </a>
-                </li>
-              }
-            </ul>
+            <app-games-with-seats [games]="card.gamesWithSeats" />
           }
         </section>
       } @else if (card.kind === 'drawing') {
@@ -246,40 +303,6 @@ type ProgrammeLine = {
         list-style: none;
       }
 
-      /* Les tables où il reste de la place : la vignette, la table et la partie, les places libres. */
-      .card ul {
-        gap: var(--space-s);
-
-        a {
-          display: flex;
-          gap: var(--space-m);
-          align-items: center;
-          padding: var(--space-s);
-          border-radius: var(--radius-card);
-          background: var(--surface-3);
-          color: var(--text);
-          text-decoration: none;
-        }
-
-        app-scenario-illustration {
-          flex: none;
-          width: 44px;
-        }
-
-        .text {
-          display: grid;
-          flex: 1;
-          gap: var(--space-xxs);
-        }
-      }
-
-      .seats {
-        color: var(--success);
-        font-size: var(--font-size-mobile-meta);
-        font-weight: 600;
-        white-space: nowrap;
-      }
-
       .programme {
         display: grid;
         gap: var(--space-s);
@@ -363,20 +386,43 @@ export class HomePage {
 
   private readonly router = inject(Router);
 
-  /** Une ligne mène à la fiche de sa table, sinon au programme du créneau. */
-  protected hrefOf({ timeSlot, assignment }: MyTimeSlot): string {
-    return assignment?.kind === 'assigned'
-      ? frontOfficeUrls.game(assignment.game.id)
-      : frontOfficeUrls.timeSlotGames(timeSlot.rank);
+  protected readonly myGamesUrl = frontOfficeUrls.myGamesOnTimeSlot;
+
+  /**
+   * Une ligne mène à la fiche de sa table, à Mes parties sur un créneau où il mène, sinon au
+   * programme du créneau (celui d'une partie annulée, où il peut encore aller voir une table).
+   */
+  protected hrefOf(slot: MyTimeSlot): string {
+    const { timeSlot, assignment } = slot;
+    if (assignment?.kind === 'assigned') return frontOfficeUrls.game(assignment.game.id);
+    if (leadsToMyGames(slot)) return this.myGamesUrl(timeSlot.rank);
+    return frontOfficeUrls.timeSlotGames(timeSlot.rank);
   }
 
-  /** La fiche s'empile sur l'Accueil ; le programme s'y pose, comme son onglet. */
-  protected open({ timeSlot, assignment }: MyTimeSlot): void {
+  /** La fiche s'empile sur l'Accueil ; Mes parties et le programme s'y posent, comme leur onglet. */
+  protected open(slot: MyTimeSlot): void {
+    const { timeSlot, assignment } = slot;
     if (assignment?.kind === 'assigned') {
       void this.router.navigateByUrl(frontOfficeUrls.game(assignment.game.id));
+    } else if (leadsToMyGames(slot)) {
+      this.openMyGames(timeSlot.rank);
     } else {
       this.navigation.go(frontOfficePaths.schedule, { [TIME_SLOT_PARAM]: timeSlot.rank });
     }
+  }
+
+  /** Mes parties, sur ce créneau (§5.7). */
+  protected openMyGames(rank: number): void {
+    this.navigation.go(frontOfficePaths.myGames, { [TIME_SLOT_PARAM]: rank });
+  }
+
+  protected readonly withPlayersOf = withPlayersOf;
+  protected readonly gamesWithSeatsOf = gamesWithSeatsOf;
+  protected readonly cancelledGameText = cancelledGameText;
+
+  /** « Tirage en cours » avec la partie qu'il mène (story 58). */
+  protected leadingDrawingText({ game }: LedGame): string {
+    return fr`Tu mènes ${game.title} à la table ${game.tableName} : ${signUpsForSeatsOf(game)}.`;
   }
 
   /** « Pas de place pour toi » : où il reste de la place, ou que tout est complet (story 55). */
@@ -384,12 +430,6 @@ export class HomePage {
     if (!gamesWithSeats.length) return seatsLeftText(gamesWithSeats);
     const gameMaster = gamesWithSeats.length > 1 ? 'leur MJ' : 'son MJ';
     return fr`Les parties que tu avais choisies sont complètes. ${seatsLeftText(gamesWithSeats)} : va voir ${gameMaster}.`;
-  }
-
-  /** « 2 places libres ». */
-  protected seatsLeftOf({ seats, playerCount }: FrontOfficeGameDto): string {
-    const left = seats.max - (playerCount ?? 0);
-    return `${countOf(left, 'place', 'places')} ${plural(left, 'libre', 'libres')}`;
   }
 
   /** « Tirage en cours » : les inscriptions qui comptent pour ce tirage (story 57). */
@@ -401,9 +441,32 @@ export class HomePage {
   }
 
   /** La ligne d'un créneau de « Ton programme » : son affectation, ou l'état de ses inscriptions. */
-  protected lineOf({ timeSlot, state, signedUpGames, assignment }: MyTimeSlot): ProgrammeLine {
+  protected lineOf({ timeSlot, state, signedUpGames, assignment, led }: MyTimeSlot): ProgrammeLine {
     const titles = formatList(signedUpGames.map(({ title }) => title));
     const signUps = countOf(signedUpGames.length, 'inscription', 'inscriptions');
+    if (led?.outcome.kind === 'cancelled') {
+      return {
+        icon: 'triangle-alert',
+        tone: 'warning',
+        label: 'Ta partie est annulée',
+        detail: seatsLeftText(led.outcome.gamesWithSeats),
+      };
+    }
+    if (led) {
+      const { game, outcome } = led;
+      const detail =
+        outcome.kind === 'players'
+          ? `${game.title}, ${withPlayersOf(led)}`
+          : outcome.kind === 'drawing'
+            ? `${game.title} · tirage en cours`
+            : `${game.title} · ${counterOf(game)}`;
+      return {
+        icon: 'book-open',
+        tone: 'accent',
+        label: `Tu mènes à la table ${game.tableName}`,
+        detail,
+      };
+    }
     if (assignment?.kind === 'assigned') {
       const { game } = assignment;
       // Le second créneau d'une partie double où il joue (TI-3).
@@ -445,11 +508,7 @@ export class HomePage {
   }
 }
 
-/** « Il reste de la place aux tables Dragon et Licorne », ou que tout est complet (PRD §5.4). */
-function seatsLeftText(gamesWithSeats: FrontOfficeGameDto[]): string {
-  if (!gamesWithSeats.length) return 'Toutes les parties du créneau sont complètes.';
-  const names = formatList(gamesWithSeats.map(({ tableName }) => tableName));
-  return gamesWithSeats.length > 1
-    ? `Il reste de la place aux tables ${names}`
-    : `Il reste de la place à la table ${names}`;
+/** La ligne d'un créneau où il mène ouvre Mes parties, sauf sa partie annulée : il peut y jouer. */
+function leadsToMyGames({ led }: MyTimeSlot): boolean {
+  return !!led && led.outcome.kind !== 'cancelled';
 }

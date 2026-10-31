@@ -49,13 +49,16 @@ describe('Inscriptions du front office (IN-2)', () => {
       .signUpCount;
   };
 
-  /** Un téléphone relié à un pseudo nouveau : son cookie, `nom=valeur`. */
-  const linkedPhone = async (nickname: string) => {
+  /**
+   * Un téléphone relié à un pseudo nouveau, ou à un MJ avec `confirmation` (ID-3) : son cookie,
+   * `nom=valeur`.
+   */
+  const linkedPhone = async (nickname: string, confirmation: 'game-master' | null = null) => {
     const { presenceCode } = (await server().get(apiUrl(conventionEndpoints.read)).expect(200))
       .body as ConventionDto;
     const response = await server()
       .post(apiUrl(linkedPhoneEndpoints.link))
-      .send({ presenceCode, nickname, confirmation: null })
+      .send({ presenceCode, nickname, confirmation })
       .expect(200);
     return (response.headers['set-cookie'] as unknown as string[])[0]!.split(';')[0]!;
   };
@@ -117,7 +120,24 @@ describe('Inscriptions du front office (IN-2)', () => {
     expect(await signUpCountOf(gameId, elodie)).toBe(1);
     expect((await readSituation(elodie).expect(200)).body).toEqual({
       signedUpGameIds: [gameId],
-      timeSlots: [{ timeSlotId, state: 'sign-ups-open', drawResult: null }],
+      timeSlots: [{ timeSlotId, state: 'sign-ups-open', ledGameId: null, drawResult: null }],
+    });
+  });
+
+  it('refuse le MJ sur le créneau où il mène, et sa situation donne sa partie (IN-4)', async () => {
+    const { gameId, timeSlotId } = await prepare();
+    const brann = await linkedPhone('Brann', 'game-master');
+
+    const response = await signUp(gameId, brann).expect(422);
+
+    expect(response.body).toMatchObject({
+      code: 'runs-game-on-time-slot',
+      detail: 'Tu mènes une partie au créneau 1, table Griffon\u00a0: tu ne peux pas y jouer.',
+    });
+    expect(await signUpCountOf(gameId, brann)).toBe(0);
+    expect((await readSituation(brann).expect(200)).body).toEqual({
+      signedUpGameIds: [],
+      timeSlots: [{ timeSlotId, state: 'sign-ups-open', ledGameId: gameId, drawResult: null }],
     });
   });
 

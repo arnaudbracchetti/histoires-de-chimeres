@@ -136,9 +136,12 @@ Le geste d'inscription (IN-2), fixé en bas de la fiche d'une partie, toujours s
 - **Inscriptions ouvertes** : « S'inscrire » (principal, icône `plus`), sur toute la largeur. Une fois inscrit, sur une ligne : « Inscription enregistrée » (`circle-check` orange), puis « Se désinscrire » (secondaire), qui retire l'inscription d'un tap, sans confirmation.
 - **Pendant l'envoi**, le libellé devient « Inscription… » ou « Désinscription… », et un second tap est sans effet. Le bouton reste actif sans réseau : l'échec se dit en alerte (« Pas de connexion : rien n'a été enregistré. »), et après 10 s sans réponse, « Le réseau ne répond pas : vérifie ton inscription. ». Les données sont relues après chaque geste, réussi ou non.
 - **Geste impossible** : à la place du bouton, un statut (icône, titre en gras, phrase en texte secondaire) dit pourquoi : « Tirage en cours », « Tu joues aux créneaux 3 et 4 », « Tu joues à cette table », « Pas de place pour toi », « Tirage publié ». Quand le pseudo joue à une autre table, « Voir ta partie » (secondaire) ouvre sa fiche.
+- **MJ** (IN-4, §5.7), avec `book-open` orange : sur sa propre partie, « Tu mènes cette partie » et « Voir dans Mes parties » (secondaire), qui ouvre Mes parties sur son créneau ; sur une autre partie d'un créneau où il mène, partie double comprise, « Tu mènes une partie sur ce créneau » avec le titre et la table de sa partie.
 - La barre annonce ses changements (`aria-live="polite"`).
 
-Sur une carte du programme, un badge « Inscrit » (`check`, orange teinté à 14 %) se pose en haut à gauche de l'image d'une partie où le pseudo est inscrit.
+Sur une carte du programme, un badge « Inscrit » (`check`, orange teinté à 14 %) se pose en haut à gauche de l'image d'une partie où le pseudo est inscrit, et « Tu mènes » (`book-open`) sur celle que mène son MJ.
+
+Pour un MJ, la puce d'un créneau où il mène porte `book-open` devant l'heure. Sous la plage horaire du créneau, une note sur fond orange teinté à 14 % dit pourquoi il ne peut pas s'y inscrire : « Tu mènes *Titre* à la table *T* : tu ne peux pas t'inscrire comme joueur sur ce créneau. »
 
 ## Accueil
 
@@ -146,6 +149,7 @@ En tête, une seule carte (stories 54, 55, 57, 59), puis « Ton programme ».
 
 - **Affectation** : la dernière publiée, tant que sa partie n'est pas terminée (une partie double, jusqu'à la fin de son second créneau). Carte 3:2 qui ouvre la fiche : l'image, dans son coin « Début à 9 h 30 » ou « Maintenant » (`clock`, orange teinté à 14 %), puis par-dessus « Créneau 1 · 9 h 30 – 12 h 00 » en surtitre, « Table Griffon » en Uncial Antiqua à taille de héros, « Tu joues à *Titre*, avec *MJ* » et le jeu.
 - **« Pas de place pour toi »**, si c'est le dernier résultat publié : carte bordée de jaune, la phrase qui dit où il reste de la place, puis une carte par partie du créneau qui en a (vignette, « Table Dragon », « *Titre*, avec *MJ* », « 2 places libres » en vert), qui ouvre sa fiche.
+- **MJ** (stories 56, 58) : si le dernier résultat publié est celui de sa partie, la même carte 3:2, qui ouvre Mes parties, avec « Tu mènes à la table *T* » et « *Titre*, avec *K* joueurs. », puis « Voir tes joueurs » (secondaire, `users`) ; sa partie annulée, « Ta partie est annulée » comme « Pas de place pour toi ». Pendant le tirage de son créneau, « Tirage en cours » avec « Tu mènes *Titre* à la table *T* : *K* inscrits pour *M* places. » et « Voir ta partie » (secondaire, `book-open`).
 - **« Tirage en cours »**, sinon, pour un créneau en cours de tirage où le pseudo est inscrit : ses inscriptions comptent pour ce tirage, et sa table s'affichera ici dès la publication.
 - **« Choisis tes parties »**, sans rien de tout cela, avec « Voir le programme ».
 
@@ -158,8 +162,10 @@ En tête, une seule carte (stories 54, 55, 57, 59), puis « Ton programme ».
 | table | `circle-check` vert | « Table Griffon » · « *Titre*, avec *MJ* » |
 | pas de place | `triangle-alert` jaune | « Pas de place pour toi » · les tables où il en reste |
 | publié, sans inscription | `circle-check` | « Tirage publié » · « Aucune inscription sur ce créneau » |
+| MJ qui y mène | `book-open` orange | « Tu mènes à la table Dragon » · « *Titre* · 7 inscrits · 5 places », « · tirage en cours » ou « , avec 5 joueurs » |
+| sa partie annulée | `triangle-alert` jaune | « Ta partie est annulée » · les tables où il reste de la place |
 
-Une ligne ouvre la fiche de sa table, sinon le programme du créneau, posé sur l'Accueil comme son onglet. Le rappel d'IN-5 s'y ajoute, sur fond jaune teinté à 14 %.
+Une ligne ouvre la fiche de sa table, Mes parties sur un créneau où il mène, sinon le programme du créneau, posé sur l'Accueil comme son onglet. Le rappel d'IN-5 s'y ajoute, sur fond jaune teinté à 14 %.
 
 ## Mes parties
 
@@ -168,6 +174,13 @@ L'onglet suit la journée du pseudo, créneau par créneau à venir (story 86). 
 - **Rappel « partie très demandée »** (IN-5) : en tête du créneau, sur fond jaune teinté à 14 %, avec `triangle-alert` en jaune : « Ta seule inscription du créneau 2 est une partie très demandée : inscris-toi aussi à une autre partie. » Il disparaît dès le lancement du tirage.
 - **Inscriptions** : une carte par partie, en Anthracite 3 sous un filet, qui ouvre sa fiche. À gauche, le titre, la table (et « créneaux 3 et 4 » pour une partie double, listée sous son seul premier créneau), puis « Très demandée » s'il y a lieu ; à droite, la vignette de 44 px du scénario. Sans inscription : « Aucune inscription sur ce créneau. », en texte secondaire.
 - **Affectation**, après la publication, sous les inscriptions : une carte qui ouvre la fiche, avec `circle-check` en vert, le surtitre « Table Griffon » et « Tu joues à *Titre*, avec *MJ* ». Non placé : « Pas de place pour toi », avec `triangle-alert` en jaune.
+- **Partie menée** (§5.7, [#54](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/54), variante B) : sur chaque créneau où le MJ mène, les deux d'une partie double, à la place des inscriptions. Carte en Anthracite 2, bordée d'orange : la vignette de 48 px, « Tu mènes » en surtitre, « Table Dragon », le titre en lien orange vers la fiche, le jeu ; puis « Début à 14 h 00 » ou « Maintenant » (`clock`, orange). Selon le tirage de son premier créneau :
+  - inscriptions ouvertes : « 7 inscrits · 4 à 5 places », « Très demandée » s'il y a lieu, sans les pseudos, puis « Tes joueurs s'afficheront ici à la publication du tirage. » ;
+  - tirage lancé : « Tirage en cours » (`hourglass`), et le nombre d'inscrits pour les places ; le résultat provisoire reste invisible ;
+  - publié : « Tes 5 joueurs · 4 à 5 places » en surtitre, puis un pseudo par ligne, après son initiale dans un rond orange teinté, dans l'ordre que donne l'API ;
+  - annulée (TI-6) : « Partie annulée » (`triangle-alert` jaune), la phrase de NO-2, puis les parties du créneau où il reste de la place, comme sur l'Accueil.
+
+`/mes-parties?creneau=2` fait défiler jusqu'au créneau 2 : « Voir tes joueurs » et « Voir dans Mes parties » y mènent.
 
 ## À venir avec leurs écrans
 
@@ -176,4 +189,3 @@ Ces patterns ont été tranchés sur prototype, mais pas encore construits. Chac
 - **Ligne d'âge** (PRD §6, Fraîcheur) : sous l'en-tête, quand la donnée a plus de 2 minutes : « Pas de connexion · à jour à 14 h 05 ». Un tap relance la lecture.
 - **Alerte de changement** (NO-5) : ce qui change pour le participant sans geste de sa part, en bas de l'écran, avec « Voir ».
 - **Dialogue en bas de l'écran** : la confirmation d'une inscription à une partie très demandée (IN-5), qui monte du bas.
-- **Bloc de la partie menée** (#54, variante B) : dans Mes parties, sur son créneau, la partie qu'un MJ mène, ses inscrits puis ses joueurs.

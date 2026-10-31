@@ -10,7 +10,7 @@ import { OversubscribedBadge } from './oversubscribed-badge';
 /**
  * Une partie du programme, en carte 3:2 qui ouvre sa fiche : l'image, puis par-dessus la table, le
  * titre, le jeu et le MJ, le compteur et « Très demandée ». Un badge « Inscrit » se pose sur
- * l'image d'une partie où le pseudo est inscrit.
+ * l'image d'une partie où le pseudo est inscrit, « Tu mènes » sur celle que mène son MJ (§5.7).
  */
 @Component({
   selector: 'app-game-card',
@@ -22,8 +22,10 @@ import { OversubscribedBadge } from './oversubscribed-badge';
         [title]="game().title"
         [imageUrl]="game().imageUrl"
       />
-      @if (signedUp()) {
-        <span class="signed-up"><app-icon name="check" />Inscrit</span>
+      @if (ownGame()) {
+        <span class="badge"><app-icon name="book-open" />Tu mènes</span>
+      } @else if (signedUp()) {
+        <span class="badge"><app-icon name="check" />Inscrit</span>
       }
       <span class="text">
         <span class="over">
@@ -58,12 +60,12 @@ import { OversubscribedBadge } from './oversubscribed-badge';
       }
 
       app-scenario-illustration,
-      .signed-up,
+      .badge,
       .text {
         grid-area: 1 / 1;
       }
 
-      .signed-up {
+      .badge {
         display: inline-flex;
         gap: var(--space-xs);
         align-items: center;
@@ -78,7 +80,7 @@ import { OversubscribedBadge } from './oversubscribed-badge';
         font-weight: 600;
       }
 
-      .signed-up app-icon ::ng-deep svg {
+      .badge app-icon ::ng-deep svg {
         width: 1rem;
         height: 1rem;
       }
@@ -130,5 +132,6 @@ export class GameCard {
 
   protected readonly counter = computed(() => counterOf(this.game()));
   protected readonly signedUp = computed(() => this.data.isSignedUp(this.game().id));
+  protected readonly ownGame = computed(() => this.data.leads(this.game().id));
   protected readonly doubleRanks = computed(() => doubleGameRanksOf(this.schedule(), this.game()));
 }

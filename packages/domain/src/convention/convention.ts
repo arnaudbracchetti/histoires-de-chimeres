@@ -527,11 +527,13 @@ export class Convention {
   /**
    * Inscrit le participant à la partie (IN-2), tant que le tirage de son créneau n'est pas lancé.
    * Plusieurs inscriptions sur un même créneau sont permises. Une partie double compte sur ses deux
-   * créneaux, et ne touche pas aux inscriptions prises sur son second créneau (IN-3, TI-3). Rend
-   * `false` si le participant y était déjà inscrit : rien ne change.
+   * créneaux, et ne touche pas aux inscriptions prises sur son second créneau (IN-3, TI-3). Un MJ
+   * ne s'inscrit pas sur un créneau où il mène, sa propre partie comprise (IN-4). Rend `false` si
+   * le participant y était déjà inscrit : rien ne change.
    */
   signUp(participantId: string, gameId: string): boolean {
     const signUp = this.signUpAllowedFor(participantId, gameId);
+    this.verifyNotRunningGameDuring(participantId, signUp.gameId);
     if (this.allSignUps.some((existing) => existing.equals(signUp))) return false;
     this.allSignUps = [...this.allSignUps, signUp];
     return true;
@@ -551,7 +553,8 @@ export class Convention {
 
   /**
    * La situation du participant : ses inscriptions, sauf celles qui ne comptent pas (IN-4), puis
-   * l'état de chaque créneau, dans l'ordre de la journée, avec le résultat de son tirage.
+   * l'état de chaque créneau, dans l'ordre de la journée, avec la partie qu'y mène son MJ et le
+   * résultat de son tirage.
    */
   situationOf(participantId: string): ParticipantSituation {
     const participant = this.allParticipants.existingItem(participantId);
@@ -562,10 +565,35 @@ export class Convention {
       timeSlots: this.day.timeSlots.map((slot) => ({
         timeSlotId: slot.id,
         state: this.stateOfTimeSlot(slot.id),
+        ledGameId: this.gameRunByParticipantOnTimeSlot(participant.id, slot.id)?.id ?? null,
         // Le tirage n'existe pas encore : aucun résultat.
         drawResult: null,
       })),
     };
+  }
+
+  /** La partie que mène le MJ du participant sur ce créneau, ou `undefined` (ADR 0012). */
+  private gameRunByParticipantOnTimeSlot(
+    participantId: string,
+    timeSlotId: string,
+  ): Game | undefined {
+    const gameMaster = this.gameMasterOfParticipant(participantId);
+    return gameMaster && this.gameSchedule.gameRunByGameMasterOnTimeSlot(gameMaster.id, timeSlotId);
+  }
+
+  /**
+   * Refuse l'inscription d'un MJ à une partie dont l'un des créneaux est un de ceux où il mène
+   * (IN-4), avec le créneau et la table de sa partie.
+   */
+  private verifyNotRunningGameDuring(participantId: string, gameId: string): void {
+    for (const slotId of this.gameSchedule.existingGame(gameId).timeSlotIds) {
+      const run = this.gameRunByParticipantOnTimeSlot(participantId, slotId);
+      if (!run) continue;
+      throw new Refusal('runs-game-on-time-slot', {
+        rank: this.rankOfTimeSlot(slotId),
+        table: this.allTables.existingItem(run.tableId).name.text,
+      });
+    }
   }
 
   /** L'inscription ne compte pas : voir `Convention.isSignUpSuspended()`. */
@@ -759,14 +787,27 @@ export type TimeSlotState = 'sign-ups-open' | 'drawing' | 'published';
 
 /**
  * Le résultat publié du tirage d'un créneau pour un participant : sa partie (`assigned`), ou pas de
- * place (`unassigned`). `null` tant que le tirage n'est pas publié, ou sans inscription.
+ * place (`unassigned`). Pour un MJ, sur le créneau où commence sa partie : ses joueurs, dans l'ordre
+ * naturel de leur pseudo (`leading`), ou sa partie annulée (`cancelled`, TI-6). `null` tant que le
+ * tirage n'est pas publié, ou sans inscription.
  */
-export type DrawResult = { kind: 'assigned'; gameId: string } | { kind: 'unassigned' } | null;
+export type DrawResult =
+  | { kind: 'assigned'; gameId: string }
+  | { kind: 'unassigned' }
+  | { kind: 'leading'; players: string[] }
+  | { kind: 'cancelled' }
+  | null;
 
 /** La situation d'un participant : voir `Convention.situationOf()`. */
 export type ParticipantSituation = {
   signedUpGameIds: string[];
-  timeSlots: { timeSlotId: string; state: TimeSlotState; drawResult: DrawResult }[];
+  timeSlots: {
+    timeSlotId: string;
+    state: TimeSlotState;
+    /** La partie que mène son MJ sur ce créneau, les deux d'une partie double, ou `null` (IN-4). */
+    ledGameId: string | null;
+    drawResult: DrawResult;
+  }[];
 };
 
 /** Le verdict d'une case créneau × table pour un scénario : le refus d'écriture, ou `null`. */

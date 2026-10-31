@@ -1,8 +1,7 @@
 import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
 import { Component, computed, inject, input, output } from '@angular/core';
 import type { GameDto, TableDto, TimeSlotDto } from '@chimeres/contract';
-import { formatSeats } from '../scenarios/scenario-format';
-import { formatDuration, formatTimeRange, minutesOf } from '@chimeres/design';
+import { formatDuration, formatSeats, formatTimeRange, minutesOf } from '@chimeres/design';
 import { ScenarioIllustration } from '../ui/scenario-illustration';
 import { TwoSlotBadge } from '../ui/two-slot-badge';
 import { ScheduleDrag, type Drop, type DropTarget } from './schedule-drag';

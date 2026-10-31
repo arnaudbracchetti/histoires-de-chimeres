@@ -78,17 +78,33 @@ export type FrontOfficeScheduleDto = {
 export type TimeSlotStateDto = 'sign-ups-open' | 'drawing' | 'published';
 
 /**
- * Le résultat publié du tirage d'un créneau pour le pseudo : sa partie, ou pas de place. `null`
- * tant que le tirage n'est pas publié, ou sans inscription.
+ * Le résultat publié du tirage d'un créneau pour le pseudo : sa partie, ou pas de place. Pour un MJ,
+ * sur le créneau où commence sa partie : ses joueurs, dans l'ordre naturel de leur pseudo
+ * (`leading`), ou sa partie annulée (`cancelled`, TI-6). `null` tant que le tirage n'est pas publié,
+ * ou sans inscription.
  */
-export type DrawResultDto = { kind: 'assigned'; gameId: string } | { kind: 'unassigned' } | null;
+export type DrawResultDto =
+  | { kind: 'assigned'; gameId: string }
+  | { kind: 'unassigned' }
+  | { kind: 'leading'; players: string[] }
+  | { kind: 'cancelled' }
+  | null;
 
-/** La situation du pseudo du téléphone : ses inscriptions, et l'état de chaque créneau pour lui. */
+/** La situation du pseudo du téléphone : ses inscriptions, et l'état de chaque créneau pour lui, MJ compris. */
 export type ParticipantSituationDto = {
   /** Les parties où il est inscrit. */
   signedUpGameIds: string[];
   /** Dans l'ordre de la journée. */
-  timeSlots: { timeSlotId: string; state: TimeSlotStateDto; drawResult: DrawResultDto }[];
+  timeSlots: {
+    timeSlotId: string;
+    state: TimeSlotStateDto;
+    /**
+     * La partie que mène son MJ sur ce créneau, sur les deux d'une partie double, ou `null` : il ne
+     * peut pas s'y inscrire (IN-4).
+     */
+    ledGameId: string | null;
+    drawResult: DrawResultDto;
+  }[];
 };
 
 /** Le front office se ferme à la fin de la convention : ses endpoints refusent alors avec `convention-ended`. */

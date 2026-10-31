@@ -61,6 +61,13 @@ export async function identify(page: Page, nickname: string): Promise<void> {
   await skipNotifications(page);
 }
 
+/** Relie le téléphone au MJ de ce pseudo (ID-3), puis remet les notifications à plus tard. */
+export async function identifyAsGameMaster(page: Page, nickname: string): Promise<void> {
+  await enterNickname(page, nickname);
+  await page.getByRole('button', { name: "Oui, c'est moi" }).click();
+  await skipNotifications(page);
+}
+
 /** Le bouton du pseudo, en haut de la coquille. */
 export const nicknameButton = (page: Page) =>
   page.getByRole('banner').getByRole('button', { name: /./ });

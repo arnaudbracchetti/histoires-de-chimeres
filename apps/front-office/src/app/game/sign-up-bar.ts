@@ -1,8 +1,15 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import type { FrontOfficeGameDto, FrontOfficeScheduleDto } from '@chimeres/contract';
+import {
+  frontOfficePaths,
+  frontOfficeUrls,
+  TIME_SLOT_PARAM,
+  type FrontOfficeGameDto,
+  type FrontOfficeScheduleDto,
+} from '@chimeres/contract';
 import { formatTime, formatTimeSlotRanks, fr } from '@chimeres/design';
 import { ParticipantData } from '../participant-data/participant-data';
+import { TabNavigation } from '../shell/tab-navigation';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { ranksOf, timeSlotsOf } from './game-text';
@@ -15,6 +22,8 @@ type Status = {
   detail: string;
   /** « Voir ta partie » : la fiche de la partie où le pseudo joue. */
   seeGameId?: string;
+  /** « Voir dans Mes parties » : Mes parties, sur ce créneau (§5.7). */
+  seeMyGamesRank?: number;
 };
 
 /**
@@ -62,13 +71,25 @@ type Status = {
           <div class="status" [class]="status.tone">
             <app-icon [name]="status.icon" />
             <div>
-              <p><strong>{{ status.title }}</strong></p>
+              <p>
+                <strong>{{ status.title }}</strong>
+              </p>
               <p class="detail">{{ status.detail }}</p>
             </div>
           </div>
           @if (status.seeGameId) {
             <a [routerLink]="['/parties', status.seeGameId]" appButton="secondary" class="block">
               Voir ta partie
+            </a>
+          }
+          @if (status.seeMyGamesRank) {
+            <a
+              [href]="myGamesUrl(status.seeMyGamesRank)"
+              appButton="secondary"
+              class="block"
+              (click)="$event.preventDefault(); openMyGames(status.seeMyGamesRank)"
+            >
+              <app-icon name="book-open" />Voir dans Mes parties
             </a>
           }
         }
@@ -143,6 +164,9 @@ export class SignUpBar {
   readonly schedule = input.required<FrontOfficeScheduleDto>();
 
   protected readonly data = inject(ParticipantData);
+  protected readonly myGamesUrl = frontOfficeUrls.myGamesOnTimeSlot;
+
+  private readonly navigation = inject(TabNavigation);
   protected readonly bar = computed(() => this.data.signUpBarOf(this.game().id));
 
   /** Pourquoi le geste est impossible, quand il l'est. */
@@ -154,6 +178,21 @@ export class SignUpBar {
       case undefined:
       case 'open':
         return null;
+      case 'own-game':
+        return {
+          icon: 'book-open',
+          tone: 'accent',
+          title: 'Tu mènes cette partie',
+          detail: 'Ses inscrits, puis ses joueurs, sont dans Mes parties.',
+          seeMyGamesRank: bar.rank,
+        };
+      case 'leading':
+        return {
+          icon: 'book-open',
+          tone: 'accent',
+          title: 'Tu mènes une partie sur ce créneau',
+          detail: fr`${bar.game.title}, table ${bar.game.tableName} : tu ne peux pas t'inscrire comme joueur.`,
+        };
       case 'held': {
         const ranks = formatTimeSlotRanks(ranksOf(schedule, bar.game));
         return {
@@ -206,4 +245,9 @@ export class SignUpBar {
         };
     }
   });
+
+  /** Mes parties, sur le créneau de sa partie : un onglet, qui ne s'empile pas (§5.7). */
+  protected openMyGames(rank: number): void {
+    this.navigation.go(frontOfficePaths.myGames, { [TIME_SLOT_PARAM]: rank });
+  }
 }

@@ -11,17 +11,20 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs';
 import { GameCard } from '../game/game-card';
+import { Icon } from '../ui/icon';
 import { ParticipantData } from '../participant-data/participant-data';
-import { TIME_SLOT_PARAM } from '@chimeres/contract';
-import { formatTime, formatTimeRange } from '@chimeres/design';
+import { TIME_SLOT_PARAM, type FrontOfficeGameDto } from '@chimeres/contract';
+import { formatTime, formatTimeRange, fr } from '@chimeres/design';
 
 /**
  * Le programme des parties, créneau par créneau : une puce par créneau à venir, puis les parties du
- * créneau choisi, en cartes. Une partie double est sous son seul premier créneau (IN-3).
+ * créneau choisi, en cartes. Une partie double est sous son seul premier créneau (IN-3). Pour un MJ,
+ * la puce d'un créneau où il mène porte `book-open`, et une note dit pourquoi il ne peut pas s'y
+ * inscrire, partie double comprise (IN-4).
  */
 @Component({
   selector: 'app-schedule-page',
-  imports: [GameCard],
+  imports: [GameCard, Icon],
   template: `
     <h1 class="visually-hidden">Programme</h1>
     @if (data.schedule(); as schedule) {
@@ -34,11 +37,25 @@ import { formatTime, formatTimeRange } from '@chimeres/design';
               (click)="$event.preventDefault(); select(chip.rank)"
             >
               <span class="over">Créneau {{ chip.rank }}</span>
-              <span class="time">{{ start(chip.start) }}</span>
+              <span class="time">
+                @if (data.ledGameOn(chip.id)) {
+                  <app-icon name="book-open" />
+                }
+                {{ start(chip.start) }}
+              </span>
+              @if (data.ledGameOn(chip.id)) {
+                <span class="visually-hidden">, tu mènes</span>
+              }
             </a>
           }
         </nav>
         <p class="range">{{ range(slot.start, slot.end) }}</p>
+        @if (data.ledGameOn(slot.id); as led) {
+          <p class="led">
+            <app-icon name="book-open" />
+            <span>{{ ledNote(led) }}</span>
+          </p>
+        }
         <ul>
           @for (game of games(); track game.id) {
             <li><app-game-card [game]="game" [schedule]="schedule" /></li>
@@ -129,6 +146,30 @@ import { formatTime, formatTimeRange } from '@chimeres/design';
         color: var(--text-muted);
         text-align: center;
       }
+
+      .time {
+        display: inline-flex;
+        gap: var(--space-xxs);
+        align-items: center;
+      }
+
+      .time app-icon ::ng-deep svg {
+        width: 1rem;
+        height: 1rem;
+      }
+
+      .led {
+        display: flex;
+        gap: var(--space-s);
+        align-items: flex-start;
+        padding: var(--space-m);
+        border-radius: var(--radius-card);
+        background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+
+        app-icon {
+          color: var(--accent);
+        }
+      }
     }
   `,
 })
@@ -167,6 +208,11 @@ export class SchedulePage {
         ?.nativeElement.querySelector('[aria-current="true"]')
         ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     });
+  }
+
+  /** Pourquoi le MJ ne peut pas s'inscrire sur ce créneau (IN-4). */
+  protected ledNote({ title, tableName }: FrontOfficeGameDto): string {
+    return fr`Tu mènes ${title} à la table ${tableName} : tu ne peux pas t'inscrire comme joueur sur ce créneau.`;
   }
 
   /** Changer de créneau ne s'empile pas dans l'historique : le retour remonte d'un écran. */

@@ -1,7 +1,11 @@
-import { Component, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { afterRenderEffect, Component, ElementRef, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { map } from 'rxjs';
+import { TIME_SLOT_PARAM } from '@chimeres/contract';
 import { formatTimeRange } from '@chimeres/design';
-import { doubleGameRanksOf } from '../game/game-text';
+import { doubleGameRanksOf, timeSlotsOf } from '../game/game-text';
+import { LedGameCard } from '../game/led-game-card';
 import { OversubscribedBadge } from '../game/oversubscribed-badge';
 import { OversubscribedReminder } from '../game/oversubscribed-reminder';
 import { ParticipantData } from '../participant-data/participant-data';
@@ -10,11 +14,20 @@ import { Icon } from '../ui/icon';
 
 /**
  * Mes parties, créneau par créneau à venir : le rappel d'IN-5, les inscriptions du pseudo, chacune
- * vers sa fiche, puis sa table ou « Pas de place pour toi » après la publication (story 86).
+ * vers sa fiche, puis sa table ou « Pas de place pour toi » après la publication (story 86). Sur un
+ * créneau où son MJ mène, la partie menée s'y déplie (§5.7). `?creneau=2` fait défiler jusqu'au
+ * créneau 2.
  */
 @Component({
   selector: 'app-my-games-page',
-  imports: [Icon, OversubscribedBadge, OversubscribedReminder, RouterLink, ScenarioIllustration],
+  imports: [
+    Icon,
+    LedGameCard,
+    OversubscribedBadge,
+    OversubscribedReminder,
+    RouterLink,
+    ScenarioIllustration,
+  ],
   template: `
     <h1 class="visually-hidden">Mes parties</h1>
     @if (data.schedule(); as schedule) {
@@ -27,7 +40,12 @@ import { Icon } from '../ui/icon';
           @if (slot.onlySignUpOversubscribed) {
             <app-oversubscribed-reminder [rank]="slot.timeSlot.rank" />
           }
-          @if (slot.signedUpGames.length) {
+          @if (slot.led; as led) {
+            <app-led-game-card
+              [led]="led"
+              [startTime]="timeSlotsOf(schedule, led.game)[0]!.start"
+            />
+          } @else if (slot.signedUpGames.length) {
             <ul aria-label="Tes inscriptions">
               @for (game of slot.signedUpGames; track game.id) {
                 <li>
@@ -92,6 +110,7 @@ import { Icon } from '../ui/icon';
       section {
         display: grid;
         gap: var(--space-s);
+        scroll-margin-top: calc(var(--bar-height) + var(--space-m));
       }
 
       h2 {
@@ -181,4 +200,25 @@ export class MyGamesPage {
   protected readonly data = inject(ParticipantData);
   protected readonly formatTimeRange = formatTimeRange;
   protected readonly doubleGameRanksOf = doubleGameRanksOf;
+  protected readonly timeSlotsOf = timeSlotsOf;
+
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly rank = toSignal(
+    inject(ActivatedRoute).queryParamMap.pipe(map((params) => Number(params.get(TIME_SLOT_PARAM)))),
+  );
+
+  constructor() {
+    // Une seule fois par adresse, dès que le créneau est affiché : la relecture ne fait pas défiler.
+    let scrolledTo: number | undefined;
+    afterRenderEffect(() => {
+      const rank = this.rank();
+      if (!rank || !this.data.myTimeSlots() || scrolledTo === rank) return;
+      const section = this.host.nativeElement
+        .querySelector(`#time-slot-${rank}`)
+        ?.closest('section');
+      if (!section) return;
+      scrolledTo = rank;
+      section.scrollIntoView({ block: 'start' });
+    });
+  }
 }

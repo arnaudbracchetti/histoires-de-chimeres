@@ -40,6 +40,8 @@ const SLOW_NETWORK = fr`Le réseau ne répond pas : vérifie ton inscription.`;
  * inscriptions de son créneau sont ouvertes, ou pourquoi il est impossible.
  * - `open` : « S'inscrire », ou « Inscription enregistrée » et « Se désinscrire » ; `pending`
  *   pendant l'envoi ;
+ * - `own-game` : « Tu mènes cette partie », avec Mes parties sur son créneau `rank` (§5.7) ;
+ * - `leading` : le MJ du pseudo mène `game` sur l'un des créneaux de celle-ci (IN-4) ;
  * - `held` : le pseudo joue à `game`, partie double publiée qui occupe un créneau de celle-ci ;
  * - `drawing` : « Tirage en cours » sur le créneau `rank` ;
  * - après la publication : `assigned-here` (« Tu joues à cette table »), `assigned-elsewhere` (sa
@@ -47,12 +49,30 @@ const SLOW_NETWORK = fr`Le réseau ne répond pas : vérifie ton inscription.`;
  */
 export type SignUpBarState =
   | { kind: 'open'; signedUp: boolean; pending: boolean }
+  | { kind: 'own-game'; rank: number }
+  | { kind: 'leading'; game: FrontOfficeGameDto }
   | { kind: 'held'; game: FrontOfficeGameDto; signedUp: boolean }
   | { kind: 'drawing'; rank: number; signedUp: boolean }
   | { kind: 'assigned-here' }
   | { kind: 'assigned-elsewhere'; game: FrontOfficeGameDto }
   | { kind: 'unassigned' }
   | { kind: 'closed'; rank: number };
+
+/**
+ * La partie que mène le MJ du pseudo sur un créneau (§5.7), et `started` depuis son début, pour
+ * « Maintenant ». Où en est le tirage de son premier créneau : inscriptions ouvertes, tirage en
+ * cours (sans résultat provisoire), ses joueurs publiés, ou sa partie annulée (TI-6), avec les
+ * parties du créneau où il reste de la place.
+ */
+export type LedGame = {
+  game: FrontOfficeGameDto;
+  started: boolean;
+  outcome:
+    | { kind: 'sign-ups-open' }
+    | { kind: 'drawing' }
+    | { kind: 'players'; players: string[] }
+    | { kind: 'cancelled'; gamesWithSeats: FrontOfficeGameDto[] };
+};
 
 /** Un créneau à venir de Mes parties. */
 export type MyTimeSlot = {
@@ -76,6 +96,8 @@ export type MyTimeSlot = {
    * il joue retire le rappel de son second (TI-3).
    */
   onlySignUpOversubscribed: boolean;
+  /** La partie qu'y mène son MJ, sur ses deux créneaux pour une partie double, ou `null`. */
+  led: LedGame | null;
 };
 
 /**
@@ -84,8 +106,10 @@ export type MyTimeSlot = {
  *   créneaux (deux pour une partie double) ; `started` depuis son début, pour « Maintenant » (story 54) ;
  * - `unassigned` : « Pas de place pour toi », si c'est la dernière publiée, avec les parties du
  *   créneau où il reste de la place (story 55) ;
+ * - `leading` : « Tu mènes à la table *T* », si le dernier tirage publié est celui de sa partie,
+ *   sur ses créneaux (story 56) ; `cancelled` : sa partie annulée (TI-6) ;
  * - `drawing` : sinon, « Tirage en cours » sur le premier créneau en cours de tirage où il est
- *   inscrit (story 57) ;
+ *   inscrit (story 57), ou `leading-drawing` s'il y mène (story 58) ;
  * - `choose-games` : sans affectation à montrer, « Choisis tes parties » (story 59).
  */
 export type HomeCard =
@@ -96,6 +120,9 @@ export type HomeCard =
       started: boolean;
     }
   | { kind: 'unassigned'; timeSlot: FrontOfficeTimeSlotDto; gamesWithSeats: FrontOfficeGameDto[] }
+  | { kind: 'leading'; led: LedGame; timeSlots: FrontOfficeTimeSlotDto[] }
+  | { kind: 'cancelled'; timeSlot: FrontOfficeTimeSlotDto; led: LedGame }
+  | { kind: 'leading-drawing'; timeSlot: FrontOfficeTimeSlotDto; led: LedGame }
   | { kind: 'drawing'; timeSlot: FrontOfficeTimeSlotDto; signedUpGames: FrontOfficeGameDto[] }
   | { kind: 'choose-games' };
 
@@ -195,6 +222,7 @@ export class ParticipantData {
       );
       const state = timeSlotSituationOf(situation, timeSlot.id)?.state ?? 'sign-ups-open';
       const assignment = assignmentOf(timeSlot.id, fullSchedule, situation);
+      const led = ledGameOf(timeSlot.id, fullSchedule, situation, this.now());
       return {
         timeSlot,
         state,
@@ -206,6 +234,7 @@ export class ParticipantData {
           state === 'sign-ups-open' &&
           signedUpGames.length === 1 &&
           signedUpGames[0]!.oversubscribed,
+        led,
       };
     });
   });
@@ -219,7 +248,7 @@ export class ParticipantData {
     const card = homeCardOf(myTimeSlots, schedule, situation, this.now());
     // Les créneaux de la carte ne se répètent pas dessous.
     const shown =
-      card.kind === 'assigned'
+      card.kind === 'assigned' || card.kind === 'leading'
         ? card.timeSlots.map(({ id }) => id)
         : card.kind === 'choose-games'
           ? []
@@ -229,6 +258,22 @@ export class ParticipantData {
       timeSlots: myTimeSlots.filter(({ timeSlot }) => !shown.includes(timeSlot.id)),
     };
   });
+
+  /**
+   * La partie que mène le MJ du pseudo sur ce créneau, sur les deux d'une partie double, ou `null` :
+   * il ne peut pas s'y inscrire (IN-4). Une partie annulée ne compte plus (TI-6).
+   */
+  ledGameOn(timeSlotId: string): FrontOfficeGameDto | null {
+    const schedule = this.lastRead();
+    const situation = this.lastSituation();
+    if (!schedule || !situation) return null;
+    return uncancelledGameLedOn(timeSlotId, schedule, situation);
+  }
+
+  /** Le MJ du pseudo mène cette partie, même annulée (§5.7). */
+  leads(gameId: string): boolean {
+    return this.signUpBarOf(gameId)?.kind === 'own-game';
+  }
 
   /** Le pseudo est inscrit à la partie. */
   isSignedUp(gameId: string): boolean {
@@ -246,13 +291,20 @@ export class ParticipantData {
     if (!schedule || !situation || !game) return null;
     const signedUp = situation.signedUpGameIds.includes(game.id);
     const gameById = (id: string) => schedule.games.find((candidate) => candidate.id === id);
+    if (gameLedOn(game.timeSlotIds[0]!, schedule, situation)?.id === game.id) {
+      return { kind: 'own-game', rank: rankOf(schedule, game.timeSlotIds[0]!) };
+    }
+    const leading = game.timeSlotIds
+      .map((id) => uncancelledGameLedOn(id, schedule, situation))
+      .find((ledGame) => ledGame);
+    if (leading) return { kind: 'leading', game: leading };
     const held = assignedDoubleGames(schedule, situation).find(
       (assigned) =>
         assigned.id !== game.id && assigned.timeSlotIds.some((id) => game.timeSlotIds.includes(id)),
     );
     if (held) return { kind: 'held', game: held, signedUp };
     const firstTimeSlotId = game.timeSlotIds[0]!;
-    const rank = schedule.timeSlots.find(({ id }) => id === firstTimeSlotId)?.rank ?? 0;
+    const rank = rankOf(schedule, firstTimeSlotId);
     const slot = timeSlotSituationOf(situation, firstTimeSlotId);
     if (slot?.state === 'drawing') return { kind: 'drawing', rank, signedUp };
     if (slot?.state === 'published') {
@@ -412,14 +464,71 @@ function assignmentOf(
   if (slot?.state !== 'published') return null;
   const result = slot.drawResult;
   if (result?.kind === 'unassigned') {
-    const gamesWithSeats = schedule.games.filter(
-      ({ timeSlotIds, playerCount, seats }) =>
-        timeSlotIds[0] === timeSlotId && playerCount !== null && playerCount < seats.max,
-    );
-    return { kind: 'unassigned', gamesWithSeats };
+    return { kind: 'unassigned', gamesWithSeats: gamesWithSeatsOn(timeSlotId, schedule) };
   }
-  const game = result && schedule.games.find(({ id }) => id === result.gameId);
+  const game = result?.kind === 'assigned' && schedule.games.find(({ id }) => id === result.gameId);
   return game ? { kind: 'assigned', game } : null;
+}
+
+/** Les parties qui commencent sur ce créneau publié, où il reste de la place. */
+function gamesWithSeatsOn(timeSlotId: string, schedule: FrontOfficeScheduleDto) {
+  return schedule.games.filter(
+    ({ timeSlotIds, playerCount, seats }) =>
+      timeSlotIds[0] === timeSlotId && playerCount !== null && playerCount < seats.max,
+  );
+}
+
+/** Le rang du créneau dans la journée. */
+function rankOf(schedule: FrontOfficeScheduleDto, timeSlotId: string): number {
+  return schedule.timeSlots.find(({ id }) => id === timeSlotId)?.rank ?? 0;
+}
+
+/** La partie que mène le MJ du pseudo sur ce créneau, dans le programme complet, ou `null`. */
+function gameLedOn(
+  timeSlotId: string,
+  schedule: FrontOfficeScheduleDto,
+  situation: ParticipantSituationDto,
+): FrontOfficeGameDto | null {
+  const gameId = timeSlotSituationOf(situation, timeSlotId)?.ledGameId;
+  return schedule.games.find(({ id }) => id === gameId) ?? null;
+}
+
+/** Comme `gameLedOn()`, sauf une partie annulée : elle ne retient plus son MJ (TI-6). */
+function uncancelledGameLedOn(
+  timeSlotId: string,
+  schedule: FrontOfficeScheduleDto,
+  situation: ParticipantSituationDto,
+): FrontOfficeGameDto | null {
+  const game = gameLedOn(timeSlotId, schedule, situation);
+  const first = game && timeSlotSituationOf(situation, game.timeSlotIds[0]!);
+  return first?.drawResult?.kind === 'cancelled' ? null : game;
+}
+
+/** La partie que mène le MJ du pseudo sur ce créneau, et où en est son tirage (voir `LedGame`). */
+function ledGameOf(
+  timeSlotId: string,
+  schedule: FrontOfficeScheduleDto,
+  situation: ParticipantSituationDto,
+  now: Date,
+): LedGame | null {
+  const game = gameLedOn(timeSlotId, schedule, situation);
+  if (!game) return null;
+  const firstTimeSlotId = game.timeSlotIds[0]!;
+  const first = timeSlotSituationOf(situation, firstTimeSlotId);
+  const result = first?.drawResult;
+  const outcome: LedGame['outcome'] =
+    result?.kind === 'leading'
+      ? { kind: 'players', players: result.players }
+      : result?.kind === 'cancelled'
+        ? { kind: 'cancelled', gamesWithSeats: gamesWithSeatsOn(firstTimeSlotId, schedule) }
+        : first?.state === 'drawing'
+          ? { kind: 'drawing' }
+          : // Publié sans résultat pour lui : aucun joueur.
+            first?.state === 'published'
+            ? { kind: 'players', players: [] }
+            : { kind: 'sign-ups-open' };
+  const start = timeSlotsOf(schedule, game)[0]!.start;
+  return { game, started: !!schedule.date && isPast(schedule.date, start, now), outcome };
 }
 
 /** La carte de l'Accueil (voir `HomeCard`). */
@@ -433,6 +542,17 @@ function homeCardOf(
     .filter(({ state, drawResult }) => state === 'published' && drawResult)
     .at(-1);
   const lastResult = lastPublished?.drawResult;
+  if (lastResult?.kind === 'leading' || lastResult?.kind === 'cancelled') {
+    // Ses créneaux à venir la montrent encore : une partie double reste sur son second créneau.
+    const slot = myTimeSlots.find(
+      ({ led }) => led?.game.timeSlotIds[0] === lastPublished!.timeSlotId,
+    );
+    if (slot?.led) {
+      return lastResult.kind === 'leading'
+        ? { kind: 'leading', led: slot.led, timeSlots: timeSlotsOf(schedule, slot.led.game) }
+        : { kind: 'cancelled', timeSlot: slot.timeSlot, led: slot.led };
+    }
+  }
   if (lastResult?.kind === 'unassigned') {
     const slot = myTimeSlots.find(({ timeSlot }) => timeSlot.id === lastPublished!.timeSlotId);
     if (slot?.assignment?.kind === 'unassigned') {
@@ -457,9 +577,11 @@ function homeCardOf(
       return { kind: 'assigned', game, timeSlots, started };
     }
   }
-  const drawing = myTimeSlots.find(
-    ({ state, signedUpGames }) => state === 'drawing' && signedUpGames.length,
+  const drawing = myTimeSlots.find(({ state, signedUpGames, led }) =>
+    led ? led.outcome.kind === 'drawing' : state === 'drawing' && signedUpGames.length,
   );
+  if (drawing?.led)
+    return { kind: 'leading-drawing', timeSlot: drawing.timeSlot, led: drawing.led };
   if (drawing) {
     return { kind: 'drawing', timeSlot: drawing.timeSlot, signedUpGames: drawing.signedUpGames };
   }

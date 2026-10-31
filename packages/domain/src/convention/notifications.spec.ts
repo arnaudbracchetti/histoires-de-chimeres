@@ -3,6 +3,7 @@ import { Scenario, type Duration } from '../scenario/scenario.js';
 import { Convention } from './convention.js';
 import type { LocalMoment } from './local-moment.js';
 import { PresenceCode } from './presence-code.js';
+import { SignUp } from './sign-up.js';
 import { TimeOfDay } from './time-of-day.js';
 
 const at = TimeOfDay.parse;
@@ -62,6 +63,26 @@ function aConvention(date: string | null = '2027-03-14'): Convention {
 
 const endOfDay = (time: string): LocalMoment => ({ date: '2027-03-14', time: at(time) });
 
+/**
+ * La convention, avec en plus des inscriptions d'un MJ prises avant la programmation de ses
+ * parties : elles restent, sans compter (IN-4), alors que `signUp()` les refuserait aujourd'hui.
+ */
+function withGameMasterSignUps(convention: Convention, ...signUps: SignUp[]): Convention {
+  return Convention.restore({
+    id: convention.id,
+    name: convention.name,
+    date: convention.date,
+    timeSlots: [...convention.timeSlots],
+    tables: [...convention.tables],
+    gameMasters: [...convention.gameMasters],
+    participants: [...convention.participants],
+    signUps: [...convention.signUps, ...signUps],
+    games: [...convention.games],
+    version: convention.version,
+    presenceCode: convention.presenceCode,
+  });
+}
+
 describe('Notifications d’une partie déprogrammée (NO-2)', () => {
   it('préviennent ses inscrits, et son MJ avec un autre code, jusqu’à la fin de son créneau', () => {
     const convention = aConvention();
@@ -98,9 +119,11 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
   });
 
   it('sans inscrit, seul le MJ est prévenu', () => {
-    expect(aConvention().unschedule('brumes').map(({ code }) => code)).toEqual([
-      'own-game-unscheduled',
-    ]);
+    expect(
+      aConvention()
+        .unschedule('brumes')
+        .map(({ code }) => code),
+    ).toEqual(['own-game-unscheduled']);
   });
 
   it('n’ont pas d’échéance tant que la convention n’a pas de date', () => {
@@ -110,8 +133,7 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
   });
 
   it('le MJ ne reçoit que la sienne, même inscrit à sa partie : la plus précise (NO-1)', () => {
-    const convention = aConvention();
-    convention.signUp('p-g1', 'brumes');
+    const convention = withGameMasterSignUps(aConvention(), new SignUp('p-g1', 'brumes'));
     convention.signUp('p1', 'brumes');
 
     const notifications = convention.unschedule('brumes');
@@ -169,8 +191,7 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
   });
 
   it('ne vont pas à une inscription qui ne compte pas (IN-4)', () => {
-    const convention = aConvention();
-    convention.signUp('p-g1', 'epice');
+    const convention = withGameMasterSignUps(aConvention(), new SignUp('p-g1', 'epice'));
 
     expect(convention.moveGame('epice', 's2', 't2')).toEqual([]);
   });
