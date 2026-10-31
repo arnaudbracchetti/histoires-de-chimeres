@@ -2,7 +2,7 @@
 <svg class="watermark" aria-hidden="true" focusable="false" viewBox="-100 -100 200 200">
   <use href="illustration.svg#engraving" x="-100" y="-100" width="200" height="200" />
 </svg>
-@if (!ended() && !failed() && !loading() && linkedPhone.nickname() && !notificationsStep()) {
+@if (!ended() && !failed() && !loading() && linkedPhone.nickname() && !onboarding()) {
   <app-shell (ended)="endedOnScreen.set(true)" />
 } @else {
   <main>
@@ -18,8 +18,12 @@
       <p>Impossible de charger la convention.</p>
     } @else if (loading()) {
       <p>Chargement…</p>
-    } @else if (linkedPhone.nickname()) {
+    } @else if (notificationsStep() && linkedPhone.nickname()) {
       <app-enable-notifications-page (done)="notificationsDone()" />
+    } @else if (installation.justInstalled() && linkedPhone.nickname()) {
+      <app-app-installed-page />
+    } @else if (linkedPhone.nickname()) {
+      <app-install-app-page (done)="installDone()" />
     } @else if (!presenceCode()) {
       <app-presence-code-page (ended)="endedOnScreen.set(true)" />
     } @else {

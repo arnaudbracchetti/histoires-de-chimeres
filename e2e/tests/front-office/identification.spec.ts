@@ -12,6 +12,7 @@ import {
   identify,
   nicknameButton,
   presenceCodeOf,
+  skipInstallation,
   skipNotifications,
 } from './identification.js';
 
@@ -82,6 +83,7 @@ test('un pseudo existant demande une confirmation avant de relier le téléphone
   await page.getByRole('button', { name: 'Continuer' }).click();
   await page.getByRole('button', { name: "Oui, c'est moi" }).click();
   await skipNotifications(page);
+  await skipInstallation(page);
   // Affiché tel qu'il a été créé.
   await expect(nicknameButton(page)).toHaveText(nickname);
 });
@@ -108,6 +110,7 @@ test('le pseudo d’un MJ demande « Es-tu bien ce MJ ? » avant de relier le t�
   await page.getByRole('button', { name: 'Continuer' }).click();
   await page.getByRole('button', { name: "Oui, c'est moi" }).click();
   await skipNotifications(page);
+  await skipInstallation(page);
   await expect(nicknameButton(page)).toHaveText(nickname);
 });
 

@@ -17,6 +17,7 @@ import {
   withPlayersOf,
 } from '../game/game-text';
 import { GamesWithSeats } from '../game/games-with-seats';
+import { InstallAdvice } from '../installation/install-advice';
 import { OversubscribedReminder } from '../game/oversubscribed-reminder';
 import {
   ParticipantData,
@@ -37,16 +38,26 @@ type ProgrammeLine = {
 };
 
 /**
- * L'Accueil, racine de l'historique : en tête, la dernière affectation publiée ou une carte d'état
- * (stories 54, 55, 57, 59), celles du MJ comprises (stories 56, 58), puis « Ton programme », une
- * ligne par autre créneau à venir, qui mène à la fiche de sa table, à Mes parties sur un créneau où
- * il mène, ou au programme du créneau, avec le rappel d'IN-5 (stories 60, 61).
+ * L'Accueil, racine de l'historique : tout en haut, sur Android dans le navigateur, le conseil
+ * d'installer l'application ou de l'ouvrir (stories 37, 39). Puis la dernière affectation publiée
+ * ou une carte d'état (stories 54, 55, 57, 59), celles du MJ comprises (stories 56, 58), puis « Ton
+ * programme », une ligne par autre créneau à venir, qui mène à la fiche de sa table, à Mes parties
+ * sur un créneau où il mène, ou au programme du créneau, avec le rappel d'IN-5 (stories 60, 61).
  */
 @Component({
   selector: 'app-home-page',
-  imports: [Button, GamesWithSeats, Icon, OversubscribedReminder, RouterLink, ScenarioIllustration],
+  imports: [
+    Button,
+    GamesWithSeats,
+    Icon,
+    InstallAdvice,
+    OversubscribedReminder,
+    RouterLink,
+    ScenarioIllustration,
+  ],
   template: `
     <h1 class="visually-hidden">Accueil</h1>
+    <app-install-advice />
     @if (data.home(); as home) {
       @let card = home.card;
       @if (card.kind === 'assigned') {

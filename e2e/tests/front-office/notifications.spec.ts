@@ -1,6 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 import { frontOfficeUrls } from '@chimeres/contract';
-import { aNickname, enterNickname, identify, nicknameButton } from './identification.js';
+import {
+  aNickname,
+  enterNickname,
+  identify,
+  nicknameButton,
+  skipInstallation,
+} from './identification.js';
 import { prepare } from './schedule.js';
 
 const banner = (page: Page) => page.getByRole('button', { name: /pour connaître ta table$/ });
@@ -21,6 +27,7 @@ test('passer les notifications demande une confirmation, puis le bandeau les rap
   await expect(question).toContainText('tu ne sauras ni ta table');
   await expect(question.getByRole('button').first()).toHaveText('Activer les notifications');
   await question.getByRole('button', { name: 'Continuer sans' }).click();
+  await skipInstallation(page);
 
   await expect(nicknameButton(page)).toBeVisible();
   await expect(banner(page)).toHaveText('Active les notifications pour connaître ta table');
@@ -37,7 +44,7 @@ test('passer les notifications demande une confirmation, puis le bandeau les rap
   await expect(guide).toBeHidden();
 });
 
-test('un refus mène à « Notifications bloquées », avec le chemin de Chrome (§4.2, NO-6)', async ({
+test('un refus mène à « Notifications bloquées », avec le chemin des réglages du navigateur (§4.2, NO-6)', async ({
   page,
 }) => {
   await enterNickname(page, aNickname('Élodie'));
@@ -45,8 +52,9 @@ test('un refus mène à « Notifications bloquées », avec le chemin de Chrome 
   await page.getByRole('button', { name: 'Activer les notifications' }).click();
 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Notifications bloquées');
-  await expect(page.getByText(/à gauche de l'adresse, en haut de Chrome/)).toBeVisible();
+  await expect(page.getByText(/à gauche de l'adresse, en haut du navigateur/)).toBeVisible();
   await page.getByRole('button', { name: 'Continuer' }).click();
+  await skipInstallation(page);
 
   await expect(banner(page)).toHaveText(
     /^Notifications bloquées.: réactive-les dans les réglages pour connaître ta table$/,
@@ -57,13 +65,14 @@ test('un refus mène à « Notifications bloquées », avec le chemin de Chrome 
   await expect(guide).toContainText('Autorisations');
 });
 
-test('un téléphone sans push passe droit à l’Accueil, avec un bandeau sans guide (NO-6)', async ({
+test('un téléphone sans push passe l’étape des notifications, et a un bandeau sans guide (NO-6)', async ({
   page,
 }) => {
   await page.addInitScript(() => {
     delete (window as { PushManager?: unknown }).PushManager;
   });
   await enterNickname(page, aNickname('Élodie'));
+  await skipInstallation(page);
 
   await expect(nicknameButton(page)).toBeVisible();
   await expect(page.getByRole('status')).toHaveText(

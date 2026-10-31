@@ -67,9 +67,9 @@ Avant d'être relié à un pseudo, le téléphone passe par l'identification (ID
 
 Juste après l'identification, un téléphone qui n'a encore ni accordé ni refusé les notifications passe par « Active les notifications » (§4.2). Les autres vont droit à l'Accueil.
 
-- **« Active les notifications »** : écran du parcours (sans coquille), sous le surtitre « Dernière étape ». « C'est par elles que l'application te tient au courant : », puis la liste de ce qu'elles apportent, une icône orange par ligne (`circle-check`, `sparkles`, `triangle-alert`, et `book-open` pour un MJ). Jamais « partie très demandée ». Puis l'exemple, sous le surtitre « Exemple de notification », dans une carte Anthracite 3 avec l'emblème. En texte secondaire : « Ton téléphone va te demander l'autorisation : touche « Autoriser ». » Boutons empilés : « Activer les notifications » (principal, `bell`), puis « Plus tard » (discret). La demande du téléphone ne vient qu'après le tap ; fermée sans réponse, elle laisse l'écran tel quel.
+- **« Active les notifications »** : écran du parcours (sans coquille), sous le surtitre « Dernière étape » (« Étape suivante » sur Android dans le navigateur, où l'installation suit). « C'est par elles que l'application te tient au courant : », puis la liste de ce qu'elles apportent, une icône orange par ligne (`circle-check`, `sparkles`, `triangle-alert`, et `book-open` pour un MJ). Jamais « partie très demandée ». Puis l'exemple, sous le surtitre « Exemple de notification », dans une carte Anthracite 3 avec l'emblème. En texte secondaire : « Ton téléphone va te demander l'autorisation : touche « Autoriser ». » Boutons empilés : « Activer les notifications » (principal, `bell`), puis « Plus tard » (discret). La demande du téléphone ne vient qu'après le tap ; fermée sans réponse, elle laisse l'écran tel quel.
 - **« Continuer sans notifications ? »**, ouvert par « Plus tard » : [dialogue de confirmation](#dialogue-de-confirmation) qui redit ce qu'on perd et que le bandeau le rappellera. « Activer les notifications » d'abord, puis « Continuer sans ». Échap ou un tap à côté revient à l'écran.
-- **« Notifications bloquées »**, après un refus : ce qu'on perd, le chemin des réglages en étapes numérotées (dans Chrome, l'icône `settings` à gauche de l'adresse, puis « Autorisations » ; dans l'application installée, ses infos `info`, puis « Notifications »), et le repli : revenir voir l'application après chaque tirage. Un seul bouton, « Continuer ».
+- **« Notifications bloquées »**, après un refus : ce qu'on perd, le chemin des réglages en étapes numérotées (dans le navigateur, l'icône `settings` à gauche de l'adresse, puis « Autorisations » ; dans l'application installée, ses infos `info`, puis « Notifications »), et le repli : revenir voir l'application après chaque tirage. Un seul bouton, « Continuer ».
 - Les noms à toucher dans les réglages s'écrivent comme des touches : semi-gras, filet, fond Anthracite 3.
 
 ### Bandeau de NO-6
@@ -79,6 +79,14 @@ Sous l'en-tête de la coquille, sur chaque onglet, tant que le téléphone ne re
 - Permission pas donnée ou refusée : un bouton sur toute la largeur, `bell-off` en jaune, le texte de NO-6, `chevron-right` à droite. Un tap ouvre le **guide d'activation**, une feuille qui monte du bas : « Active les notifications » (la liste et le bouton) ou « Notifications bloquées » (le chemin des réglages), et « Fermer ».
 - Téléphone qui ne peut pas les recevoir (navigateur sans Push API, ou serveur sans clés VAPID) : un simple texte (`role="status"`), `triangle-alert` en jaune, sans tap.
 - Une permission réactivée dans les réglages se voit au retour au premier plan : le bandeau disparaît.
+
+## Installation sur Android
+
+Sur Android, dans le navigateur (Chrome, Samsung Internet, Firefox…), après l'étape des notifications (qu'elle ait eu lieu ou non), le téléphone passe par « Installe l'application » ([#61](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/61)). Dans l'application installée (`display-mode: standalone`), rien de tout ça.
+
+- **« Installe l'application »** : écran du parcours, sous le surtitre « Dernière étape ». « Elle s'ouvre d'un tap depuis l'écran d'accueil du téléphone, en plein écran, sans passer par le navigateur : », puis trois lignes, une icône orange chacune (`circle-check`, `bell`, `house`). En texte secondaire, le chemin du menu, écrit comme des touches : « Ouvre le menu du navigateur ⋮, puis touche Ajouter à l'écran d'accueil. » (« Si rien ne s'ouvre, ouvre… » sous le bouton). Aucun nom de navigateur dans les textes : tous les navigateurs d'Android passent par ces écrans. Boutons empilés : « Installer » (principal, `download`), seulement quand le navigateur l'a armé (`beforeinstallprompt`), puis « Plus tard » (discret), sans confirmation.
+- **« L'application est installée »** : remplace l'écran, ou l'Accueil, au premier `appinstalled` ; le second, quelques secondes après, ne fait rien. Surtitre « C'est fait », « Continue dans l'application plutôt que dans le navigateur : c'est elle que les notifications ouvrent, avec ta table en premier. », puis le nom de l'icône comme une touche. « Ouvrir l'application » (principal) est un lien vers la racine avec `target="_blank"` : Android l'ouvre dans l'application. « Rester dans le navigateur » (discret) mène à l'Accueil.
+- **Carte de l'Accueil**, tout en haut, bordée d'orange à 45 % : « Conseil » en surtitre, « Installe l'application » en semi-gras, une phrase en texte secondaire, « Installer » (ou le chemin du menu) et « Plus tard », qui l'écarte pour de bon sur ce téléphone. Une fois l'application installée (`getInstalledRelatedApps()` la voit, grâce au `related_applications` du manifeste), tant qu'on est dans le navigateur : « Tu es dans le navigateur », « L'application est installée », « Ouvrir l'application », sans « Plus tard ».
 
 ## Champs et validation
 
@@ -147,7 +155,7 @@ Pour un MJ, la puce d'un créneau où il mène porte `book-open` devant l'heure.
 
 ## Accueil
 
-En tête, une seule carte (stories 54, 55, 57, 59), puis « Ton programme ».
+En tête, une seule carte (stories 54, 55, 57, 59), puis « Ton programme ». Au-dessus, sur Android dans le navigateur, la carte d'installation (voir [Installation sur Android](#installation-sur-android)).
 
 - **Affectation** : la dernière publiée, tant que sa partie n'est pas terminée (une partie double, jusqu'à la fin de son second créneau). Carte 3:2 qui ouvre la fiche : l'image, dans son coin « Début à 9 h 30 » ou « Maintenant » (`clock`, orange teinté à 14 %), puis par-dessus « Créneau 1 · 9 h 30 – 12 h 00 » en surtitre, « Table Griffon » en Uncial Antiqua à taille de héros, « Tu joues à *Titre*, avec *MJ* » et le jeu.
 - **« Pas de place pour toi »**, si c'est le dernier résultat publié : carte bordée de jaune, la phrase qui dit où il reste de la place, puis une carte par partie du créneau qui en a (vignette, « Table Dragon », « *Titre*, avec *MJ* », « 2 places libres » en vert), qui ouvre sa fiche.

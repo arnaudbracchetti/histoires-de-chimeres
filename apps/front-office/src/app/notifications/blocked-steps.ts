@@ -19,7 +19,7 @@ import { Icon } from '../ui/icon';
       } @else {
         <li>
           Touche l'icône <span class="key"><app-icon name="settings" /><span class="visually-hidden">Réglages du site</span></span>
-          à gauche de l'adresse, en haut de Chrome.
+          à gauche de l'adresse, en haut du navigateur.
         </li>
         <li>Touche <span class="key">Autorisations</span>, puis active <span class="key">Notifications</span>.</li>
       }
@@ -33,18 +33,6 @@ import { Icon } from '../ui/icon';
         margin: 0;
         padding-inline-start: var(--space-l);
         text-align: start;
-      }
-
-      .key {
-        display: inline-flex;
-        gap: var(--space-xxs);
-        align-items: center;
-        padding: 0 var(--space-xs);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-control);
-        background: var(--surface-3);
-        font-weight: 600;
-        vertical-align: middle;
       }
     }
   `,

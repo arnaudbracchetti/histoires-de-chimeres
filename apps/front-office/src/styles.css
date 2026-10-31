@@ -50,6 +50,19 @@
     text-transform: uppercase;
   }
 
+  /* Un nom à toucher dans les réglages ou un menu, écrit comme une touche : « Autorisations », ⋮. */
+  .key {
+    display: inline-flex;
+    gap: var(--space-xxs);
+    align-items: center;
+    padding: 0 var(--space-xs);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    background: var(--surface-3);
+    font-weight: 600;
+    vertical-align: middle;
+  }
+
   /* Fond du dialogue et de la boîte du pseudo (CDK) : l'écran assombri derrière. */
   .scrim {
     background: color-mix(in srgb, var(--surface-0) 72%, transparent);

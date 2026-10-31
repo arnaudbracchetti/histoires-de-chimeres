@@ -55,17 +55,31 @@ export async function skipNotifications(page: Page): Promise<void> {
     .click();
 }
 
-/** S'identifie par un pseudo nouveau, puis remet les notifications à plus tard. */
+/**
+ * Remet l'installation à plus tard : le Pixel 7 est un téléphone Android, qui passe par « Installe
+ * l'application » avant la coquille.
+ */
+export async function skipInstallation(page: Page): Promise<void> {
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText("Installe l'application");
+  await page.getByRole('button', { name: 'Plus tard' }).click();
+}
+
+/** S'identifie par un pseudo nouveau, puis remet les notifications et l'installation à plus tard. */
 export async function identify(page: Page, nickname: string): Promise<void> {
   await enterNickname(page, nickname);
   await skipNotifications(page);
+  await skipInstallation(page);
 }
 
-/** Relie le téléphone au MJ de ce pseudo (ID-3), puis remet les notifications à plus tard. */
+/**
+ * Relie le téléphone au MJ de ce pseudo (ID-3), puis remet les notifications et l'installation à
+ * plus tard.
+ */
 export async function identifyAsGameMaster(page: Page, nickname: string): Promise<void> {
   await enterNickname(page, nickname);
   await page.getByRole('button', { name: "Oui, c'est moi" }).click();
   await skipNotifications(page);
+  await skipInstallation(page);
 }
 
 /** Le bouton du pseudo, en haut de la coquille. */

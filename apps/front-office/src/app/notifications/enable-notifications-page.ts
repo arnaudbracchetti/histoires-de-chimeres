@@ -2,6 +2,7 @@ import { Dialog } from '@angular/cdk/dialog';
 import { Component, inject, output, signal } from '@angular/core';
 import { fr } from '@chimeres/design';
 import { firstValueFrom } from 'rxjs';
+import { AppInstallation } from '../installation/app-installation';
 import { LinkedPhone } from '../linked-phone';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
@@ -29,7 +30,7 @@ import { PushNotifications } from './push-notifications';
         <button type="button" appButton="secondary" (click)="done.emit()">Continuer</button>
       </div>
     } @else {
-      <p class="over">Dernière étape</p>
+      <p class="over">{{ installation.offered() ? 'Étape suivante' : 'Dernière étape' }}</p>
       <h1>Active les notifications</h1>
       <p>{{ benefitsIntro }}</p>
       <app-notification-benefits [gameMaster]="linkedPhone.gameMaster()" />
@@ -71,6 +72,8 @@ export class EnableNotificationsPage {
 
   protected readonly push = inject(PushNotifications);
   protected readonly linkedPhone = inject(LinkedPhone);
+  /** Sur Android dans le navigateur, « Installe l'application » suit : ce n'est pas la dernière étape. */
+  protected readonly installation = inject(AppInstallation);
   private readonly dialog = inject(Dialog);
 
   protected readonly blocked = signal(false);
