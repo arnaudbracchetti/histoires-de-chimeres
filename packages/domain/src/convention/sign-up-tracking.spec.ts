@@ -525,7 +525,7 @@ describe('Avertissements de suivi de chaque créneau (§4.4)', () => {
 
     expect(describeWarningsOfTimeSlot(convention, 1)).toEqual([
       ['seats-missing', 'danger', { demand: 7, maxCapacity: 5, missingSeats: 2 }],
-      ['participants-may-not-be-placed', 'danger', { participants: 7 }],
+      ['participants-may-not-be-placed', 'danger', { participantCount: 7 }],
     ]);
   });
 
@@ -604,7 +604,7 @@ describe('Avertissements de suivi de chaque créneau (§4.4)', () => {
     signUpOthers(convention, 2, ['eclat'], 'y');
 
     expect(describeWarningsOfTimeSlot(convention, 3)).toEqual([
-      ['participants-may-not-be-placed', 'danger', { participants: 2 }],
+      ['participants-may-not-be-placed', 'danger', { participantCount: 2 }],
       ['nearly-full', 'warning', { demand: 5, maxCapacity: 6 }],
       [
         'too-many-games',

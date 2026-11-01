@@ -29,7 +29,6 @@ export type {
   TimeSlotTracking,
 } from './convention/sign-up-tracking.js';
 export {
-  NEARLY_FULL_PERCENT,
   type SignUpWarning,
   type SignUpWarningCode,
   type SignUpWarningLevel,

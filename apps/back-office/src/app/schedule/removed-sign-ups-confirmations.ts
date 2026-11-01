@@ -32,8 +32,8 @@ export function buildUnscheduleConfirmation(
 ): ConfirmationTexts {
   return {
     question: fr`Déprogrammer « ${game.scenario.title} » ${ofRanks(ranksOf(game.timeSlotIds, timeSlots))} ?`,
-    consequences: followFigures([removed], current, ([figures]) => [
-      ...describeRemovedSignUps(figures!, theGame(game, timeSlots)),
+    consequences: followFigures(current, (figuresOf) => [
+      ...describeRemovedSignUps(figuresOf(removed), theGame(game, timeSlots)),
       fr`Le scénario revient en réserve, sans ses inscriptions.`,
     ]),
     confirmLabel: 'Déprogrammer la partie',
@@ -63,25 +63,14 @@ export function buildMoveOrSwapConfirmation(
 }
 
 /**
- * Les paragraphes que `describe` écrit des chiffres de `removed` ; avec `current`, un signal qui
- * reprend à chaque lecture les chiffres à jour des mêmes parties.
+ * Les paragraphes que `describe` écrit des chiffres que lui donne `figuresOf` : ceux lus au geste, ou
+ * avec `current` ceux, à jour, des mêmes parties, repris à chaque lecture du signal.
  */
 function followFigures(
-  removed: readonly RemovedSignUpsDto[],
   current: CurrentSignUpFigures | undefined,
-  describe: (removed: readonly RemovedSignUpsDto[]) => string[],
-): readonly string[] | Signal<readonly string[]> {
-  if (!current) return describe(removed);
-  return computed(() =>
-    describe(
-      removed.map((each) => {
-        const figures = current(each.gameId);
-        if (!figures) return each;
-        const { signUpCount, withoutOtherSignUpCount } = figures;
-        return { gameId: each.gameId, signUpCount, withoutOtherSignUpCount };
-      }),
-    ),
-  );
+  describe: (figuresOf: (removed: RemovedSignUpsDto) => SignUpFigures) => string[],
+): Signal<readonly string[]> {
+  return computed(() => describe((removed) => current?.(removed.gameId) ?? removed));
 }
 
 /**
@@ -99,8 +88,8 @@ function buildMoveConfirmation(
   const target = timeSlots.slice(first, first + game.timeSlotIds.length).map(({ rank }) => rank);
   return {
     question: fr`Déplacer « ${game.scenario.title} » ${onRanks(target)} ?`,
-    consequences: followFigures([removed], current, ([figures]) =>
-      describeRemovedSignUps(figures!, theGame(game, timeSlots)),
+    consequences: followFigures(current, (figuresOf) =>
+      describeRemovedSignUps(figuresOf(removed), theGame(game, timeSlots)),
     ),
     confirmLabel: 'Déplacer la partie',
   };
@@ -122,12 +111,15 @@ function buildSwapConfirmation(
     question: other
       ? fr`Échanger « ${game.scenario.title} » et « ${other.scenario.title} » ?`
       : fr`Échanger « ${game.scenario.title} » avec l'autre partie ?`,
-    consequences: followFigures(removed, current, (figures) =>
-      figures.flatMap((each) => {
+    consequences: followFigures(current, (figuresOf) =>
+      removed.flatMap((each) => {
         const touched = [game, other].find((candidate) => candidate?.id === each.gameId);
-        if (!touched) return describeRemovedSignUps(each, "l'autre partie");
+        if (!touched) return describeRemovedSignUps(figuresOf(each), "l'autre partie");
         const ranks = formatTimeSlotRanks(ranksOf(touched.timeSlotIds, timeSlots));
-        return describeRemovedSignUps(each, fr`« ${touched.scenario.title} » (${ranks})`, true);
+        return describeNamedGameRemovedSignUps(
+          figuresOf(each),
+          fr`« ${touched.scenario.title} » (${ranks})`,
+        );
       }),
     ),
     confirmLabel: 'Échanger les parties',
@@ -140,20 +132,28 @@ function buildSwapConfirmation(
  * pour un inscrit. `target` suit « à » : « la partie », « « Néons » (créneau 2) ». Un nombre nul ne
  * s'écrit pas : le second paragraphe manque. Le domaine ne liste pas une partie sans inscrit, mais
  * leur nombre peut retomber à 0 dans un dialogue ouvert : « Aucun inscrit ne perd son
- * inscription. », qui nomme la partie si `named` (« Aucun inscrit de « Néons » (créneau 2)… »).
+ * inscription. ».
  */
-function describeRemovedSignUps(
+function describeRemovedSignUps(figures: SignUpFigures, target: string): string[] {
+  if (!figures.signUpCount) return [fr`Aucun inscrit ne perd son inscription.`];
+  return describeSignUpsToRemove(figures, target);
+}
+
+/**
+ * Les paragraphes de `describeRemovedSignUps()` pour une partie parmi deux, nommée par `target` :
+ * à 0 inscrit, la phrase la nomme aussi, « Aucun inscrit de « Néons » (créneau 2) ne perd son
+ * inscription. ».
+ */
+function describeNamedGameRemovedSignUps(figures: SignUpFigures, target: string): string[] {
+  if (!figures.signUpCount) return [fr`Aucun inscrit de ${target} ne perd son inscription.`];
+  return describeSignUpsToRemove(figures, target);
+}
+
+/** Les paragraphes de `describeRemovedSignUps()` quand la partie a au moins un inscrit. */
+function describeSignUpsToRemove(
   { signUpCount, withoutOtherSignUpCount }: SignUpFigures,
   target: string,
-  named = false,
 ): string[] {
-  if (!signUpCount) {
-    return [
-      named
-        ? fr`Aucun inscrit de ${target} ne perd son inscription.`
-        : fr`Aucun inscrit ne perd son inscription.`,
-    ];
-  }
   const signedUp = fr`Il y a ${countOf(signUpCount, 'inscrit', 'inscrits')} à ${target}.`;
   if (signUpCount === 1) {
     return [

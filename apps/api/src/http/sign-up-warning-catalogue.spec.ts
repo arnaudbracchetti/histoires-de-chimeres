@@ -37,7 +37,7 @@ describe('Textes des avertissements de suivi', () => {
     const { title, detail } = writeSignUpWarning({
       code: 'participants-may-not-be-placed',
       level: 'danger',
-      params: { participants: 1 },
+      params: { participantCount: 1 },
     });
 
     expect([plain(title), detail]).toEqual([

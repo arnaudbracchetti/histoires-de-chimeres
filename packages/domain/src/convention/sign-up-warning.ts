@@ -1,3 +1,5 @@
+import type { Capacity } from './sign-up-tracking.js';
+
 /**
  * Paramètres de la ligne de sous-demande : `demand` et `minCapacity`, le nombre de parties sous
  * leur minimum, et celui des participants qui risquent de rester sans table.
@@ -17,8 +19,8 @@ type UnderDemandParams = {
 export type SignUpWarningParams = {
   /** La demande dépasse la capacité maximum : `missingSeats` places manquent. */
   'seats-missing': { demand: number; maxCapacity: number; missingSeats: number };
-  /** `participants` risquent de ne pas être placés : toutes leurs parties du créneau sont très demandées. */
-  'participants-may-not-be-placed': { participants: number };
+  /** `participantCount` participants risquent de ne pas être placés : toutes leurs parties du créneau sont très demandées. */
+  'participants-may-not-be-placed': { participantCount: number };
   /** La demande atteint 80 % de la capacité maximum, sans la dépasser. */
   'nearly-full': { demand: number; maxCapacity: number };
   /** La demande est sous la capacité minimum. */
@@ -38,12 +40,12 @@ export type SignUpWarning = {
 }[SignUpWarningCode];
 
 /** Le seuil de « presque plein », en pourcentage de la capacité maximum. Sans réglage. */
-export const NEARLY_FULL_PERCENT = 80;
+const NEARLY_FULL_PERCENT = 80;
 
 /** Ce que les avertissements de suivi lisent du suivi d'un créneau. */
 export type SignUpWarningFigures = {
   demand: number;
-  capacity: { min: number; max: number };
+  capacity: Capacity;
   gamesBelowMinimum: number;
   participantsMayNotBePlaced: number;
   participantsMayBeLeftWithoutTable: number;
@@ -68,7 +70,7 @@ export function computeSignUpWarnings(figures: SignUpWarningFigures): SignUpWarn
     warnings.push({
       code: 'participants-may-not-be-placed',
       level: 'danger',
-      params: { participants: figures.participantsMayNotBePlaced },
+      params: { participantCount: figures.participantsMayNotBePlaced },
     });
   }
   if (demand <= capacity.max && demand * 100 >= capacity.max * NEARLY_FULL_PERCENT) {

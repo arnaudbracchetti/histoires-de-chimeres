@@ -37,7 +37,7 @@ export function formatCount(count: number): string {
   return count.toLocaleString('fr-FR').replace(/\s/g, THIN_NBSP);
 }
 
-/** Le nom accordé au nombre : singulier pour 0 et 1, pluriel à partir de 2. */
+/** Le mot accordé au nombre (nom, verbe, possessif) : singulier pour 0 et 1, pluriel à partir de 2. */
 export function plural(count: number, singular: string, pluralForm: string): string {
   return count > 1 ? pluralForm : singular;
 }

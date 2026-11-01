@@ -77,17 +77,25 @@ const WARNING_ICONS: Record<SignUpWarningLevel, string> = {
   warning: 'triangle-alert',
 };
 
-/** Le bouton de chaque avertissement de suivi : son libellé, et l'onglet où il mène. */
-const WARNING_ACTIONS: Record<SignUpWarningCode, { label: string; tab: TabValue }> = {
-  'seats-missing': { label: 'Voir la réserve', tab: 'reserve' },
-  'nearly-full': { label: 'Voir la réserve', tab: 'reserve' },
-  'participants-may-not-be-placed': { label: 'Voir les participants', tab: 'participants' },
-  'too-many-games': { label: 'Voir les parties', tab: 'games' },
-  'games-below-minimum': { label: 'Voir les parties', tab: 'games' },
+/**
+ * Ce que la page fait de chaque avertissement de suivi : le libellé de son bouton, l'onglet où il
+ * mène, la puce qu'il y choisit parmi les inscrits, et s'il remplit en jaune la jauge du créneau.
+ */
+const WARNING_ACTIONS: Record<
+  SignUpWarningCode,
+  { label: string; tab: TabValue; participantFilter?: ParticipantFilter; shortfall: boolean }
+> = {
+  'seats-missing': { label: 'Voir la réserve', tab: 'reserve', shortfall: false },
+  'nearly-full': { label: 'Voir la réserve', tab: 'reserve', shortfall: true },
+  'participants-may-not-be-placed': {
+    label: 'Voir les participants',
+    tab: 'participants',
+    participantFilter: 'may-not-be-placed',
+    shortfall: false,
+  },
+  'too-many-games': { label: 'Voir les parties', tab: 'games', shortfall: true },
+  'games-below-minimum': { label: 'Voir les parties', tab: 'games', shortfall: false },
 };
-
-/** Les avertissements de suivi qui remplissent en jaune la jauge d'un créneau. */
-const SHORTFALL_WARNINGS: readonly SignUpWarningCode[] = ['nearly-full', 'too-many-games'];
 
 /** Ce que dit le résumé d'un créneau fermé. */
 const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string> = {
@@ -629,7 +637,7 @@ export class SignUpTrackingPage {
 
   /** La jauge du créneau se remplit en jaune : il porte `nearly-full` ou `too-many-games`. */
   protected isShortfall(slot: TimeSlotTrackingDto): boolean {
-    return slot.warnings.some(({ code }) => SHORTFALL_WARNINGS.includes(code));
+    return slot.warnings.some(({ code }) => WARNING_ACTIONS[code].shortfall);
   }
 
   /**
@@ -637,10 +645,8 @@ export class SignUpTrackingPage {
    * filtre les inscrits sur la puce « Risquent de ne pas être placés ».
    */
   protected follow(warning: SignUpWarningDto) {
-    const { tab } = WARNING_ACTIONS[warning.code];
-    if (warning.code === 'participants-may-not-be-placed') {
-      this.participantFilter.set('may-not-be-placed');
-    }
+    const { tab, participantFilter } = WARNING_ACTIONS[warning.code];
+    if (participantFilter) this.participantFilter.set(participantFilter);
     this.selectedTab.set(tab);
     this.focusById(`tab-${tab}`);
   }

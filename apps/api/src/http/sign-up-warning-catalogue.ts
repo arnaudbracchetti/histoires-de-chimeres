@@ -1,6 +1,6 @@
 import type { SignUpWarningCode, SignUpWarningDto, SignUpWarningParams } from '@chimeres/contract';
 import type { SignUpWarning } from '@chimeres/domain';
-import { countOf, fr } from '@chimeres/design';
+import { countOf, fr, plural } from '@chimeres/design';
 
 type Text<P> = {
   /** En couleur, court : « Il manque 4 places ». */
@@ -12,11 +12,9 @@ type Text<P> = {
 const participants = (count: number) => countOf(count, 'participant', 'participants');
 const seats = (count: number) => countOf(count, 'place', 'places');
 const gamesBelowMinimum = (count: number) =>
-  `${countOf(count, 'partie', 'parties')} ${count > 1 ? 'sous leur minimum' : 'sous son minimum'}`;
+  fr`${countOf(count, 'partie', 'parties')} sous ${plural(count, 'son', 'leur')} minimum`;
 const mayBeLeftWithoutTable = (count: number) =>
-  count > 1
-    ? fr`${participants(count)} risquent de rester sans table`
-    : fr`${participants(count)} risque de rester sans table`;
+  fr`${participants(count)} ${plural(count, 'risque', 'risquent')} de rester sans table`;
 
 /**
  * Les textes des avertissements de suivi d'un créneau, en français, un par code (ADR 0008), à côté
@@ -33,14 +31,10 @@ export const signUpWarningCatalogue: {
       fr`${participants(demand)} pour ${seats(maxCapacity)} au plus.`,
   },
   'participants-may-not-be-placed': {
-    title: ({ participants: count }) =>
-      count > 1
-        ? fr`${participants(count)} risquent de ne pas être placés`
-        : fr`${participants(count)} risque de ne pas être placé`,
-    detail: ({ participants: count }) =>
-      count > 1
-        ? fr`Toutes leurs parties du créneau sont très demandées.`
-        : fr`Toutes ses parties du créneau sont très demandées.`,
+    title: ({ participantCount }) =>
+      fr`${participants(participantCount)} ${plural(participantCount, 'risque', 'risquent')} de ne pas être ${plural(participantCount, 'placé', 'placés')}`,
+    detail: ({ participantCount }) =>
+      fr`Toutes ${plural(participantCount, 'ses', 'leurs')} parties du créneau sont très demandées.`,
   },
   'nearly-full': {
     title: () => fr`Presque plein`,
@@ -57,14 +51,14 @@ export const signUpWarningCatalogue: {
           : []),
       ];
       const reason = fr`${participants(params.demand)} pour ${seats(params.minCapacity)} au moins : une partie au moins finira sous son minimum.`;
-      return shortfalls.length > 0 ? `${reason} ${shortfalls.join(', ')}.` : reason;
+      return shortfalls.length > 0 ? fr`${reason} ${shortfalls.join(', ')}.` : reason;
     },
   },
   'games-below-minimum': {
     title: ({ gamesBelowMinimum: count }) => gamesBelowMinimum(count),
     detail: ({ participantsMayBeLeftWithoutTable: count }) =>
       count > 0
-        ? `${mayBeLeftWithoutTable(count)}.`
+        ? fr`${mayBeLeftWithoutTable(count)}.`
         : fr`Aucun participant ne risque de rester sans table.`,
   },
 };

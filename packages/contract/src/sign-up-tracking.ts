@@ -55,8 +55,8 @@ type UnderDemandParams = {
 export type SignUpWarningParams = {
   /** La demande dépasse la capacité maximum : `missingSeats` places manquent. */
   'seats-missing': { demand: number; maxCapacity: number; missingSeats: number };
-  /** `participants` risquent de ne pas être placés : toutes leurs parties du créneau sont très demandées. */
-  'participants-may-not-be-placed': { participants: number };
+  /** `participantCount` participants risquent de ne pas être placés : toutes leurs parties du créneau sont très demandées. */
+  'participants-may-not-be-placed': { participantCount: number };
   /** La demande atteint 80 % de la capacité maximum, sans la dépasser. */
   'nearly-full': { demand: number; maxCapacity: number };
   /** La demande est sous la capacité minimum. */

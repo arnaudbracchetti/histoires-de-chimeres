@@ -134,6 +134,7 @@ _Avoid_: Plancher
 **Avertissement de suivi** · `SignUpWarning`:
 Signal qui attire l'œil d'un Organisateur, avant le tirage, sur un créneau, une partie ou un participant qui demande peut-être un ajustement : places qui manquent, trop de parties, partie sous son minimum, participant qui risque de rester sans table.
 _Avoid_: Avertissement (seul, réservé aux avertissements de contenu), alerte
+Exception : dans la tuile d'un créneau, le compteur dit « avertissements » tout court (« 2 avertissements »).
 
 **Tirage** · `Draw`:
 Répartition aléatoire des participants inscrits sur les parties d'un créneau, en respectant leurs inscriptions, avec pour objectif que chaque inscrit puisse jouer. Son résultat reste provisoire tant qu'un Organisateur ne l'a pas publié.
