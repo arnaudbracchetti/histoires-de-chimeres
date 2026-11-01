@@ -281,6 +281,7 @@ Le glisser-déposer (`@angular/cdk/drag-drop`) sert la souris et le tactile. Cha
 - **« Programmer sur… » et « Déplacer vers… »** ouvrent un dialogue de placement : une grille créneaux × tables. Chaque case est soit « Choisir » (ou « Échanger »), soit éteinte avec son motif. « Échanger » n'apparaît que sur la première case d'une autre partie : la seconde case d'une partie double reste « Table prise ».
 - **« Programmer ici »** ouvre la liste des scénarios programmables sur cette case, puis, en dessous, ceux qui ne le sont pas, chacun avec sa raison.
 - **Pas d'annulation** après un geste : on refait le geste inverse.
+- **Un geste qui retire des inscriptions** demande la même confirmation par le glisser-déposer que par le bouton (voir [Actions destructrices](#actions-destructrices)), avant toute écriture. Pendant le dialogue, la carte (les deux cartes d'un échange) se montre atténuée à sa nouvelle place ; « Annuler » la ramène à sa place. Un dépôt dans le bac lit d'abord les chiffres de la déprogrammation. Sans inscription retirée, le dépôt écrit aussitôt.
 
 ### Signalement des cibles (PR-5)
 

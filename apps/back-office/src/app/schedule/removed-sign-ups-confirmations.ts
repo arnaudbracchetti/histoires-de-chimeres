@@ -28,10 +28,30 @@ export function buildUnscheduleConfirmation(
 }
 
 /**
+ * La confirmation du déplacement de la partie sur la case de `timeSlotId`, ou de son échange avec
+ * `otherGameId` (une partie du programme `games`), d'après les inscriptions que le verdict de la
+ * case dit retirées ; `undefined` s'il n'en retire aucune : le geste s'écrit aussitôt.
+ */
+export function buildMoveOrSwapConfirmation(
+  game: GameDto,
+  timeSlotId: string,
+  otherGameId: string | null,
+  removed: readonly RemovedSignUpsDto[],
+  games: readonly GameDto[],
+  timeSlots: readonly TimeSlotDto[],
+): ConfirmationTexts | undefined {
+  const [first] = removed;
+  if (!first) return undefined;
+  if (!otherGameId) return buildMoveConfirmation(game, timeSlotId, first, timeSlots);
+  const other = games.find(({ id }) => id === otherGameId);
+  return buildSwapConfirmation(game, other, removed, timeSlots);
+}
+
+/**
  * La confirmation d'un déplacement sur un autre créneau qui retire des inscriptions :
  * « Déplacer « Néons » sur le créneau 3 ? ». `timeSlotId` : son nouveau premier créneau.
  */
-export function buildMoveConfirmation(
+function buildMoveConfirmation(
   game: GameDto,
   timeSlotId: string,
   removed: RemovedSignUpsDto,
@@ -51,7 +71,7 @@ export function buildMoveConfirmation(
  * chaque partie touchée, « Il y a 12 inscrits à « Néons » (créneau 2). ». `other` manque si le
  * programme lu ne la connaît plus : la question ne nomme alors que la partie déplacée.
  */
-export function buildSwapConfirmation(
+function buildSwapConfirmation(
   game: GameDto,
   other: GameDto | undefined,
   removed: readonly RemovedSignUpsDto[],

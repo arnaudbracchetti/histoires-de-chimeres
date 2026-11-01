@@ -105,12 +105,13 @@ describe('ScheduleBoard', () => {
     const dialog = () => document.querySelector<HTMLElement>('[role="alertdialog"]');
     const dialogButton = (name: string) =>
       [...(dialog()?.querySelectorAll('button') ?? [])].find((b) => text(b) === name)!;
-    /** Lâche la partie sur une case de la frise. */
-    const drop = async (target: Drop['target']) => {
+    /** Lâche la partie sur une case de la frise, avec les inscriptions que son verdict dit retirées. */
+    const drop = async (target: Drop['target'], removedSignUps: Drop['removedSignUps'] = []) => {
       const timeline = fixture.debugElement.query(By.directive(ScheduleTimeline));
       (timeline.componentInstance as ScheduleTimeline).dropped.emit({
         subject: { kind: 'game', game: GAME },
         target,
+        removedSignUps,
       });
       await fixture.whenStable();
     };
@@ -372,6 +373,128 @@ describe('ScheduleBoard', () => {
       await settle();
       expect(gameAt('s1', 't2')).toEqual({ title: 'Brumes', pending: false });
       http.verify();
+    });
+
+    describe('un dépôt qui retire des inscriptions (IN-6, NO-2)', () => {
+      const TWO_SLOTS: ConventionDto = {
+        ...CONVENTION,
+        timeSlots: [
+          ...CONVENTION.timeSlots,
+          { id: 's2', rank: 2, start: '14:00', end: '16:30', availabilityCount: 1 },
+        ],
+      };
+      const toSlot2 = { kind: 'cell', timeSlotId: 's2', tableId: 't1', gameId: null } as const;
+      const TWELVE = [{ gameId: 'p1', signUpCount: 12, withoutOtherSignUpCount: 3 }];
+      const MOVED_TO_SLOT2: ScheduleDto = {
+        games: [{ ...GAME, timeSlotIds: ['s2'] }],
+        reserve: [],
+      };
+
+      it('sur une case : confirmation avant toute écriture, la carte atténuée à sa nouvelle place', async () => {
+        const { http, settle, drop, gameAt, dialog, dialogButton, text } = await render(TWO_SLOTS);
+
+        await drop(toSlot2, TWELVE);
+        await settle();
+
+        expect(text(dialog()!.querySelector('h2'))).toBe(
+          `Déplacer «${NBSP}Brumes${NBSP}» sur le créneau 2${THIN_NBSP}?`,
+        );
+        expect(gameAt('s1', 't1')).toBeNull();
+        expect(gameAt('s2', 't1')).toEqual({ title: 'Brumes', pending: true });
+        http.expectNone(apiUrl(scheduleEndpoints.move, { gameId: 'p1' }));
+
+        dialogButton('Déplacer la partie').click();
+        const request = http.expectOne(apiUrl(scheduleEndpoints.move, { gameId: 'p1' }));
+        expect(request.request.body).toEqual({ timeSlotId: 's2', tableId: 't1' });
+        request.flush(MOVED_TO_SLOT2);
+        await settle();
+
+        expect(dialog()).toBeNull();
+        expect(gameAt('s2', 't1')).toEqual({ title: 'Brumes', pending: false });
+        expect(document.activeElement?.id).toBe('game-p1');
+      });
+
+      it('sur une autre partie : confirmation de l’échange, les deux cartes atténuées à leur nouvelle place', async () => {
+        const OTHER: GameDto = {
+          ...GAME,
+          id: 'p2',
+          timeSlotIds: ['s2'],
+          scenario: { ...GAME.scenario, id: 'b', title: 'Néons' },
+        };
+        const { http, settle, drop, gameAt, dialog, dialogButton, text } = await render(TWO_SLOTS, {
+          games: [GAME, OTHER],
+          reserve: [],
+        });
+
+        await drop({ kind: 'cell', timeSlotId: 's2', tableId: 't1', gameId: 'p2' }, [
+          ...TWELVE,
+          { gameId: 'p2', signUpCount: 4, withoutOtherSignUpCount: 0 },
+        ]);
+        await settle();
+
+        expect([...dialog()!.querySelectorAll('h2, p')].map(text)).toEqual([
+          `Échanger «${NBSP}Brumes${NBSP}» et «${NBSP}Néons${NBSP}»${THIN_NBSP}?`,
+          `Il y a 12${NBSP}inscrits à «${NBSP}Brumes${NBSP}» (créneau 1). Ils perdront leur inscription et seront notifiés.`,
+          "3 d'entre eux n'ont pas d'autre inscription sur le créneau.",
+          `Il y a 4${NBSP}inscrits à «${NBSP}Néons${NBSP}» (créneau 2). Ils perdront leur inscription et seront notifiés.`,
+        ]);
+        expect(gameAt('s2', 't1')).toEqual({ title: 'Brumes', pending: true });
+        expect(gameAt('s1', 't1')).toEqual({ title: 'Néons', pending: true });
+        http.expectNone(apiUrl(scheduleEndpoints.swap, { gameId: 'p1' }));
+
+        dialogButton('Échanger les parties').click();
+        const request = http.expectOne(apiUrl(scheduleEndpoints.swap, { gameId: 'p1' }));
+        expect(request.request.body).toEqual({ otherGameId: 'p2' });
+      });
+
+      it('« Annuler » ramène la carte à sa place, sans rien écrire', async () => {
+        const { http, settle, drop, gameAt, dialogButton } = await render(TWO_SLOTS);
+
+        await drop(toSlot2, TWELVE);
+        await settle();
+        dialogButton('Annuler').click();
+        await settle();
+
+        expect(gameAt('s1', 't1')).toEqual({ title: 'Brumes', pending: false });
+        expect(gameAt('s2', 't1')).toBeNull();
+        http.verify();
+      });
+
+      it('sur le bac : lit les chiffres de la déprogrammation, puis confirme', async () => {
+        const { http, settle, drop, dialog, dialogButton, text } = await render();
+
+        await drop({ kind: 'reserve' });
+        http
+          .expectOne(apiUrl(scheduleEndpoints.unscheduleVerdict, { gameId: 'p1' }))
+          .flush({ removedSignUps: TWELVE });
+        await settle();
+
+        expect(text(dialog()!.querySelector('h2'))).toBe(
+          `Déprogrammer «${NBSP}Brumes${NBSP}» du créneau 1${THIN_NBSP}?`,
+        );
+        http.expectNone(apiUrl(scheduleEndpoints.unschedule, { gameId: 'p1' }));
+        dialogButton('Déprogrammer la partie').click();
+        http.expectOne(apiUrl(scheduleEndpoints.unschedule, { gameId: 'p1' })).flush(UNSCHEDULED);
+        await settle();
+
+        expect(dialog()).toBeNull();
+        expect(document.activeElement?.id).toBe('reserve-title');
+      });
+
+      it('sur le bac, sans inscrit : déprogramme aussitôt, sans dialogue', async () => {
+        const { http, settle, drop, dialog } = await render();
+
+        await drop({ kind: 'reserve' });
+        http
+          .expectOne(apiUrl(scheduleEndpoints.unscheduleVerdict, { gameId: 'p1' }))
+          .flush({ removedSignUps: [] });
+        await settle();
+
+        expect(dialog()).toBeNull();
+        http.expectOne(apiUrl(scheduleEndpoints.unschedule, { gameId: 'p1' })).flush(UNSCHEDULED);
+        await settle();
+        http.verify();
+      });
     });
   });
 });

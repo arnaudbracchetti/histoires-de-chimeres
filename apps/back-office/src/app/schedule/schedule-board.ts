@@ -12,20 +12,25 @@ import {
   scheduleEndpoints,
   type ConventionDto,
   type GameDto,
+  type RemovedSignUpsDto,
   type ScheduleDto,
   type ScheduleScenarioDto,
 } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { apiResource } from '../api-resource';
 import { ConventionStore } from '../convention/convention-store';
-import { injectGesture } from '../gesture';
+import { injectGesture, type Gesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { fr } from '@chimeres/design';
 import { GameSheet } from './game-sheet';
 import { Confirmation } from '../ui/confirmation';
 import { Placements } from './placement-dialog';
-import { buildUnscheduleConfirmation } from './removed-sign-ups-confirmations';
+import {
+  buildMoveOrSwapConfirmation,
+  buildUnscheduleConfirmation,
+  type ConfirmationTexts,
+} from './removed-sign-ups-confirmations';
 import { ReserveTray } from './reserve-tray';
 import {
   ScheduleDrag,
@@ -197,55 +202,120 @@ export class ScheduleBoard {
   }
 
   /**
-   * Déprogramme la partie (docs/design/patterns.md, Actions destructrices). Elle lit d'abord les
-   * inscriptions que le geste retirerait : sans inscrit, il est immédiat, et un refus s'affiche en
-   * alerte ; sinon, un dialogue le confirme, et y affiche son refus. La fiche se ferme, et le focus
-   * va à la réserve, où revient son scénario. Un refus qui dit l'écran périmé relit la convention et
-   * le programme.
+   * Déprogramme la partie (docs/design/patterns.md, Actions destructrices) : aussitôt, ou après une
+   * confirmation si elle a des inscrits (`writeConfirmingIfAny()`). La fiche se ferme, et le focus
+   * va à la réserve, où revient son scénario.
    */
   protected async unschedule(game: GameDto) {
-    const verdict = await this.unscheduling.run(() =>
-      this.apiCall(scheduleEndpoints.unscheduleVerdict, { params: { gameId: game.id } }),
+    const confirmation = await this.readUnscheduleConfirmation(game, this.unscheduling);
+    if (confirmation.status === 'unreadable') return;
+    const schedule = await this.writeConfirmingIfAny(
+      () => this.unscheduleCall(game),
+      confirmation.texts,
+      this.unscheduling,
     );
-    if (verdict.status === 'refused' && verdict.refusal.stale) this.refresh();
-    if (verdict.status !== 'done') return;
-    const [removed] = verdict.value.removedSignUps;
-    if (removed) {
-      let schedule: ScheduleDto | undefined;
-      const done = await this.confirmation.ask({
-        ...buildUnscheduleConfirmation(game, removed, this.convention().timeSlots),
-        action: async () => (schedule = await this.unscheduleCall(game)),
-        onStale: () => this.refresh(),
-      });
-      if (done && schedule) this.unscheduled(schedule, game);
-      return;
-    }
-    const outcome = await this.unscheduling.run(() => this.unscheduleCall(game));
-    if (outcome.status === 'refused' && outcome.refusal.stale) this.refresh();
-    if (outcome.status === 'done') this.unscheduled(outcome.value, game);
+    if (schedule) this.unscheduled(schedule, game);
   }
 
   /**
    * Écrit un glisser-déposer : programmer, déplacer, échanger ou déprogrammer. Pendant l'écriture,
-   * le programme montre son résultat, les parties concernées atténuées ; refusé, il revient à son
-   * état, le refus part en alerte, et s'il dit l'écran périmé, la convention et le programme
-   * se relisent. Pas d'annulation : on refait le geste inverse.
+   * et pendant la confirmation d'un geste qui retire des inscriptions, le programme montre son
+   * résultat, les parties concernées atténuées ; refusé ou annulé, il revient à son état. Pas
+   * d'annulation après coup : on refait le geste inverse.
    */
-  protected async drop({ subject, target }: Drop) {
+  protected async drop({ subject, target, removedSignUps }: Drop) {
     const schedule = this.schedule.value();
     if (!schedule || this.dropping.running()) return;
     const known = this.gameIds();
     this.pending.set(this.pendingAfter(schedule.games, subject, target));
-    const outcome = await this.dropping.run(() => this.writeDrop(subject, target));
+    const written = await this.writeDrop(subject, target, removedSignUps, schedule.games);
     this.pending.set(null);
-    if (outcome.status === 'refused' && outcome.refusal.stale) this.refresh();
-    if (outcome.status !== 'done') return;
-    if (subject.kind === 'scenario') this.scheduled(outcome.value, known, subject.scenario);
-    else if (target.kind === 'reserve') this.unscheduled(outcome.value, subject.game);
-    else this.moved(outcome.value, subject.game.id, swapGameId(subject.game, target));
+    if (!written) return;
+    if (subject.kind === 'scenario') this.scheduled(written, known, subject.scenario);
+    else if (target.kind === 'reserve') this.unscheduled(written, subject.game);
+    else this.moved(written, subject.game.id, swapGameId(subject.game, target));
   }
 
-  private writeDrop(subject: DragSubject, target: DropTarget): Promise<ScheduleDto> {
+  /**
+   * Écrit le dépôt, confirmé d'abord s'il retire des inscriptions : celles que le verdict de la case
+   * dit retirées (`removedSignUps`), ou celles de la déprogrammation, lues au dépôt dans le bac.
+   * `games` : le programme d'avant le geste. Le programme relu, ou `undefined` sans écriture.
+   */
+  private async writeDrop(
+    subject: DragSubject,
+    target: DropTarget,
+    removedSignUps: readonly RemovedSignUpsDto[],
+    games: readonly GameDto[],
+  ): Promise<ScheduleDto | undefined> {
+    const write = () => this.callDrop(subject, target);
+    if (subject.kind === 'scenario')
+      return this.writeConfirmingIfAny(write, undefined, this.dropping);
+    const { game } = subject;
+    if (target.kind === 'reserve') {
+      const confirmation = await this.readUnscheduleConfirmation(game, this.dropping);
+      if (confirmation.status === 'unreadable') return undefined;
+      return this.writeConfirmingIfAny(write, confirmation.texts, this.dropping);
+    }
+    const texts = buildMoveOrSwapConfirmation(
+      game,
+      target.timeSlotId,
+      swapGameId(game, target),
+      removedSignUps,
+      games,
+      this.convention().timeSlots,
+    );
+    return this.writeConfirmingIfAny(write, texts, this.dropping);
+  }
+
+  /**
+   * La confirmation de déprogrammer la partie, d'après les inscriptions que le geste retirerait,
+   * lues par `gesture` : ses textes, aucun sans inscrit. `unreadable` si la lecture est refusée : le
+   * refus part en alerte, et s'il dit l'écran périmé, la convention et le programme se relisent.
+   */
+  private async readUnscheduleConfirmation(
+    game: GameDto,
+    gesture: Gesture,
+  ): Promise<{ status: 'read'; texts: ConfirmationTexts | undefined } | { status: 'unreadable' }> {
+    const verdict = await gesture.run(() =>
+      this.apiCall(scheduleEndpoints.unscheduleVerdict, { params: { gameId: game.id } }),
+    );
+    if (verdict.status === 'refused' && verdict.refusal.stale) this.refresh();
+    if (verdict.status !== 'done') return { status: 'unreadable' };
+    const [removed] = verdict.value.removedSignUps;
+    const timeSlots = this.convention().timeSlots;
+    return {
+      status: 'read',
+      texts: removed && buildUnscheduleConfirmation(game, removed, timeSlots),
+    };
+  }
+
+  /**
+   * Écrit le geste, confirmé d'abord s'il a des `texts` : sans eux, aussitôt par `gesture`, dont le
+   * refus part en alerte ; avec eux, par le dialogue de confirmation, qui affiche son refus. Un refus
+   * qui dit l'écran périmé relit la convention et le programme. Le programme relu, ou `undefined`
+   * sans écriture.
+   */
+  private async writeConfirmingIfAny(
+    write: () => Promise<ScheduleDto>,
+    texts: ConfirmationTexts | undefined,
+    gesture: Gesture,
+  ): Promise<ScheduleDto | undefined> {
+    if (!texts) {
+      const outcome = await gesture.run(write);
+      if (outcome.status === 'refused' && outcome.refusal.stale) this.refresh();
+      return outcome.status === 'done' ? outcome.value : undefined;
+    }
+    let written: ScheduleDto | undefined;
+    const done = await this.confirmation.ask({
+      ...texts,
+      action: async () => (written = await write()),
+      onStale: () => this.refresh(),
+    });
+    return done ? written : undefined;
+  }
+
+  /** L'appel à l'API du dépôt. */
+  private callDrop(subject: DragSubject, target: DropTarget): Promise<ScheduleDto> {
     if (subject.kind === 'scenario') {
       if (target.kind !== 'cell') throw new Error('Un scénario ne se dépose que sur une case.');
       const { timeSlotId, tableId } = target;

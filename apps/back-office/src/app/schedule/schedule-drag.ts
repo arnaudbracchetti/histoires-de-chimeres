@@ -6,6 +6,7 @@ import {
   type GameDto,
   type MovePlacementDto,
   type PlacementDto,
+  type RemovedSignUpsDto,
   type ScheduleScenarioDto,
   type VerdictRefusalDto,
 } from '@chimeres/contract';
@@ -24,8 +25,16 @@ export type Place = { timeSlotId: string; tableId: string };
  */
 export type DropTarget = ({ kind: 'cell'; gameId: string | null } & Place) | { kind: 'reserve' };
 
-/** Un dépôt sur une cible valide. */
-export type Drop = { subject: DragSubject; target: DropTarget };
+/**
+ * Un dépôt sur une cible valide. `removedSignUps` : les inscriptions que le verdict de la case,
+ * lu au début du geste, dit retirées (IN-6) ; aucune pour un scénario, ni pour le bac, dont le
+ * verdict se lit au dépôt.
+ */
+export type Drop = {
+  subject: DragSubject;
+  target: DropTarget;
+  removedSignUps: readonly RemovedSignUpsDto[];
+};
 
 /**
  * L'état d'une cible pendant le geste : `idle` hors geste, ou tant que son verdict n'est pas lu ;
@@ -99,11 +108,26 @@ export class ScheduleDrag {
     if (!subject) return IDLE;
     if (target.kind === 'reserve') return this.reserveIsValid() ? { kind: 'valid' } : IDLE;
     if (subject.kind === 'game' && isPlaceOf(subject.game, target)) return { kind: 'source' };
-    const verdict = this.verdicts().find(
-      ({ timeSlotId, tableId }) => timeSlotId === target.timeSlotId && tableId === target.tableId,
-    );
+    const verdict = this.findVerdictAt(target);
     if (!verdict) return IDLE;
     return verdict.refusal ? { kind: 'refused', refusal: verdict.refusal } : { kind: 'valid' };
+  }
+
+  /** Le verdict de la case pour le geste en cours, ou `undefined` tant qu'il n'est pas lu. */
+  private findVerdictAt({
+    timeSlotId,
+    tableId,
+  }: Place): PlacementDto | MovePlacementDto | undefined {
+    return this.verdicts().find(
+      (verdict) => verdict.timeSlotId === timeSlotId && verdict.tableId === tableId,
+    );
+  }
+
+  /** Les inscriptions que le déplacement de la partie saisie sur cette case retirerait. */
+  private listRemovedSignUpsAt(place: Place): readonly RemovedSignUpsDto[] {
+    if (this.subject()?.kind !== 'game') return [];
+    const verdict = this.findVerdictAt(place) as MovePlacementDto | undefined;
+    return verdict?.removedSignUps ?? [];
   }
 
   start(subject: DragSubject) {
@@ -141,18 +165,19 @@ export class ScheduleDrag {
 
   /**
    * Lâche l'élément sur la cible survolée. Sur une cible valide, l'aperçu ne revient pas à sa place
-   * d'origine : l'élément prendra sa nouvelle place à la fin du geste (`end()`). Ailleurs, il y
-   * revient.
+   * d'origine : l'élément prendra sa nouvelle place à la fin du geste (`end()`), avec les
+   * inscriptions que le verdict de la case dit retirées. Ailleurs, il y revient.
    */
   release() {
     const subject = this.subject();
     const target = this.hovered();
     const state = target ? this.stateOf(target) : IDLE;
+    const removedSignUps = target?.kind === 'cell' ? this.listRemovedSignUpsAt(target) : [];
     this.subject.set(null);
     this.hovered.set(null);
     this.landing = null;
     if (!subject || !target || state.kind !== 'valid') return;
-    this.landing = { subject, target };
+    this.landing = { subject, target, removedSignUps };
     document.querySelector('.cdk-drag-preview')?.classList.add('landing');
   }
 

@@ -28,8 +28,7 @@ import { formatTimeRange, fr, timeSlotLabel } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { Confirmation } from '../ui/confirmation';
 import {
-  buildMoveConfirmation,
-  buildSwapConfirmation,
+  buildMoveOrSwapConfirmation,
   type ConfirmationTexts,
 } from './removed-sign-ups-confirmations';
 
@@ -276,12 +275,18 @@ export class PlacementDialog {
       this.conclude(outcome, null);
       return;
     }
-    const { game, timeSlots } = request;
-    const [removed] = verdict.removedSignUps ?? [];
+    const { game, games, timeSlots } = request;
     await this.write(
       () => this.apiCall(scheduleEndpoints.move, { params: { gameId: game.id }, body: place }),
       null,
-      removed && buildMoveConfirmation(game, slot.id, removed, timeSlots),
+      buildMoveOrSwapConfirmation(
+        game,
+        slot.id,
+        null,
+        verdict.removedSignUps ?? [],
+        games,
+        timeSlots,
+      ),
     );
   }
 
@@ -289,8 +294,6 @@ export class PlacementDialog {
   protected async swap(otherGameId: string, verdict: Verdict) {
     if (!('game' in this.request)) return;
     const { game, games, timeSlots } = this.request;
-    const other = games.find(({ id }) => id === otherGameId);
-    const removed = verdict.removedSignUps ?? [];
     await this.write(
       () =>
         this.apiCall(scheduleEndpoints.swap, {
@@ -298,7 +301,14 @@ export class PlacementDialog {
           body: { otherGameId },
         }),
       otherGameId,
-      removed.length ? buildSwapConfirmation(game, other, removed, timeSlots) : undefined,
+      buildMoveOrSwapConfirmation(
+        game,
+        verdict.timeSlotId,
+        otherGameId,
+        verdict.removedSignUps ?? [],
+        games,
+        timeSlots,
+      ),
     );
   }
 
