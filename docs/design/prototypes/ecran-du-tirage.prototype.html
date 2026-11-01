@@ -1,0 +1,1649 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Écran du tirage · prototype</title>
+<!--
+  PROTOTYPE JETABLE : ne pas reprendre ce code en production.
+  Question : à quoi ressemble le tirage dans la page « Pilotage du jour J » ? Lancement, résultat
+  provisoire, ajustements, publication, créneau publié.
+  Ticket « Prototype de l'écran du tirage » (#112), carte « Tirage d'un créneau : algorithme,
+  ajustements et publication » (#109). Base : la variante C retenue pour le suivi (#94), soit la
+  page actuelle : bande des créneaux, résumé du créneau, onglets de classeur, fiche à droite.
+
+  Ce qui est commun aux trois variantes :
+    - le bouton « Lancer le tirage », dans le résumé du seul premier créneau non publié, et sa
+      confirmation (inscrits, places, avertissements rouges du suivi) ;
+    - après le lancement, le résumé montre les chiffres du tirage (placés, non placés, parties au
+      minimum) et ses propres signaux à la place des avertissements de suivi, avec « Publier le
+      tirage », « Relancer le tirage » et « ⋯ » (« Rouvrir les inscriptions ») ;
+    - les confirmations : lancer, relancer (s'il y a eu des déplacements), rouvrir, annuler une
+      partie, programmer depuis la réserve, publier ;
+    - le créneau publié, en lecture seule, avec les places qui restent (PRD §4.5).
+
+  Trois variantes du résultat provisoire et du geste « déplacer un participant », basculables par
+  ?variant=A|B|C, par la barre du bas et par les flèches ← → du clavier :
+    A « Onglets et dialogue »   : onglets Parties, Non placés, Réserve. Chaque partie liste ses joueurs ;
+                                  un pseudo ouvre « Déplacer… », un dialogue qui montre ses inscriptions
+                                  et le remplissage de chaque partie.
+    B « Plan de salle »         : une colonne par table, et les non placés en première colonne. On choisit
+                                  un joueur, puis sa nouvelle table : chaque colonne dit alors s'il y est
+                                  inscrit et si elle dépasse son maximum.
+    C « Grille des inscrits »   : l'onglet « Inscrits du créneau » devient la répartition : un participant
+                                  par ligne, une partie par colonne, ses inscriptions cochées et sa table
+                                  marquée. Un clic sur une autre case le déplace.
+
+  Données : convention de démonstration, jour J. Le créneau 1 est publié (une partie annulée). Le
+  créneau 2 attend son tirage : 26 inscrits pour 22 places, 8 participants inscrits à la seule
+  « Néons sur Neo-Paris », et « Le Marché aux ombres » restera sous son minimum. Brindille mène cette
+  partie et a une inscription à « Sous la surface » : elle ne compte pas tant que Brindille mène
+  (IN-4), et revient si la partie est annulée. Le créneau 3 porte une partie double.
+
+  Retenu : B « Plan de salle », avec son passage à la ligne des tables et les cibles « Déplacer ici »
+  alignées en bas des cartes. Détail et autres décisions dans le ticket #112.
+
+  L'algorithme est celui du prototype « algorithme de tirage » (#110), recopié tel quel. Le suivi
+  des créneaux ouverts est simplifié. Rien n'est enregistré : tout vit en mémoire.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Aldrich&display=swap">
+<style>
+/* Jetons repris de packages/design/tokens.css. */
+:root {
+  color-scheme: dark;
+  --surface-0: #151717;
+  --surface-1: #1b1e1e;
+  --surface-2: #222525;
+  --surface-3: #2a2d2d;
+  --border: #313535;
+  --text: #eceae6;
+  --text-muted: #a9a49e;
+  --accent: #fc9203;
+  --on-accent: #161818;
+  --focus: #7cc4e4;
+  --success: #6cc08b;
+  --warning: #e8d25c;
+  --danger: #f07f63;
+  --danger-fill: #b23a26;
+  --engraving: #3a3e3e;
+  --engraving-strong: #626767;
+  --initial: #8c837c;
+  --emblem-1: #4e4944; --emblem-2: #5e5852; --emblem-3: #6e6862;
+  --emblem-4: #7d766f; --emblem-5: #8c837c; --emblem-6: #a39a92;
+  --font-display: 'Uncial Antiqua', serif;
+  --font-caps: 'Aldrich', sans-serif;
+  --font-ui: system-ui, sans-serif;
+  --font-size-title: 1.625rem;
+  --font-size-section: 1.125rem;
+  --font-size-block: 0.9375rem;
+  --font-size-body: 0.8125rem;
+  --font-size-meta: 0.75rem;
+  --font-size-overline: 0.6875rem;
+  --space-xxs: 2px; --space-xs: 4px; --space-s: 8px; --space-m: 12px;
+  --space-l: 16px; --space-xl: 24px; --space-xxl: 32px;
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --radius-thumb: 6px;
+  --halo: 0 0 0 1px var(--accent), 0 0 10px color-mix(in srgb, var(--accent) 20%, transparent);
+  --halo-soft: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--surface-0); color: var(--text); font: var(--font-size-body)/1.4 var(--font-ui); }
+h1, h2, h3, h4, p, ul, dl, dd { margin: 0; }
+ul { padding: 0; list-style: none; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.caps { font-family: var(--font-caps); font-weight: normal; font-size: var(--font-size-overline); letter-spacing: 0.12em; text-transform: uppercase; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-muted); }
+svg.i { width: 16px; height: 16px; flex: none; }
+svg.i.s { width: 12px; height: 12px; }
+
+/* ---------- Coquille ---------- */
+.app { display: flex; min-height: 100vh; }
+.rail {
+  display: flex; flex-direction: column; gap: var(--space-l);
+  width: 16rem; height: 100vh; position: sticky; top: 0; flex: none;
+  padding: var(--space-m) var(--space-s);
+  border-right: 1px solid var(--border); background: var(--surface-1);
+}
+.brand { display: flex; gap: var(--space-s); align-items: center; padding: 0 var(--space-xs); }
+.emblem { width: 1.5rem; height: 1.5rem; flex: none; }
+.brand .name { font-family: var(--font-display); font-size: var(--font-size-block); }
+.convention { display: flex; flex-direction: column; padding: var(--space-s); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-2); }
+.convention-date { color: var(--text-muted); font-size: var(--font-size-meta); }
+.rail nav { flex: 1; }
+.rail .section { margin: var(--space-m) var(--space-xs) var(--space-xs); color: var(--text-muted); font-family: var(--font-caps); font-size: var(--font-size-overline); font-weight: normal; letter-spacing: 0.12em; text-transform: uppercase; }
+.rail ul { display: flex; flex-direction: column; gap: var(--space-xxs); }
+.entry { display: flex; gap: var(--space-s); align-items: center; padding: var(--space-s); border-radius: var(--radius-control); color: var(--text); text-decoration: none; }
+a.entry:hover { background: var(--surface-3); }
+a.entry.active { background: var(--surface-3); color: var(--accent); }
+.entry.upcoming { color: var(--text-muted); }
+.soon { display: inline-flex; gap: var(--space-xxs); align-items: center; margin-left: var(--space-xs); padding: 0 var(--space-xs); border-radius: 999px; background: var(--surface-3); font-size: var(--font-size-meta); vertical-align: middle; }
+.rail .user { display: flex; gap: var(--space-s); align-items: center; padding: 0 var(--space-s); color: var(--text-muted); font-size: var(--font-size-meta); }
+
+main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-l); padding: var(--space-l) var(--space-xl) 6rem; }
+.page-head h1 { font-family: var(--font-display); font-size: var(--font-size-title); font-weight: normal; line-height: 1.2; }
+.page-head h1:focus { outline: none; }
+/* Ligne réservée : l'âge des chiffres apparaît sans rien décaler (#93). */
+.sync { min-height: 1.4em; margin-top: var(--space-xxs); }
+.sync-line { display: inline-flex; gap: var(--space-xs); align-items: center; padding: 0; border: 0; background: none; color: var(--text-muted); font-size: var(--font-size-meta); cursor: pointer; }
+.sync-line:hover { color: var(--text); text-decoration: underline; }
+
+/* ---------- Boutons, badges, pastilles ---------- */
+.btn { display: inline-flex; gap: var(--space-xs); align-items: center; justify-content: center; min-height: 32px; padding: 6px 12px; border: 1px solid transparent; border-radius: var(--radius-control); font-weight: 600; white-space: nowrap; cursor: pointer; }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.secondary { background: var(--surface-3); border-color: var(--border); }
+.btn.secondary:hover { background: var(--border); }
+.btn.quiet { background: none; color: var(--accent); }
+.btn.quiet:hover { text-decoration: underline; }
+.btn.quiet-danger { background: none; color: var(--danger); }
+.btn.quiet-danger:hover { text-decoration: underline; }
+.btn.danger { background: var(--danger-fill); color: var(--text); }
+.btn.icon { min-height: 0; padding: 6px; background: none; color: var(--text-muted); }
+.btn.icon:hover { background: var(--surface-3); color: var(--text); }
+.btn.sm { min-height: 26px; padding: 3px 8px; font-size: var(--font-size-meta); }
+.link { padding: 0; border: 0; background: none; color: var(--accent); text-align: left; cursor: pointer; }
+.link:hover { text-decoration: underline; }
+
+.badge { display: inline-flex; gap: var(--space-xs); align-items: center; padding: 1px var(--space-s); border: 0; border-radius: 999px; background: var(--surface-3); color: var(--text-muted); font-size: var(--font-size-meta); white-space: nowrap; }
+.badge.danger { background: color-mix(in srgb, var(--danger) 14%, var(--surface-2)); color: var(--danger); }
+.badge.warning { background: color-mix(in srgb, var(--warning) 14%, var(--surface-2)); color: var(--warning); }
+button.badge { cursor: pointer; text-align: left; }
+button.badge:hover { text-decoration: underline; }
+.pastille { display: inline-flex; gap: var(--space-xs); align-items: center; font-size: var(--font-size-meta); white-space: nowrap; }
+.pastille.danger { color: var(--danger); }
+.pastille.warning { color: var(--warning); }
+.pastille.neutral { color: var(--text-muted); }
+.badges { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.badges:empty { display: none; }
+
+/* ---------- Jauge : inscrits face aux places minimum et maximum ---------- */
+/* La zone claire va du minimum au maximum ; un trait marque chaque borne ; les hachures, ce qui dépasse. */
+.gauge { position: relative; display: block; height: 8px; border-radius: 999px; background: var(--surface-3); }
+.gauge .zone { position: absolute; top: 0; bottom: 0; background: var(--border); }
+.gauge .fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 999px 0 0 999px; background: var(--text-muted); }
+.gauge .fill.warning { background: var(--warning); }
+.gauge .excess { position: absolute; top: 0; bottom: 0; border-radius: 0 999px 999px 0; background: repeating-linear-gradient(135deg, var(--text) 0 3px, transparent 3px 6px); }
+.gauge .excess.danger { background: repeating-linear-gradient(135deg, var(--danger) 0 3px, transparent 3px 6px); }
+.gauge .tick { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--text); }
+
+/* ---------- Vignettes ---------- */
+.thumb { display: inline-grid; place-items: center; flex: none; aspect-ratio: 1; border-radius: var(--radius-thumb); background: var(--surface-3); color: var(--initial); font-family: var(--font-display); line-height: 1; }
+
+/* ---------- Fiche de la partie, panneau des inscrits ---------- */
+.sheet {
+  flex: none; width: 20rem; position: sticky; top: var(--space-l);
+  max-height: calc(100vh - 6rem); overflow: auto;
+  display: flex; flex-direction: column; gap: var(--space-m);
+  padding: var(--space-m); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-2);
+}
+.sheet.wide { width: 32rem; }
+.sheet-head { display: flex; gap: var(--space-s); align-items: flex-start; }
+.sheet-head h2 { flex: 1; min-width: 0; font-size: var(--font-size-block); font-weight: 600; overflow-wrap: anywhere; }
+.sheet-head h2:focus { outline: none; }
+.sheet dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-xs) var(--space-m); }
+.sheet dt { grid-column: 1; color: var(--text-muted); }
+.sheet dd { grid-column: 2; }
+.sheet .actions { display: flex; flex-wrap: wrap; gap: var(--space-s); justify-content: space-between; }
+.sheet-signups { display: flex; flex-direction: column; gap: var(--space-s); padding-top: var(--space-m); border-top: 1px solid var(--border); }
+.sheet-signups h3 { font-size: var(--font-size-block); font-weight: 600; }
+.sheet-signups h4 { margin-top: var(--space-s); color: var(--text-muted); font-family: var(--font-caps); font-size: var(--font-size-overline); font-weight: normal; letter-spacing: 0.12em; text-transform: uppercase; }
+.big { font-size: var(--font-size-section); font-weight: 600; }
+.pseudos { display: flex; flex-direction: column; }
+.pseudos li { display: flex; flex-wrap: wrap; gap: 0 var(--space-s); align-items: baseline; padding: var(--space-xs) 0; border-bottom: 1px solid var(--border); }
+.pseudos .pseudo { font-weight: 600; }
+.pseudos .also { flex-basis: 100%; font-size: var(--font-size-meta); }
+.panel-figures { display: flex; gap: var(--space-m); align-items: baseline; }
+
+/* ---------- Inscrits du créneau ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.chip { padding: 3px var(--space-s); border: 1px solid var(--border); border-radius: 999px; background: none; color: var(--text-muted); font-size: var(--font-size-meta); cursor: pointer; }
+.chip:hover { background: var(--surface-3); color: var(--text); }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--surface-3); color: var(--accent); }
+.table-scroll { overflow: auto; max-height: 30rem; border: 1px solid var(--border); border-radius: var(--radius-control); }
+table.signups { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; }
+.signups th, .signups td { height: 30px; padding: 0 var(--space-s); border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; font-weight: normal; }
+.signups thead th { position: sticky; top: 0; z-index: 2; height: auto; padding: var(--space-s); vertical-align: bottom; background: var(--surface-1); }
+.signups thead .gcol { width: 7.5rem; min-width: 7.5rem; max-width: 7.5rem; white-space: normal; }
+.signups .gcol .link { display: block; font-size: var(--font-size-meta); font-weight: 600; }
+.signups .gcol .badges { margin-top: var(--space-xxs); }
+.signups .gcol .badge { white-space: normal; }
+.signups th.pseudo { position: sticky; left: 0; z-index: 1; min-width: 8rem; background: var(--surface-2); font-weight: 600; }
+.signups thead th.pseudo { z-index: 3; background: var(--surface-1); }
+.signups td.mark { text-align: center; color: var(--text-muted); }
+.signups tr.group th { position: static; height: 26px; background: var(--surface-1); color: var(--text-muted); font-family: var(--font-caps); font-size: var(--font-size-overline); letter-spacing: 0.12em; text-transform: uppercase; }
+.signups tbody tr:not(.group):hover th, .signups tbody tr:not(.group):hover td { background: var(--surface-3); }
+
+.reserve { display: flex; flex-direction: column; gap: var(--space-m); border-radius: var(--radius-control); transition: box-shadow 150ms; }
+.reserve.valid { box-shadow: var(--halo); }
+.reserve h2, .detail h3 { font-size: var(--font-size-section); font-weight: 600; }
+.reserve h2:focus, .detail h3:focus, .detail h2:focus { outline: none; }
+.filters { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.filter { display: inline-flex; gap: var(--space-s); align-items: center; padding: var(--space-xs) var(--space-s); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-1); cursor: pointer; }
+.filter[aria-pressed="true"] { border-color: var(--accent); background: var(--surface-3); color: var(--accent); }
+.filter .count { min-width: 1.5em; padding: 0 var(--space-xs); border-radius: 999px; background: var(--surface-3); color: var(--text-muted); font-size: var(--font-size-meta); text-align: center; }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-s); align-items: start; }
+.r-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: var(--space-xxs) var(--space-s); padding: var(--space-s); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-2); user-select: none; }
+.r-card[data-drag-scenario] { touch-action: none; cursor: grab; }
+.r-card .thumb { grid-row: span 2; }
+.r-card h3, .r-card h4 { font-size: var(--font-size-body); font-weight: 600; }
+.r-card .meta { grid-column: 2; color: var(--text-muted); font-size: var(--font-size-meta); }
+.r-card .foot { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-s); align-items: center; justify-content: space-between; margin-top: var(--space-xs); }
+.r-card .foot .btn { margin-left: auto; }
+.r-card.off { opacity: 0.6; }
+.r-card .why { color: var(--text-muted); font-size: var(--font-size-meta); }
+
+/* ---------- Variante B : pilotage du jour J ---------- */
+.band { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-s); }
+.tile { display: flex; flex-direction: column; gap: var(--space-xxs); align-items: stretch; min-height: 8.5rem; padding: var(--space-s) var(--space-m); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-2); text-align: left; cursor: pointer; }
+.tile:hover { background: var(--surface-3); }
+.tile[aria-pressed="true"] { border-color: var(--accent); box-shadow: var(--halo-soft); }
+.tile.closed { background: var(--surface-1); color: var(--text-muted); }
+.tile .ratio { margin-top: var(--space-xs); font-size: var(--font-size-title); font-weight: 600; line-height: 1.1; }
+.tile .legend { color: var(--text-muted); font-size: var(--font-size-meta); }
+.tile .gauge { margin: var(--space-xs) 0; }
+.tile-closed { display: inline-flex; gap: var(--space-xs); align-items: center; margin-top: auto; }
+.tile-warnings { display: flex; gap: var(--space-xs); align-items: center; min-height: 1.4em; font-size: var(--font-size-meta); }
+.tile-warnings.danger { color: var(--danger); }
+.tile-warnings.warning { color: var(--warning); }
+.detail-wrap { display: flex; gap: var(--space-m); align-items: flex-start; }
+.detail { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-xl); }
+.detail > section { display: flex; flex-direction: column; gap: var(--space-s); }
+.slot-head h2 { font-size: var(--font-size-section); font-weight: 600; }
+.figures-b { display: grid; grid-template-columns: auto auto minmax(12rem, 1fr); gap: var(--space-xl); align-items: end; }
+.figures-b p { display: flex; gap: var(--space-xs); align-items: baseline; color: var(--text-muted); }
+.figures-b strong { color: var(--text); font-size: var(--font-size-title); font-weight: 600; line-height: 1.1; }
+.figures-b .gauge { height: 12px; margin-bottom: 0.5rem; }
+.warnings { display: flex; flex-direction: column; gap: var(--space-xs); }
+.warnings li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: var(--space-s); align-items: center; padding: var(--space-s) var(--space-m); border-radius: var(--radius-control); }
+.warnings li.danger { background: color-mix(in srgb, var(--danger) 14%, var(--surface-2)); }
+.warnings li.danger > svg, .warnings li.danger strong { color: var(--danger); }
+.warnings li.warning { background: color-mix(in srgb, var(--warning) 14%, var(--surface-2)); }
+.warnings li.warning > svg, .warnings li.warning strong { color: var(--warning); }
+.warnings strong { font-weight: 600; }
+.warnings p { color: var(--text-muted); font-size: var(--font-size-meta); }
+.rows { display: flex; flex-direction: column; gap: var(--space-xs); }
+.rows > li { position: relative; display: grid; grid-template-columns: 5rem 32px minmax(9rem, 1fr) 8rem minmax(10rem, 14rem) 9.5rem; gap: var(--space-m); align-items: center; min-height: 52px; padding: var(--space-xs) var(--space-m); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-2); }
+.rows .row-game:hover { background: var(--surface-3); box-shadow: var(--halo-soft); }
+.rows .row-game.selected { border-color: var(--accent); }
+.rows .row-game:has(.open:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.rows .row-free { border-style: dashed; background: none; }
+.rows .row-free .free { grid-column: 2 / 6; color: var(--text-muted); }
+.rows .row-free .btn { justify-self: end; }
+.rows .row-cont { background: var(--surface-1); color: var(--text-muted); }
+.rows .row-cont .cont { grid-column: 3 / -1; }
+.rows h4 { font-size: var(--font-size-body); font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rows .meta, .rows .singles { color: var(--text-muted); font-size: var(--font-size-meta); }
+.rows .row-title { min-width: 0; }
+.rows .row-title .meta { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rows .row-count strong { font-weight: 600; }
+/* Variante C : trois plans. Le résumé du créneau est une carte ; les onglets sont des onglets de
+   classeur, des commandes ; le contenu de l'onglet ouvert vit dans un panneau encadré, soudé à son onglet. */
+.c .summary { display: flex; flex-direction: column; gap: var(--space-m); padding: var(--space-l); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-1); }
+.c .warnings li { padding: var(--space-xs) var(--space-m); }
+.c .warnings li > div { display: flex; flex-wrap: wrap; gap: 0 var(--space-s); align-items: baseline; }
+.tabbed { display: flex; flex-direction: column; }
+.tabs { position: relative; z-index: 1; display: flex; gap: var(--space-xs); }
+.tab { display: inline-flex; gap: var(--space-s); align-items: center; margin-bottom: -1px; padding: var(--space-s) var(--space-l); border: 1px solid var(--border); border-radius: var(--radius-control) var(--radius-control) 0 0; background: var(--surface-2); color: var(--text-muted); font-weight: 600; cursor: pointer; }
+.tab:hover { background: var(--surface-3); color: var(--text); }
+.tab[aria-selected="true"] { border-bottom-color: var(--surface-1); background: var(--surface-1); color: var(--text); box-shadow: inset 0 2px 0 var(--accent); }
+.tab[aria-selected="true"] svg { color: var(--accent); }
+.tab .count { min-width: 1.5em; padding: 0 var(--space-xs); border-radius: 999px; background: var(--surface-3); color: var(--text-muted); font-size: var(--font-size-meta); font-weight: normal; text-align: center; }
+.tab-panel { display: flex; flex-direction: column; gap: var(--space-m); padding: var(--space-l); border: 1px solid var(--border); border-radius: 0 var(--radius-card) var(--radius-card) var(--radius-card); background: var(--surface-1); }
+.tab-panel:focus { outline: none; }
+.tab-panel:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.closed-note { display: flex; gap: var(--space-s); align-items: center; padding: var(--space-m); border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--text-muted); }
+
+/* ---------- Dialogues ---------- */
+.backdrop { position: fixed; inset: 0; z-index: 20; background: color-mix(in srgb, var(--surface-0) 70%, transparent); }
+.dialog { position: fixed; z-index: 21; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(30rem, calc(100vw - 32px)); max-height: calc(100vh - 64px); overflow: auto; display: flex; flex-direction: column; gap: var(--space-m); padding: var(--space-l); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-2); }
+.dialog.wide { width: min(58rem, calc(100vw - 32px)); }
+.dialog:has(.choices) { width: min(38rem, calc(100vw - 32px)); }
+.dialog h2 { font-size: var(--font-size-section); font-weight: 600; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-s); }
+.dialog .lines { display: flex; flex-direction: column; gap: var(--space-s); }
+table.placements { border-collapse: separate; border-spacing: var(--space-xs); }
+.placements th { padding: var(--space-xs); font-weight: normal; text-align: left; vertical-align: bottom; }
+.placements th span { display: block; }
+.placements td { width: 7.5rem; height: 40px; padding: var(--space-xs); border: 1px dashed var(--border); border-radius: var(--radius-control); color: var(--text-muted); font-size: var(--font-size-meta); text-align: center; }
+.placements td.current { border-style: solid; color: var(--accent); }
+.here-list { display: flex; flex-direction: column; gap: var(--space-xs); }
+.here-list li { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: var(--space-s); align-items: center; padding: var(--space-xs) var(--space-s); border: 1px solid var(--border); border-radius: var(--radius-control); }
+.here-list li.off { opacity: 0.6; }
+.here-list h4 { font-weight: 600; }
+.here-list p { color: var(--text-muted); font-size: var(--font-size-meta); }
+.here-title { margin-top: var(--space-s); color: var(--text-muted); font-family: var(--font-caps); font-size: var(--font-size-overline); font-weight: normal; letter-spacing: 0.12em; text-transform: uppercase; }
+
+/* ---------- Barre du prototype : hors charte, exprès ---------- */
+.proto-bar { position: fixed; z-index: 30; left: 50%; bottom: 16px; transform: translateX(-50%); display: flex; gap: 6px; align-items: center; padding: 6px 8px; border-radius: 999px; background: #f4efe6; color: #151717; font: 600 12px/1 system-ui, sans-serif; box-shadow: 0 2px 12px rgba(0, 0, 0, .5); white-space: nowrap; }
+.proto-bar button { padding: 6px 10px; border: 0; border-radius: 999px; background: #e2dbcf; color: #151717; font: inherit; cursor: pointer; }
+.proto-bar button:hover { background: #d3cabb; }
+.proto-bar button[aria-pressed="true"] { background: #151717; color: #f4efe6; }
+.proto-bar .label { min-width: 13rem; text-align: center; }
+.proto-bar .sep { width: 1px; height: 18px; background: #c9c0b2; }
+.proto-bar .clock { padding: 0 4px; font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+
+/* ---------- Tirage : commun aux variantes ---------- */
+main { gap: var(--space-l); }
+.tile .tile-state { display: inline-flex; gap: var(--space-xs); align-items: center; margin-top: auto; font-size: var(--font-size-meta); }
+.tile.drawing .tile-state { color: var(--accent); }
+.tile.closed .ratio { font-size: var(--font-size-section); }
+.summary-head { display: flex; flex-wrap: wrap; gap: var(--space-s) var(--space-m); align-items: center; }
+.summary-head h2 { font-size: var(--font-size-section); font-weight: 600; }
+.summary-head h2:focus { outline: none; }
+.summary-head .actions { display: flex; gap: var(--space-s); align-items: center; margin-left: auto; position: relative; }
+.figures-d { display: flex; flex-wrap: wrap; gap: var(--space-xl); align-items: baseline; }
+.figures-d p { display: flex; gap: var(--space-xs); align-items: baseline; color: var(--text-muted); }
+.figures-d strong { color: var(--text); font-size: var(--font-size-title); font-weight: 600; line-height: 1.1; }
+.note { display: flex; gap: var(--space-s); align-items: center; color: var(--text-muted); }
+.badge.accent { background: color-mix(in srgb, var(--accent) 14%, var(--surface-2)); color: var(--accent); }
+.menu-pop { position: absolute; top: calc(100% + 4px); right: 0; z-index: 10; display: flex; flex-direction: column; min-width: 14rem; padding: var(--space-xs); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-2); box-shadow: 0 4px 16px rgba(0, 0, 0, .4); }
+.menu-pop button { display: flex; gap: var(--space-s); align-items: center; padding: var(--space-s); border: 0; border-radius: var(--radius-control); background: none; text-align: left; cursor: pointer; }
+.menu-pop button:hover { background: var(--surface-3); }
+.menu-pop button.danger { color: var(--danger); }
+.player { display: inline-flex; gap: var(--space-xxs); align-items: center; padding: 2px var(--space-s); border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); color: var(--text); font-size: var(--font-size-meta); cursor: pointer; }
+.player:hover { background: var(--surface-3); box-shadow: var(--halo-soft); }
+.player.moved { border-style: dashed; }
+.player.unsigned { color: var(--warning); }
+.player[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); box-shadow: var(--halo); }
+span.player { cursor: default; }
+span.player:hover { background: var(--surface-2); box-shadow: none; }
+.players { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.empty-players { color: var(--text-muted); font-size: var(--font-size-meta); font-style: italic; }
+.under-line { display: flex; flex-wrap: wrap; gap: var(--space-s); align-items: center; }
+.legend-line { display: flex; flex-wrap: wrap; gap: var(--space-m); color: var(--text-muted); font-size: var(--font-size-meta); }
+.legend-line span { display: inline-flex; gap: var(--space-xs); align-items: center; }
+.left-seats { color: var(--text-muted); }
+.left-seats strong { color: var(--text); font-weight: 600; }
+
+/* ---------- A : lignes des parties ---------- */
+.draw-rows { display: flex; flex-direction: column; gap: var(--space-s); }
+.draw-rows > li { display: grid; grid-template-columns: 5rem 32px minmax(10rem, 1fr) minmax(12rem, 16rem); gap: var(--space-xs) var(--space-m); align-items: center; padding: var(--space-s) var(--space-m); border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface-2); }
+.draw-rows > li.canceled { background: var(--surface-1); }
+.draw-rows > li.canceled .thumb, .draw-rows > li.canceled .row-title { opacity: 0.55; }
+.draw-rows > li.cont { background: var(--surface-1); color: var(--text-muted); }
+.draw-rows > li.free { border-style: dashed; background: none; color: var(--text-muted); }
+.draw-rows .row-title h4 { font-size: var(--font-size-body); font-weight: 600; }
+.draw-rows .meta { color: var(--text-muted); font-size: var(--font-size-meta); }
+.draw-rows .row-figs { display: flex; flex-direction: column; gap: var(--space-xxs); font-size: var(--font-size-meta); }
+.draw-rows .players, .draw-rows .under-line, .draw-rows .wide-line { grid-column: 3 / -1; }
+.unplaced-list { display: flex; flex-direction: column; }
+.unplaced-list li { display: grid; grid-template-columns: 9rem minmax(0, 1fr) auto; gap: var(--space-m); align-items: center; padding: var(--space-s) 0; border-bottom: 1px solid var(--border); }
+.unplaced-list .pseudo { font-weight: 600; }
+.unplaced-list .wishes { color: var(--text-muted); font-size: var(--font-size-meta); }
+.unplaced-list .wishes b { color: var(--text); font-weight: 600; }
+
+/* Dialogue « Déplacer… » */
+.choices { display: flex; flex-direction: column; gap: var(--space-xs); }
+.choices label { display: grid; grid-template-columns: 1.25rem 4.5rem minmax(0, 1fr) auto; gap: var(--space-s); align-items: center; padding: var(--space-s); border: 1px solid var(--border); border-radius: var(--radius-control); cursor: pointer; }
+.choices label:hover { background: var(--surface-3); }
+.choices label.current { border-color: var(--engraving-strong); background: var(--surface-1); cursor: default; }
+.choices label:has(input:checked) { border-color: var(--accent); box-shadow: var(--halo-soft); }
+.choices input { margin: 0; accent-color: var(--accent); }
+.choices .t { color: var(--text-muted); font-family: var(--font-caps); font-size: var(--font-size-overline); letter-spacing: 0.08em; text-transform: uppercase; }
+.choices .g { min-width: 0; }
+.choices .g b { display: block; font-weight: 600; }
+.choices .g span { color: var(--text-muted); font-size: var(--font-size-meta); }
+.choices .tags { display: flex; flex-direction: column; gap: var(--space-xxs); align-items: flex-end; }
+.dialog .warn-line { display: flex; gap: var(--space-s); align-items: flex-start; color: var(--warning); }
+.dialog ul.dot { display: flex; flex-direction: column; gap: var(--space-xxs); padding-left: var(--space-l); list-style: disc; }
+.dialog .signal-list { display: flex; flex-direction: column; gap: var(--space-xs); }
+.dialog .signal-list li { display: flex; gap: var(--space-s); align-items: baseline; }
+.dialog .signal-list li.danger strong, .dialog .signal-list li.danger svg { color: var(--danger); }
+.dialog .signal-list li.warning strong, .dialog .signal-list li.warning svg { color: var(--warning); }
+.dialog .signal-list strong { font-weight: 600; }
+.dialog .signal-list .muted { font-size: var(--font-size-meta); }
+
+/* ---------- B : plan de salle ---------- */
+/* Les colonnes passent à la ligne quand elles ne tiennent plus : jamais de défilement horizontal. */
+.plan { display: grid; grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr)); gap: var(--space-s); align-items: stretch; }
+.col { display: flex; flex-direction: column; gap: var(--space-s); min-height: 12rem; padding: var(--space-s); border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface-2); }
+.col.unplaced { background: color-mix(in srgb, var(--danger) 6%, var(--surface-1)); }
+.col.canceled { background: var(--surface-1); }
+.col.canceled .col-head > :not(.badges):not(.under-line) { opacity: 0.55; }
+.col.cont { background: var(--surface-1); color: var(--text-muted); }
+.col-head { display: flex; flex-direction: column; gap: var(--space-xxs); }
+.col-head .caps { color: var(--text-muted); }
+.col-head h4 { font-size: var(--font-size-body); font-weight: 600; line-height: 1.25; }
+.col-head .meta { color: var(--text-muted); font-size: var(--font-size-meta); }
+.col-head .count { font-size: var(--font-size-meta); }
+.col .players { flex-direction: column; align-items: flex-start; }
+.col .under-line .pastille { white-space: normal; }
+/* Le pied de la carte : la cible « Déplacer ici » tout en bas, à la même hauteur d'une carte à l'autre. */
+.col-foot { display: flex; flex-direction: column; gap: var(--space-s); margin-top: auto; }
+.col-foot .target { min-height: 3.75rem; }
+.col .under-line { padding-top: var(--space-s); border-top: 1px solid var(--border); font-size: var(--font-size-meta); }
+.target { display: flex; flex-direction: column; gap: var(--space-xxs); align-items: flex-start; width: 100%; padding: var(--space-s); border: 1px dashed var(--engraving-strong); border-radius: var(--radius-control); background: none; color: var(--text); font-size: var(--font-size-meta); text-align: left; cursor: pointer; }
+.target:hover { background: var(--surface-3); }
+.target.signed { border: 1px solid var(--accent); box-shadow: var(--halo-soft); }
+.target .what { display: inline-flex; gap: var(--space-xs); align-items: center; font-weight: 600; }
+.target.signed .what { color: var(--accent); }
+.target .warn { display: inline-flex; gap: var(--space-xs); align-items: center; color: var(--warning); }
+.target-slot { min-height: 3.6rem; }
+.target-slot .here { display: flex; align-items: center; height: 100%; padding: var(--space-s); border-radius: var(--radius-control); background: var(--surface-1); color: var(--text-muted); font-size: var(--font-size-meta); }
+.move-bar { display: flex; flex-wrap: wrap; gap: var(--space-s) var(--space-m); align-items: center; min-height: 2.75rem; padding: var(--space-s) var(--space-m); border: 1px solid var(--accent); border-radius: var(--radius-control); background: color-mix(in srgb, var(--accent) 8%, var(--surface-1)); }
+.move-bar.idle { border-color: var(--border); background: var(--surface-1); color: var(--text-muted); }
+.move-bar .btn { margin-left: auto; }
+
+/* ---------- C : grille des inscrits ---------- */
+table.grid-d { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; }
+.grid-d th, .grid-d td { height: 32px; padding: 0 var(--space-s); border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; font-weight: normal; }
+.grid-d thead th { position: sticky; top: 0; z-index: 2; height: auto; padding: var(--space-s); vertical-align: bottom; background: var(--surface-1); }
+.grid-d thead .gcol { width: 8.5rem; min-width: 8.5rem; max-width: 8.5rem; white-space: normal; border-left: 1px solid var(--border); }
+.grid-d thead .gcol .t { display: block; color: var(--text-muted); font-family: var(--font-caps); font-size: var(--font-size-overline); letter-spacing: 0.08em; text-transform: uppercase; }
+.grid-d thead .gcol b { display: block; font-size: var(--font-size-meta); font-weight: 600; line-height: 1.25; }
+.grid-d thead .gcol .num { display: block; margin-top: var(--space-xxs); font-size: var(--font-size-meta); }
+.grid-d thead .gcol .badges { margin-top: var(--space-xxs); }
+.grid-d thead .gcol .badge { white-space: normal; }
+.grid-d thead .gcol .btn { margin-top: var(--space-xs); padding-left: 0; white-space: normal; text-align: left; }
+.grid-d th.pseudo { position: sticky; left: 0; z-index: 1; min-width: 8rem; background: var(--surface-2); font-weight: 600; }
+.grid-d thead th.pseudo { z-index: 3; background: var(--surface-1); }
+.grid-d td.cell { padding: 2px; border-left: 1px solid var(--border); text-align: center; }
+.grid-d td.cell:nth-child(even) { background: color-mix(in srgb, var(--surface-3) 40%, transparent); }
+.grid-d td.cell.off { background: var(--surface-1); }
+.grid-d tr.group th { position: static; height: 28px; background: var(--surface-1); color: var(--text-muted); font-family: var(--font-caps); font-size: var(--font-size-overline); letter-spacing: 0.12em; text-transform: uppercase; }
+.grid-d tr.group.danger th { color: var(--danger); }
+.cell-btn { display: inline-flex; gap: var(--space-xxs); align-items: center; justify-content: center; width: 100%; height: 26px; padding: 0 var(--space-xs); border: 1px solid transparent; border-radius: var(--radius-control); background: none; color: var(--text-muted); font-size: var(--font-size-meta); cursor: pointer; }
+.cell-btn:hover { border-color: var(--engraving-strong); background: var(--surface-3); color: var(--text); }
+.cell-btn .hint { display: none; }
+.cell-btn .hint.warnc { color: var(--warning); }
+.cell-btn:hover .hint, .cell-btn:focus-visible .hint { display: inline; }
+.cell-btn:hover .mark, .cell-btn:focus-visible .mark { display: none; }
+.cell-btn.assigned { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--surface-2)); color: var(--accent); font-weight: 600; cursor: default; }
+.cell-btn.assigned.unsigned { border-style: dashed; }
+.cell-btn.assigned.none, span.cell-btn.assigned.none:hover { border-color: var(--engraving-strong); background: var(--surface-3); color: var(--text-muted); }
+.cell-btn.assigned:hover .hint { display: none; }
+.cell-btn.assigned:hover .mark { display: inline; }
+span.cell-btn { cursor: default; }
+span.cell-btn:hover { border-color: transparent; background: none; color: var(--text-muted); }
+span.cell-btn.assigned:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--surface-2)); color: var(--accent); }
+.grid-d td.how { color: var(--text-muted); font-size: var(--font-size-meta); }
+.grid-d tbody tr:not(.group):hover th, .grid-d tbody tr:not(.group):hover td { background: var(--surface-3); }
+</style>
+
+<svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+  <!-- Sprites copiés de packages/design/svg (icons.svg : Lucide, licence ISC ; emblem.svg). -->
+  <symbol id="circle-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" /></symbol>
+  <symbol id="triangle-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></symbol>
+  <symbol id="octagon-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16h.01" /><path d="M12 8v4" /><path d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z" /></symbol>
+  <symbol id="pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /><path d="m15 5 4 4" /></symbol>
+  <symbol id="clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></symbol>
+  <symbol id="inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /></symbol>
+  <symbol id="calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4" /><path d="M16 2v4" /><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M3 10h18" /></symbol>
+  <symbol id="users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></symbol>
+  <symbol id="book-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14" /><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" /></symbol>
+  <symbol id="layout-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" /></symbol>
+  <symbol id="radio-tower" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 16.1C1 12.2 1 5.8 4.9 1.9" /><path d="M7.8 4.7a6.14 6.14 0 0 0-.8 7.5" /><circle cx="12" cy="9" r="2" /><path d="M16.2 4.8c2 2 2.26 5.11.8 7.47" /><path d="M19.1 1.9a9.96 9.96 0 0 1 0 14.1" /><path d="M9.5 18h5" /><path d="m8 22 4-11 4 11" /></symbol>
+  <symbol id="user-round" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></symbol>
+  <symbol id="panel-left-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /><path d="m16 15-3-3 3-3" /></symbol>
+  <symbol id="panel-left-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /><path d="m14 9 3 3-3 3" /></symbol>
+  <symbol id="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></symbol>
+  <symbol id="dices" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="12" height="12" x="2" y="10" rx="2" ry="2" /><path d="m17.92 14 3.5-3.5a2.24 2.24 0 0 0 0-3l-5-4.92a2.24 2.24 0 0 0-3 0L10 6" /><path d="M6 18h.01" /><path d="M10 14h.01" /><path d="M15 6h.01" /><path d="M18 9h.01" /></symbol>
+  <symbol id="hourglass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14" /><path d="M5 2h14" /><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" /><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" /></symbol>
+  <symbol id="ellipsis" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /><circle cx="5" cy="12" r="1" /></symbol>
+  <symbol id="arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7" /><path d="M12 19V5" /></symbol>
+  <symbol id="arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14" /><path d="m19 12-7 7-7-7" /></symbol>
+  <symbol id="columns-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M12 3v18" /></symbol>
+  <symbol id="house" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol>
+  <symbol id="chevron-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6" /></symbol>
+  <symbol id="plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></symbol>
+  <symbol id="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></symbol>
+  <symbol id="bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0" /><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" /></symbol>
+  <symbol id="bell-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0" /><path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742" /><path d="m2 2 20 20" /><path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05" /></symbol>
+  <symbol id="chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></symbol>
+  <symbol id="settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></symbol>
+  <symbol id="info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" /></symbol>
+  <symbol id="sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" /><path d="M20 3v4" /><path d="M22 5h-4" /><path d="M4 17v2" /><path d="M5 18H3" /></symbol>
+  <symbol id="download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></symbol>
+  <symbol id="ellipsis-vertical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" /></symbol>
+  <symbol id="emblem-small" viewBox="-100 -100 200 200"><circle r="96" style="fill: var(--surface-0)"/><path d="M6.57 -93.77A94 94 0 0 1 41.19 -84.49L31.55 -64.72A72 72 0 0 0 5.04 -71.82Z" style="fill: var(--accent)"/><path d="M52.58 -77.92A94 94 0 0 1 77.92 -52.58L59.68 -40.27A72 72 0 0 0 40.27 -59.68Z" style="fill: var(--emblem-5)"/><path d="M84.49 -41.19A94 94 0 0 1 93.77 -6.57L71.82 -5.04A72 72 0 0 0 64.72 -31.55Z" style="fill: var(--emblem-2)"/><path d="M93.77 6.57A94 94 0 0 1 84.49 41.19L64.72 31.55A72 72 0 0 0 71.82 5.04Z" style="fill: var(--emblem-6)"/><path d="M77.92 52.58A94 94 0 0 1 52.58 77.92L40.27 59.68A72 72 0 0 0 59.68 40.27Z" style="fill: var(--accent)"/><path d="M41.19 84.49A94 94 0 0 1 6.57 93.77L5.04 71.82A72 72 0 0 0 31.55 64.72Z" style="fill: var(--emblem-3)"/><path d="M-6.57 93.77A94 94 0 0 1 -41.19 84.49L-31.55 64.72A72 72 0 0 0 -5.04 71.82Z" style="fill: var(--emblem-5)"/><path d="M-52.58 77.92A94 94 0 0 1 -77.92 52.58L-59.68 40.27A72 72 0 0 0 -40.27 59.68Z" style="fill: var(--emblem-1)"/><path d="M-84.49 41.19A94 94 0 0 1 -93.77 6.57L-71.82 5.04A72 72 0 0 0 -64.72 31.55Z" style="fill: var(--accent)"/><path d="M-93.77 -6.57A94 94 0 0 1 -84.49 -41.19L-64.72 -31.55A72 72 0 0 0 -71.82 -5.04Z" style="fill: var(--emblem-6)"/><path d="M-77.92 -52.58A94 94 0 0 1 -52.58 -77.92L-40.27 -59.68A72 72 0 0 0 -59.68 -40.27Z" style="fill: var(--emblem-2)"/><path d="M-41.19 -84.49A94 94 0 0 1 -6.57 -93.77L-5.04 -71.82A72 72 0 0 0 -31.55 -64.72Z" style="fill: var(--emblem-4)"/><circle r="68" style="fill: var(--surface-1)"/><g style="fill: none; stroke: var(--accent)" stroke-linecap="round" stroke-linejoin="round"><path d="M0 0L33 -57.16M0 0L66 0M0 0L33 57.16M0 0L-33 57.16M0 0L-66 0M0 0L-33 -57.16M11 -19.05Q15.62 -9.02 22 0Q15.62 9.02 11 19.05Q0 18.04 -11 19.05Q-15.62 9.02 -22 0Q-15.62 -9.02 -11 -19.05Q0 -18.04 11 -19.05M21 -36.37Q29.83 -17.22 42 0Q29.83 17.22 21 36.37Q0 34.44 -21 36.37Q-29.83 17.22 -42 0Q-29.83 -17.22 -21 -36.37Q0 -34.44 21 -36.37M30 -51.96Q42.61 -24.6 60 0Q42.61 24.6 30 51.96Q0 49.2 -30 51.96Q-42.61 24.6 -60 0Q-42.61 -24.6 -30 -51.96Q0 -49.2 30 -51.96" stroke-width="4"/></g></symbol>
+  <!-- Icônes Lucide (licence ISC) absentes du sprite de packages/design. -->
+  <symbol id="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="wifi-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></symbol>
+  <symbol id="user-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" x2="22" y1="8" y2="13"/><line x1="22" x2="17" y1="8" y2="13"/></symbol>
+  <symbol id="rotate-ccw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></symbol>
+  <symbol id="lock-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></symbol>
+  <symbol id="arrow-right-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></symbol>
+  <symbol id="ban" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></symbol>
+  <symbol id="shuffle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-8.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"/><path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"/></symbol>
+</svg>
+
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <svg class="emblem" aria-hidden="true"><use href="#emblem-small"/></svg>
+      <span class="name">Histoires de Chimères</span>
+    </div>
+    <div class="convention">
+      <span>Histoires de Chimères II</span>
+      <span class="convention-date">samedi 14 mars 2027</span>
+    </div>
+    <nav id="rail-nav" aria-label="Navigation principale"></nav>
+    <p class="user"><svg class="i" aria-hidden="true"><use href="#user-round"/></svg>Organisateur, sans authentification</p>
+  </aside>
+  <main id="main"></main>
+</div>
+<div id="dialog-root"></div>
+<div id="live" class="visually-hidden" aria-live="polite"></div>
+
+<div class="proto-bar" role="region" aria-label="Barre du prototype">
+  <button type="button" data-act="proto-prev" aria-label="Variante précédente">←</button>
+  <span class="label" id="proto-label"></span>
+  <button type="button" data-act="proto-next" aria-label="Variante suivante">→</button>
+  <span class="sep"></span>
+  <button type="button" data-act="proto-skip">Raccourci : lancer le tirage suivant</button>
+  <button type="button" data-act="proto-reset">Remettre à zéro</button>
+</div>
+
+<script>
+'use strict';
+
+// ---------- Typographie (comme @chimeres/design) ----------
+const NB = ' ';
+const TN = ' ';
+/** Espaces insécables du français, posées sur tout le HTML rendu. */
+const fr = (html) => html
+  .replace(/ ([:;])/g, `${NB}$1`)
+  .replace(/ ([?!])/g, `${TN}$1`)
+  .replace(/« /g, `«${NB}`)
+  .replace(/ »/g, `${NB}»`);
+const q = (text) => `«${NB}${text}${NB}»`;
+const esc = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const plural = (n, one, many) => (n > 1 ? many : one);
+const countOf = (n, one, many) => `${n}${NB}${plural(n, one, many)}`;
+const minutesOf = (hm) => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
+const formatTime = (hm) => { const [h, m] = hm.split(':'); return `${Number(h)}${NB}h${NB}${m}`; };
+const formatClock = (total) => `${Math.floor(total / 60)}${NB}h${NB}${String(Math.floor(total % 60)).padStart(2, '0')}`;
+const formatRange = (slot) => `${formatTime(slot.start)}${TN}–${TN}${formatTime(slot.end)}`;
+const formatDuration = (from, to) => {
+  const d = minutesOf(to) - minutesOf(from);
+  const h = Math.floor(d / 60);
+  const m = d % 60;
+  if (!h) return `${m}${NB}min`;
+  return m ? `${h}${NB}h${NB}${String(m).padStart(2, '0')}` : `${h}${NB}h`;
+};
+const formatSeats = (min, max) => (min === max ? countOf(min, 'place', 'places') : `${min} à ${max}${NB}places`);
+const LIST = new Intl.ListFormat('fr', { type: 'conjunction' });
+const ranksLabel = (ranks) => (ranks.length === 1 ? `créneau ${ranks[0]}` : `créneaux ${LIST.format(ranks.map(String))}`);
+const slotLabel = (slot) => `Créneau ${slot.rank} · ${formatRange(slot)}`;
+const byPseudo = (a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' });
+const icon = (name, cls = 'i') => `<svg class="${cls}" aria-hidden="true"><use href="#${name}"/></svg>`;
+const levelIcon = (level, cls = 'i') => icon(level === 'danger' ? 'octagon-alert' : 'triangle-alert', cls);
+
+const TABLES = [
+  { id: 't1', name: 'Table 1' }, { id: 't2', name: 'Table 2' }, { id: 't3', name: 'Table 3' },
+  { id: 't10', name: 'Table 10' }, { id: 'dragon', name: 'Dragon' }, { id: 'licorne', name: 'Licorne' },
+];
+/** Disponibilités : les rangs des créneaux où le MJ peut mener une partie. */
+const GMS = {
+  kairos: { nickname: 'Kaïros', availability: [1, 2, 3, 4] },
+  ombrelune: { nickname: 'Ombrelune', availability: [1, 2, 3] },
+  fougere: { nickname: 'Fougère', availability: [2, 3, 4, 5] },
+  tarasque: { nickname: 'Tarasque', availability: [3, 4] },
+  lapinou: { nickname: 'Lapinou', availability: [1, 2, 4, 5] },
+  sirocco: { nickname: 'Sirocco', availability: [1, 2, 3, 4, 5] },
+  nocturne: { nickname: 'Nocturne', availability: [3, 4, 5] },
+  brindille: { nickname: 'Brindille', availability: [1, 2, 5] },
+  grimoire: { nickname: 'Grimoire', availability: [2, 3, 4] },
+  mandragore: { nickname: 'Mandragore', availability: [1, 4, 5] },
+  ambre: { nickname: 'Ambre', availability: [] },
+};
+const SCENARIOS = {
+  masques: { title: 'Les Masques de Nyarlathotep : prologue', system: "L'Appel de Cthulhu", gm: 'ombrelune', min: 3, max: 5, img: 'mer' },
+  surface: { title: 'Sous la surface', system: "L'Appel de Cthulhu", gm: 'ombrelune', min: 3, max: 5, img: 'abysses' },
+  neons: { title: 'Néons sur Neo-Paris', system: 'Cyberpunk RED', gm: 'kairos', min: 3, max: 4, img: 'neon' },
+  cartes: { title: 'Cartes sur table', system: 'Fiasco', gm: 'kairos', min: 3, max: 4 },
+  foret: { title: 'La Forêt qui chuchote', system: 'Ryuutama', gm: 'fougere', min: 2, max: 4, img: 'foret' },
+  abeilles: { title: "Les Abeilles d'argent", system: 'Ryuutama', gm: 'fougere', min: 3, max: 5 },
+  siege: { title: 'Le Siège de Port-Brume', system: 'Donjons & Dragons 5e', gm: 'tarasque', min: 4, max: 6, double: true, img: 'port' },
+  reine: { title: 'Thé chez la Reine Rouge', system: 'Wonderland No More', gm: 'lapinou', min: 3, max: 5 },
+  terrier: { title: 'Le Terrier sans fond', system: 'Root', gm: 'lapinou', min: 2, max: 4 },
+  desert: { title: 'Le Désert des Mille Soleils', system: 'Chroniques Oubliées', gm: 'sirocco', min: 3, max: 5, img: 'desert' },
+  caravane: { title: 'La Caravane perdue', system: 'Chroniques Oubliées', gm: 'sirocco', min: 4, max: 5, double: true },
+  bal: { title: 'Le Bal des Ombres', system: 'Vampire : la Mascarade', gm: 'nocturne', min: 4, max: 6, img: 'chateau' },
+  velours: { title: 'Velours et poignards', system: 'Vampire : la Mascarade', gm: 'nocturne', min: 3, max: 5 },
+  lanternes: { title: 'Les Lanternes de Brume', system: 'Brigandyne', gm: 'brindille', min: 3, max: 5 },
+  marche: { title: 'Le Marché aux ombres', system: 'Brigandyne', gm: 'brindille', min: 3, max: 5 },
+  archiviste: { title: "L'Archiviste aveugle", system: 'Dragonbane', gm: 'grimoire', min: 3, max: 5 },
+  contrebande: { title: 'Contrebande à Lunécume', system: 'Blades in the Dark', gm: 'grimoire', min: 3, max: 4 },
+  mandragores: { title: 'La Nuit des Mandragores', system: 'Kids on Bikes', gm: 'mandragore', min: 3, max: 5 },
+  phare: { title: 'Le Phare de Kerbrume', system: "L'Appel de Cthulhu", gm: 'mandragore', min: 3, max: 5, img: 'mer' },
+  cendres: { title: "Les Cendres d'Ys", system: 'Pendragon', gm: 'ambre', min: 4, max: 6 },
+};
+const IMAGES = {
+  mer: 'linear-gradient(160deg, #2b5466, #0d1a22)',
+  abysses: 'linear-gradient(160deg, #164049, #081316)',
+  neon: 'linear-gradient(135deg, #7a2a8f, #123456)',
+  foret: 'linear-gradient(160deg, #3c6234, #13221a)',
+  port: 'linear-gradient(160deg, #6a5232, #1c1913)',
+  desert: 'linear-gradient(160deg, #a2783a, #3a2614)',
+  chateau: 'linear-gradient(160deg, #5a3450, #171016)',
+};
+const PROGRAMME = [
+  ['c1', 't1', 'masques'], ['c1', 't2', 'reine'], ['c1', 't3', 'desert'], ['c1', 't10', 'lanternes'], ['c1', 'dragon', 'mandragores'],
+  ['c2', 't1', 'surface'], ['c2', 't2', 'neons'], ['c2', 't3', 'foret'], ['c2', 't10', 'contrebande'], ['c2', 'dragon', 'marche'],
+  ['c3', 't1', 'bal'], ['c3', 't2', 'cartes'], ['c3', 't3', 'abeilles'], ['c3', 't10', 'archiviste'], ['c3', 'dragon', 'siege'],
+  ['c4', 't1', 'velours'], ['c4', 't2', 'phare'], ['c4', 't3', 'terrier'], ['c4', 't10', 'neons'],
+  ['c5', 't1', 'mandragores'], ['c5', 't2', 'lanternes'], ['c5', 't3', 'reine'],
+];
+/** Les inscriptions, par partie (scénario@créneau). */
+const SIGN_UPS = {
+  'neons@c2': 'Aube Bastou Corbeau Dahlia Éole Faëlle Gaspard Hirondelle Isis Jaspe Kestrel Rhubarbe Sélène Wapiti Yuzu',
+  'surface@c2': 'Corbeau Dahlia Kestrel Lune Milo Nox Tanuki Ulysse Zéphyr Bergamote',
+  'foret@c2': 'Éole Kestrel Opale Volute',
+  'contrebande@c2': 'Faëlle Isis Milo Pixel',
+  'marche@c2': 'Hirondelle Quenouille',
+  'bal@c3': 'Aube Corbeau Lune Opale Rhubarbe Ulysse Kaïros',
+  'cartes@c3': 'Bastou Gaspard Isis Pixel Tanuki',
+  'abeilles@c3': 'Volute Milo Nox Corbeau',
+  'archiviste@c3': 'Faëlle Yuzu Bastou',
+  'siege@c3': 'Kestrel Dahlia Éole Jaspe Sélène Gaspard',
+  'velours@c4': 'Lune Milo Opale',
+  'phare@c4': 'Nox Pixel',
+  'terrier@c4': 'Bergamote Opale',
+  'neons@c4': 'Aube Wapiti Milo',
+};
+const SLOTS = [
+  { id: 'c1', rank: 1, start: '09:00', end: '11:30' },
+  { id: 'c2', rank: 2, start: '13:00', end: '15:30' },
+  { id: 'c3', rank: 3, start: '15:30', end: '18:00' },
+  { id: 'c4', rank: 4, start: '18:30', end: '21:00' },
+  { id: 'c5', rank: 5, start: '21:30', end: '23:30' },
+];
+
+// ---------- Algorithme : recopié du prototype « algorithme de tirage » (#110) ----------
+const DrawPrototype = (() => {
+  'use strict';
+
+  /** Un générateur pseudo-aléatoire à graine : la source de hasard injectée. */
+  function mulberry32(seed) {
+    return () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /** Mélange de Fisher-Yates : chaque ordre a la même probabilité. */
+  function shuffled(list, random) {
+    const copy = [...list];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+
+  /**
+   * Le tirage d'un créneau.
+   * `slot` : `{ games: [{ id, min, max }], participants: [{ id, gameIds }] }`, identifiants opaques.
+   * `options` : `balance` ('weighted' | 'range' | 'leximin'), `underMin` ('balance' | 'fewest'), `shuffle`.
+   * Rend l'affectation de chaque participant (id de partie, ou `null` : non placé), la répartition
+   * retenue (joueurs par partie, dans l'ordre de `games`), le nombre de répartitions ex aequo et
+   * le nombre de répartitions examinées.
+   */
+  function drawTimeSlot(slot, random, options) {
+    const { games } = slot;
+    const n = games.length;
+    const index = new Map(games.map((game, i) => [game.id, i]));
+    const order = options.shuffle ? shuffled(slot.participants, random) : slot.participants;
+    const masks = order.map((p) =>
+      p.gameIds.reduce((mask, id) => (index.has(id) ? mask | (1 << index.get(id)) : mask), 0),
+    );
+
+    // signedUpTo[T] : participants inscrits à au moins une partie de l'ensemble T (condition de Hall).
+    const signedUpTo = new Array(1 << n).fill(0);
+    for (let T = 1; T < 1 << n; T++) for (const mask of masks) if (mask & T) signedUpTo[T]++;
+
+    // Couplage par chemins augmentants, dans l'ordre mélangé : un participant placé le reste, mais
+    // peut glisser vers une autre de ses parties pour faire de la place au suivant.
+    const seat = (seatsPerGame) => {
+      const seated = games.map(() => []);
+      const gameOf = new Array(order.length).fill(-1);
+      const tryToSeat = (p, visited) => {
+        for (let g = 0; g < n; g++) {
+          if (!((masks[p] >> g) & 1) || visited[g]) continue;
+          visited[g] = true;
+          if (seated[g].length < seatsPerGame[g]) {
+            seated[g].push(p);
+            gameOf[p] = g;
+            return true;
+          }
+          for (let k = 0; k < seated[g].length; k++) {
+            if (tryToSeat(seated[g][k], visited)) {
+              seated[g][k] = p;
+              gameOf[p] = g;
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+      for (let p = 0; p < order.length; p++) tryToSeat(p, new Array(n).fill(false));
+      return gameOf;
+    };
+
+    // Étape 2 : le nombre maximum de participants plaçables.
+    const maxPlaced = seat(games.map((g) => g.max)).filter((g) => g >= 0).length;
+
+    // Étapes 3 et 4 : toutes les répartitions qui placent ce maximum, sans dépasser les maximums,
+    // et que les inscriptions permettent (Hall : pour tout ensemble de parties, pas plus de joueurs
+    // que d'inscrits à ces parties). On garde les meilleures.
+    const caps = games.map((g, i) => Math.min(g.max, signedUpTo[1 << i]));
+    const capsAfter = caps.map((_, i) => caps.slice(i + 1).reduce((a, b) => a + b, 0));
+    const seatScale = games.reduce((l, g) => (l * g.max) / gcd(l, g.max), 1);
+    const counts = new Array(n).fill(0);
+    let bestKey = null;
+    let best = [];
+    let examined = 0;
+
+    const keyOf = () => {
+      const atMin = games.filter((g, k) => counts[k] >= g.min).length;
+      const underMin = games.reduce((sum, g, k) => sum + (counts[k] < g.min ? counts[k] : 0), 0);
+      // Remplissages en entiers (places ramenées au même dénominateur) : les ex aequo sont exacts.
+      const fills = counts.map((c, k) => (c * seatScale) / games[k].max);
+      const balance =
+        options.balance === 'range' ? [Math.min(...fills) - Math.max(...fills)]
+        : options.balance === 'leximin' ? [...fills].sort((a, b) => a - b)
+        : [-counts.reduce((sum, c, k) => sum + (c * c * seatScale) / games[k].max, 0)];
+      return [atMin, ...(options.underMin === 'fewest' ? [-underMin] : []), ...balance];
+    };
+
+    const hallHolds = (i) => {
+      for (let T = 1 << i; T < 1 << (i + 1); T++) {
+        let sum = 0;
+        for (let g = 0; g <= i; g++) if ((T >> g) & 1) sum += counts[g];
+        if (sum > signedUpTo[T]) return false;
+      }
+      return true;
+    };
+
+    const explore = (i, placedSoFar) => {
+      if (i === n) {
+        examined++;
+        const key = keyOf();
+        let comparison = 1;
+        if (bestKey) {
+          comparison = 0;
+          for (let k = 0; k < key.length && comparison === 0; k++) comparison = key[k] - bestKey[k];
+        }
+        if (comparison > 0) {
+          bestKey = key;
+          best = [[...counts]];
+        } else if (comparison === 0) {
+          best.push([...counts]);
+        }
+        return;
+      }
+      const from = Math.max(0, maxPlaced - placedSoFar - capsAfter[i]);
+      const to = Math.min(caps[i], maxPlaced - placedSoFar);
+      for (let x = from; x <= to; x++) {
+        counts[i] = x;
+        if (!hallHolds(i)) break;
+        explore(i + 1, placedSoFar + x);
+      }
+      counts[i] = 0;
+    };
+    explore(0, 0);
+
+    // Étape 5 : le hasard choisit entre les répartitions ex aequo, puis l'ordre mélangé décide qui s'assoit.
+    const distribution = best[Math.floor(random() * best.length)];
+    const gameOf = seat(distribution);
+    const assignments = new Map(order.map((p, k) => [p.id, gameOf[k] < 0 ? null : games[gameOf[k]].id]));
+    return { assignments, distribution, tied: best.length, examined, maxPlaced };
+  }
+  return { mulberry32, drawTimeSlot };
+})();
+
+const { mulberry32, drawTimeSlot } = DrawPrototype;
+const DRAW_OPTIONS = { balance: 'leximin', underMin: 'fewest', shuffle: true };
+
+// Le créneau 1, publié, et l'inscription de Brindille, MJ du « Marché aux ombres » sur le créneau 2,
+// à « Sous la surface » sur ce même créneau (IN-4).
+Object.assign(SIGN_UPS, {
+  'masques@c1': 'Aube Corbeau Lune Nox Opale Ulysse',
+  'reine@c1': 'Bastou Dahlia Milo Tanuki Corbeau',
+  'desert@c1': 'Éole Gaspard Isis Jaspe Kestrel Yuzu',
+  'lanternes@c1': 'Faëlle Hirondelle Pixel Volute Aube Nox',
+  'mandragores@c1': 'Sélène Rhubarbe',
+});
+SIGN_UPS['surface@c2'] += ' Brindille';
+
+/** Seuil de « presque plein » : une constante du domaine (#90). */
+const NEARLY_FULL = 0.8;
+
+let games = [];
+let signUps = {};
+/** L'état de chaque créneau : 'open' (inscriptions ouvertes), 'drawing' (tirage lancé), 'published'. */
+let state = {};
+/** Le tirage de chaque créneau lancé : affectations, parties annulées, participants déplacés à la main. */
+let draws = {};
+let seed = 1;
+
+const slotById = (id) => SLOTS.find((s) => s.id === id);
+const tableById = (id) => TABLES.find((t) => t.id === id);
+const gameById = (id) => games.find((g) => g.id === id);
+const scOf = (game) => SCENARIOS[game.scenario];
+const gmOf = (game) => GMS[scOf(game).gm].nickname;
+const tableIndex = (game) => TABLES.findIndex((t) => t.id === game.table);
+const startingGames = (slotId) => games.filter((g) => g.slots[0] === slotId).sort((a, b) => tableIndex(a) - tableIndex(b));
+const coveringGames = (slotId) => games.filter((g) => g.slots.includes(slotId)).sort((a, b) => tableIndex(a) - tableIndex(b));
+const isCanceled = (game) => Boolean(draws[game.slots[0]]?.canceled.has(game.id));
+const leadsOn = (pseudo, slotId) => coveringGames(slotId).some((g) => !isCanceled(g) && gmOf(g) === pseudo);
+const isSignedUp = (pseudo, game) => signUps[game.id].includes(pseudo);
+const firstUnpublished = () => SLOTS.find((s) => state[s.id] !== 'published');
+const titleOf = (game) => scOf(game).title;
+const tableName = (game) => tableById(game.table).name;
+
+function makeGame(slotId, tableId, scenarioId) {
+  const rank = slotById(slotId).rank;
+  const slots = SCENARIOS[scenarioId].double ? [slotId, SLOTS.find((s) => s.rank === rank + 1).id] : [slotId];
+  return { id: `${scenarioId}@${slotId}`, scenario: scenarioId, slots, table: tableId };
+}
+
+function loadData() {
+  games = PROGRAMME.map(([slotId, tableId, scenarioId]) => makeGame(slotId, tableId, scenarioId));
+  signUps = Object.fromEntries(games.map((g) => [g.id, (SIGN_UPS[g.id] ?? '').split(' ').filter(Boolean)]));
+  state = Object.fromEntries(SLOTS.map((s) => [s.id, 'open']));
+  draws = {};
+  seed = 1;
+  // Le créneau 1 : tiré, « La Nuit des Mandragores » annulée, publié.
+  launch('c1');
+  cancelGame('c1', 'mandragores@c1');
+  state.c1 = 'published';
+}
+
+/** TI-3 : les joueurs d'une partie double, placés au tirage de son premier créneau, ne sont pas du tirage du suivant. */
+function takenByDoubleGame(slotId) {
+  const taken = new Set();
+  for (const g of coveringGames(slotId)) {
+    if (g.slots[0] === slotId || isCanceled(g)) continue;
+    const d = draws[g.slots[0]];
+    if (!d) continue;
+    for (const [pseudo, gameId] of d.assignments) if (gameId === g.id) taken.add(pseudo);
+  }
+  return taken;
+}
+
+/** Les participants du créneau et leurs inscriptions actives (IN-4, TI-2, TI-3), parties annulées comprises. */
+function participantsOf(slotId) {
+  const taken = takenByDoubleGame(slotId);
+  const people = new Map();
+  for (const g of startingGames(slotId)) {
+    for (const pseudo of signUps[g.id]) {
+      if (leadsOn(pseudo, slotId) || taken.has(pseudo)) continue;
+      if (!people.has(pseudo)) people.set(pseudo, { pseudo, gameIds: [] });
+      people.get(pseudo).gameIds.push(g.id);
+    }
+  }
+  return [...people.values()].sort((a, b) => byPseudo(a.pseudo, b.pseudo));
+}
+
+// ---------- Gestes du tirage ----------
+function runDraw(slotId) {
+  const d = draws[slotId];
+  const live = startingGames(slotId).filter((g) => !d.canceled.has(g.id));
+  const input = {
+    games: live.map((g) => ({ id: g.id, min: scOf(g).min, max: scOf(g).max })),
+    participants: participantsOf(slotId).map((p) => ({ id: p.pseudo, gameIds: p.gameIds.filter((id) => !d.canceled.has(id)) })),
+  };
+  d.assignments = drawTimeSlot(input, mulberry32(seed++ * 7919), DRAW_OPTIONS).assignments;
+  d.moved = new Set();
+}
+
+function launch(slotId) {
+  state[slotId] = 'drawing';
+  draws[slotId] = { assignments: new Map(), canceled: new Set(), moved: new Set() };
+  runDraw(slotId);
+}
+
+function movePlayer(slotId, pseudo, gameId) {
+  const d = draws[slotId];
+  if ((d.assignments.get(pseudo) ?? null) === gameId) return false;
+  d.assignments.set(pseudo, gameId);
+  d.moved.add(pseudo);
+  return true;
+}
+
+/** Ses joueurs passent dans les non placés, sans nouveau tirage ; son MJ redevient participant (IN-4). */
+function cancelGame(slotId, gameId) {
+  const d = draws[slotId];
+  d.canceled.add(gameId);
+  for (const [pseudo, id] of d.assignments) if (id === gameId) d.assignments.set(pseudo, null);
+}
+
+/** Prototype : une partie annulée par erreur revient, vide ; son MJ quitte les participants. */
+function restoreGame(slotId, gameId) {
+  const d = draws[slotId];
+  d.canceled.delete(gameId);
+  const gm = gmOf(gameById(gameId));
+  d.assignments.delete(gm);
+  d.moved.delete(gm);
+}
+
+function reopen(slotId) {
+  state[slotId] = 'open';
+  delete draws[slotId];
+}
+
+function scheduleFromReserve(slotId, scenarioId, tableId) {
+  const game = makeGame(slotId, tableId, scenarioId);
+  games.push(game);
+  signUps[game.id] = [];
+  reopen(slotId);
+  return game;
+}
+
+// ---------- Ce que l'écran lit ----------
+function drawView(slotId) {
+  const d = draws[slotId];
+  const people = participantsOf(slotId);
+  const starting = startingGames(slotId);
+  const byGame = new Map(starting.map((g) => [g.id, []]));
+  const unplaced = [];
+  for (const p of people) {
+    const id = d.assignments.get(p.pseudo) ?? null;
+    if (id && byGame.has(id) && !d.canceled.has(id)) byGame.get(id).push(p.pseudo);
+    else unplaced.push(p.pseudo);
+  }
+  const infos = starting.map((game) => {
+    const sc = scOf(game);
+    const players = byGame.get(game.id);
+    const canceled = d.canceled.has(game.id);
+    return { game, sc, players, count: players.length, min: sc.min, max: sc.max, canceled, under: !canceled && players.length < sc.min, over: players.length > sc.max, free: canceled ? 0 : Math.max(0, sc.max - players.length) };
+  });
+  const live = infos.filter((i) => !i.canceled);
+  return {
+    people, infos, live, unplaced,
+    placed: people.length - unplaced.length,
+    atMin: live.filter((i) => i.count >= i.min).length,
+    under: live.filter((i) => i.under),
+    over: live.filter((i) => i.over),
+    canceled: infos.filter((i) => i.canceled),
+    freeSeats: live.reduce((sum, i) => sum + i.free, 0),
+  };
+}
+const infoOf = (v, gameId) => v.infos.find((i) => i.game.id === gameId);
+const playersOfDouble = (game) => [...(draws[game.slots[0]]?.assignments ?? [])].filter(([, id]) => id === game.id).map(([p]) => p).sort(byPseudo);
+
+/** Le suivi d'un créneau ouvert, simplifié : demande, capacité et avertissements (#90). */
+function trackingOf(slotId) {
+  const people = participantsOf(slotId);
+  const live = startingGames(slotId);
+  const count = new Map(live.map((g) => [g.id, people.filter((p) => p.gameIds.includes(g.id)).length]));
+  const capMin = live.reduce((s, g) => s + scOf(g).min, 0);
+  const capMax = live.reduce((s, g) => s + scOf(g).max, 0);
+  const demand = people.length;
+  const oversubscribed = (id) => count.get(id) > scOf(gameById(id)).max;
+  const atRisk = people.filter((p) => p.gameIds.every(oversubscribed)).length;
+  const below = live.filter((g) => count.get(g.id) < scOf(g).min).length;
+  const warnings = [];
+  if (demand) {
+    if (demand > capMax) warnings.push({ level: 'danger', title: `Il manque ${countOf(demand - capMax, 'place', 'places')}`, detail: `${countOf(demand, 'participant', 'participants')} pour ${countOf(capMax, 'place', 'places')} au plus.` });
+    if (atRisk) warnings.push({ level: 'danger', title: `${countOf(atRisk, 'participant risque', 'participants risquent')} de ne pas être placé${atRisk > 1 ? 's' : ''}`, detail: 'Toutes leurs parties du créneau sont très demandées.' });
+    if (demand <= capMax && demand >= NEARLY_FULL * capMax) warnings.push({ level: 'warning', title: 'Presque plein', detail: `${countOf(demand, 'participant', 'participants')} pour ${countOf(capMax, 'place', 'places')} au plus.` });
+    if (demand < capMin) warnings.push({ level: 'warning', title: 'Trop de parties', detail: `${countOf(demand, 'participant', 'participants')} pour ${countOf(capMin, 'place', 'places')} au moins.` });
+    if (below) warnings.push({ level: 'warning', title: `${countOf(below, 'partie', 'parties')} sous ${below > 1 ? 'leur' : 'son'} minimum`, detail: '' });
+  }
+  return { people, demand, capMin, capMax, count, warnings: warnings.slice(0, 3) };
+}
+
+/** Les signaux du tirage, qui remplacent les avertissements de suivi une fois le tirage lancé. */
+function signalsOf(v) {
+  const signals = [];
+  if (v.unplaced.length) signals.push({ level: 'danger', code: 'unplaced', title: countOf(v.unplaced.length, 'non placé', 'non placés'), detail: v.freeSeats ? `Il reste ${countOf(v.freeSeats, 'place', 'places')} dans les parties du créneau.` : 'Aucune place libre dans les parties du créneau.' });
+  if (v.under.length) signals.push({ level: 'warning', code: 'under', title: `${countOf(v.under.length, 'partie', 'parties')} sous ${v.under.length > 1 ? 'leur' : 'son'} minimum`, detail: v.under.length > 1 ? 'Maintenues : elles seront jouées ainsi, sauf si tu les annules.' : 'Maintenue : elle sera jouée ainsi, sauf si tu l\'annules.' });
+  if (v.over.length) signals.push({ level: 'warning', code: 'over', title: `${countOf(v.over.length, 'partie', 'parties')} au-delà de ${v.over.length > 1 ? 'leur' : 'son'} maximum`, detail: `${v.over.map((i) => `« ${esc(i.sc.title)} » : ${i.count} joueurs pour ${countOf(i.max, 'place', 'places')}`).join(' ; ')}.` });
+  return signals;
+}
+
+function reserveOf(slotId) {
+  const slot = slotById(slotId);
+  const next = SLOTS.find((s) => s.rank === slot.rank + 1);
+  const freeOn = (id) => TABLES.filter((t) => !coveringGames(id).some((g) => g.table === t.id));
+  const free = freeOn(slotId);
+  return Object.keys(SCENARIOS).flatMap((id) => {
+    const sc = SCENARIOS[id];
+    const gm = GMS[sc.gm];
+    if (!gm.availability.includes(slot.rank) || leadsOn(gm.nickname, slotId)) return [];
+    if (games.some((g) => g.scenario === id && g.slots[0] === slotId)) return [];
+    let tables = free;
+    if (sc.double) {
+      if (!next || state[next.id] !== 'open' || !gm.availability.includes(next.rank) || leadsOn(gm.nickname, next.id)) return [];
+      tables = free.filter((t) => freeOn(next.id).includes(t));
+    }
+    return tables.length ? [{ scenario: id, table: tables[0] }] : [];
+  });
+}
+
+// ---------- État de l'écran ----------
+const ui = {
+  variant: 'A',
+  slot: 'c2',
+  aTab: 'games',
+  cTab: 'grid',
+  cFilter: 'all',
+  picked: null, // B : le joueur choisi, avant sa nouvelle table
+  menu: false,
+  dialog: null,
+};
+
+// ---------- Rendu commun ----------
+function thumb(sc, size) {
+  if (sc.img) return `<span class="thumb" style="width:${size}px;background:${IMAGES[sc.img]}" aria-hidden="true"></span>`;
+  const initial = sc.title.replace(/^(Les |Le |La |L'|Un |Une )/, '').charAt(0).toUpperCase();
+  return `<span class="thumb" style="width:${size}px;font-size:${Math.round(size * 0.55)}px" aria-hidden="true">${initial}</span>`;
+}
+function gauge(count, min, max, { fill = '', excess = '' } = {}) {
+  const scale = Math.max(count, max, 1);
+  const pct = (v) => `${((v / scale) * 100).toFixed(2)}%`;
+  return `<span class="gauge" aria-hidden="true"><span class="zone" style="left:${pct(min)};width:${pct(max - min)}"></span><span class="fill ${fill}" style="width:${pct(Math.min(count, max))}"></span>${count > max ? `<span class="excess ${excess}" style="left:${pct(max)};width:${pct(count - max)}"></span>` : ''}<span class="tick" style="left:${pct(min)}"></span><span class="tick" style="left:${pct(max)}"></span></span>`;
+}
+const doubleBadge = () => `<span class="badge">${icon('columns-2', 'i s')}double</span>`;
+const underBadge = () => `<span class="badge warning">${icon('triangle-alert', 'i s')}Sous son minimum</span>`;
+const overBadge = () => `<span class="badge warning">${icon('triangle-alert', 'i s')}Au-delà du maximum</span>`;
+const canceledBadge = () => `<span class="badge">${icon('ban', 'i s')}Annulée</span>`;
+function gameBadges(i) {
+  return `${i.sc.double ? doubleBadge() : ''}${i.canceled ? canceledBadge() : ''}${i.under ? underBadge() : ''}${i.over ? overBadge() : ''}`;
+}
+function playerFigures(i) {
+  if (i.canceled) return 'Partie annulée';
+  return `${countOf(i.count, 'joueur', 'joueurs')} · ${formatSeats(i.min, i.max)}${i.over ? ` · <strong>${i.count - i.max}${NB}de trop</strong>` : i.free ? ` · ${countOf(i.free, 'place libre', 'places libres')}` : ''}`;
+}
+const gameGauge = (i) => gauge(i.count, i.min, i.max, { fill: i.under ? 'warning' : '' });
+
+/** Un joueur : sa pastille, avec ses marques (déplacé à la main, pas inscrit à sa partie). */
+function chip(slotId, pseudo, game, { readOnly = false, act = 'a-move', pressed } = {}) {
+  const moved = draws[slotId].moved.has(pseudo);
+  const unsigned = game && !isSignedUp(pseudo, game);
+  const notes = [unsigned ? 'pas inscrit à cette partie' : '', moved ? 'déplacement manuel' : ''].filter(Boolean).join(', ');
+  const cls = `player${moved ? ' moved' : ''}${unsigned ? ' unsigned' : ''}`;
+  const body = `${esc(pseudo)}${moved ? icon('pencil', 'i s') : ''}`;
+  if (readOnly) return `<span class="${cls}"${notes ? ` title="${notes}"` : ''}>${body}</span>`;
+  return `<button type="button" class="${cls}" data-act="${act}" data-pseudo="${esc(pseudo)}" data-key="chip-${esc(pseudo)}"${pressed === undefined ? '' : ` aria-pressed="${pressed}"`} aria-label="${esc(pseudo)}${notes ? `, ${notes}` : ''}"${notes ? ` title="${notes}"` : ''}>${body}</button>`;
+}
+function players(slotId, i, opts) {
+  if (!i.players.length) return `<span class="empty-players">${i.canceled ? 'Ses joueurs sont passés dans les non placés.' : 'Aucun joueur'}</span>`;
+  return i.players.map((p) => chip(slotId, p, i.game, { ...opts, pressed: opts.act === 'b-pick' ? p === ui.picked : undefined })).join('');
+}
+/** Sous son minimum : maintenue par défaut, avec « Annuler la partie » (le badge suffit à le signaler) ; annulée : « Rétablir la partie ». */
+function underLine(i, readOnly) {
+  if (i.canceled) {
+    return `<p class="under-line"><span class="pastille neutral">${icon('ban', 'i s')}Partie annulée${readOnly ? ' : son MJ a été notifié' : ''}</span>${readOnly ? '' : `<button type="button" class="btn quiet sm" data-act="restore" data-game="${i.game.id}" data-key="restore-${i.game.id}">Rétablir la partie</button>`}</p>`;
+  }
+  if (!i.under || readOnly) return '';
+  return `<p class="under-line"><button type="button" class="btn quiet-danger sm" data-act="ask-cancel" data-game="${i.game.id}" data-key="cancel-${i.game.id}">Annuler la partie</button></p>`;
+}
+const wishesOf = (slotId, v, person) => person.gameIds.map((id) => {
+  const i = infoOf(v, id);
+  return `<b>${esc(i.sc.title)}</b> (${i.canceled ? 'annulée' : `${i.count}${NB}/${NB}${i.max}`})`;
+}).join(', ');
+
+function tile(slot) {
+  const st = state[slot.id];
+  const pressed = slot.id === ui.slot;
+  const head = `<span class="caps">Créneau ${slot.rank}</span><span class="range">${formatRange(slot)}</span>`;
+  if (st === 'open') {
+    const t = trackingOf(slot.id);
+    const worst = t.warnings.some((w) => w.level === 'danger') ? 'danger' : 'warning';
+    const warn = t.demand > t.capMax ? '' : (t.demand >= NEARLY_FULL * t.capMax || t.demand < t.capMin) && t.demand ? 'warning' : '';
+    return `<button type="button" class="tile" aria-pressed="${pressed}" data-act="slot" data-id="${slot.id}" data-key="tile-${slot.id}">${head}
+      <span class="ratio num">${t.demand} / ${t.capMax}</span><span class="legend">participants / places</span>
+      ${gauge(t.demand, t.capMin, t.capMax, { fill: warn, excess: 'danger' })}
+      <span class="tile-warnings ${worst}">${t.warnings.length ? `${levelIcon(worst, 'i s')}${countOf(t.warnings.length, 'avertissement', 'avertissements')}` : ''}</span></button>`;
+  }
+  const v = drawView(slot.id);
+  const label = st === 'drawing' ? `${icon('hourglass', 'i s')}Tirage provisoire` : `${icon('lock', 'i s')}Tirage publié`;
+  return `<button type="button" class="tile ${st === 'drawing' ? 'drawing' : 'closed'}" aria-pressed="${pressed}" data-act="slot" data-id="${slot.id}" data-key="tile-${slot.id}">${head}
+    <span class="ratio num">${v.placed} / ${v.people.length}</span><span class="legend">placés / participants</span>
+    <span class="tile-state">${label}</span></button>`;
+}
+
+function warningList(items, buttons = {}) {
+  if (!items.length) return '';
+  return `<ul class="warnings">${items.map((w) => `<li class="${w.level}">${levelIcon(w.level)}<div><strong>${w.title}</strong>${w.detail ? `<p>${w.detail}</p>` : ''}</div>${buttons[w.code] ? `<button type="button" class="btn secondary sm" data-act="follow" data-code="${w.code}" data-key="follow-${w.code}">${buttons[w.code]}</button>` : '<span></span>'}</li>`).join('')}</ul>`;
+}
+
+function summary(slot) {
+  const st = state[slot.id];
+  const first = firstUnpublished();
+  const h2 = `<h2 id="summary-title" tabindex="-1" data-key="summary-title">${slotLabel(slot)}</h2>`;
+  if (st === 'open') {
+    const t = trackingOf(slot.id);
+    const isFirst = first?.id === slot.id;
+    const actions = isFirst ? `<div class="actions"><button type="button" class="btn primary" data-act="ask-launch" data-key="launch">${icon('dices')}Lancer le tirage</button></div>` : '';
+    const warn = t.demand > t.capMax ? '' : (t.demand >= NEARLY_FULL * t.capMax || t.demand < t.capMin) && t.demand ? 'warning' : '';
+    return `<section class="summary" aria-labelledby="summary-title">
+      <div class="summary-head">${h2}${actions}</div>
+      <div class="figures-b"><p><strong class="num">${t.demand}</strong>${plural(t.demand, 'participant', 'participants')}</p>
+        <p><strong class="num">${t.capMin === t.capMax ? t.capMax : `${t.capMin} à ${t.capMax}`}</strong>places</p>${gauge(t.demand, t.capMin, t.capMax, { fill: warn, excess: 'danger' })}</div>
+      ${t.demand ? '' : '<p class="muted">Aucune inscription sur ce créneau pour l\'instant.</p>'}
+      ${warningList(t.warnings)}
+      ${isFirst ? '' : `<p class="note">${icon('clock')}Le tirage de ce créneau se lance après la publication du créneau ${first.rank}.</p>`}
+    </section>`;
+  }
+  const v = drawView(slot.id);
+  const figures = `<div class="figures-d">
+      <p><strong class="num">${v.placed} / ${v.people.length}</strong>placés</p>
+      <p><strong class="num">${v.unplaced.length}</strong>non placés</p>
+      <p><strong class="num">${v.atMin} / ${v.live.length}</strong>parties au minimum</p></div>`;
+  if (st === 'published') {
+    const left = v.live.filter((i) => i.free);
+    return `<section class="summary" aria-labelledby="summary-title">
+      <div class="summary-head">${h2}<span class="badge">${icon('lock', 'i s')}Tirage publié</span></div>
+      ${figures}
+      <p class="muted">Tirage publié : les participants et les MJ ont reçu leur notification, et le résultat ne change plus.</p>
+      <p class="left-seats">${left.length ? `Il reste de la place : ${left.map((i) => `<strong>${tableName(i.game)}</strong> (${countOf(i.free, 'place', 'places')})`).join(', ')}. Les non placés vont voir leur MJ.` : 'Toutes les parties sont pleines.'}</p>
+    </section>`;
+  }
+  const buttons = ui.variant === 'A' ? { unplaced: 'Voir les non placés', under: 'Voir les parties', over: 'Voir les parties' }
+    : ui.variant === 'C' ? { unplaced: 'Voir les non placés' } : {};
+  const menu = ui.menu ? `<div class="menu-pop" role="menu">
+      ${ui.variant === 'B' ? `<button type="button" role="menuitem" data-act="open-reserve" data-key="menu-reserve">${icon('inbox')}Programmer depuis la réserve…</button>` : ''}
+      <button type="button" role="menuitem" class="danger" data-act="ask-reopen" data-key="menu-reopen">${icon('lock-open')}Rouvrir les inscriptions</button></div>` : '';
+  return `<section class="summary" aria-labelledby="summary-title">
+    <div class="summary-head">${h2}<span class="badge accent">${icon('hourglass', 'i s')}Tirage provisoire</span>
+      <div class="actions">
+        <button type="button" class="btn secondary" data-act="ask-relaunch" data-key="relaunch">${icon('shuffle')}Relancer le tirage</button>
+        <button type="button" class="btn primary" data-act="ask-publish" data-key="publish">${icon('send')}Publier le tirage</button>
+        <button type="button" class="btn icon" data-act="toggle-menu" data-key="menu" aria-label="Autres actions du créneau" title="Autres actions du créneau" aria-haspopup="menu" aria-expanded="${ui.menu}">${icon('ellipsis')}</button>
+        ${menu}
+      </div></div>
+    ${figures}
+    ${warningList(signalsOf(v), buttons)}
+    <p class="muted">Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication.</p>
+  </section>`;
+}
+
+/** Créneau ouvert : les parties et leurs inscrits, comme l'onglet « Parties du créneau » du suivi. */
+function openBody(slot) {
+  const t = trackingOf(slot.id);
+  const rows = TABLES.map((table) => {
+    const g = coveringGames(slot.id).find((x) => x.table === table.id);
+    if (!g) return `<li class="free"><span class="caps">${table.name}</span><span></span><span>Table libre</span><span></span></li>`;
+    const sc = scOf(g);
+    if (g.slots[0] !== slot.id) return `<li class="cont"><span class="caps">${table.name}</span>${thumb(sc, 32)}<div class="row-title"><h4>${esc(sc.title)}</h4><p class="meta">Partie double, comptée sur le créneau ${slotById(g.slots[0]).rank}</p></div><span></span></li>`;
+    const n = t.count.get(g.id);
+    return `<li><span class="caps">${table.name}</span>${thumb(sc, 32)}<div class="row-title"><h4>${esc(sc.title)}</h4><p class="meta">${esc(sc.system)} · ${esc(gmOf(g))}</p></div>
+      <div class="row-figs">${gauge(n, sc.min, sc.max, { fill: n < sc.min ? 'warning' : '' })}<span>${countOf(n, 'inscrit', 'inscrits')} · ${formatSeats(sc.min, sc.max)}</span><span class="badges">${sc.double ? doubleBadge() : ''}${n < sc.min ? underBadge() : ''}</span></div></li>`;
+  }).join('');
+  return `<div class="tab-panel" style="border-radius: var(--radius-card)"><p class="muted">Suivi des inscriptions, simplifié dans ce prototype : seules les parties du créneau.</p><ul class="draw-rows">${rows}</ul></div>`;
+}
+
+function tabbed(tabs, current, act) {
+  const tab = tabs.find((x) => x.id === current) ?? tabs[0];
+  return `<div class="tabbed">
+    <div class="tabs" role="tablist" aria-label="Vues du créneau">${tabs.map((x) => `<button type="button" role="tab" class="tab" aria-selected="${x.id === tab.id}" tabindex="${x.id === tab.id ? 0 : -1}" data-act="${act}" data-tab="${x.id}" data-key="tab-${x.id}">${icon(x.icon)}${x.label}<span class="count num">${x.count}</span></button>`).join('')}</div>
+    <div class="tab-panel" role="tabpanel" tabindex="0">${tab.body}</div></div>`;
+}
+
+function reserveCards(slot) {
+  const entries = reserveOf(slot.id);
+  if (!entries.length) return '<p class="muted">Aucun scénario programmable sur ce créneau.</p>';
+  return `<p class="muted">Programmer une partie efface le tirage provisoire et rouvre les inscriptions du créneau.</p>
+    <ul class="cards">${entries.map(({ scenario, table }) => {
+      const sc = SCENARIOS[scenario];
+      return `<li class="r-card">${thumb(sc, 44)}<h4>${esc(sc.title)}</h4><p class="meta">${esc(sc.system)} · ${esc(GMS[sc.gm].nickname)}</p>
+        <div class="foot"><span class="badges">${sc.double ? doubleBadge() : ''}</span><button type="button" class="btn secondary sm" data-act="ask-schedule" data-scenario="${scenario}" data-table="${table.id}" data-key="schedule-${scenario}">Programmer sur ${table.name}</button></div></li>`;
+    }).join('')}</ul>`;
+}
+
+const legendLine = () => `<p class="legend-line"><span>${icon('pencil', 'i s')}déplacement manuel</span><span><span class="player unsigned" style="cursor:default">pseudo</span>pas inscrit à sa partie</span></p>`;
+
+// ---------- Variante A : onglets et dialogue ----------
+function bodyA(slot, v, readOnly) {
+  const rows = TABLES.map((table) => {
+    const g = coveringGames(slot.id).find((x) => x.table === table.id);
+    if (!g) return `<li class="free"><span class="caps">${table.name}</span><span></span><span>Table libre</span><span></span></li>`;
+    if (g.slots[0] !== slot.id) {
+      const ps = playersOfDouble(g);
+      return `<li class="cont"><span class="caps">${table.name}</span>${thumb(scOf(g), 32)}<div class="row-title"><h4>${esc(titleOf(g))}</h4><p class="meta">Partie double, tirée avec le créneau ${slotById(g.slots[0]).rank}</p></div><div class="row-figs">${countOf(ps.length, 'joueur', 'joueurs')}</div>
+        <div class="players">${ps.map((p) => `<span class="player">${esc(p)}</span>`).join('')}</div></li>`;
+    }
+    const i = infoOf(v, g.id);
+    return `<li class="${i.canceled ? 'canceled' : ''}"><span class="caps">${table.name}</span>${thumb(i.sc, 32)}
+      <div class="row-title"><h4 tabindex="-1" data-key="row-${g.id}">${esc(i.sc.title)}</h4><p class="meta">${esc(i.sc.system)} · ${esc(gmOf(g))}</p></div>
+      <div class="row-figs">${i.canceled ? '' : gameGauge(i)}<span>${playerFigures(i)}</span><span class="badges">${gameBadges(i)}</span></div>
+      <div class="players">${players(slot.id, i, { readOnly, act: 'a-move' })}</div>${underLine(i, readOnly)}</li>`;
+  }).join('');
+  const people = new Map(v.people.map((p) => [p.pseudo, p]));
+  const unplaced = v.unplaced.length
+    ? `<p class="muted">${countOf(v.unplaced.length, 'non placé', 'non placés')}. ${v.freeSeats ? `Il reste ${countOf(v.freeSeats, 'place', 'places')} dans les parties du créneau.` : 'Aucune place libre dans les parties du créneau.'}</p>
+      <ul class="unplaced-list">${v.unplaced.map((p) => `<li><span class="pseudo">${esc(p)}${draws[slot.id].moved.has(p) ? ` ${icon('pencil', 'i s')}` : ''}</span><span class="wishes">Inscriptions : ${wishesOf(slot.id, v, people.get(p))}</span>${readOnly ? '<span></span>' : `<button type="button" class="btn secondary sm" data-act="a-move" data-pseudo="${esc(p)}" data-key="place-${esc(p)}">Placer…</button>`}</li>`).join('')}</ul>`
+    : '<p class="muted">Tous les participants sont placés.</p>';
+  const tabs = [
+    { id: 'games', label: 'Parties du créneau', icon: 'dices', count: v.live.length, body: `${readOnly ? '' : legendLine()}<ul class="draw-rows">${rows}</ul>` },
+    { id: 'unplaced', label: 'Non placés', icon: 'user-x', count: v.unplaced.length, body: unplaced },
+  ];
+  if (!readOnly) tabs.push({ id: 'reserve', label: 'Réserve du créneau', icon: 'inbox', count: reserveOf(slot.id).length, body: reserveCards(slot) });
+  return tabbed(tabs, ui.aTab, 'a-tab');
+}
+
+// ---------- Variante B : plan de salle ----------
+function bodyB(slot, v, readOnly) {
+  const d = draws[slot.id];
+  const picked = readOnly ? null : ui.picked;
+  const person = picked && v.people.find((p) => p.pseudo === picked);
+  const current = person ? (d.assignments.get(picked) ?? null) : undefined;
+  const effective = current && infoOf(v, current)?.canceled ? null : current;
+  const bar = readOnly ? '' : person
+    ? `<div class="move-bar">${icon('arrow-right-left')}<span><strong>${esc(picked)}</strong> · inscriptions : ${person.gameIds.map((id) => `« ${esc(titleOf(gameById(id)))} »`).join(', ')}. Choisis sa nouvelle table.</span><button type="button" class="btn quiet" data-act="b-unpick" data-key="unpick">Annuler</button></div>`
+    : `<div class="move-bar idle">${icon('info')}<span>Choisis un joueur, puis sa nouvelle table.</span>${legendLine()}</div>`;
+  const target = (gameId, i) => {
+    if (!person) return '';
+    if (gameId === null) return effective === null ? '' : `<button type="button" class="target" data-act="b-place" data-game="none" data-key="target-none"><span class="what">${icon('user-x', 'i s')}Retirer de sa table</span></button>`;
+    if (i.canceled || effective === gameId) return '';
+    const signed = person.gameIds.includes(gameId);
+    const after = i.count + 1;
+    return `<button type="button" class="target${signed ? ' signed' : ''}" data-act="b-place" data-game="${gameId}" data-key="target-${gameId}"><span class="what">${signed ? `${icon('check', 'i s')}Déplacer ici · inscrit` : 'Déplacer ici · pas inscrit'}</span>${after > i.max ? `<span class="warn">${icon('triangle-alert', 'i s')}${after} joueurs pour ${countOf(i.max, 'place', 'places')}</span>` : ''}</button>`;
+  };
+  const cols = [`<section class="col unplaced" aria-label="Non placés"><div class="col-head"><span class="caps">Non placés</span><h4 tabindex="-1" data-key="col-unplaced">${countOf(v.unplaced.length, 'participant', 'participants')}</h4><span class="meta">${v.freeSeats ? `${countOf(v.freeSeats, 'place libre', 'places libres')} dans le créneau` : 'Aucune place libre'}</span></div>
+    <div class="players">${v.unplaced.length ? v.unplaced.map((p) => chip(slot.id, p, null, { readOnly, act: 'b-pick', pressed: p === picked })).join('') : '<span class="empty-players">Tous les participants sont placés.</span>'}</div><div class="col-foot">${target(null)}</div></section>`];
+  for (const table of TABLES) {
+    const g = coveringGames(slot.id).find((x) => x.table === table.id);
+    if (!g) continue;
+    if (g.slots[0] !== slot.id) {
+      const ps = playersOfDouble(g);
+      cols.push(`<section class="col cont"><div class="col-head"><span class="caps">${table.name}</span><h4>${esc(titleOf(g))}</h4><span class="meta">Partie double, tirée avec le créneau ${slotById(g.slots[0]).rank}</span></div><div class="players">${ps.map((p) => `<span class="player">${esc(p)}</span>`).join('')}</div></section>`);
+      continue;
+    }
+    const i = infoOf(v, g.id);
+    cols.push(`<section class="col${i.canceled ? ' canceled' : ''}" aria-label="${table.name}"><div class="col-head"><span class="caps">${table.name}</span><h4 tabindex="-1" data-key="row-${g.id}">${esc(i.sc.title)}</h4><span class="meta">${esc(i.sc.system)} · ${esc(gmOf(g))}</span>
+      ${i.canceled ? '' : gameGauge(i)}<span class="count">${playerFigures(i)}</span><span class="badges">${gameBadges(i)}</span></div>
+      <div class="players">${players(slot.id, i, { readOnly, act: 'b-pick' })}</div><div class="col-foot">${underLine(i, readOnly)}${target(g.id, i)}</div></section>`);
+  }
+  return `${bar}<div class="plan" data-scroll="plan">${cols.join('')}</div>`;
+}
+
+// ---------- Variante C : grille des inscrits ----------
+function bodyC(slot, v, readOnly) {
+  const d = draws[slot.id];
+  const starting = v.infos;
+  const filters = [
+    { id: 'all', label: 'Tous', n: v.people.length },
+    { id: 'unplaced', label: 'Non placés', n: v.unplaced.length },
+    { id: 'moved', label: 'Déplacés à la main', n: v.people.filter((p) => d.moved.has(p.pseudo)).length },
+  ].filter((f) => f.id === 'all' || f.n);
+  if (!filters.some((f) => f.id === ui.cFilter)) ui.cFilter = 'all';
+  const keep = (p) => ui.cFilter === 'all' || (ui.cFilter === 'unplaced' ? v.unplaced.includes(p.pseudo) : d.moved.has(p.pseudo));
+  const unplacedSet = new Set(v.unplaced);
+  const groups = [
+    { id: 'unplaced', label: 'Non placés', danger: true, people: v.people.filter((p) => unplacedSet.has(p.pseudo) && keep(p)) },
+    { id: 'placed', label: 'Placés', people: v.people.filter((p) => !unplacedSet.has(p.pseudo) && keep(p)) },
+  ].filter((g) => g.people.length);
+  const cell = (p, i) => {
+    const current = unplacedSet.has(p.pseudo) ? null : d.assignments.get(p.pseudo);
+    const check = icon('check', 'i s');
+    if (i === null) {
+      const here = current === null;
+      const inner = here ? '<span class="mark">non placé</span>' : '<span class="mark"></span><span class="hint">retirer</span>';
+      if (readOnly) return `<td class="cell"><span class="cell-btn${here ? ' assigned none' : ''}">${here ? 'non placé' : ''}</span></td>`;
+      return `<td class="cell"><button type="button" class="cell-btn${here ? ' assigned none' : ''}" data-act="c-cell" data-pseudo="${esc(p.pseudo)}" data-game="none" data-key="cell-${esc(p.pseudo)}-none" aria-label="${esc(p.pseudo)} : ${here ? 'non placé' : 'retirer de sa table'}">${inner}</button></td>`;
+    }
+    const signed = p.gameIds.includes(i.game.id);
+    if (i.canceled) return `<td class="cell off">${signed ? `<span class="cell-btn">${check}</span>` : ''}</td>`;
+    const here = current === i.game.id;
+    const after = i.count + 1;
+    const mark = here ? `${signed ? check : ''}joue` : signed ? check : '';
+    if (readOnly) return `<td class="cell"><span class="cell-btn${here ? ' assigned' : ''}${here && !signed ? ' unsigned' : ''}">${mark}</span></td>`;
+    const hint = after > i.max ? `<span class="hint warnc">${icon('triangle-alert', 'i s')}${after}${NB}/${NB}${i.max}</span>` : '<span class="hint">ici</span>';
+    const label = here ? `${p.pseudo} joue à « ${i.sc.title} »` : `Déplacer ${p.pseudo} vers « ${i.sc.title} »${signed ? ', inscrit' : ', pas inscrit'}${after > i.max ? `, ${after} joueurs pour ${i.max} places` : ''}`;
+    return `<td class="cell"><button type="button" class="cell-btn${here ? ' assigned' : ''}${here && !signed ? ' unsigned' : ''}" data-act="c-cell" data-pseudo="${esc(p.pseudo)}" data-game="${i.game.id}" data-key="cell-${esc(p.pseudo)}-${i.game.id}" aria-label="${esc(label)}"><span class="mark">${mark}</span>${here ? '' : hint}</button></td>`;
+  };
+  const head = `<tr><th class="pseudo" scope="col">Participant</th><th class="gcol" scope="col"><span class="t">Non placés</span><b class="num">${v.unplaced.length}</b></th>${starting.map((i) => `<th class="gcol" scope="col"><span class="t">${tableName(i.game)}</span><b>${esc(i.sc.title)}</b><span class="num">${i.canceled ? 'Annulée' : `${i.count}${NB}/${NB}${i.max} · ${i.min}–${i.max}`}</span><span class="badges">${i.under ? underBadge() : ''}${i.over ? overBadge() : ''}${i.sc.double ? doubleBadge() : ''}</span>${
+    readOnly ? '' : i.canceled ? `<button type="button" class="btn quiet sm" data-act="restore" data-game="${i.game.id}" data-key="restore-${i.game.id}">Rétablir la partie</button>` : i.under ? `<button type="button" class="btn quiet-danger sm" data-act="ask-cancel" data-game="${i.game.id}" data-key="cancel-${i.game.id}">Annuler la partie</button>` : ''}</th>`).join('')}</tr>`;
+  const body = groups.map((g) => `<tr class="group${g.danger ? ' danger' : ''}"><th colspan="${starting.length + 2}">${g.label} · ${g.people.length}</th></tr>${g.people.map((p) => `<tr><th class="pseudo" scope="row">${esc(p.pseudo)}${d.moved.has(p.pseudo) ? ` ${icon('pencil', 'i s')}` : ''}</th>${cell(p, null)}${starting.map((i) => cell(p, i)).join('')}</tr>`).join('')}`).join('');
+  const doubles = coveringGames(slot.id).filter((g) => g.slots[0] !== slot.id);
+  const grid = `<div class="filters">${filters.map((f) => `<button type="button" class="filter" aria-pressed="${f.id === ui.cFilter}" data-act="c-filter" data-filter="${f.id}" data-key="filter-${f.id}">${f.label}<span class="count num">${f.n}</span></button>`).join('')}</div>
+    <p class="legend-line"><span>${icon('check', 'i s')}inscrit</span><span><span class="cell-btn assigned" style="width:auto">joue</span>sa table</span><span>${icon('pencil', 'i s')}déplacement manuel</span>${readOnly ? '' : '<span>Un clic sur une case déplace le participant.</span>'}</p>
+    ${doubles.map((g) => `<p class="muted">${tableName(g)} : « ${esc(titleOf(g))} », partie double tirée avec le créneau ${slotById(g.slots[0]).rank} (${countOf(playersOfDouble(g).length, 'joueur', 'joueurs')}).</p>`).join('')}
+    <div class="table-scroll" data-scroll="grid"><table class="grid-d"><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+  const tabs = [{ id: 'grid', label: 'Répartition', icon: 'users', count: v.people.length, body: grid }];
+  if (!readOnly) tabs.push({ id: 'reserve', label: 'Réserve du créneau', icon: 'inbox', count: reserveOf(slot.id).length, body: reserveCards(slot) });
+  return tabbed(tabs, ui.cTab, 'c-tab');
+}
+
+function renderNav() {
+  const entry = (label, name, active = false, upcoming = false) => upcoming
+    ? `<li class="entry upcoming">${icon(name)}<span>${label} <span class="soon">${icon('clock', 'i s')}à venir</span></span></li>`
+    : `<li><a class="entry${active ? ' active' : ''}" href="#" onclick="return false"${active ? ' aria-current="page"' : ''}>${icon(name)}<span>${label}</span></a></li>`;
+  return `<h2 class="section">Préparation</h2><ul>${entry('Calendrier', 'calendar')}${entry('MJ', 'users')}${entry('Scénarios', 'book-open')}${entry('Créneaux et tables', 'layout-grid')}</ul>
+    <h2 class="section">Jour J</h2><ul>${entry('Pilotage du jour J', 'radio-tower', true)}${entry('Participants', 'user-round', false, true)}</ul>`;
+}
+
+function renderPage() {
+  const slot = slotById(ui.slot);
+  const st = state[slot.id];
+  let body = '';
+  if (st === 'open') body = openBody(slot);
+  else {
+    const v = drawView(slot.id);
+    const readOnly = st === 'published';
+    body = { A: bodyA, B: bodyB, C: bodyC }[ui.variant](slot, v, readOnly);
+  }
+  return `<header class="page-head"><h1 tabindex="-1" data-key="h1">Pilotage du jour J</h1><p class="sync"></p></header>
+    <nav class="band" aria-label="Créneaux de la journée">${SLOTS.map(tile).join('')}</nav>
+    <div class="detail c">${summary(slot)}${body}</div>`;
+}
+
+// ---------- Dialogues ----------
+const shell = (body, { alert = false, wide = false } = {}) => `<div class="backdrop"></div><div class="dialog${wide ? ' wide' : ''}" role="${alert ? 'alertdialog' : 'dialog'}" aria-modal="true" aria-labelledby="dialog-title">${body}</div>`;
+const actionsOf = (confirm, kind = 'primary', dismiss = 'Annuler') => `<div class="dialog-actions"><button type="button" class="btn quiet" data-act="dialog-cancel" data-initial data-key="dlg-cancel">${dismiss}</button><button type="button" class="btn ${kind}" data-act="dialog-confirm" data-key="dlg-confirm">${confirm}</button></div>`;
+const gameList = (items, line) => `<ul class="dot">${items.map(line).join('')}</ul>`;
+
+function renderDialog() {
+  const dl = ui.dialog;
+  if (!dl) return '';
+  const slot = slotById(dl.slotId);
+  if (dl.type === 'launch') {
+    const t = trackingOf(slot.id);
+    const reds = t.warnings.filter((w) => w.level === 'danger');
+    return shell(`<h2 id="dialog-title">Lancer le tirage du créneau ${slot.rank} ?</h2>
+      <p>${t.demand ? `${countOf(t.demand, 'participant est inscrit', 'participants sont inscrits')} sur ce créneau, pour ${t.capMin === t.capMax ? countOf(t.capMax, 'place', 'places') : `${t.capMin} à ${t.capMax}${NB}places`}.` : 'Aucun participant n\'est inscrit sur ce créneau : le résultat sera vide.'}</p>
+      ${reds.length ? `<ul class="signal-list">${reds.map((w) => `<li class="danger">${levelIcon('danger', 'i s')}<span><strong>${w.title}</strong> <span class="muted">${w.detail}</span></span></li>`).join('')}</ul>` : ''}
+      <p>Les inscriptions du créneau seront fermées. Personne n'est notifié avant la publication.</p>
+      ${actionsOf('Lancer le tirage')}`, { alert: true });
+  }
+  const d = draws[slot.id];
+  if (dl.type === 'relaunch') {
+    const v = drawView(slot.id);
+    return shell(`<h2 id="dialog-title">Relancer le tirage du créneau ${slot.rank} ?</h2>
+      <p>${d.moved.size > 1 ? `Tes ${d.moved.size}${NB}déplacements seront effacés` : 'Ton déplacement sera effacé'} : le tirage repart des inscriptions.</p>
+      ${v.canceled.length ? `<p>${v.canceled.length > 1 ? `Les ${v.canceled.length} parties annulées le restent` : `« ${esc(v.canceled[0].sc.title)} » reste annulée`}.</p>` : ''}
+      ${actionsOf('Relancer le tirage', 'danger')}`, { alert: true });
+  }
+  if (dl.type === 'reopen') {
+    return shell(`<h2 id="dialog-title">Rouvrir les inscriptions du créneau ${slot.rank} ?</h2>
+      <p>Le résultat provisoire sera effacé, avec ses déplacements et ses parties annulées.</p>
+      <p>Personne n'est notifié : chacun retrouve ses inscriptions, et peut en changer jusqu'au prochain tirage.</p>
+      ${actionsOf('Rouvrir les inscriptions', 'danger')}`, { alert: true });
+  }
+  if (dl.type === 'cancel-game') {
+    const game = gameById(dl.gameId);
+    const i = infoOf(drawView(slot.id), game.id);
+    const gm = gmOf(game);
+    const gmWishes = startingGames(slot.id).filter((g) => g.id !== game.id && isSignedUp(gm, g));
+    return shell(`<h2 id="dialog-title">Annuler « ${esc(i.sc.title)} » ?</h2>
+      <p>${i.count ? `${i.count > 1 ? `Ses ${i.count}${NB}joueurs passent` : 'Son joueur passe'} dans les non placés, sans nouveau tirage.` : 'Elle n\'a aucun joueur.'}</p>
+      <p>${esc(gm)}, son MJ, redevient participant sur ce créneau${gmWishes.length ? ` et rejoint les non placés, avec ${gmWishes.length > 1 ? 'ses inscriptions' : 'son inscription'} à ${gmWishes.map((g) => `« ${esc(titleOf(g))} »`).join(', ')}` : ''}.</p>
+      <p>À la publication, son MJ reçoit la notification « partie annulée ».</p>
+      ${actionsOf('Annuler la partie', 'danger', 'Garder la partie')}`, { alert: true });
+  }
+  if (dl.type === 'publish') {
+    const v = drawView(slot.id);
+    return shell(`<h2 id="dialog-title">Publier le tirage du créneau ${slot.rank} ?</h2>
+      <p>${countOf(v.placed, 'participant est placé', 'participants sont placés')}${v.unplaced.length ? `, ${v.unplaced.length} ${v.unplaced.length > 1 ? 'ne le sont pas' : 'ne l\'est pas'}` : ''}. Chacun reçoit sa notification, ainsi que les MJ.</p>
+      ${v.under.length ? `<div class="warn-line">${icon('triangle-alert')}<div><p>${v.under.length > 1 ? `${v.under.length} parties sous leur minimum seront jouées ainsi :` : 'Une partie sous son minimum sera jouée ainsi :'}</p>${gameList(v.under, (i) => `<li>« ${esc(i.sc.title)} », ${tableName(i.game)} : ${countOf(i.count, 'joueur', 'joueurs')} pour ${formatSeats(i.min, i.max)}</li>`)}</div></div>` : ''}
+      ${v.over.length ? `<div class="warn-line">${icon('triangle-alert')}<div><p>${v.over.length > 1 ? `${v.over.length} parties dépassent leur maximum :` : 'Une partie dépasse son maximum :'}</p>${gameList(v.over, (i) => `<li>« ${esc(i.sc.title)} », ${tableName(i.game)} : ${i.count} joueurs pour ${countOf(i.max, 'place', 'places')}</li>`)}</div></div>` : ''}
+      ${v.canceled.length ? `<div><p>${v.canceled.length > 1 ? 'Parties annulées, dont le MJ est notifié :' : 'Partie annulée, dont le MJ est notifié :'}</p>${gameList(v.canceled, (i) => `<li>« ${esc(i.sc.title)} », ${esc(gmOf(i.game))}</li>`)}</div>` : ''}
+      <p>Le résultat ne pourra plus être modifié.</p>
+      ${actionsOf('Publier le tirage')}`, { alert: true });
+  }
+  if (dl.type === 'schedule') {
+    const sc = SCENARIOS[dl.scenario];
+    return shell(`<h2 id="dialog-title">Programmer « ${esc(sc.title)} » sur le créneau ${slot.rank}, ${tableById(dl.table).name} ?</h2>
+      <p>Le tirage provisoire sera effacé, avec ses déplacements et ses parties annulées, et les inscriptions du créneau ${slot.rank} rouvertes.</p>
+      <p>Tous ceux qui peuvent s'inscrire sur ce créneau reçoivent la notification « nouvelle partie », qui annonce la réouverture. Tu relanceras le tirage ensuite.</p>
+      ${actionsOf('Programmer la partie', 'danger')}`, { alert: true });
+  }
+  if (dl.type === 'reserve') {
+    return shell(`<h2 id="dialog-title">Programmer depuis la réserve du créneau ${slot.rank}</h2>${reserveCards(slot)}
+      <div class="dialog-actions"><button type="button" class="btn quiet" data-act="dialog-cancel" data-initial data-key="dlg-cancel">Fermer</button></div>`, { wide: true });
+  }
+  if (dl.type === 'move') {
+    const v = drawView(slot.id);
+    const person = v.people.find((p) => p.pseudo === dl.pseudo);
+    const current = v.unplaced.includes(dl.pseudo) ? null : d.assignments.get(dl.pseudo);
+    const verb = current ? 'Déplacer' : 'Placer';
+    const option = (value, isCurrent, table, label, figs, tags) => `<li><label class="${isCurrent ? 'current' : ''}"><input type="radio" name="move" value="${value}" data-key="choice-${value}"${isCurrent ? ' disabled' : ''}${dl.choice === value ? ' checked' : ''}><span class="t">${table}</span><span class="g"><b>${label}</b><span>${figs}</span></span><span class="tags">${tags}</span></label></li>`;
+    const choices = v.live.map((i) => {
+      const isCurrent = current === i.game.id;
+      const signed = person.gameIds.includes(i.game.id);
+      const after = i.count + 1;
+      const tags = isCurrent ? `<span class="badge accent">${icon('check', 'i s')}Joue ici</span>`
+        : `${signed ? `<span class="badge accent">${icon('check', 'i s')}inscrit</span>` : '<span class="badge">pas inscrit</span>'}${after > i.max ? `<span class="badge warning">${icon('triangle-alert', 'i s')}Au-delà du maximum</span>` : ''}`;
+      return option(i.game.id, isCurrent, tableName(i.game), esc(i.sc.title), `${i.count}${NB}/${NB}${i.max} joueurs · ${formatSeats(i.min, i.max)}${i.under ? ' · sous son minimum' : ''}`, tags);
+    });
+    choices.push(option('none', current === null, '—', 'Non placés', countOf(v.unplaced.length, 'participant', 'participants'), current === null ? `<span class="badge accent">${icon('check', 'i s')}Ici</span>` : ''));
+    const chosen = dl.choice && dl.choice !== 'none' ? infoOf(v, dl.choice) : null;
+    const line = dl.error ? `${icon('triangle-alert')}<span>${dl.error}</span>`
+      : chosen && chosen.count + 1 > chosen.max ? `${icon('triangle-alert')}<span>« ${esc(chosen.sc.title)} » passera à ${chosen.count + 1}${NB}joueurs pour ${countOf(chosen.max, 'place', 'places')}.</span>` : '';
+    return shell(`<h2 id="dialog-title">${verb} ${esc(dl.pseudo)}</h2>
+      <p>Inscriptions de ${esc(dl.pseudo)} sur le créneau ${slot.rank} : ${person.gameIds.map((id) => `« ${esc(titleOf(gameById(id)))} »`).join(', ')}.</p>
+      <ul class="choices">${choices.join('')}</ul>
+      <p class="warn-line" style="min-height:1.4em">${line}</p>
+      ${actionsOf(verb)}`, { wide: false });
+  }
+  return '';
+}
+
+// ---------- Rendu, focus, annonces ----------
+const main = document.getElementById('main');
+const dialogRoot = document.getElementById('dialog-root');
+const VARIANTS = { A: 'A · Onglets et dialogue', B: 'B · Plan de salle', C: 'C · Grille des inscrits' };
+
+function render() {
+  const focused = document.activeElement?.closest?.('[data-key]')?.dataset.key;
+  const scrolls = [...document.querySelectorAll('[data-scroll]')].map((el) => [el.dataset.scroll, el.scrollLeft, el.scrollTop]);
+  document.getElementById('rail-nav').innerHTML = fr(renderNav());
+  main.innerHTML = fr(renderPage());
+  dialogRoot.innerHTML = fr(renderDialog());
+  for (const [key, left, top] of scrolls) {
+    const el = document.querySelector(`[data-scroll="${key}"]`);
+    if (el) { el.scrollLeft = left; el.scrollTop = top; }
+  }
+  if (focused) focusKey(focused);
+  document.getElementById('proto-label').textContent = VARIANTS[ui.variant];
+}
+function focusKey(key) { document.querySelector(`[data-key="${CSS.escape(key)}"]`)?.focus(); }
+function focusInitial() { dialogRoot.querySelector('[data-initial]')?.focus(); }
+const live = document.getElementById('live');
+function announce(text) {
+  live.textContent = '';
+  setTimeout(() => { live.textContent = fr(text); }, 50);
+}
+
+function openDialog(dialog, opener) {
+  ui.menu = false;
+  ui.dialog = { ...dialog, slotId: dialog.slotId ?? ui.slot, opener };
+  render();
+  focusInitial();
+}
+function closeDialog() {
+  const opener = ui.dialog?.opener;
+  ui.dialog = null;
+  render();
+  if (opener) focusKey(opener);
+}
+function switchVariant(step) {
+  const order = ['A', 'B', 'C'];
+  ui.variant = order[(order.indexOf(ui.variant) + step + order.length) % order.length];
+  ui.picked = null;
+  ui.menu = false;
+  ui.dialog = null;
+  try { history.replaceState(null, '', `?variant=${ui.variant}`); } catch { /* fichier local : sans effet */ }
+  render();
+}
+
+function announceMove(slotId, pseudo, gameId) {
+  if (gameId === null) announce(`${pseudo} rejoint les non placés.`);
+  else announce(`${pseudo} joue désormais à « ${titleOf(gameById(gameId))} », ${tableName(gameById(gameId))}.`);
+}
+
+function confirmDialog() {
+  const dl = ui.dialog;
+  const slotId = dl.slotId;
+  const slot = slotById(slotId);
+  if (dl.type === 'move') {
+    if (!dl.choice) { dl.error = 'Choisis une partie, ou les non placés.'; render(); focusKey('dlg-confirm'); return; }
+    const target = dl.choice === 'none' ? null : dl.choice;
+    movePlayer(slotId, dl.pseudo, target);
+    ui.dialog = null;
+    render();
+    focusKey(target ? `chip-${dl.pseudo}` : `place-${dl.pseudo}`);
+    if (document.activeElement === document.body) focusKey(`tab-${ui.aTab}`);
+    announceMove(slotId, dl.pseudo, target);
+    return;
+  }
+  if (dl.type === 'launch') {
+    launch(slotId);
+    const v = drawView(slotId);
+    announce(`Tirage lancé sur le créneau ${slot.rank} : ${v.placed} placés sur ${v.people.length}.`);
+  } else if (dl.type === 'relaunch') {
+    runDraw(slotId);
+    const v = drawView(slotId);
+    announce(`Tirage relancé : ${v.placed} placés sur ${v.people.length}.`);
+  } else if (dl.type === 'reopen') {
+    reopen(slotId);
+    announce(`Inscriptions du créneau ${slot.rank} rouvertes.`);
+  } else if (dl.type === 'cancel-game') {
+    const n = infoOf(drawView(slotId), dl.gameId).count;
+    cancelGame(slotId, dl.gameId);
+    announce(`Partie annulée : « ${titleOf(gameById(dl.gameId))} ». ${countOf(n, 'joueur rejoint', 'joueurs rejoignent')} les non placés.`);
+  } else if (dl.type === 'publish') {
+    state[slotId] = 'published';
+    announce(`Tirage du créneau ${slot.rank} publié.`);
+  } else if (dl.type === 'schedule') {
+    const game = scheduleFromReserve(slotId, dl.scenario, dl.table);
+    announce(`Partie programmée : créneau ${slot.rank}, ${tableName(game)}. Les inscriptions du créneau sont rouvertes.`);
+  }
+  ui.dialog = null;
+  ui.picked = null;
+  render();
+  if (dl.type === 'cancel-game') focusKey(`restore-${dl.gameId}`);
+  else focusKey('summary-title');
+}
+
+const actions = {
+  'proto-prev': () => switchVariant(-1),
+  'proto-next': () => switchVariant(1),
+  'proto-skip': () => {
+    const first = firstUnpublished();
+    if (first && state[first.id] === 'open') launch(first.id);
+    if (first) ui.slot = first.id;
+    render();
+  },
+  'proto-reset': () => {
+    loadData();
+    Object.assign(ui, { slot: 'c2', aTab: 'games', cTab: 'grid', cFilter: 'all', picked: null, menu: false, dialog: null });
+    render();
+  },
+  slot: (el) => { ui.slot = el.dataset.id; ui.picked = null; ui.menu = false; render(); focusKey(`tile-${ui.slot}`); },
+  'ask-launch': () => openDialog({ type: 'launch' }, 'launch'),
+  'ask-relaunch': () => {
+    const d = draws[ui.slot];
+    if (d.moved.size) { openDialog({ type: 'relaunch' }, 'relaunch'); return; }
+    runDraw(ui.slot);
+    ui.picked = null;
+    render();
+    const v = drawView(ui.slot);
+    announce(`Tirage relancé : ${v.placed} placés sur ${v.people.length}.`);
+  },
+  'ask-publish': () => openDialog({ type: 'publish' }, 'publish'),
+  'ask-reopen': () => openDialog({ type: 'reopen' }, 'menu'),
+  'open-reserve': () => openDialog({ type: 'reserve' }, 'menu'),
+  'toggle-menu': () => { ui.menu = !ui.menu; render(); if (ui.menu) dialogRootFocusMenu(); },
+  'ask-cancel': (el) => openDialog({ type: 'cancel-game', gameId: el.dataset.game }, `cancel-${el.dataset.game}`),
+  'ask-schedule': (el) => openDialog({ type: 'schedule', scenario: el.dataset.scenario, table: el.dataset.table }, `schedule-${el.dataset.scenario}`),
+  restore: (el) => {
+    restoreGame(ui.slot, el.dataset.game);
+    render();
+    focusKey(`row-${el.dataset.game}`);
+    announce(`Partie rétablie : « ${titleOf(gameById(el.dataset.game))} », sans joueur.`);
+  },
+  follow: (el) => {
+    const code = el.dataset.code;
+    if (ui.variant === 'A') { ui.aTab = code === 'unplaced' ? 'unplaced' : 'games'; render(); focusKey(`tab-${ui.aTab}`); }
+    else if (ui.variant === 'C') { ui.cTab = 'grid'; ui.cFilter = 'unplaced'; render(); focusKey('filter-unplaced'); }
+  },
+  'a-tab': (el) => { ui.aTab = el.dataset.tab; render(); focusKey(`tab-${ui.aTab}`); },
+  'c-tab': (el) => { ui.cTab = el.dataset.tab; render(); focusKey(`tab-${ui.cTab}`); },
+  'c-filter': (el) => { ui.cFilter = el.dataset.filter; render(); },
+  'a-move': (el) => openDialog({ type: 'move', pseudo: el.dataset.pseudo, choice: null, error: '' }, el.dataset.key),
+  'b-pick': (el) => { ui.picked = ui.picked === el.dataset.pseudo ? null : el.dataset.pseudo; render(); focusKey(`chip-${el.dataset.pseudo}`); },
+  'b-unpick': () => { const p = ui.picked; ui.picked = null; render(); focusKey(`chip-${p}`); },
+  'b-place': (el) => {
+    const pseudo = ui.picked;
+    const target = el.dataset.game === 'none' ? null : el.dataset.game;
+    movePlayer(ui.slot, pseudo, target);
+    ui.picked = null;
+    render();
+    focusKey(`chip-${pseudo}`);
+    announceMove(ui.slot, pseudo, target);
+  },
+  'c-cell': (el) => {
+    const target = el.dataset.game === 'none' ? null : el.dataset.game;
+    const v = drawView(ui.slot);
+    const current = v.unplaced.includes(el.dataset.pseudo) ? null : draws[ui.slot].assignments.get(el.dataset.pseudo);
+    if (current === target) return;
+    movePlayer(ui.slot, el.dataset.pseudo, target);
+    render();
+    focusKey(el.dataset.key);
+    announceMove(ui.slot, el.dataset.pseudo, target);
+  },
+  'dialog-cancel': () => closeDialog(),
+  'dialog-confirm': () => confirmDialog(),
+};
+function dialogRootFocusMenu() { document.querySelector('.menu-pop [role="menuitem"]')?.focus(); }
+
+document.addEventListener('click', (event) => {
+  const el = event.target.closest('[data-act]');
+  if (ui.menu && !event.target.closest('.menu-pop, [data-act="toggle-menu"]')) { ui.menu = false; if (!el) { render(); return; } }
+  if (!el) return;
+  actions[el.dataset.act]?.(el);
+});
+document.addEventListener('change', (event) => {
+  if (event.target.name === 'move' && ui.dialog?.type === 'move') {
+    ui.dialog.choice = event.target.value;
+    ui.dialog.error = '';
+    render();
+    focusKey(`choice-${event.target.value}`);
+  }
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    if (ui.dialog) closeDialog();
+    else if (ui.menu) { ui.menu = false; render(); focusKey('menu'); }
+    else if (ui.picked) actions['b-unpick']();
+    return;
+  }
+  if (ui.dialog) {
+    if (event.key === 'Tab') {
+      const focusables = [...dialogRoot.querySelectorAll('button, input:not([disabled])')];
+      const first = focusables[0];
+      const last = focusables.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
+    return;
+  }
+  const tablist = event.target.closest?.('[role="tablist"]');
+  if (tablist && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+    event.preventDefault();
+    const tabs = [...tablist.querySelectorAll('[role="tab"]')];
+    const index = tabs.indexOf(event.target.closest('[role="tab"]'));
+    const next = { ArrowLeft: index - 1, ArrowRight: index + 1, Home: 0, End: tabs.length - 1 }[event.key];
+    tabs[(next + tabs.length) % tabs.length].click();
+    return;
+  }
+  if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !event.altKey && !event.ctrlKey && !event.metaKey && !event.target.closest('input, textarea, [contenteditable]')) {
+    switchVariant(event.key === 'ArrowLeft' ? -1 : 1);
+  }
+});
+
+// ---------- Démarrage ----------
+loadData();
+ui.variant = ['A', 'B', 'C'].find((v) => v === new URLSearchParams(location.search).get('variant')) ?? 'A';
+render();
+</script>
