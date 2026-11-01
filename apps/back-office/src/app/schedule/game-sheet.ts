@@ -9,7 +9,8 @@ import { ScenarioIllustration } from '../ui/scenario-illustration';
 /**
  * La fiche d'une partie, dans un panneau latéral non modal à droite de la frise
  * (docs/design/patterns.md, Fiche de la partie). Échap ou ✕ la ferme. Elle ne fait aucune
- * écriture : le Calendrier, ou le pilotage, déplace et déprogramme.
+ * écriture : le Calendrier, ou le pilotage, déplace et déprogramme. Le pilotage y projette, après
+ * les actions, la section « Inscrits ».
  */
 @Component({
   selector: 'app-game-sheet',
@@ -57,6 +58,7 @@ import { ScenarioIllustration } from '../ui/scenario-illustration';
           </button>
         </div>
       }
+      <ng-content />
     </aside>
   `,
   styles: `

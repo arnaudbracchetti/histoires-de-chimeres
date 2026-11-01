@@ -58,6 +58,12 @@ export function formatSeatRange({ min, max }: { min: number; max: number }): str
   return `${formatCount(min)} à ${formatCount(max)}`;
 }
 
+/** « 3–4 », ou « 4 » quand minimum et maximum sont égaux : `formatSeatRange()` en abrégé, pour un en-tête étroit. */
+export function formatShortSeatRange({ min, max }: { min: number; max: number }): string {
+  if (min === max) return formatCount(min);
+  return `${formatCount(min)}–${formatCount(max)}`;
+}
+
 const LIST = new Intl.ListFormat('fr', { type: 'conjunction' });
 
 /** « Dragon », « Dragon et Licorne », « Dragon, Licorne et Griffon ». */

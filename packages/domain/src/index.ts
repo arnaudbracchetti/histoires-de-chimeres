@@ -20,7 +20,13 @@ export { GameMaster } from './convention/game-master.js';
 export { Participant } from './convention/participant.js';
 export { SignUp } from './convention/sign-up.js';
 export { SignUps, type RemovedSignUps, type SignUpFigures } from './convention/sign-ups.js';
-export type { Capacity, GameTracking, TimeSlotTracking } from './convention/sign-up-tracking.js';
+export type {
+  Capacity,
+  GameTracking,
+  ParticipantRisk,
+  ParticipantTracking,
+  TimeSlotTracking,
+} from './convention/sign-up-tracking.js';
 export { Table } from './convention/table.js';
 export { TimeOfDay } from './convention/time-of-day.js';
 export { TimeSlot } from './convention/time-slot.js';

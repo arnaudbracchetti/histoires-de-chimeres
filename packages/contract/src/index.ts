@@ -91,9 +91,11 @@ export {
 export {
   signUpTrackingEndpoints,
   type CapacityDto,
+  type ParticipantRiskDto,
   type SignUpTrackingDto,
   type TimeSlotTrackingDto,
   type TrackedGameDto,
+  type TrackedParticipantDto,
 } from './sign-up-tracking.js';
 export {
   TABLE_NAME_MAX_LENGTH,

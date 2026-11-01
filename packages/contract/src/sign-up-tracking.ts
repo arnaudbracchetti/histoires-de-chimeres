@@ -10,6 +10,25 @@ import type { TableDto } from './table.js';
 export type CapacityDto = { min: number; max: number };
 
 /**
+ * Le risque d'un participant dont aucune partie du créneau n'est sûre (inscrits entre ses places
+ * minimum et maximum) : toutes sont très demandées, il risque de ne pas être placé ; sinon, il
+ * risque de rester sans table.
+ */
+export type ParticipantRiskDto = 'may-not-be-placed' | 'may-be-left-without-table';
+
+/**
+ * Un participant du créneau : les parties qui y commencent où son inscription est active (IN-4),
+ * dans l'ordre de leur programmation, et son risque, ou `null` (jamais sur un créneau sans
+ * inscription, ou fermé).
+ */
+export type TrackedParticipantDto = {
+  id: string;
+  nickname: string;
+  gameIds: string[];
+  risk: ParticipantRiskDto | null;
+};
+
+/**
  * Le suivi des inscriptions d'un créneau. `demand` : les participants distincts qui ont au moins
  * une inscription active sur une partie qui y commence (IN-4). Une partie double ne compte que sur
  * son premier créneau.
@@ -25,6 +44,12 @@ export type TimeSlotTrackingDto = {
   state: TimeSlotStateDto;
   demand: number;
   capacity: CapacityDto;
+  /**
+   * Ceux qui n'ont qu'une inscription sur le créneau d'abord, puis les autres, chaque groupe dans
+   * l'ordre naturel des pseudos : le front garde cet ordre. Le MJ qui mène sur le créneau n'y est
+   * pas (IN-4).
+   */
+  participants: TrackedParticipantDto[];
 };
 
 /**

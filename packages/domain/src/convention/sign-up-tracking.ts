@@ -1,6 +1,7 @@
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import type { TimeSlotState } from './convention.js';
 import type { Day } from './day.js';
+import type { Participant } from './participant.js';
 import type { SignUpCollaborators, SignUpFigures, SignUps } from './sign-ups.js';
 
 /**
@@ -24,8 +25,26 @@ export type GameTracking = { gameId: string } & SignUpFigures & {
   };
 
 /**
- * Le suivi des inscriptions d'un créneau : son état, sa demande, sa capacité, et ses parties, celles
- * qui y commencent, dans l'ordre de leur programmation.
+ * Le risque d'un participant dont aucune partie du créneau n'est sûre (inscrits entre ses places
+ * minimum et maximum) : toutes sont très demandées, il risque de ne pas être placé ; sinon, il
+ * risque de rester sans table.
+ */
+export type ParticipantRisk = 'may-not-be-placed' | 'may-be-left-without-table';
+
+/**
+ * Un participant du créneau : les parties qui y commencent où son inscription est active (IN-4),
+ * dans l'ordre de leur programmation, et son risque, ou `null`.
+ */
+export type ParticipantTracking = {
+  participantId: string;
+  gameIds: string[];
+  risk: ParticipantRisk | null;
+};
+
+/**
+ * Le suivi des inscriptions d'un créneau : son état, sa demande, sa capacité, ses parties, celles
+ * qui y commencent, dans l'ordre de leur programmation, et ses participants : ceux qui n'y ont
+ * qu'une inscription d'abord, puis les autres, chaque groupe dans l'ordre naturel des pseudos.
  */
 export type TimeSlotTracking = {
   timeSlotId: string;
@@ -33,6 +52,7 @@ export type TimeSlotTracking = {
   demand: number;
   capacity: Capacity;
   games: GameTracking[];
+  participants: ParticipantTracking[];
 };
 
 /** Ce que le suivi lit de la convention, tiré de son état. */
@@ -40,6 +60,8 @@ export type SignUpTrackingCollaborators = {
   day: Day;
   signUps: SignUps;
   signUpCollaborators: SignUpCollaborators;
+  /** Dans l'ordre naturel de leur pseudo. */
+  participants: readonly Participant[];
   getTimeSlotState(timeSlotId: string): TimeSlotState;
 };
 
@@ -51,17 +73,33 @@ export type SignUpTrackingCollaborators = {
  */
 export function computeSignUpTracking(
   catalogue: ScenarioCatalogue,
-  { day, signUps, signUpCollaborators, getTimeSlotState }: SignUpTrackingCollaborators,
+  collaborators: SignUpTrackingCollaborators,
 ): TimeSlotTracking[] {
+  const { day, signUps, signUpCollaborators, getTimeSlotState } = collaborators;
   return day.timeSlots.map((slot) => {
     const state = getTimeSlotState(slot.id);
     const demand = signUps.countDemandOnTimeSlot(slot.id, signUpCollaborators);
     const games = signUpCollaborators.schedule.listGamesStartingOnTimeSlot(slot.id);
     const seats = games.map((game) => catalogue.findExistingEntryById(game.scenarioId));
+    const tracked = games.map((game, index): GameTracking => {
+      const { minSeats, maxSeats } = seats[index]!;
+      const figures = signUps.computeSignUpFiguresOfGame(game, signUpCollaborators);
+      const belowMinimum = isTrackingShortfalls(state, demand) && figures.signUpCount < minSeats;
+      return {
+        gameId: game.id,
+        ...figures,
+        oversubscribed: figures.signUpCount > maxSeats,
+        belowMinimum,
+        surplusSignUpCount: Math.max(figures.signUpCount - maxSeats, 0),
+        missingSignUpCount: belowMinimum ? minSeats - figures.signUpCount : 0,
+      };
+    });
     return {
       timeSlotId: slot.id,
       state,
       demand,
+      games: tracked,
+      participants: listParticipantsOfTimeSlot({ state, demand, games: tracked }, collaborators),
       capacity: seats.reduce(
         (capacity, { minSeats, maxSeats }) => ({
           min: capacity.min + minSeats,
@@ -69,20 +107,60 @@ export function computeSignUpTracking(
         }),
         { min: 0, max: 0 },
       ),
-      games: games.map((game, index) => {
-        const { minSeats, maxSeats } = seats[index]!;
-        const figures = signUps.computeSignUpFiguresOfGame(game, signUpCollaborators);
-        const belowMinimum =
-          state === 'sign-ups-open' && demand > 0 && figures.signUpCount < minSeats;
-        return {
-          gameId: game.id,
-          ...figures,
-          oversubscribed: figures.signUpCount > maxSeats,
-          belowMinimum,
-          surplusSignUpCount: Math.max(figures.signUpCount - maxSeats, 0),
-          missingSignUpCount: belowMinimum ? minSeats - figures.signUpCount : 0,
-        };
-      }),
     };
   });
+}
+
+/**
+ * « Sous son minimum » et les risques ne valent que sur un créneau ouvert qui a des inscriptions :
+ * avant, les parties ne paraissent pas menacées dès leur programmation.
+ */
+function isTrackingShortfalls(state: TimeSlotState, demand: number): boolean {
+  return state === 'sign-ups-open' && demand > 0;
+}
+
+/**
+ * Les participants du créneau, dans l'ordre de `TimeSlotTracking`, à partir de son état, de sa
+ * demande et du suivi de ses parties.
+ */
+function listParticipantsOfTimeSlot(
+  { state, demand, games }: Pick<TimeSlotTracking, 'state' | 'demand' | 'games'>,
+  { signUps, signUpCollaborators, participants }: SignUpTrackingCollaborators,
+): ParticipantTracking[] {
+  const gamesByParticipant = new Map<string, GameTracking[]>();
+  for (const tracked of games) {
+    const game = signUpCollaborators.schedule.findExistingGameById(tracked.gameId);
+    for (const participantId of signUps.listActiveParticipantIdsOfGame(game, signUpCollaborators)) {
+      gamesByParticipant.set(participantId, [
+        ...(gamesByParticipant.get(participantId) ?? []),
+        tracked,
+      ]);
+    }
+  }
+  const listed = participants.flatMap(({ id }): ParticipantTracking[] => {
+    const own = gamesByParticipant.get(id);
+    if (!own) return [];
+    return [
+      {
+        participantId: id,
+        gameIds: own.map(({ gameId }) => gameId),
+        risk: isTrackingShortfalls(state, demand) ? computeParticipantRisk(own) : null,
+      },
+    ];
+  });
+  return [
+    ...listed.filter(({ gameIds }) => gameIds.length === 1),
+    ...listed.filter(({ gameIds }) => gameIds.length > 1),
+  ];
+}
+
+/**
+ * Le risque d'un participant, d'après ses parties du créneau : aucun si l'une est sûre (inscrits
+ * entre ses places minimum et maximum). Voir `ParticipantRisk`.
+ */
+function computeParticipantRisk(games: readonly GameTracking[]): ParticipantRisk | null {
+  if (games.some((game) => !game.oversubscribed && !game.belowMinimum)) return null;
+  return games.every((game) => game.oversubscribed)
+    ? 'may-not-be-placed'
+    : 'may-be-left-without-table';
 }

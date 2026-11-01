@@ -5,17 +5,19 @@ import {
   effect,
   inject,
   Injector,
+  linkedSignal,
   signal,
   untracked,
   viewChild,
 } from '@angular/core';
-import { Tab, TabList, TabPanel, Tabs } from '@angular/aria/tabs';
+import { Tab, TabContent, TabList, TabPanel, Tabs } from '@angular/aria/tabs';
 import { RouterLink } from '@angular/router';
 import {
   signUpTrackingEndpoints,
   type TimeSlotStateDto,
   type TimeSlotTrackingDto,
   type TrackedGameDto,
+  type TrackedParticipantDto,
 } from '@chimeres/contract';
 import {
   formatCount,
@@ -38,10 +40,16 @@ import { Button } from '../ui/button';
 import { EmptyState } from '../ui/empty-state';
 import { Gauge } from '../ui/gauge';
 import { Icon } from '../ui/icon';
+import { TrackedGameSignUps } from './tracked-game-sign-ups';
 import { rowIdOf, TrackedGamesPanel } from './tracked-games-panel';
+import {
+  keepParticipantFilter,
+  type ParticipantFilter,
+  TrackedParticipantsPanel,
+} from './tracked-participants-panel';
 
-/** Les onglets du créneau : « Parties du créneau », pour l'instant. */
-type TabValue = 'games';
+/** Les onglets du créneau : « Parties du créneau » et « Inscrits du créneau », pour l'instant. */
+type TabValue = 'games' | 'participants';
 
 /** L'état d'un créneau fermé, sur sa tuile : les termes du front office. */
 const CLOSED_STATE: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string> = {
@@ -73,10 +81,13 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
     PageHeader,
     RouterLink,
     Tab,
+    TabContent,
     TabList,
     TabPanel,
     Tabs,
+    TrackedGameSignUps,
     TrackedGamesPanel,
+    TrackedParticipantsPanel,
   ],
   template: `
     <app-page-header title="Pilotage du jour J">
@@ -157,16 +168,34 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                         <app-icon name="dices" />Parties du créneau
                         <span class="count">{{ formatCount(gamesOf(slot).length) }}</span>
                       </button>
+                      <button ngTab type="button" value="participants">
+                        <app-icon name="users" />Inscrits du créneau
+                        <span class="count">{{ formatCount(slot.demand) }}</span>
+                      </button>
                     </div>
                     <div ngTabPanel value="games" class="panel">
-                      <app-tracked-games-panel
-                        [timeSlot]="slot"
-                        [timeSlots]="tracking.timeSlots"
-                        [tables]="tracking.tables"
-                        [games]="tracking.games"
-                        [openGameId]="openGame()?.id ?? null"
-                        (opened)="open($event)"
-                      />
+                      <ng-template ngTabContent>
+                        <app-tracked-games-panel
+                          [timeSlot]="slot"
+                          [timeSlots]="tracking.timeSlots"
+                          [tables]="tracking.tables"
+                          [games]="tracking.games"
+                          [openGameId]="openGame()?.id ?? null"
+                          (opened)="open($event)"
+                        />
+                      </ng-template>
+                    </div>
+                    <div ngTabPanel value="participants" class="panel">
+                      <ng-template ngTabContent>
+                        <app-tracked-participants-panel
+                          [timeSlot]="slot"
+                          [tables]="tracking.tables"
+                          [games]="tracking.games"
+                          [openGameId]="openGame()?.id ?? null"
+                          [(filter)]="participantFilter"
+                          (opened)="open($event)"
+                        />
+                      </ng-template>
                     </div>
                   </div>
                 }
@@ -182,7 +211,13 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                 (closed)="close(game)"
                 (moveRequested)="move(game)"
                 (unscheduleRequested)="unschedule(game)"
-              />
+              >
+                <app-tracked-game-sign-ups
+                  [game]="game"
+                  [timeSlots]="tracking.timeSlots"
+                  [games]="tracking.games"
+                />
+              </app-game-sheet>
             }
           </div>
         }
@@ -401,6 +436,15 @@ export class SignUpTrackingPage {
 
   /** L'onglet ouvert, gardé d'un créneau à l'autre. */
   protected readonly selectedTab = signal<TabValue | undefined>('games');
+
+  /** Le filtre des inscrits, gardé à la relecture tant que sa puce existe. */
+  protected readonly participantFilter = linkedSignal<
+    readonly TrackedParticipantDto[],
+    ParticipantFilter
+  >({
+    source: () => this.selected()?.participants ?? [],
+    computation: (participants, previous) => keepParticipantFilter(participants, previous?.value),
+  });
 
   private readonly openGameId = signal<string | null>(null);
   /** La partie dont la fiche est ouverte ; une partie disparue du programme la ferme. */

@@ -21,12 +21,15 @@ export class ReadSignUpTracking {
       this.reader.games(),
     ]);
     const slots = new Map(convention.timeSlots.map((slot) => [slot.id, slot]));
+    const nicknames = new Map(
+      convention.participants.map((participant) => [participant.id, participant.nickname.text]),
+    );
     const tracking = convention.computeSignUpTracking(catalogue);
     const gameTracking = new Map(
       tracking.flatMap((slot) => slot.games).map(({ gameId, ...figures }) => [gameId, figures]),
     );
     return {
-      timeSlots: tracking.map(({ timeSlotId, state, demand, capacity }) => ({
+      timeSlots: tracking.map(({ timeSlotId, state, demand, capacity, participants }) => ({
         id: timeSlotId,
         rank: convention.getTimeSlotRank(timeSlotId),
         start: slots.get(timeSlotId)!.start.toString(),
@@ -34,6 +37,12 @@ export class ReadSignUpTracking {
         state,
         demand,
         capacity,
+        participants: participants.map(({ participantId, gameIds, risk }) => ({
+          id: participantId,
+          nickname: nicknames.get(participantId)!,
+          gameIds,
+          risk,
+        })),
       })),
       tables: convention.tables.map((table) => ({ id: table.id, name: table.name.text })),
       // Une partie écrite entre les deux lectures attend la relecture suivante.

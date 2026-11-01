@@ -6,6 +6,7 @@ export {
   formatList,
   formatSeatRange,
   formatSeats,
+  formatShortSeatRange,
   fr,
   NBSP,
   plural,

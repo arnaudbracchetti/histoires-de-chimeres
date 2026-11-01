@@ -12,6 +12,7 @@ import {
   type SignUpTrackingDto,
   type TimeSlotTrackingDto,
   type TrackedGameDto,
+  type TrackedParticipantDto,
 } from '@chimeres/contract';
 import { NBSP, THIN_NBSP } from '@chimeres/design';
 import { Placements, type MoveRequest, type Placed } from '../schedule/placement-dialog';
@@ -32,6 +33,7 @@ const timeSlot = (
   state: 'sign-ups-open',
   demand: 0,
   capacity: { min: 0, max: 0 },
+  participants: [],
   ...figures,
 });
 
@@ -80,6 +82,16 @@ const NEONS = game('p3', 'Néons', 't4', ['s2', 's3'], {
 const EPICE = game('p2', 'Épice', 't2', ['s1', 's2'], { signUpCount: 6 });
 
 /**
+ * Les participants du créneau 2 : Anna (« Brumes »), qui risque de ne pas être placée ; Sven
+ * (« Néons »), qui risque de rester sans table ; Lune, inscrite aux deux.
+ */
+const PARTICIPANTS: TrackedParticipantDto[] = [
+  { id: 'u1', nickname: 'Anna', gameIds: ['p1'], risk: 'may-not-be-placed' },
+  { id: 'u2', nickname: 'Sven', gameIds: ['p3'], risk: 'may-be-left-without-table' },
+  { id: 'u3', nickname: 'Lune', gameIds: ['p1', 'p3'], risk: null },
+];
+
+/**
  * Créneau 1 publié ; créneau 2 ouvert, très demandé ; créneau 3 ouvert, sans inscription. Tables
  * Dragon, Licorne, Phénix et Sphinx.
  */
@@ -90,7 +102,11 @@ const TRACKING: SignUpTrackingDto = {
       demand: 18,
       capacity: { min: 12, max: 20 },
     }),
-    timeSlot(2, '13:00', '15:30', { demand: 26, capacity: { min: 14, max: 22 } }),
+    timeSlot(2, '13:00', '15:30', {
+      demand: 26,
+      capacity: { min: 14, max: 22 },
+      participants: PARTICIPANTS,
+    }),
     timeSlot(3, '16:00', '18:30', { capacity: { min: 4, max: 4 } }),
   ],
   tables: [
@@ -278,25 +294,43 @@ describe('Pilotage du jour J', () => {
   });
 
   describe('onglets', () => {
-    it('montre l’onglet « Parties du créneau », choisi, avec son icône et son compteur', async () => {
+    it('montre les onglets, « Parties du créneau » choisi, avec leur icône et leur compteur', async () => {
       const { tabs, panel } = await render();
 
-      expect(tabs().map(text)).toEqual(['Parties du créneau 2']);
-      expect(tabs()[0]!.querySelector('app-icon')?.getAttribute('name')).toBe('dices');
+      expect(tabs().map(text)).toEqual(['Parties du créneau 2', 'Inscrits du créneau 26']);
+      expect(tabs().map((tab) => tab.querySelector('app-icon')?.getAttribute('name'))).toEqual([
+        'dices',
+        'users',
+      ]);
       expect(tabs()[0]!.getAttribute('aria-selected')).toBe('true');
       expect(panel()).not.toBeNull();
     });
 
-    it('garde l’onglet choisi au clavier, avec ← →, Début et Fin', async () => {
-      const { fixture, tabs } = await render();
-      const tab = tabs()[0]!;
-      tab.focus();
+    it('rend ses panneaux sans violation d’Angular Aria', async () => {
+      const warn = vi.spyOn(console, 'warn');
+      const error = vi.spyOn(console, 'error');
 
-      for (const key of ['ArrowRight', 'ArrowLeft', 'End', 'Home']) {
-        tab.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+      await render();
+
+      expect([...warn.mock.calls, ...error.mock.calls].flat().join(' ')).not.toContain(
+        'Violations',
+      );
+    });
+
+    it('change d’onglet au clavier, avec ← →, Début et Fin', async () => {
+      const { fixture, tabs } = await render();
+      tabs()[0]!.focus();
+
+      for (const [key, selected] of [
+        ['ArrowRight', 1],
+        ['ArrowLeft', 0],
+        ['End', 1],
+        ['Home', 0],
+      ] as const) {
+        document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
         fixture.detectChanges();
-        expect(document.activeElement).toBe(tab);
-        expect(tab.getAttribute('aria-selected')).toBe('true');
+        expect(document.activeElement).toBe(tabs()[selected]);
+        expect(tabs()[selected]!.getAttribute('aria-selected')).toBe('true');
       }
     });
 
@@ -306,7 +340,7 @@ describe('Pilotage du jour J', () => {
       tiles()[2]!.click();
       fixture.detectChanges();
 
-      expect(tabs().map(text)).toEqual(['Parties du créneau 0']);
+      expect(tabs().map(text)).toEqual(['Parties du créneau 0', 'Inscrits du créneau 0']);
       expect(tabs()[0]!.getAttribute('aria-selected')).toBe('true');
       expect(rows().map(text)).toEqual([
         'Dragon Table libre',
@@ -514,6 +548,199 @@ describe('Pilotage du jour J', () => {
       ]);
       expect(text(sheet()?.querySelector('h2'))).toBe('Brumes');
       expect(button('Déplacer vers…')).toBeUndefined();
+      expect(button('Déprogrammer')).toBeUndefined();
+    });
+  });
+  describe('onglet Inscrits du créneau', () => {
+    /** Ouvre l'onglet « Inscrits du créneau ». */
+    async function renderParticipants(tracking = TRACKING) {
+      const rendered = await render(tracking);
+      rendered.tabs()[1]!.click();
+      await rendered.settle();
+      const chips = () => [...(rendered.panel()?.querySelectorAll('.filters button') ?? [])];
+      const table = () => rendered.panel()?.querySelector('table');
+      /** Les lignes du tableau, groupes compris : une ligne par rangée de cellules. */
+      const tableRows = () =>
+        [...(table()?.querySelectorAll('tbody tr') ?? [])].map((row) =>
+          [...row.querySelectorAll('th, td')].map(text),
+        );
+      return { ...rendered, chips, table, tableRows };
+    }
+
+    it('montre une puce par filtre, avec son compte, « Tous » choisi', async () => {
+      const { chips } = await renderParticipants();
+
+      expect(chips().map(text)).toEqual([
+        'Tous · 3',
+        'Risquent de ne pas être placés · 1',
+        'Risquent de rester sans table · 1',
+      ]);
+      expect(chips().map((chip) => chip.getAttribute('aria-pressed'))).toEqual([
+        'true',
+        'false',
+        'false',
+      ]);
+    });
+
+    it('montre un pseudo par ligne, une partie par colonne dans l’ordre des tables, en deux groupes', async () => {
+      const { table, tableRows } = await renderParticipants();
+
+      expect([...table()!.querySelectorAll('thead th')].map(text)).toEqual([
+        'Pseudo',
+        'Brumes 15 inscrits · 3–4 Très demandée',
+        'Néons 2 inscrits · 3–4 double Sous son minimum',
+        'Avertissement',
+      ]);
+      expect(tableRows()).toEqual([
+        ['Une seule inscription · 2'],
+        ['Anna', 'inscrit', '', 'Risque de ne pas être placé'],
+        ['Sven', '', 'inscrit', 'Risque de rester sans table'],
+        ['Plusieurs inscriptions · 1'],
+        ['Lune', 'inscrit', 'inscrit', ''],
+      ]);
+      expect(table()!.querySelectorAll('tbody th[scope="row"]')).toHaveLength(3);
+    });
+
+    it('marque chaque risque d’une pastille, avec son icône', async () => {
+      const { table } = await renderParticipants();
+
+      expect(
+        [...table()!.querySelectorAll('.pill')].map((pill) => [
+          pill.querySelector('use')?.getAttribute('href'),
+          pill.classList.contains('danger') ? 'danger' : 'warning',
+        ]),
+      ).toEqual([
+        ['icons.svg#octagon-alert', 'danger'],
+        ['icons.svg#triangle-alert', 'warning'],
+      ]);
+    });
+
+    it('filtre les pseudos d’après la puce choisie, et cache le groupe vide', async () => {
+      const { chips, tableRows, settle } = await renderParticipants();
+
+      (chips()[1] as HTMLButtonElement).click();
+      await settle();
+
+      expect(chips()[1]!.getAttribute('aria-pressed')).toBe('true');
+      expect(tableRows()).toEqual([
+        ['Une seule inscription · 1'],
+        ['Anna', 'inscrit', '', 'Risque de ne pas être placé'],
+      ]);
+    });
+
+    it('n’affiche pas une puce à 0', async () => {
+      const { chips } = await renderParticipants({
+        ...TRACKING,
+        timeSlots: TRACKING.timeSlots.map((slot) =>
+          slot.id === 's2' ? { ...slot, participants: PARTICIPANTS.slice(1) } : slot,
+        ),
+      });
+
+      expect(chips().map(text)).toEqual(['Tous · 2', 'Risquent de rester sans table · 1']);
+    });
+
+    it('garde le filtre à la relecture, et revient à « Tous » quand sa puce disparaît', async () => {
+      const { chips, tableRows, settle, panel, button, reread } = await renderParticipants();
+      moveTo.mockResolvedValue(undefined);
+      (chips()[1] as HTMLButtonElement).click();
+      await settle();
+
+      // « Déplacer vers… » fermé sans geste relit le suivi.
+      panel()!.querySelector<HTMLButtonElement>('thead th button')!.click();
+      await settle();
+      button('Déplacer vers…')!.click();
+      await reread(TRACKING);
+
+      expect(chips()[1]!.getAttribute('aria-pressed')).toBe('true');
+
+      button('Déplacer vers…')!.click();
+      await reread({
+        ...TRACKING,
+        timeSlots: TRACKING.timeSlots.map((slot) =>
+          slot.id === 's2' ? { ...slot, participants: PARTICIPANTS.slice(1) } : slot,
+        ),
+      });
+
+      expect(chips()[0]!.getAttribute('aria-pressed')).toBe('true');
+      expect(tableRows()).toHaveLength(4);
+    });
+
+    it('ouvre la fiche d’une partie par le titre de sa colonne', async () => {
+      const { panel, sheet, settle } = await renderParticipants();
+      const title = panel()!.querySelectorAll<HTMLButtonElement>('thead th button')[1]!;
+
+      title.click();
+      await settle();
+
+      expect(text(sheet()?.querySelector('h2'))).toBe('Néons');
+      expect(title.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('dit qu’un créneau n’a aucune inscription', async () => {
+      const { tiles, panel, settle, table } = await renderParticipants();
+
+      tiles()[2]!.click();
+      await settle();
+
+      expect(table()).toBeNull();
+      expect(text(panel())).toBe("Aucune inscription sur ce créneau pour l'instant.");
+    });
+  });
+
+  describe('inscrits dans la fiche de la partie', () => {
+    /** La section « Inscrits » de la fiche de la partie, ouverte par son titre. */
+    async function renderSheet(gameId: string, tracking = TRACKING) {
+      const rendered = await render(tracking);
+      rendered.host.querySelector<HTMLButtonElement>(`#tracked-game-${gameId}`)!.click();
+      await rendered.settle();
+      return { ...rendered, section: () => rendered.sheet()?.querySelector('.sign-ups') };
+    }
+
+    it('montre les chiffres de la partie, puis ses pseudos en deux groupes, après les actions', async () => {
+      const { sheet, section } = await renderSheet('p1');
+
+      expect(text(section())).toBe(
+        'Inscrits 15 inscrits · 3 à 4 places Très demandée ' +
+          'dont 8 sans autre inscription sur le créneau ' +
+          'Sans autre inscription sur le créneau · 1 Anna Risque de ne pas être placé ' +
+          'Inscrits aussi ailleurs sur le créneau · 1 Lune aussi : « Néons »',
+      );
+      expect(section()!.querySelector('app-gauge')).not.toBeNull();
+      const actions = sheet()!.querySelector('.actions')!;
+      expect(actions.compareDocumentPosition(section()!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
+    it('dit qu’une partie double compte ses inscriptions sur son premier créneau', async () => {
+      const { section } = await renderSheet('p3');
+
+      expect(text(section())).toContain(
+        'Partie double : ses inscriptions comptent sur le créneau 2.',
+      );
+    });
+
+    it('dit qu’une partie n’a aucun inscrit', async () => {
+      const { section } = await renderSheet('p4', {
+        ...TRACKING,
+        games: [...TRACKING.games, game('p4', 'Sable', 't3', ['s2'])],
+      });
+
+      expect(text(section())).toContain("Aucun inscrit pour l'instant.");
+    });
+
+    it('dit qu’un créneau publié a fermé ses inscriptions, sans action', async () => {
+      const { section, button, reread } = await renderSheet('p1');
+      moveTo.mockResolvedValue(undefined);
+
+      // « Déplacer vers… » fermé sans geste relit le suivi : le tirage est publié entre-temps.
+      button('Déplacer vers…')!.click();
+      await reread({
+        ...TRACKING,
+        timeSlots: TRACKING.timeSlots.map((slot) =>
+          slot.id === 's2' ? { ...slot, state: 'published' } : slot,
+        ),
+      });
+
+      expect(text(section())).toContain('Tirage publié : les inscriptions sont fermées.');
       expect(button('Déprogrammer')).toBeUndefined();
     });
   });

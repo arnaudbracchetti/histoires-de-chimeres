@@ -5,6 +5,7 @@ import {
   formatList,
   formatSeatRange,
   formatSeats,
+  formatShortSeatRange,
   fr,
   NBSP,
   plural,
@@ -70,5 +71,10 @@ describe('Typographie française', () => {
   it('écrit la fourchette de places sans le nom', () => {
     expect(formatSeatRange({ min: 14, max: 22 })).toBe('14 à 22');
     expect(formatSeatRange({ min: 22, max: 22 })).toBe('22');
+  });
+
+  it('abrège les places pour un en-tête étroit', () => {
+    expect(formatShortSeatRange({ min: 3, max: 4 })).toBe('3–4');
+    expect(formatShortSeatRange({ min: 4, max: 4 })).toBe('4');
   });
 });

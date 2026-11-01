@@ -263,6 +263,11 @@ Chaque carte : vignette, titre et méta en tête, jusqu'au bord ; dessous, sur t
 
 - Un clic sur une partie ouvre sa fiche dans un **panneau latéral non modal** à droite de la frise, qui se rétrécit. Échap ou ✕ la ferme, et le focus revient à la partie.
 - Contenu : vignette, jeu, MJ, créneau ou créneaux, table, places, « Déplacer vers… », « Déprogrammer ».
+- **Section « Inscrits »**, sur la page de pilotage seulement, après les actions : « 15 inscrits · 3 à 4 places », la [jauge](#jauge), les badges, puis « dont 8 sans autre inscription sur le créneau » (absent à 0).
+  - Les pseudos y sont en deux groupes, dans l'ordre reçu : « Sans autre inscription sur le créneau · N », puis « Inscrits aussi ailleurs sur le créneau · N », où chacun porte « aussi : « Sous la surface » ». Chaque pseudo à risque a sa pastille (voir l'onglet Inscrits du créneau). Sans inscrit : « Aucun inscrit pour l'instant. »
+  - Partie double : « Partie double : ses inscriptions comptent sur le créneau 3. »
+  - Créneau dont le tirage est lancé ou publié : aucune action, et « Tirage publié : les inscriptions sont fermées. » (ou « Tirage en cours : … »).
+  - Le Calendrier ne lit pas le suivi : sa fiche reste sans section « Inscrits ».
 - **Places (PR-4)** : minimum et maximum, ceux du scénario, en lecture seule.
 - Ce motif de fiche latérale ne sert qu'à la partie, dans le Calendrier comme dans le [pilotage du jour J](#pilotage-du-jour-j). MJ et scénarios ont leur page.
 
@@ -311,11 +316,17 @@ La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque c
 - **Résumé du créneau choisi**, dans une carte : « Créneau 2 · 13 h 00 – 15 h 30 », la demande (« 26 participants ») et la capacité (« 14 à 22 places », ou « 22 places » quand les deux bornes sont égales) en grand, et une jauge large.
   - Sans inscription : « Aucune inscription sur ce créneau pour l'instant. » Les chiffres restent affichés, même à 0.
   - Créneau publié : « Tirage publié : les inscriptions sont fermées et le programme du créneau ne change plus. », sans chiffres ni action.
-- **Onglets du créneau**, sous le résumé, en [onglets de classeur](#onglets-de-classeur) : « Parties du créneau » (`dices`, nombre de parties qui commencent sur le créneau). Aucun onglet sur un créneau fermé.
+- **Onglets du créneau**, sous le résumé, en [onglets de classeur](#onglets-de-classeur) : « Parties du créneau » (`dices`, nombre de parties qui commencent sur le créneau) et « Inscrits du créneau » (`users`, la demande). Aucun onglet sur un créneau fermé.
 - **Onglet Parties du créneau** : « 1 table libre » en tête, puis une ligne par table, dans l'ordre des tables.
   - Partie : nom de la table, vignette, titre (bouton qui ouvre la fiche, `aria-expanded` ; un clic n'importe où sur la ligne l'ouvre aussi), « jeu · MJ », jauge, « 15 inscrits · 3 à 4 places », suivi de son écart (« · 11 de trop », « · 1 manquant »), « dont 8 sans autre inscription sur le créneau » (absent à 0), puis les badges « double », « Très demandée » (neutre, `users`) et « Sous son minimum » (jaune, `triangle-alert`).
   - Table libre : ligne en pointillés, « Table libre ».
   - Second créneau d'une partie double : ligne atténuée, « Partie double, comptée sur le créneau 3 », sans chiffres.
+- **Onglet Inscrits du créneau** : qui s'est inscrit où.
+  - Puces de filtre, comme celles du bac de réserve : « Tous · 26 », « Risquent de ne pas être placés · 16 », « Risquent de rester sans table · 2 ». Une puce à 0 n'apparaît pas ; si la puce choisie disparaît à une relecture, le filtre revient à « Tous ». Le filtre survit à la relecture et au changement d'onglet.
+  - Un tableau : un pseudo par ligne (en-tête de ligne), une partie par colonne, dans l'ordre des tables. L'en-tête de colonne donne le titre (bouton qui ouvre la fiche, `aria-expanded`), « 15 inscrits · 3–4 » et les badges. Une coche (`check`) par inscription, avec « inscrit » pour les lecteurs d'écran. Chaque colonne de partie est centrée et bordée, et une sur deux est teintée, pour la suivre de haut en bas.
+  - Deux groupes, dans l'ordre reçu de l'API : « Une seule inscription · N », puis « Plusieurs inscriptions · N ». Un groupe vide après filtre n'apparaît pas.
+  - La colonne « Avertissement » porte la pastille du risque : « Risque de ne pas être placé » (rouge, `octagon-alert`) quand toutes ses parties du créneau sont très demandées, ou « Risque de rester sans table » (jaune, `triangle-alert`) quand aucune n'est sûre et que l'une au moins est sous son minimum. Le MJ qui mène sur le créneau n'y figure pas (IN-4).
+  - Sans inscription : « Aucune inscription sur ce créneau pour l'instant. »
 - **Fiche de la partie** : celle du Calendrier, à droite du créneau, qui se rétrécit. Sur un créneau dont le tirage est lancé, elle n'offre aucune action. Une partie qui disparaît du programme à une relecture ferme la fiche.
 - **Gestes** : pas de glisser-déposer. On déplace par « Déplacer vers… » et on déprogramme par la fiche, avec la même confirmation que dans le Calendrier quand le geste retire des inscriptions (voir [Actions destructrices](#actions-destructrices)). Après chaque geste, réussi ou refusé comme périmé, la page relit le suivi.
   - Déplacer ou échanger : la page choisit le créneau où la partie commence désormais, ouvre l'onglet Parties et met le focus sur sa ligne.

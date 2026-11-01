@@ -260,3 +260,90 @@ describe('Suivi des parties de chaque créneau (§4.4)', () => {
     });
   });
 });
+
+/** Les participants du créneau de rang `rank`, en « id, parties, risque ». */
+const describeParticipantsOfTimeSlot = (convention: Convention, rank: number) =>
+  convention
+    .computeSignUpTracking(CATALOGUE)
+    [rank - 1]!.participants.map(({ participantId, gameIds, risk }) => [
+      participantId,
+      gameIds,
+      risk,
+    ]);
+
+describe('Participants de chaque créneau (§4.4)', () => {
+  it('rend chaque participant avec ses parties du créneau, une seule inscription d’abord, puis par pseudo', () => {
+    const convention = aConvention();
+    identify(convention, ['Anna', 'Zoé']);
+    signUp(convention, {
+      p3: ['brumes'],
+      p1: ['brumes', 'epice'],
+      Zoé: ['epice', 'brumes'],
+      Anna: ['epice'],
+      p2: ['brumes', 'epice'],
+    });
+
+    // Sven (p3), puis Anna ; puis Élodie (p1), Lune (p2), Zoé. Les parties suivent l'ordre du Programme.
+    expect(
+      describeParticipantsOfTimeSlot(convention, 1).map(([id, gameIds]) => [id, gameIds]),
+    ).toEqual([
+      ['Anna', ['epice']],
+      ['p3', ['brumes']],
+      ['p1', ['brumes', 'epice']],
+      ['p2', ['brumes', 'epice']],
+      ['Zoé', ['brumes', 'epice']],
+    ]);
+  });
+
+  it('ne rend aucun participant sur un créneau sans inscription', () => {
+    expect(describeParticipantsOfTimeSlot(aConvention(), 1)).toEqual([]);
+  });
+
+  it('ne donne aucun risque à qui a une partie sûre sur le créneau', () => {
+    const convention = aConvention();
+    identify(convention, ['p4']);
+    // « epice » : 2 inscrits pour 2 à 4 places, sûre ; « brumes » : 2 inscrits pour 3 à 5, sous son minimum.
+    signUp(convention, { p1: ['brumes', 'epice'], p2: ['epice'], p4: ['brumes'] });
+
+    expect(describeParticipantsOfTimeSlot(convention, 1)).toEqual([
+      ['p2', ['epice'], null],
+      ['p4', ['brumes'], 'may-be-left-without-table'],
+      ['p1', ['brumes', 'epice'], null],
+    ]);
+  });
+
+  it('dit qu’il risque de ne pas être placé quand toutes ses parties du créneau sont très demandées', () => {
+    const convention = aConvention();
+    identify(convention, ['p4', 'p5']);
+    // « epice » : 5 inscrits pour 4 places au plus ; « brumes » : 1 inscrit pour 3 places au moins.
+    signUp(convention, { p1: ['epice'], p2: ['epice'], p3: ['epice'], p4: ['epice'] });
+    signUp(convention, { p5: ['epice', 'brumes'] });
+
+    // Élodie (p1), Lune (p2), p4, Sven (p3), puis p5 et ses deux inscriptions.
+    expect(describeParticipantsOfTimeSlot(convention, 1).map(([id, , risk]) => [id, risk])).toEqual([
+      ['p1', 'may-not-be-placed'],
+      ['p2', 'may-not-be-placed'],
+      ['p4', 'may-not-be-placed'],
+      ['p3', 'may-not-be-placed'],
+      ['p5', 'may-be-left-without-table'],
+    ]);
+  });
+
+  it('ne rend pas le MJ qui mène sur le créneau (IN-4)', () => {
+    const convention = aConvention();
+    convention.unscheduleGame('neons');
+    signUp(convention, { 'p-g3': ['epice'], p1: ['epice'] });
+    convention.scheduleScenario('neons', aScenario('c'), 's2', 't1');
+
+    expect(describeParticipantsOfTimeSlot(convention, 1).map(([id]) => id)).toEqual(['p1']);
+  });
+
+  it('ne rend une partie double que sur son premier créneau', () => {
+    const convention = aConvention();
+    signUp(convention, { p1: ['epice'], p2: ['epice', 'neons'] });
+
+    expect(describeParticipantsOfTimeSlot(convention, 2).map(([id, gameIds]) => [id, gameIds])).toEqual(
+      [['p2', ['neons']]],
+    );
+  });
+});

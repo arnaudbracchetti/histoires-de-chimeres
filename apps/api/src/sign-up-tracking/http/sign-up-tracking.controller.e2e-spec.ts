@@ -126,6 +126,7 @@ describe('Suivi des inscriptions', () => {
           state: 'sign-ups-open',
           demand: 2,
           capacity: { min: 5, max: 9 },
+          participants: expect.any(Array),
         },
         {
           id: slot(2),
@@ -135,6 +136,7 @@ describe('Suivi des inscriptions', () => {
           state: 'sign-ups-open',
           demand: 0,
           capacity: { min: 0, max: 0 },
+          participants: [],
         },
       ],
       tables: [
@@ -180,6 +182,40 @@ describe('Suivi des inscriptions', () => {
         surplusSignUpCount: 1,
         missingSignUpCount: 0,
       },
+    ]);
+  });
+
+  it('rend les participants de chaque créneau, avec leurs parties et leur risque', async () => {
+    const elodie = await gameMaster('Élodie');
+    const kairos = await gameMaster('Kaïros');
+    const neons = await scheduled(elodie.id, 'Néons', { min: 3, max: 5 }, 'Table 10');
+    const brumes = await scheduled(kairos.id, 'Brumes', { min: 1, max: 1 }, 'Table 2');
+    const lune = await linkedPhone('Lune');
+    const sven = await linkedPhone('Sven');
+    await signUp(neons, lune);
+    await signUp(brumes, lune);
+    await signUp(brumes, sven);
+
+    const dto = (await server().get(apiUrl(signUpTrackingEndpoints.read)).expect(200))
+      .body as SignUpTrackingDto;
+
+    // Une seule inscription d'abord : Sven, puis Lune.
+    expect(dto.timeSlots.map(({ participants }) => participants)).toEqual([
+      [
+        {
+          id: expect.any(String),
+          nickname: 'Sven',
+          gameIds: [brumes],
+          risk: 'may-not-be-placed',
+        },
+        {
+          id: expect.any(String),
+          nickname: 'Lune',
+          gameIds: [neons, brumes],
+          risk: 'may-be-left-without-table',
+        },
+      ],
+      [],
     ]);
   });
 });

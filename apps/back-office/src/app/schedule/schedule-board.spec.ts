@@ -138,6 +138,16 @@ describe('ScheduleBoard', () => {
     };
   }
 
+  it('ouvre la fiche de la partie sans section « Inscrits » : le Calendrier ne lit pas le suivi', async () => {
+    const { host, settle, sheet, button } = await render();
+
+    host.querySelector<HTMLButtonElement>('#game-p1')!.click();
+    await settle();
+
+    expect(button('Déprogrammer')).toBeDefined();
+    expect(sheet()?.querySelector('.sign-ups')).toBeNull();
+  });
+
   it('« Déprogrammer » ferme la fiche, et le scénario revient dans la réserve', async () => {
     const { http, host, settle, sheet, unschedule } = await render();
 

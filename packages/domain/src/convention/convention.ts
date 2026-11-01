@@ -494,13 +494,15 @@ export class Convention {
 
   /**
    * Le suivi des inscriptions de chaque créneau, dans l'ordre de la journée : son état, sa demande et
-   * sa capacité, que le catalogue, entier, donne (§4.4). Voir `computeSignUpTracking()`.
+   * sa capacité, que le catalogue, entier, donne, ses parties et ses participants (§4.4). Voir
+   * `computeSignUpTracking()`.
    */
   computeSignUpTracking(catalogue: ScenarioCatalogue): TimeSlotTracking[] {
     return computeSignUpTracking(catalogue, {
       day: this.day,
       signUps: this.allSignUps,
       signUpCollaborators: this.buildSignUpCollaborators(this.gameSchedule),
+      participants: this.allParticipants.participants,
       getTimeSlotState: (timeSlotId) => this.getTimeSlotState(timeSlotId),
     });
   }
