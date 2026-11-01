@@ -82,5 +82,6 @@ import { SCHEDULE_READER } from './schedule-reader.token.js';
       inject: [CONVENTION_REPOSITORY, NOTIFICATION_SENDER],
     },
   ],
+  exports: [SCHEDULE_READER],
 })
 export class GameModule {}

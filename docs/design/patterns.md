@@ -8,7 +8,7 @@ Cette page décrit les patterns du back office. Une partie vaut aussi pour le fr
 | [Champs](#champs), [Validation](#validation), [Une erreur ne décale rien](#une-erreur-ne-décale-rien), [Enregistrement](#enregistrement) (pendant l'envoi, un second envoi est refusé) | [Où se fait la saisie](#où-se-fait-la-saisie) : cartes, lignes et pages de saisie |
 | [Actions destructrices](#actions-destructrices) : le dialogue de confirmation, le refus dans le dialogue | [Tableaux](#tableaux) |
 | [Erreur hors formulaire](#erreur-hors-formulaire), sauf la place des alertes : en bas à droite ici, en bas de l'écran sur le téléphone | [Chargement, état vide, erreur de lecture](#chargement-état-vide-erreur-de-lecture), jusqu'aux premiers écrans du front office qui en ont besoin |
-| [Succès](#succès) : pas d'alerte de succès, annonce aux lecteurs d'écran | [Programmation](#programmation), [Pilotage du jour J](#pilotage-du-jour-j), [Jauge](#jauge) |
+| [Succès](#succès) : pas d'alerte de succès, annonce aux lecteurs d'écran | [Programmation](#programmation), [Pilotage du jour J](#pilotage-du-jour-j), [Onglets de classeur](#onglets-de-classeur), [Jauge](#jauge) |
 | [Statuts](#statuts), [Focus](#focus) | |
 
 ## Le back office sur l'écran
@@ -216,7 +216,7 @@ Pensés dès maintenant pour le pilotage du jour J (demande / capacité, PRD §4
 | Rôle | Jeton | Icône Lucide | Sens |
 |---|---|---|---|
 | Vert | `--success` | `circle-check` | correct, complet |
-| Jaune | `--warning` | `triangle-alert` | attention : la demande approche de la capacité |
+| Jaune | `--warning` | `triangle-alert` | attention : la demande approche de la capacité, une partie reste sous son minimum |
 | Rouge brique | `--danger` | `octagon-alert` | surcharge, erreur |
 | Neutre | `--text-muted` sur `--surface-3` | propre au sens : `clock` (à venir), `inbox` (en réserve) | information sans jugement : « double », « à venir », « en réserve » |
 
@@ -264,7 +264,7 @@ Chaque carte : vignette, titre et méta en tête, jusqu'au bord ; dessous, sur t
 - Un clic sur une partie ouvre sa fiche dans un **panneau latéral non modal** à droite de la frise, qui se rétrécit. Échap ou ✕ la ferme, et le focus revient à la partie.
 - Contenu : vignette, jeu, MJ, créneau ou créneaux, table, places, « Déplacer vers… », « Déprogrammer ».
 - **Places (PR-4)** : minimum et maximum, ceux du scénario, en lecture seule.
-- Ce motif de fiche latérale ne sert qu'à la partie. MJ et scénarios ont leur page.
+- Ce motif de fiche latérale ne sert qu'à la partie, dans le Calendrier comme dans le [pilotage du jour J](#pilotage-du-jour-j). MJ et scénarios ont leur page.
 
 ### Aucune action réservée au glisser-déposer
 
@@ -311,14 +311,37 @@ La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque c
 - **Résumé du créneau choisi**, dans une carte : « Créneau 2 · 13 h 00 – 15 h 30 », la demande (« 26 participants ») et la capacité (« 14 à 22 places », ou « 22 places » quand les deux bornes sont égales) en grand, et une jauge large.
   - Sans inscription : « Aucune inscription sur ce créneau pour l'instant. » Les chiffres restent affichés, même à 0.
   - Créneau publié : « Tirage publié : les inscriptions sont fermées et le programme du créneau ne change plus. », sans chiffres ni action.
+- **Onglets du créneau**, sous le résumé, en [onglets de classeur](#onglets-de-classeur) : « Parties du créneau » (`dices`, nombre de parties qui commencent sur le créneau). Aucun onglet sur un créneau fermé.
+- **Onglet Parties du créneau** : « 1 table libre » en tête, puis une ligne par table, dans l'ordre des tables.
+  - Partie : nom de la table, vignette, titre (bouton qui ouvre la fiche, `aria-expanded` ; un clic n'importe où sur la ligne l'ouvre aussi), « jeu · MJ », jauge, « 15 inscrits · 3 à 4 places », suivi de son écart (« · 11 de trop », « · 1 manquant »), « dont 8 sans autre inscription sur le créneau » (absent à 0), puis les badges « double », « Très demandée » (neutre, `users`) et « Sous son minimum » (jaune, `triangle-alert`).
+  - Table libre : ligne en pointillés, « Table libre ».
+  - Second créneau d'une partie double : ligne atténuée, « Partie double, comptée sur le créneau 3 », sans chiffres.
+- **Fiche de la partie** : celle du Calendrier, à droite du créneau, qui se rétrécit. Sur un créneau dont le tirage est lancé, elle n'offre aucune action. Une partie qui disparaît du programme à une relecture ferme la fiche.
+- **Gestes** : pas de glisser-déposer. On déplace par « Déplacer vers… » et on déprogramme par la fiche, avec la même confirmation que dans le Calendrier quand le geste retire des inscriptions (voir [Actions destructrices](#actions-destructrices)). Après chaque geste, réussi ou refusé comme périmé, la page relit le suivi.
+  - Déplacer ou échanger : la page choisit le créneau où la partie commence désormais, ouvre l'onglet Parties et met le focus sur sa ligne.
+  - Déprogrammer : la fiche se ferme, et le focus va au titre du résumé du créneau.
+  - Chaque geste réussi est annoncé par la région `aria-live` de la coquille, comme dans le Calendrier.
 - La **demande** compte des participants distincts : un participant inscrit à trois parties du créneau compte pour un. La **capacité** est une fourchette, de la somme des places minimum à la somme des places maximum des parties qui commencent sur le créneau. Une partie double ne compte que sur son premier créneau.
 - Les grands chiffres de la tuile et du résumé prennent `--font-size-title`, en police système, à chasse fixe.
+
+## Onglets de classeur
+
+Des vues d'un même objet, l'une à la fois, sous ce qui les résume (le résumé d'un créneau).
+
+- Chaque onglet a une **icône**, un **libellé** et un **compteur**.
+- L'onglet choisi est **soudé à un panneau encadré**, et marqué d'un **trait orange** en haut. Les autres restent en texte discret.
+- Comportement de tablist par Angular Aria : ← →, Début et Fin changent d'onglet.
+- **Aucun avertissement sur un onglet** : les avertissements restent dans le résumé, et un onglet reste une commande.
+- L'onglet ouvert est **gardé** quand l'objet résumé change (d'un créneau à l'autre).
 
 ## Jauge
 
 Le dessin d'un nombre face à des places, pour un créneau (demande face à la capacité) comme pour une partie (inscrits face à ses places).
 
-- Une **zone claire** du minimum au maximum, un **trait** à chaque borne, et un **remplissage** jusqu'au nombre, au plus le maximum.
-- Au-delà du maximum, des **hachures** : rouges pour un créneau, neutres pour une partie.
-- Chaque jauge a **sa propre échelle** : le maximum, ou le nombre s'il le dépasse. Deux jauges voisines ne se comparent pas à l'œil, mais par leurs chiffres.
+- Des **cases** bout à bout, qui se comptent : une case par personne, inscrit d'une partie comme participant d'un créneau.
+- Les cases du minimum au maximum sont **claires**, un **trait** marque chaque borne, et le **remplissage** va jusqu'au nombre, au plus le maximum.
+- Au-delà du maximum, les cases sont **hachurées** : rouges pour un créneau, neutres pour une partie très demandée.
+- **Remplissage jaune** pour une partie sous son minimum. Les couleurs viennent des drapeaux reçus, jamais d'un nouveau calcul.
+- Chaque jauge a **sa propre échelle** : le maximum, ou le nombre s'il le dépasse. Deux jauges voisines se comparent par leurs cases et leurs chiffres, pas par leur longueur.
+- L'**écart** d'une partie s'écrit à côté de ses chiffres : « 15 inscrits · 3 à 4 places · 11 de trop », ou « · 1 manquant » sous son minimum (en jaune). L'API le calcule.
 - Elle est **décorative** (`aria-hidden`) : les chiffres sont toujours écrits à côté.

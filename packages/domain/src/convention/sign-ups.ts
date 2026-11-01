@@ -15,11 +15,14 @@ export type LedGames = {
 };
 
 /**
- * Les inscriptions qu'un geste retire à une partie (IN-6) : ses inscriptions actives
- * (`signUpCount`), et combien de ses inscrits n'ont pas d'autre inscription active sur son premier
- * créneau (`withoutOtherSignUpCount`).
+ * Les chiffres des inscriptions d'une partie : ses inscriptions actives (`signUpCount`, IN-4), et
+ * combien de ses inscrits n'ont pas d'autre inscription active sur son premier créneau
+ * (`withoutOtherSignUpCount`).
  */
-export type RemovedSignUps = { gameId: string; signUpCount: number; withoutOtherSignUpCount: number };
+export type SignUpFigures = { signUpCount: number; withoutOtherSignUpCount: number };
+
+/** Les inscriptions qu'un geste retire à une partie (IN-6) : les chiffres de ses inscriptions. */
+export type RemovedSignUps = { gameId: string } & SignUpFigures;
 
 /**
  * Ce que les règles des inscriptions lisent hors d'elles : le Programme, et qui y mène quoi. La
@@ -116,14 +119,20 @@ export class SignUps {
     return collaborators.schedule.games
       .filter((game) => !SignUps.isGameKeepingSignUps(game, next))
       .flatMap((game): RemovedSignUps[] => {
-        const signUpCount = this.listActiveParticipantIdsOfGame(game, collaborators).length;
-        if (!signUpCount) return [];
-        const withoutOtherSignUpCount = this.listParticipantIdsWithOnlyActiveSignUpOnFirstTimeSlot(
-          game,
-          collaborators,
-        ).length;
-        return [{ gameId: game.id, signUpCount, withoutOtherSignUpCount }];
+        const figures = this.computeSignUpFiguresOfGame(game, collaborators);
+        return figures.signUpCount ? [{ gameId: game.id, ...figures }] : [];
       });
+  }
+
+  /** Les chiffres des inscriptions de la partie : voir `SignUpFigures`. */
+  computeSignUpFiguresOfGame(game: Game, collaborators: SignUpCollaborators): SignUpFigures {
+    return {
+      signUpCount: this.listActiveParticipantIdsOfGame(game, collaborators).length,
+      withoutOtherSignUpCount: this.listParticipantIdsWithOnlyActiveSignUpOnFirstTimeSlot(
+        game,
+        collaborators,
+      ).length,
+    };
   }
 
   /** Les participants dont l'inscription à la partie est active (IN-4), dans l'ordre de leur inscription. */

@@ -19,18 +19,15 @@ import {
 import { injectApiCall } from '../api-call';
 import { apiResource } from '../api-resource';
 import { ConventionStore } from '../convention/convention-store';
-import { injectGesture, type Gesture } from '../gesture';
+import { injectGesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { fr } from '@chimeres/design';
 import { GameSheet } from './game-sheet';
-import { Confirmation } from '../ui/confirmation';
+import { describeMovedGame, describeUnscheduledGame } from './gesture-announcements';
 import { Placements } from './placement-dialog';
-import {
-  buildMoveOrSwapConfirmation,
-  buildUnscheduleConfirmation,
-  type ConfirmationTexts,
-} from './removed-sign-ups-confirmations';
+import { buildMoveOrSwapConfirmation } from './removed-sign-ups-confirmations';
+import { RemovedSignUpsGestures } from './removed-sign-ups-gestures';
 import { ReserveTray } from './reserve-tray';
 import {
   ScheduleDrag,
@@ -156,7 +153,7 @@ export class ScheduleBoard {
   );
   private readonly sheet = viewChild(GameSheet);
   private readonly placements = inject(Placements);
-  private readonly confirmation = inject(Confirmation);
+  private readonly gestures = inject(RemovedSignUpsGestures);
   private readonly announcer = inject(Announcer);
   private readonly store = inject(ConventionStore);
   private readonly apiCall = injectApiCall();
@@ -203,16 +200,15 @@ export class ScheduleBoard {
 
   /**
    * Déprogramme la partie (docs/design/patterns.md, Actions destructrices) : aussitôt, ou après une
-   * confirmation si elle a des inscrits (`writeConfirmingIfAny()`). La fiche se ferme, et le focus
+   * confirmation si elle a des inscrits (`RemovedSignUpsGestures`). La fiche se ferme, et le focus
    * va à la réserve, où revient son scénario.
    */
   protected async unschedule(game: GameDto) {
-    const confirmation = await this.readUnscheduleConfirmation(game, this.unscheduling);
-    if (confirmation.status === 'unreadable') return;
-    const schedule = await this.writeConfirmingIfAny(
-      () => this.unscheduleCall(game),
-      confirmation.texts,
+    const schedule = await this.gestures.unschedule(
+      game,
+      this.convention().timeSlots,
       this.unscheduling,
+      this.refresh,
     );
     if (schedule) this.unscheduled(schedule, game);
   }
@@ -249,12 +245,23 @@ export class ScheduleBoard {
   ): Promise<ScheduleDto | undefined> {
     const write = () => this.callDrop(subject, target);
     if (subject.kind === 'scenario')
-      return this.writeConfirmingIfAny(write, undefined, this.dropping);
+      return this.gestures.writeConfirmingIfAny(write, undefined, this.dropping, this.refresh);
     const { game } = subject;
+    const timeSlots = this.convention().timeSlots;
     if (target.kind === 'reserve') {
-      const confirmation = await this.readUnscheduleConfirmation(game, this.dropping);
+      const confirmation = await this.gestures.readUnscheduleConfirmation(
+        game,
+        timeSlots,
+        this.dropping,
+        this.refresh,
+      );
       if (confirmation.status === 'unreadable') return undefined;
-      return this.writeConfirmingIfAny(write, confirmation.texts, this.dropping);
+      return this.gestures.writeConfirmingIfAny(
+        write,
+        confirmation.texts,
+        this.dropping,
+        this.refresh,
+      );
     }
     const texts = buildMoveOrSwapConfirmation(
       game,
@@ -262,56 +269,9 @@ export class ScheduleBoard {
       swapGameId(game, target),
       removedSignUps,
       games,
-      this.convention().timeSlots,
+      timeSlots,
     );
-    return this.writeConfirmingIfAny(write, texts, this.dropping);
-  }
-
-  /**
-   * La confirmation de déprogrammer la partie, d'après les inscriptions que le geste retirerait,
-   * lues par `gesture` : ses textes, aucun sans inscrit. `unreadable` si la lecture est refusée : le
-   * refus part en alerte, et s'il dit l'écran périmé, la convention et le programme se relisent.
-   */
-  private async readUnscheduleConfirmation(
-    game: GameDto,
-    gesture: Gesture,
-  ): Promise<{ status: 'read'; texts: ConfirmationTexts | undefined } | { status: 'unreadable' }> {
-    const verdict = await gesture.run(() =>
-      this.apiCall(scheduleEndpoints.unscheduleVerdict, { params: { gameId: game.id } }),
-    );
-    if (verdict.status === 'refused' && verdict.refusal.stale) this.refresh();
-    if (verdict.status !== 'done') return { status: 'unreadable' };
-    const [removed] = verdict.value.removedSignUps;
-    const timeSlots = this.convention().timeSlots;
-    return {
-      status: 'read',
-      texts: removed && buildUnscheduleConfirmation(game, removed, timeSlots),
-    };
-  }
-
-  /**
-   * Écrit le geste, confirmé d'abord s'il a des `texts` : sans eux, aussitôt par `gesture`, dont le
-   * refus part en alerte ; avec eux, par le dialogue de confirmation, qui affiche son refus. Un refus
-   * qui dit l'écran périmé relit la convention et le programme. Le programme relu, ou `undefined`
-   * sans écriture.
-   */
-  private async writeConfirmingIfAny(
-    write: () => Promise<ScheduleDto>,
-    texts: ConfirmationTexts | undefined,
-    gesture: Gesture,
-  ): Promise<ScheduleDto | undefined> {
-    if (!texts) {
-      const outcome = await gesture.run(write);
-      if (outcome.status === 'refused' && outcome.refusal.stale) this.refresh();
-      return outcome.status === 'done' ? outcome.value : undefined;
-    }
-    let written: ScheduleDto | undefined;
-    const done = await this.confirmation.ask({
-      ...texts,
-      action: async () => (written = await write()),
-      onStale: () => this.refresh(),
-    });
-    return done ? written : undefined;
+    return this.gestures.writeConfirmingIfAny(write, texts, this.dropping, this.refresh);
   }
 
   /** L'appel à l'API du dépôt. */
@@ -324,7 +284,9 @@ export class ScheduleBoard {
       });
     }
     const { game } = subject;
-    if (target.kind === 'reserve') return this.unscheduleCall(game);
+    if (target.kind === 'reserve') {
+      return this.apiCall(scheduleEndpoints.unschedule, { params: { gameId: game.id } });
+    }
     const params = { gameId: game.id };
     const otherGameId = swapGameId(game, target);
     if (otherGameId) return this.apiCall(scheduleEndpoints.swap, { params, body: { otherGameId } });
@@ -377,15 +339,11 @@ export class ScheduleBoard {
     return slots.slice(index, index + count).map(({ id }) => id);
   }
 
-  private unscheduleCall(game: GameDto): Promise<ScheduleDto> {
-    return this.apiCall(scheduleEndpoints.unschedule, { params: { gameId: game.id } });
-  }
-
   /** Le refus disait l'écran périmé : la convention et le programme se relisent. */
-  private refresh() {
+  private readonly refresh = () => {
     this.store.convention.reload();
     this.schedule.reload();
-  }
+  };
 
   private gameIds(): ReadonlySet<string> {
     return new Set(this.schedule.value()?.games.map(({ id }) => id));
@@ -416,15 +374,7 @@ export class ScheduleBoard {
     const moved = schedule.games.find(({ id }) => id === gameId);
     if (!moved) return;
     const other = schedule.games.find(({ id }) => id === swappedWith);
-    if (other) {
-      this.announcer.announce(
-        fr`Parties « ${moved.scenario.title} » et « ${other.scenario.title} » échangées.`,
-      );
-    } else {
-      const slot = timeSlots.find(({ id }) => id === moved.timeSlotIds[0]);
-      const table = tables.find(({ id }) => id === moved.tableId);
-      this.announcer.announce(fr`Partie déplacée : créneau ${slot?.rank}, table ${table?.name}.`);
-    }
+    this.announcer.announce(describeMovedGame(moved, other, timeSlots, tables));
     this.focusGame(moved.id);
   }
 
@@ -432,7 +382,7 @@ export class ScheduleBoard {
   private unscheduled(schedule: ScheduleDto, game: GameDto) {
     this.schedule.set(schedule);
     this.selectedId.set(null);
-    this.announcer.announce(fr`Partie « ${game.scenario.title} » déprogrammée.`);
+    this.announcer.announce(describeUnscheduledGame(game));
     afterNextRender(() => document.getElementById('reserve-title')?.focus(), {
       injector: this.injector,
     });

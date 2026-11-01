@@ -1,6 +1,7 @@
-import type { GameDto, RemovedSignUpsDto, TimeSlotDto } from '@chimeres/contract';
+import type { GameDto, RemovedSignUpsDto } from '@chimeres/contract';
 import { countOf, formatCount, formatTimeSlotRanks, fr, plural } from '@chimeres/design';
 import type { ConfirmationRequest } from '../ui/confirmation';
+import type { GridTimeSlot } from './grid-time-slot';
 
 /** Les textes d'une confirmation, sans son écriture. */
 export type ConfirmationTexts = Pick<
@@ -15,7 +16,7 @@ export type ConfirmationTexts = Pick<
 export function buildUnscheduleConfirmation(
   game: GameDto,
   removed: RemovedSignUpsDto,
-  timeSlots: readonly TimeSlotDto[],
+  timeSlots: readonly GridTimeSlot[],
 ): ConfirmationTexts {
   return {
     question: fr`Déprogrammer « ${game.scenario.title} » ${ofRanks(ranksOf(game.timeSlotIds, timeSlots))} ?`,
@@ -38,7 +39,7 @@ export function buildMoveOrSwapConfirmation(
   otherGameId: string | null,
   removed: readonly RemovedSignUpsDto[],
   games: readonly GameDto[],
-  timeSlots: readonly TimeSlotDto[],
+  timeSlots: readonly GridTimeSlot[],
 ): ConfirmationTexts | undefined {
   const [first] = removed;
   if (!first) return undefined;
@@ -55,7 +56,7 @@ function buildMoveConfirmation(
   game: GameDto,
   timeSlotId: string,
   removed: RemovedSignUpsDto,
-  timeSlots: readonly TimeSlotDto[],
+  timeSlots: readonly GridTimeSlot[],
 ): ConfirmationTexts {
   const first = timeSlots.findIndex(({ id }) => id === timeSlotId);
   const target = timeSlots.slice(first, first + game.timeSlotIds.length).map(({ rank }) => rank);
@@ -75,7 +76,7 @@ function buildSwapConfirmation(
   game: GameDto,
   other: GameDto | undefined,
   removed: readonly RemovedSignUpsDto[],
-  timeSlots: readonly TimeSlotDto[],
+  timeSlots: readonly GridTimeSlot[],
 ): ConfirmationTexts {
   return {
     question: other
@@ -117,12 +118,12 @@ function describeRemovedSignUps(
 }
 
 /** « la partie », ou « la partie (créneaux 2 et 3) » pour une partie double. */
-function theGame(game: GameDto, timeSlots: readonly TimeSlotDto[]): string {
+function theGame(game: GameDto, timeSlots: readonly GridTimeSlot[]): string {
   const ranks = ranksOf(game.timeSlotIds, timeSlots);
   return ranks.length > 1 ? `la partie (${formatTimeSlotRanks(ranks)})` : 'la partie';
 }
 
-function ranksOf(timeSlotIds: readonly string[], timeSlots: readonly TimeSlotDto[]): number[] {
+function ranksOf(timeSlotIds: readonly string[], timeSlots: readonly GridTimeSlot[]): number[] {
   return timeSlotIds.flatMap((slotId) => timeSlots.find(({ id }) => id === slotId)?.rank ?? []);
 }
 

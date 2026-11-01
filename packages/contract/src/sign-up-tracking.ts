@@ -1,5 +1,6 @@
 import { endpoint } from './endpoint.js';
 import type { TimeSlotStateDto } from './front-office.js';
+import type { GameDto } from './schedule.js';
 import type { TableDto } from './table.js';
 
 /**
@@ -26,10 +27,30 @@ export type TimeSlotTrackingDto = {
   capacity: CapacityDto;
 };
 
-/** Le suivi des inscriptions : les créneaux, dans l'ordre de la journée, et les tables, dans l'ordre naturel. */
+/**
+ * Une partie, comme dans le programme, avec son suivi sur son premier créneau : ses inscrits actifs
+ * (IN-4), combien n'ont pas d'autre inscription active sur le créneau, « très demandée » (inscrits >
+ * places maximum) et « sous son minimum » (inscrits < places minimum, jamais sur un créneau sans
+ * inscription). `surplusSignUpCount` : les inscrits de trop au-delà du maximum ;
+ * `missingSignUpCount` : ceux qui manquent pour le minimum, 0 quand elle n'est pas sous son minimum.
+ */
+export type TrackedGameDto = GameDto & {
+  signUpCount: number;
+  withoutOtherSignUpCount: number;
+  oversubscribed: boolean;
+  belowMinimum: boolean;
+  surplusSignUpCount: number;
+  missingSignUpCount: number;
+};
+
+/**
+ * Le suivi des inscriptions : les créneaux, dans l'ordre de la journée, les tables, dans l'ordre
+ * naturel, et les parties, dans l'ordre de leur programmation.
+ */
 export type SignUpTrackingDto = {
   timeSlots: TimeSlotTrackingDto[];
   tables: TableDto[];
+  games: TrackedGameDto[];
 };
 
 /** La page « Pilotage du jour J » lit tout ce qu'elle montre en une seule lecture. */

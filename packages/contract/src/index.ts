@@ -93,6 +93,7 @@ export {
   type CapacityDto,
   type SignUpTrackingDto,
   type TimeSlotTrackingDto,
+  type TrackedGameDto,
 } from './sign-up-tracking.js';
 export {
   TABLE_NAME_MAX_LENGTH,

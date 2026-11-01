@@ -18,7 +18,6 @@ import {
   type ScheduleDto,
   type ScheduleScenarioDto,
   type TableDto,
-  type TimeSlotDto,
 } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { apiResource } from '../api-resource';
@@ -31,10 +30,11 @@ import {
   buildMoveOrSwapConfirmation,
   type ConfirmationTexts,
 } from './removed-sign-ups-confirmations';
+import type { GridTimeSlot } from './grid-time-slot';
 
 /** La grille du programme : ses créneaux, dans l'ordre de la journée, et ses tables, dans l'ordre naturel. */
 type Grid = {
-  timeSlots: readonly TimeSlotDto[];
+  timeSlots: readonly GridTimeSlot[];
   tables: readonly TableDto[];
 };
 
@@ -245,15 +245,15 @@ export class PlacementDialog {
     );
   }
 
-  protected range({ start, end }: TimeSlotDto): string {
+  protected range({ start, end }: GridTimeSlot): string {
     return formatTimeRange(start, end);
   }
 
-  protected label(slot: TimeSlotDto, table: TableDto): string {
+  protected label(slot: GridTimeSlot, table: TableDto): string {
     return `${timeSlotLabel(slot)}, ${table.name}`;
   }
 
-  protected isCurrent(slot: TimeSlotDto, table: TableDto): boolean {
+  protected isCurrent(slot: GridTimeSlot, table: TableDto): boolean {
     if (!('game' in this.request)) return false;
     const { game } = this.request;
     return game.timeSlotIds[0] === slot.id && game.tableId === table.id;
@@ -263,7 +263,7 @@ export class PlacementDialog {
    * Un refus s'affiche dans le dialogue. S'il dit le programme changé entre-temps, la grille se
    * relit ; après une coupure, elle reste telle quelle, pour réessayer.
    */
-  protected async choose(slot: TimeSlotDto, table: TableDto, verdict: Verdict) {
+  protected async choose(slot: GridTimeSlot, table: TableDto, verdict: Verdict) {
     const place = { timeSlotId: slot.id, tableId: table.id };
     const request = this.request;
     if (!('game' in request)) {

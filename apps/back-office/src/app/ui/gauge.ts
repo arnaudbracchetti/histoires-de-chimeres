@@ -1,69 +1,101 @@
 import { Component, computed, input } from '@angular/core';
 
 /**
- * Jauge d'un nombre face à des places (docs/design/patterns.md, Jauge) : une zone claire du minimum
- * au maximum, un trait à chaque borne, et un remplissage jusqu'au nombre, au plus le maximum.
- * Au-delà du maximum, des hachures, rouges pour un créneau (`overflow="danger"`). Chaque jauge a sa
- * propre échelle. Décorative : les chiffres sont toujours écrits à côté.
+ * Une case de la jauge, d'une personne : dans la zone du minimum au maximum, remplie, ou au-delà du
+ * maximum. `boundBefore` et `boundAfter` : une borne tombe avant elle, ou après la dernière.
+ */
+type Cell = {
+  zone: boolean;
+  filled: boolean;
+  over: boolean;
+  boundBefore: boolean;
+  boundAfter: boolean;
+};
+
+/**
+ * Jauge d'un nombre face à des places (docs/design/patterns.md, Jauge) : des cases bout à bout, une
+ * par personne (inscrit d'une partie, participant d'un créneau). Les cases du minimum au maximum
+ * sont claires, un trait marque chaque borne, et le remplissage va jusqu'au nombre. Au-delà du
+ * maximum, les cases sont hachurées, en rouge pour un créneau (`overflow="danger"`). Remplissage
+ * jaune pour une partie sous son minimum (`shortfall`). Décorative : les chiffres sont toujours
+ * écrits à côté.
  */
 @Component({
   selector: 'app-gauge',
-  host: { 'aria-hidden': 'true', '[class.danger]': "overflow() === 'danger'" },
+  host: {
+    'aria-hidden': 'true',
+    '[class.danger]': "overflow() === 'danger'",
+    '[class.shortfall]': 'shortfall()',
+  },
   template: `
-    <span
-      class="zone"
-      [style.left.%]="percent(min())"
-      [style.width.%]="percent(max() - min())"
-    ></span>
-    <span class="fill" [style.width.%]="percent(filled())"></span>
-    @if (count() > max()) {
+    @for (cell of cells(); track $index) {
       <span
-        class="over"
-        [style.left.%]="percent(max())"
-        [style.width.%]="percent(count() - max())"
-      ></span>
+        class="cell"
+        [class.zone]="cell.zone"
+        [class.filled]="cell.filled"
+        [class.over]="cell.over"
+      >
+        @if (cell.boundBefore) {
+          <span class="bound before"></span>
+        }
+        @if (cell.boundAfter) {
+          <span class="bound after"></span>
+        }
+      </span>
     }
-    <span class="bound" [style.left.%]="percent(min())"></span>
-    <span class="bound" [style.left.%]="percent(max())"></span>
   `,
   styles: `
     @layer components {
       :host {
-        position: relative;
-        display: block;
+        --gauge-gap: 2px;
+
+        display: flex;
+        gap: var(--gauge-gap);
         height: var(--space-s);
-        border-radius: 999px;
-        background: var(--surface-3);
       }
 
-      span {
-        position: absolute;
-        inset-block: 0;
+      /* Une case vide garde un contour, visible sur la carte comme sur le fond de la page. */
+      .cell {
+        position: relative;
+        flex: 1;
+        border-radius: 2px;
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text-muted) 80%, transparent);
       }
 
-      .zone {
-        background: color-mix(in srgb, var(--text) 18%, var(--surface-3));
+      .cell.zone {
+        background: color-mix(in srgb, var(--text) 30%, var(--surface-3));
       }
 
-      .fill {
-        left: 0;
-        border-radius: 999px 0 0 999px;
-        background: var(--text-muted);
+      .cell.filled {
+        background: color-mix(in srgb, var(--text) 35%, var(--text-muted));
       }
 
-      .over {
+      :host(.shortfall) .cell.filled {
+        background: var(--warning);
+      }
+
+      .cell.over {
         background: repeating-linear-gradient(-45deg, var(--text-muted) 0 2px, transparent 2px 4px);
       }
 
-      :host(.danger) .over {
+      :host(.danger) .cell.over {
         background: repeating-linear-gradient(-45deg, var(--danger) 0 2px, transparent 2px 4px);
       }
 
+      /* Une borne se place dans l'espace entre deux cases. */
       .bound {
+        position: absolute;
         inset-block: calc(-1 * var(--space-xxs));
         width: 2px;
-        margin-left: -1px;
         background: var(--text);
+      }
+
+      .bound.before {
+        left: calc(-1px - var(--gauge-gap) / 2);
+      }
+
+      .bound.after {
+        right: calc(-1px - var(--gauge-gap) / 2);
       }
     }
   `,
@@ -74,13 +106,20 @@ export class Gauge {
   readonly max = input.required<number>();
   /** Les hachures au-delà du maximum : neutres, ou rouges pour un créneau. */
   readonly overflow = input<'neutral' | 'danger'>('neutral');
+  /** Le remplissage en jaune : une partie sous son minimum, d'après le drapeau reçu. */
+  readonly shortfall = input(false);
 
-  /** L'échelle : le maximum, ou le nombre s'il le dépasse. */
-  private readonly scale = computed(() => Math.max(this.max(), this.count(), 1));
-
-  protected readonly filled = computed(() => Math.min(this.count(), this.max()));
-
-  protected percent(value: number): number {
-    return (value / this.scale()) * 100;
-  }
+  /** Une case par place jusqu'au maximum, ou par personne si le nombre le dépasse ; une au moins. */
+  protected readonly cells = computed((): Cell[] => {
+    const [count, min, max] = [this.count(), this.min(), this.max()];
+    const length = Math.max(max, count, 1);
+    const isBound = (position: number) => position > 0 && (position === min || position === max);
+    return Array.from({ length }, (_, index) => ({
+      zone: index >= min && index < max,
+      filled: index < Math.min(count, max),
+      over: index >= max && index < count,
+      boundBefore: isBound(index),
+      boundAfter: index === length - 1 && isBound(length),
+    }));
+  });
 }

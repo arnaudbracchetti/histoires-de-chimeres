@@ -1,14 +1,15 @@
 import { Component, computed, ElementRef, inject, input, output } from '@angular/core';
-import type { GameDto, TableDto, TimeSlotDto } from '@chimeres/contract';
+import type { GameDto, TableDto } from '@chimeres/contract';
 import { formatSeats, timeSlotLabel, plural } from '@chimeres/design';
 import { Button } from '../ui/button';
+import type { GridTimeSlot } from './grid-time-slot';
 import { Icon } from '../ui/icon';
 import { ScenarioIllustration } from '../ui/scenario-illustration';
 
 /**
  * La fiche d'une partie, dans un panneau latéral non modal à droite de la frise
  * (docs/design/patterns.md, Fiche de la partie). Échap ou ✕ la ferme. Elle ne fait aucune
- * écriture : le Calendrier déplace et déprogramme.
+ * écriture : le Calendrier, ou le pilotage, déplace et déprogramme.
  */
 @Component({
   selector: 'app-game-sheet',
@@ -46,14 +47,16 @@ import { ScenarioIllustration } from '../ui/scenario-illustration';
         <dt>Places</dt>
         <dd>{{ formatSeats(game().seats) }}</dd>
       </dl>
-      <div class="actions">
-        <button type="button" appButton="secondary" (click)="moveRequested.emit()">
-          Déplacer vers…
-        </button>
-        <button type="button" appButton="quiet-danger" (click)="unscheduleRequested.emit()">
-          Déprogrammer
-        </button>
-      </div>
+      @if (offersGestures()) {
+        <div class="actions">
+          <button type="button" appButton="secondary" (click)="moveRequested.emit()">
+            Déplacer vers…
+          </button>
+          <button type="button" appButton="quiet-danger" (click)="unscheduleRequested.emit()">
+            Déprogrammer
+          </button>
+        </div>
+      }
     </aside>
   `,
   styles: `
@@ -119,8 +122,10 @@ import { ScenarioIllustration } from '../ui/scenario-illustration';
 export class GameSheet {
   readonly game = input.required<GameDto>();
   /** Dans l'ordre de la journée. */
-  readonly timeSlots = input.required<readonly TimeSlotDto[]>();
+  readonly timeSlots = input.required<readonly GridTimeSlot[]>();
   readonly tables = input.required<readonly TableDto[]>();
+  /** « Déplacer vers… » et « Déprogrammer » : aucun sur un créneau dont le tirage est lancé. */
+  readonly offersGestures = input(true);
 
   readonly closed = output<void>();
   readonly moveRequested = output<void>();

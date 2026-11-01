@@ -116,7 +116,7 @@ describe('Suivi des inscriptions', () => {
     const dto = (await server().get(apiUrl(signUpTrackingEndpoints.read)).expect(200))
       .body as SignUpTrackingDto;
 
-    expect(dto).toEqual({
+    expect({ timeSlots: dto.timeSlots, tables: dto.tables }).toEqual({
       timeSlots: [
         {
           id: slot(1),
@@ -142,5 +142,44 @@ describe('Suivi des inscriptions', () => {
         { id: table('Table 10'), name: 'Table 10' },
       ],
     });
+  });
+
+  it('rend les parties comme le programme, avec leurs inscrits et leurs drapeaux', async () => {
+    const elodie = await gameMaster('Élodie');
+    const kairos = await gameMaster('Kaïros');
+    const neons = await scheduled(elodie.id, 'Néons', { min: 3, max: 5 }, 'Table 10');
+    const brumes = await scheduled(kairos.id, 'Brumes', { min: 1, max: 1 }, 'Table 2');
+    const lune = await linkedPhone('Lune');
+    const sven = await linkedPhone('Sven');
+    await signUp(neons, lune);
+    await signUp(brumes, lune);
+    await signUp(brumes, sven);
+    const schedule = (await server().get(apiUrl(scheduleEndpoints.read)).expect(200))
+      .body as ScheduleDto;
+
+    const dto = (await server().get(apiUrl(signUpTrackingEndpoints.read)).expect(200))
+      .body as SignUpTrackingDto;
+
+    const gameOf = (id: string) => schedule.games.find((game) => game.id === id)!;
+    expect(dto.games).toEqual([
+      {
+        ...gameOf(neons),
+        signUpCount: 1,
+        withoutOtherSignUpCount: 0,
+        oversubscribed: false,
+        belowMinimum: true,
+        surplusSignUpCount: 0,
+        missingSignUpCount: 2,
+      },
+      {
+        ...gameOf(brumes),
+        signUpCount: 2,
+        withoutOtherSignUpCount: 1,
+        oversubscribed: true,
+        belowMinimum: false,
+        surplusSignUpCount: 1,
+        missingSignUpCount: 0,
+      },
+    ]);
   });
 });

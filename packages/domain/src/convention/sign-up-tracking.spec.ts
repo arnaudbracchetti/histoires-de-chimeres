@@ -152,3 +152,111 @@ describe('Suivi des inscriptions de chaque créneau (§4.4)', () => {
     expect(listFiguresByTimeSlot(convention)[0]).toEqual([2, 5, 9]);
   });
 });
+
+/** Identifie d'autres participants, sous le pseudo de leur id. */
+function identify(convention: Convention, ids: string[]): void {
+  for (const id of ids) convention.identifyByNickname(id, 'K7M2', id, null, NOW);
+}
+
+/** Les chiffres des parties qui commencent sur le créneau de rang `rank`. */
+const listGamesOfTimeSlot = (convention: Convention, rank: number) =>
+  convention.computeSignUpTracking(CATALOGUE)[rank - 1]!.games;
+
+describe('Suivi des parties de chaque créneau (§4.4)', () => {
+  it('rend les inscrits de chaque partie qui commence sur le créneau, et ceux sans autre inscription', () => {
+    const convention = aConvention();
+    signUp(convention, { p1: ['brumes', 'epice'], p2: ['brumes'], p3: ['epice'] });
+
+    expect(listGamesOfTimeSlot(convention, 1)).toEqual([
+      {
+        gameId: 'brumes',
+        signUpCount: 2,
+        withoutOtherSignUpCount: 1,
+        oversubscribed: false,
+        belowMinimum: true,
+        surplusSignUpCount: 0,
+        missingSignUpCount: 1,
+      },
+      {
+        gameId: 'epice',
+        signUpCount: 2,
+        withoutOtherSignUpCount: 1,
+        oversubscribed: false,
+        belowMinimum: false,
+        surplusSignUpCount: 0,
+        missingSignUpCount: 0,
+      },
+    ]);
+  });
+
+  it('ne rend une partie double que sur son premier créneau', () => {
+    const convention = aConvention();
+    signUp(convention, { p1: ['epice'], p2: ['neons'] });
+
+    expect(listGamesOfTimeSlot(convention, 2).map(({ gameId }) => gameId)).toEqual(['neons']);
+  });
+
+  it('dit « très demandée » quand les inscrits dépassent les places maximum (IN-5)', () => {
+    const convention = aConvention();
+    identify(convention, ['p4', 'p5']);
+    signUp(convention, { p1: ['epice'], p2: ['epice'], p3: ['epice'], p4: ['epice'] });
+
+    expect(listGamesOfTimeSlot(convention, 1)[1]!.oversubscribed).toBe(false);
+
+    signUp(convention, { p5: ['epice'] });
+
+    expect(listGamesOfTimeSlot(convention, 1)[1]!.oversubscribed).toBe(true);
+  });
+
+  it('compte les inscrits de trop au-delà du maximum, et ceux qui manquent pour le minimum', () => {
+    const convention = aConvention();
+    identify(convention, ['p4', 'p5', 'p6']);
+    signUp(convention, { p1: ['epice'], p2: ['epice'], p3: ['epice'], p4: ['epice'] });
+    signUp(convention, { p5: ['epice'], p6: ['epice', 'brumes'] });
+
+    // « epice » : 6 inscrits pour 2 à 4 places ; « brumes » : 1 inscrit pour 3 à 5 places.
+    expect(
+      listGamesOfTimeSlot(convention, 1).map(({ surplusSignUpCount, missingSignUpCount }) => [
+        surplusSignUpCount,
+        missingSignUpCount,
+      ]),
+    ).toEqual([
+      [0, 2],
+      [2, 0],
+    ]);
+  });
+
+  it('ne compte aucun inscrit manquant sur un créneau sans inscription', () => {
+    expect(
+      listGamesOfTimeSlot(aConvention(), 1).map(({ missingSignUpCount }) => missingSignUpCount),
+    ).toEqual([0, 0]);
+  });
+
+  it('dit « sous son minimum » d’une partie sans inscrit, dès que le créneau en a', () => {
+    const convention = aConvention();
+
+    expect(listGamesOfTimeSlot(convention, 1).map(({ belowMinimum }) => belowMinimum)).toEqual([
+      false,
+      false,
+    ]);
+
+    signUp(convention, { p1: ['brumes'], p2: ['brumes'], p3: ['brumes'] });
+
+    expect(listGamesOfTimeSlot(convention, 1).map(({ belowMinimum }) => belowMinimum)).toEqual([
+      false,
+      true,
+    ]);
+  });
+
+  it('ne compte pas l’inscription d’un MJ qui mène sur le créneau (IN-4)', () => {
+    const convention = aConvention();
+    convention.unscheduleGame('neons');
+    signUp(convention, { 'p-g3': ['epice'], p1: ['epice'] });
+    convention.scheduleScenario('neons', aScenario('c'), 's2', 't1');
+
+    expect(listGamesOfTimeSlot(convention, 1)[1]).toMatchObject({
+      signUpCount: 1,
+      withoutOtherSignUpCount: 1,
+    });
+  });
+});
