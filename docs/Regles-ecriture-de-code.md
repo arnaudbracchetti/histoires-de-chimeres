@@ -20,7 +20,7 @@ type rend évident.
 | Compte | `count…` | `countGamesAtTable(tableId)` |
 | Liste | `list…` | `listEntries()` |
 | Calcule une donnée dérivée (verdicts, réserve, situation, fin) | `compute…` | `computeReserve(catalogue)` |
-| Fabrique un objet (refus, notification) | `build…` | `buildGameMovedNotifications(…)` |
+| Fabrique un objet (refus, notification) | `build…` | `buildOversubscribedNotifications(…)` |
 | Fabrique statique | `create…`, `parse…`, `restore` | `ComparableName.createFromText(text)` |
 | Modifie l'objet | verbe du geste | `scheduleScenario(…)`, `withdrawFromGame(…)` |
 | Objet immuable : rend le nouvel objet | `get<Type>After<Geste>` | `getDayAfterAddingTimeSlot(…)` |

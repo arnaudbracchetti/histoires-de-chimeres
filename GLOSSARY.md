@@ -57,6 +57,9 @@ _Avoid_: Permuter, intervertir
 **Programme** · `Schedule`:
 L'ensemble des parties programmées de la convention.
 
+**Changement du Programme** · `ScheduleChange`:
+L'écart entre le Programme d'avant et celui d'après un geste d'un Organisateur (programmer, déplacer, échanger, déprogrammer). On en tire les notifications du geste : une partie retirée, passée sur d'autres créneaux ou nouvelle a les siennes ; une partie restée sur les mêmes créneaux n'en a aucune (NO-1 à NO-4).
+
 **Partie double** · `TwoSlotGame`:
 Partie qui occupe deux créneaux consécutifs ; ses joueurs sont les mêmes sur les deux créneaux.
 _Avoid_: DoubleGame

@@ -46,6 +46,11 @@ export type NotificationRecipients = {
   participantIds: string[];
 };
 
+/** Des destinataires désignés par leur identifiant de participant. */
+export function buildParticipantRecipients(participantIds: string[]): NotificationRecipients {
+  return { kind: 'participants', participantIds };
+}
+
 /**
  * Notification produite par un geste du domaine : un code, des paramètres, ses destinataires et son
  * échéance, sans texte. Passé l'échéance, elle n'est plus livrée (NO-3) ; `null` : aucune, tant

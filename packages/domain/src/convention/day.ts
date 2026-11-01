@@ -1,4 +1,5 @@
 import { Refusal } from '../refusal.js';
+import { computeLatestEnd, type LocalMoment } from './local-moment.js';
 import type { TimeOfDay } from './time-of-day.js';
 import { TimeSlot } from './time-slot.js';
 
@@ -17,6 +18,22 @@ export class Day {
   /** Rang du créneau dans la journée, à partir de 1 (PR-8) ; 0 s'il n'en fait pas partie. */
   getTimeSlotRank(timeSlotId: string): number {
     return this.timeSlots.findIndex((slot) => slot.id === timeSlotId) + 1;
+  }
+
+  /** Les rangs des créneaux, dans l'ordre donné (PR-8). */
+  getTimeSlotRanks(timeSlotIds: readonly string[]): number[] {
+    return timeSlotIds.map((slotId) => this.getTimeSlotRank(slotId));
+  }
+
+  /**
+   * La fin du plus tardif de ces créneaux, qui doivent exister, le jour `date`, ou `null` sans date :
+   * l'échéance d'une notification (NO-3).
+   */
+  computeEndOfTimeSlots(date: string | null, timeSlotIds: readonly string[]): LocalMoment | null {
+    return computeLatestEnd(
+      date,
+      timeSlotIds.map((slotId) => this.findExistingTimeSlotById(slotId).end),
+    );
   }
 
   /** Refuse un créneau qui n'existe pas. */

@@ -25,9 +25,14 @@ export class Schedule {
     return new Schedule([...games]);
   }
 
+  /** La partie, ou `undefined` si elle n'est pas au Programme. */
+  findGameById(gameId: string): Game | undefined {
+    return this.games.find((candidate) => candidate.id === gameId);
+  }
+
   /** La partie, qui doit exister. */
   findExistingGameById(gameId: string): Game {
-    const game = this.games.find((candidate) => candidate.id === gameId);
+    const game = this.findGameById(gameId);
     if (!game) throw new Refusal('game-not-found', {});
     return game;
   }
@@ -75,14 +80,9 @@ export class Schedule {
   }
 
   /** La partie, autre que `game`, dont c'est la première case, ou `undefined`. */
-  findOtherGameStartingAt(
-    game: Game,
-    timeSlotId: string,
-    tableId: string,
-  ): Game | undefined {
+  findOtherGameStartingAt(game: Game, timeSlotId: string, tableId: string): Game | undefined {
     return this.games.find(
-      (candidate) =>
-        candidate.id !== game.id && candidate.isStartingAt(timeSlotId, tableId),
+      (candidate) => candidate.id !== game.id && candidate.isStartingAt(timeSlotId, tableId),
     );
   }
 
