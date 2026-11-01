@@ -1,0 +1,1004 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Algorithme de tirage · prototype</title>
+<!--
+  PROTOTYPE JETABLE : ne pas reprendre la page en production. Seul le module pur (premier <script>,
+  `DrawPrototype`) est fait pour passer dans `packages/draw`.
+  Question : l'algorithme décidé au cadrage se comporte-t-il comme on l'attend sur des créneaux
+  réalistes ? Il doit trancher la mesure de l'équilibre, la méthode de calcul des étapes 2 à 4 et son
+  temps à 80 participants et 5 parties, et le test de la promesse « mêmes inscriptions, mêmes chances ».
+  Ticket « Prototype de l'algorithme de tirage » (#110), carte « Tirage d'un créneau : algorithme,
+  ajustements et publication » (#109). Contrat repris : « Isolement de l'algorithme de tirage » (#115) :
+  l'algorithme ne voit que le créneau, des identifiants opaques et une source de hasard injectée.
+
+  Retenu (#110) : l'équilibre se mesure par « table la moins remplie d'abord », et une règle s'ajoute juste
+  avant lui : « le moins de joueurs possible dans les parties qui restent sous leur minimum ». Ce sont les
+  réglages par défaut ; les autres restent pour comparer.
+
+  Ouvrir le fichier dans un navigateur, sans serveur. Rien n'est enregistré : tout vit en mémoire.
+  Les scénarios guidés tirent à graine fixe : ils donnent le même résultat à chaque passage. Le jeu
+  libre tire au hasard.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Aldrich&display=swap">
+<style>
+/* Jetons repris de packages/design/tokens.css. */
+:root {
+  color-scheme: dark;
+  --surface-0: #151717;
+  --surface-1: #1b1e1e;
+  --surface-2: #222525;
+  --surface-3: #2a2d2d;
+  --border: #313535;
+  --text: #eceae6;
+  --text-muted: #a9a49e;
+  --accent: #fc9203;
+  --on-accent: #161818;
+  --focus: #7cc4e4;
+  --success: #6cc08b;
+  --warning: #e8d25c;
+  --danger: #f07f63;
+  --engraving-strong: #626767;
+  --font-display: 'Uncial Antiqua', serif;
+  --font-caps: 'Aldrich', sans-serif;
+  --font-ui: system-ui, sans-serif;
+  --halo-soft: 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--surface-0); color: var(--text); font: 0.8125rem/1.45 var(--font-ui); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.top { padding: 24px 32px 0; max-width: 1400px; }
+h1 { font: 400 1.625rem/1.2 var(--font-display); margin: 0 0 8px; }
+.lead { color: var(--text-muted); max-width: 95ch; margin: 0; }
+.lead strong { color: var(--text); font-weight: 500; }
+
+.layout {
+  display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 24px;
+  padding: 20px 32px 48px; align-items: start; max-width: 1400px;
+}
+@media (max-width: 960px) { .layout { grid-template-columns: 1fr; padding: 16px; } .top { padding: 16px 16px 0; } }
+.side { display: grid; gap: 16px; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; }
+@media (max-width: 960px) { .side { position: static; max-height: none; } }
+.main { display: grid; gap: 16px; min-width: 0; }
+
+.card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+h2 {
+  font: 400 0.6875rem/1.2 var(--font-caps); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-muted); margin: 0 0 12px;
+}
+h3 { font-size: 0.9375rem; font-weight: 600; margin: 16px 0 8px; }
+h3:first-child { margin-top: 0; }
+p { margin: 0 0 8px; }
+.muted { color: var(--text-muted); }
+
+button {
+  font: inherit; color: var(--text); background: var(--surface-3); border: 1px solid var(--border);
+  border-radius: 8px; padding: 6px 10px; cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: var(--engraving-strong); }
+button:disabled { cursor: default; opacity: 0.4; }
+button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+button.link { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+.tab { padding: 4px 9px; font-size: 0.75rem; }
+.tab[aria-selected="true"] { border-color: var(--accent); color: var(--accent); }
+.intro p { color: var(--text); }
+.steps { list-style: none; padding: 0; margin: 12px 0 8px; display: grid; gap: 6px; }
+.steps button { width: 100%; text-align: left; display: flex; gap: 8px; }
+.steps .num { color: var(--text-muted); min-width: 1.2em; }
+.steps button.primary .num { color: var(--on-accent); }
+.steps button.done { opacity: 0.55; }
+
+fieldset { border: 0; padding: 0; margin: 0 0 14px; }
+legend { font-weight: 600; margin-bottom: 4px; padding: 0; }
+.option { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; cursor: pointer; }
+.option input { margin-top: 3px; accent-color: var(--accent); }
+.option small { display: block; color: var(--text-muted); }
+
+details.how summary { cursor: pointer; font-weight: 600; }
+details.how ol { padding-left: 1.3em; margin: 8px 0 0; }
+details.how li { margin-bottom: 6px; }
+
+.slot-head { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; margin-bottom: 4px; }
+.slot-head h3 { margin: 0; font-size: 1.125rem; }
+.note {
+  border-left: 3px solid var(--accent); background: var(--surface-2); padding: 8px 12px;
+  border-radius: 0 8px 8px 0; margin: 12px 0;
+}
+.summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin: 12px 0; }
+.metric { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; }
+.metric .label { color: var(--text-muted); font-size: 0.75rem; }
+.metric .value { font-size: 0.9375rem; font-variant-numeric: tabular-nums; }
+.metric.active { box-shadow: var(--halo-soft); }
+.metric.active .label::after { content: " · mesure retenue"; color: var(--accent); }
+
+.games { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin-top: 12px; }
+.game { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.game-title { display: flex; gap: 8px; align-items: baseline; margin-bottom: 2px; }
+.letter {
+  display: inline-grid; place-items: center; width: 1.5em; height: 1.5em; border-radius: 5px;
+  font: 400 0.75rem var(--font-caps); color: var(--accent); border: 1px solid var(--accent); flex: none;
+}
+.seats { display: flex; flex-wrap: wrap; gap: 3px; margin: 10px 0 6px; }
+.seat { width: 14px; height: 14px; border-radius: 3px; background: var(--surface-0); border: 1px solid var(--engraving-strong); }
+.seat.min { border-color: var(--warning); }
+.seat.filled { background: var(--accent); }
+.badge { font-size: 0.6875rem; border-radius: 4px; padding: 0 6px; border: 1px solid currentColor; white-space: nowrap; }
+.badge.warn { color: var(--warning); }
+.badge.hot { color: var(--danger); }
+.badge.info { color: var(--focus); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.chip { background: var(--surface-3); border-radius: 999px; padding: 1px 8px; font-size: 0.75rem; }
+.chip.moved { box-shadow: var(--halo-soft); color: var(--accent); }
+.chip.out { text-decoration: line-through; color: var(--text-muted); }
+.unassigned { margin-top: 14px; }
+
+.verdict { font-size: 0.9375rem; font-weight: 600; }
+.verdict.ok { color: var(--success); }
+.verdict.ko { color: var(--danger); }
+details.group { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; margin-top: 8px; }
+details.group summary { cursor: pointer; }
+details.group summary .ko { color: var(--danger); }
+details.group summary .ok { color: var(--success); }
+table { border-collapse: collapse; width: 100%; margin-top: 8px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 3px 8px; border-bottom: 1px solid var(--border); }
+th { font-weight: 500; color: var(--text-muted); }
+
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 6px; }
+input[type="text"], input[type="number"] {
+  font: inherit; color: var(--text); background: var(--surface-0); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 6px;
+}
+input[type="number"] { width: 4.2em; }
+input[type="text"] { width: 15em; }
+.check { display: inline-flex; gap: 3px; align-items: center; }
+.check input { accent-color: var(--accent); }
+</style>
+
+<body>
+<header class="top">
+  <h1>Algorithme de tirage</h1>
+  <p class="lead">
+    <strong>Prototype jetable.</strong> L'algorithme décidé au cadrage, dans l'ordre :
+    1) jamais au-dessus du maximum d'une partie, et seulement une partie où l'on est inscrit ;
+    2) placer le plus de participants ; 3) à égalité, le plus de parties à leur minimum ;
+    4) à égalité, les tables les plus équilibrées ; 5) le hasard départage le reste.
+    <strong>Se comporte-t-il comme on l'attend ?</strong> Les scénarios, à gauche, posent les cas qui comptent ;
+    le jeu libre, en bas, permet d'en inventer d'autres.
+  </p>
+</header>
+
+<main class="layout">
+  <aside class="side">
+    <section class="card" id="scenarios" aria-label="Scénarios guidés"></section>
+    <section class="card" id="settings" aria-label="Réglages de l'algorithme"></section>
+  </aside>
+  <div class="main">
+    <section class="card" id="state" aria-live="polite"></section>
+    <section class="card" id="next" hidden></section>
+    <section class="card" id="fairness" hidden></section>
+    <section class="card" id="editor"></section>
+  </div>
+</main>
+
+<script>
+/*
+ * Module pur : le tirage d'un créneau, selon le contrat de #115. Aucune référence au DOM.
+ * C'est la partie à reprendre dans `packages/draw` ; `checkFairness` est le test de la promesse,
+ * à reprendre dans la suite de tests de contrat.
+ */
+const DrawPrototype = (() => {
+  'use strict';
+
+  /** Un générateur pseudo-aléatoire à graine : la source de hasard injectée. */
+  function mulberry32(seed) {
+    return () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /** Mélange de Fisher-Yates : chaque ordre a la même probabilité. */
+  function shuffled(list, random) {
+    const copy = [...list];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+
+  /**
+   * Le tirage d'un créneau.
+   * `slot` : `{ games: [{ id, min, max }], participants: [{ id, gameIds }] }`, identifiants opaques.
+   * `options` : `balance` ('weighted' | 'range' | 'leximin'), `underMin` ('balance' | 'fewest'), `shuffle`.
+   * Rend l'affectation de chaque participant (id de partie, ou `null` : non placé), la répartition
+   * retenue (joueurs par partie, dans l'ordre de `games`), le nombre de répartitions ex aequo et
+   * le nombre de répartitions examinées.
+   */
+  function drawTimeSlot(slot, random, options) {
+    const { games } = slot;
+    const n = games.length;
+    const index = new Map(games.map((game, i) => [game.id, i]));
+    const order = options.shuffle ? shuffled(slot.participants, random) : slot.participants;
+    const masks = order.map((p) =>
+      p.gameIds.reduce((mask, id) => (index.has(id) ? mask | (1 << index.get(id)) : mask), 0),
+    );
+
+    // signedUpTo[T] : participants inscrits à au moins une partie de l'ensemble T (condition de Hall).
+    const signedUpTo = new Array(1 << n).fill(0);
+    for (let T = 1; T < 1 << n; T++) for (const mask of masks) if (mask & T) signedUpTo[T]++;
+
+    // Couplage par chemins augmentants, dans l'ordre mélangé : un participant placé le reste, mais
+    // peut glisser vers une autre de ses parties pour faire de la place au suivant.
+    const seat = (seatsPerGame) => {
+      const seated = games.map(() => []);
+      const gameOf = new Array(order.length).fill(-1);
+      const tryToSeat = (p, visited) => {
+        for (let g = 0; g < n; g++) {
+          if (!((masks[p] >> g) & 1) || visited[g]) continue;
+          visited[g] = true;
+          if (seated[g].length < seatsPerGame[g]) {
+            seated[g].push(p);
+            gameOf[p] = g;
+            return true;
+          }
+          for (let k = 0; k < seated[g].length; k++) {
+            if (tryToSeat(seated[g][k], visited)) {
+              seated[g][k] = p;
+              gameOf[p] = g;
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+      for (let p = 0; p < order.length; p++) tryToSeat(p, new Array(n).fill(false));
+      return gameOf;
+    };
+
+    // Étape 2 : le nombre maximum de participants plaçables.
+    const maxPlaced = seat(games.map((g) => g.max)).filter((g) => g >= 0).length;
+
+    // Étapes 3 et 4 : toutes les répartitions qui placent ce maximum, sans dépasser les maximums,
+    // et que les inscriptions permettent (Hall : pour tout ensemble de parties, pas plus de joueurs
+    // que d'inscrits à ces parties). On garde les meilleures.
+    const caps = games.map((g, i) => Math.min(g.max, signedUpTo[1 << i]));
+    const capsAfter = caps.map((_, i) => caps.slice(i + 1).reduce((a, b) => a + b, 0));
+    const seatScale = games.reduce((l, g) => (l * g.max) / gcd(l, g.max), 1);
+    const counts = new Array(n).fill(0);
+    let bestKey = null;
+    let best = [];
+    let examined = 0;
+
+    const keyOf = () => {
+      const atMin = games.filter((g, k) => counts[k] >= g.min).length;
+      const underMin = games.reduce((sum, g, k) => sum + (counts[k] < g.min ? counts[k] : 0), 0);
+      // Remplissages en entiers (places ramenées au même dénominateur) : les ex aequo sont exacts.
+      const fills = counts.map((c, k) => (c * seatScale) / games[k].max);
+      const balance =
+        options.balance === 'range' ? [Math.min(...fills) - Math.max(...fills)]
+        : options.balance === 'leximin' ? [...fills].sort((a, b) => a - b)
+        : [-counts.reduce((sum, c, k) => sum + (c * c * seatScale) / games[k].max, 0)];
+      return [atMin, ...(options.underMin === 'fewest' ? [-underMin] : []), ...balance];
+    };
+
+    const hallHolds = (i) => {
+      for (let T = 1 << i; T < 1 << (i + 1); T++) {
+        let sum = 0;
+        for (let g = 0; g <= i; g++) if ((T >> g) & 1) sum += counts[g];
+        if (sum > signedUpTo[T]) return false;
+      }
+      return true;
+    };
+
+    const explore = (i, placedSoFar) => {
+      if (i === n) {
+        examined++;
+        const key = keyOf();
+        let comparison = 1;
+        if (bestKey) {
+          comparison = 0;
+          for (let k = 0; k < key.length && comparison === 0; k++) comparison = key[k] - bestKey[k];
+        }
+        if (comparison > 0) {
+          bestKey = key;
+          best = [[...counts]];
+        } else if (comparison === 0) {
+          best.push([...counts]);
+        }
+        return;
+      }
+      const from = Math.max(0, maxPlaced - placedSoFar - capsAfter[i]);
+      const to = Math.min(caps[i], maxPlaced - placedSoFar);
+      for (let x = from; x <= to; x++) {
+        counts[i] = x;
+        if (!hallHolds(i)) break;
+        explore(i + 1, placedSoFar + x);
+      }
+      counts[i] = 0;
+    };
+    explore(0, 0);
+
+    // Étape 5 : le hasard choisit entre les répartitions ex aequo, puis l'ordre mélangé décide qui s'assoit.
+    const distribution = best[Math.floor(random() * best.length)];
+    const gameOf = seat(distribution);
+    const assignments = new Map(order.map((p, k) => [p.id, gameOf[k] < 0 ? null : games[gameOf[k]].id]));
+    return { assignments, distribution, tied: best.length, examined, maxPlaced };
+  }
+
+  /** Trois mesures de l'équilibre d'une répartition, pour comparer (0 à 1). */
+  function balanceOf(games, counts) {
+    const fills = counts.map((c, k) => c / games[k].max);
+    const seats = games.reduce((sum, g) => sum + g.max, 0);
+    const mean = counts.reduce((a, b) => a + b, 0) / seats;
+    const variance = games.reduce((sum, g, k) => sum + g.max * (fills[k] - mean) ** 2, 0) / seats;
+    return { weighted: Math.sqrt(variance), range: Math.max(...fills) - Math.min(...fills), lowest: Math.min(...fills) };
+  }
+
+  /**
+   * TI-3, côté domaine et non algorithme : les joueurs d'une partie double, placés au tirage de son
+   * premier créneau, ne participent pas au tirage du suivant ; leurs inscriptions y sont ignorées.
+   */
+  function participantsOfNextTimeSlot(nextSlot, previousAssignments, twoSlotGameIds) {
+    const playing = new Set(
+      [...previousAssignments].filter(([, gameId]) => twoSlotGameIds.includes(gameId)).map(([id]) => id),
+    );
+    return {
+      slot: { ...nextSlot, participants: nextSlot.participants.filter((p) => !playing.has(p.id)) },
+      excluded: nextSlot.participants.filter((p) => playing.has(p.id)).map((p) => p.id),
+    };
+  }
+
+  /**
+   * La promesse « mêmes inscriptions, mêmes chances », vérifiée sur `runs` tirages à graine fixe
+   * (le test donne toujours le même verdict). Les participants aux inscriptions identiques forment un
+   * groupe ; pour chaque issue (chaque partie de leurs inscriptions, et « non placé »), la part de
+   * chacun ne doit pas s'écarter de la moyenne du groupe de plus de 5 écarts types du hasard.
+   */
+  function checkFairness(slot, options, runs, seed) {
+    const random = mulberry32(seed);
+    const tally = new Map(slot.participants.map((p) => [p.id, new Map()]));
+    const start = performance.now();
+    for (let r = 0; r < runs; r++) {
+      for (const [id, gameId] of drawTimeSlot(slot, random, options).assignments) {
+        const outcomes = tally.get(id);
+        outcomes.set(gameId, (outcomes.get(gameId) ?? 0) + 1);
+      }
+    }
+    const ms = performance.now() - start;
+
+    const profiles = new Map();
+    for (const p of slot.participants) {
+      const key = [...p.gameIds].sort().join('+');
+      if (!profiles.has(key)) profiles.set(key, []);
+      profiles.get(key).push(p);
+    }
+    const groups = [...profiles.values()].map((members) => {
+      const outcomes = [...slot.games.filter((g) => members[0].gameIds.includes(g.id)).map((g) => g.id), null];
+      const rows = members.map((p) => ({
+        id: p.id,
+        shares: outcomes.map((o) => (tally.get(p.id).get(o) ?? 0) / runs),
+      }));
+      let worst = { gap: 0, tolerance: 0, ratio: 0 };
+      outcomes.forEach((_, k) => {
+        const mean = rows.reduce((sum, row) => sum + row.shares[k], 0) / rows.length;
+        const tolerance = 5 * Math.sqrt((mean * (1 - mean)) / runs);
+        for (const row of rows) {
+          const gap = Math.abs(row.shares[k] - mean);
+          const ratio = tolerance > 0 ? gap / tolerance : gap > 0 ? Infinity : 0;
+          if (ratio > worst.ratio || (worst.ratio === 0 && tolerance > worst.tolerance)) worst = { gap, tolerance, ratio };
+        }
+      });
+      const placedShare = 1 - rows.reduce((sum, row) => sum + row.shares[outcomes.length - 1], 0) / rows.length;
+      return { gameIds: members[0].gameIds, outcomes, rows, placedShare, ...worst, fair: worst.ratio <= 1 };
+    });
+    return { runs, ms, groups, fair: groups.every((g) => g.fair) };
+  }
+
+  return { mulberry32, drawTimeSlot, balanceOf, participantsOfNextTimeSlot, checkFairness };
+})();
+</script>
+
+<script>
+/* La page : une coquille au-dessus du module, jetable. */
+'use strict';
+const { mulberry32, drawTimeSlot, balanceOf, participantsOfNextTimeSlot, checkFairness } = DrawPrototype;
+
+const RUNS = 2000;
+const FAIRNESS_SEED = 2026;
+const PREFIXES = ['Ka', 'Mo', 'Ely', 'Tha', 'Zé', 'Bri', 'Lou', 'Fen', 'Lys', 'Gar', 'Vé', 'Nim', 'Sol', 'Ash', 'Ry', 'Ora'];
+const SUFFIXES = ['ïros', 'rgane', 'dwen', 'lia', 'rik', 'nor', 'va', 'thas', 'mir', 'elle'];
+const pseudoAt = (i) => PREFIXES[i % 16] + SUFFIXES[(7 * i + Math.floor(i / 16)) % 10];
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const fr = (x, digits = 0) => x.toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+const pct = (x, digits = 0) => `${fr(x * 100, digits)}&nbsp;%`;
+const pts = (x) => `${fr(x * 100, 1)}&nbsp;pts`;
+const plural = (n, one, many) => `${fr(n)}&nbsp;${n > 1 ? many : one}`;
+
+const game = (id, title, min, max, twoSlot = false) => ({ id, title, min, max, twoSlot });
+const group = (count, gameIds, nextGameIds = '') => ({ count, gameIds: [...gameIds], nextGameIds: [...nextGameIds] });
+const CADRAGE = { balance: 'leximin', underMin: 'fewest', shuffle: true };
+
+let state = null;
+const ui = { scenario: 0, stepsDone: 0 };
+
+function load({ settings = CADRAGE, slot, next = null }) {
+  state = {
+    settings: { ...settings },
+    slot: { label: 'Créneau 1', ...slot },
+    next: next && { label: 'Créneau 2', ...next, prepared: false, draw: null },
+    draw: null,
+    fairness: null,
+  };
+}
+
+function peopleOf(groups) {
+  let i = 0;
+  return groups.flatMap((g) =>
+    Array.from({ length: g.count }, () => {
+      const k = i++;
+      return { id: `p${k + 1}`, pseudo: pseudoAt(k), gameIds: g.gameIds, nextGameIds: g.nextGameIds };
+    }),
+  );
+}
+
+/** L'entrée de l'algorithme : rien que des identifiants, les places et les inscriptions. */
+function inputOf(games, people, key) {
+  const ids = new Set(games.map((g) => g.id));
+  return {
+    games: games.map(({ id, min, max }) => ({ id, min, max })),
+    participants: people
+      .map((p) => ({ id: p.id, gameIds: p[key].filter((id) => ids.has(id)) }))
+      .filter((p) => p.gameIds.length > 0),
+  };
+}
+
+const randomOf = (seed) => mulberry32(seed ?? Math.floor(Math.random() * 2 ** 32));
+
+function timedDraw(input, seed, before) {
+  const start = performance.now();
+  const outcome = drawTimeSlot(input, randomOf(seed), state.settings);
+  return { ...outcome, ms: performance.now() - start, previous: before?.assignments ?? null, settings: { ...state.settings }, input };
+}
+
+function launch(seed = null) {
+  state.draw = timedDraw(inputOf(state.slot.games, peopleOf(state.slot.groups), 'gameIds'), seed, state.draw);
+  if (state.next) Object.assign(state.next, { prepared: false, draw: null });
+}
+
+function nextInput() {
+  const twoSlotIds = state.slot.games.filter((g) => g.twoSlot).map((g) => g.id);
+  const base = inputOf(state.next.games, peopleOf(state.slot.groups), 'nextGameIds');
+  return participantsOfNextTimeSlot(base, state.draw.assignments, twoSlotIds);
+}
+
+function prepareNext() {
+  Object.assign(state.next, { prepared: true, draw: null });
+}
+
+function launchNext(seed = null) {
+  state.next.prepared = true;
+  state.next.draw = timedDraw(nextInput().slot, seed, state.next.draw);
+}
+
+function runFairness() {
+  const input = inputOf(state.slot.games, peopleOf(state.slot.groups), 'gameIds');
+  state.fairness = { ...checkFairness(input, state.settings, RUNS, FAIRNESS_SEED), settings: { ...state.settings } };
+}
+
+function slotChanged() {
+  state.draw = null;
+  state.fairness = null;
+  if (state.next) Object.assign(state.next, { prepared: false, draw: null });
+}
+
+function realSizeSlot() {
+  const games = [
+    game('A', 'Le Bal des Ombres', 3, 6), game('B', 'Les Marées Noires', 3, 6), game('C', "Cendres d'Ys", 4, 8),
+    game('D', 'Code Hydre', 2, 5), game('E', 'Le Phare', 3, 6),
+  ];
+  const popularity = [0.5, 0.3, 0.25, 0.15, 0.2];
+  const random = mulberry32(80);
+  const profiles = new Map();
+  for (let i = 0; i < 80; i++) {
+    let ids = games.filter((_, k) => random() < popularity[k]).map((g) => g.id).join('');
+    if (!ids) ids = games[Math.floor(random() * games.length)].id;
+    profiles.set(ids, (profiles.get(ids) ?? 0) + 1);
+  }
+  return { games, groups: [...profiles].map(([ids, count]) => group(count, ids)) };
+}
+
+const SCENARIOS = [
+  {
+    title: 'Équilibre',
+    intro: `<p>Le cas du cadrage : six inscrits aux deux parties, « La Crypte de Velmor » (2 à 6 joueurs) et
+      « Thé chez les Fées » (2 à 3 joueurs). Attendu&nbsp;: 4 + 2, les deux tables remplies aux deux tiers.</p>
+      <p>À regarder&nbsp;: la relance garde la répartition mais change les joueurs. Puis un septième inscrit
+      arrive&nbsp;: va-t-il à la grande table, ou remplit-il la petite&nbsp;?</p>`,
+    setup: () => load({ slot: { games: [game('A', 'La Crypte de Velmor', 2, 6), game('B', 'Thé chez les Fées', 2, 3)], groups: [group(6, 'AB')] } }),
+    steps: [
+      ['Lancer le tirage', () => launch(11)],
+      ['Relancer', () => launch(12)],
+      ['Ajouter un septième inscrit aux deux parties', () => { state.slot.groups[0].count = 7; slotChanged(); }],
+      ['Lancer le tirage', () => launch(13)],
+    ],
+  },
+  {
+    title: 'Partie très demandée',
+    intro: `<p>17 inscrits pour 14 places. « Le Bal des Ombres » est très demandée&nbsp;: 12 inscrits pour
+      5 places, dont 8 qui n'ont pris qu'elle.</p>
+      <p>À regarder&nbsp;: les trois non placés sont toujours parmi ces huit. C'est l'étape 2 (placer le plus), pas un
+      biais&nbsp;: les inscrits du Bal qui ont une autre partie y sont envoyés, pour libérer leur place. D'où
+      l'invitation, sur le téléphone, à s'inscrire aussi ailleurs. Les 2&nbsp;000 tirages donnent la chance de chacun.</p>`,
+    setup: () => load({
+      slot: {
+        games: [game('A', 'Le Bal des Ombres', 3, 5), game('B', 'Les Marées Noires', 3, 5), game('C', 'Le Phare', 3, 4)],
+        groups: [group(8, 'A'), group(4, 'AB'), group(3, 'BC'), group(2, 'C')],
+      },
+    }),
+    steps: [
+      ['Lancer le tirage', () => launch(21)],
+      ['Relancer', () => launch(22)],
+      ['Tirer 2 000 fois', () => runFairness()],
+    ],
+  },
+  {
+    title: 'Places qui manquent',
+    intro: `<p>24 inscrits pour 20 places, chacun sur deux parties ou plus, sauf deux qui n'ont pris que
+      « Neige Écarlate ».</p>
+      <p>À regarder&nbsp;: quatre non placés, différents à chaque relance. Les 2&nbsp;000 tirages montrent qu'ici,
+      s'inscrire à plus de parties ne donne pas plus de chances&nbsp;: le risque est le même pour tous.
+      Ce n'est pas toujours le cas (voir « Partie très demandée »).</p>`,
+    setup: () => load({
+      slot: {
+        games: [game('A', 'La Crypte de Velmor', 3, 5), game('B', 'Le Train Fantôme', 3, 5), game('C', "Cendres d'Ys", 3, 6), game('D', 'Neige Écarlate', 2, 4)],
+        groups: [group(6, 'AB'), group(5, 'BC'), group(4, 'CD'), group(4, 'AD'), group(3, 'ABCD'), group(2, 'D')],
+      },
+    }),
+    steps: [
+      ['Lancer le tirage', () => launch(31)],
+      ['Relancer', () => launch(32)],
+      ['Tirer 2 000 fois', () => runFairness()],
+    ],
+  },
+  {
+    title: 'Sous le minimum',
+    intro: `<p>Quatre inscrits aux deux parties, chacune de 3 à 6 joueurs&nbsp;: une seule peut atteindre son minimum.
+      Avec la règle du cadrage, l'équilibre envoie un joueur seul dans l'autre, qui sera sans doute annulée&nbsp;:
+      il deviendra non placé, et il faudra le déplacer à la main.</p>
+      <p>La <strong>proposition</strong> ajoute, juste avant l'équilibre&nbsp;: « le moins de joueurs possible dans les
+      parties qui restent sous leur minimum ». Le second cas montre son revers&nbsp;: elle vide une partie qu'on
+      aurait peut-être maintenue avec un joueur de moins que son minimum.</p>`,
+    setup: () => load({ slot: { games: [game('A', 'Les Marées Noires', 3, 6), game('B', 'Le Train Fantôme', 3, 6)], groups: [group(4, 'AB')] } }),
+    steps: [
+      ['Lancer le tirage, règle du cadrage', () => { state.settings.underMin = 'balance'; launch(41); }],
+      ['Relancer avec la proposition', () => { state.settings.underMin = 'fewest'; launch(42); }],
+      ['Second cas : 10 inscrits, et « Le Phare » de 5 à 6', () => load({
+        slot: { games: [game('A', 'Les Marées Noires', 3, 6), game('B', 'Le Train Fantôme', 3, 6), game('C', 'Le Phare', 5, 6)], groups: [group(10, 'ABC')] },
+      })],
+      ['Lancer le tirage, règle du cadrage', () => { state.settings.underMin = 'balance'; launch(43); }],
+      ['Relancer avec la proposition', () => { state.settings.underMin = 'fewest'; launch(44); }],
+    ],
+  },
+  {
+    title: 'Partie double',
+    intro: `<p>« La Longue Nuit » occupe les créneaux 1 et 2. Pour l'algorithme, c'est une partie du créneau 1 comme
+      une autre&nbsp;: il ne connaît que ce créneau (#115).</p>
+      <p>C'est la préparation du créneau 2 qui applique TI-3&nbsp;: les joueurs placés à « La Longue Nuit » ne
+      participent pas à son tirage, et leurs inscriptions du créneau 2 sont ignorées. Ses inscrits non placés
+      gardent les leurs. À regarder&nbsp;: qui sort du créneau 2 change avec le tirage du créneau 1.</p>`,
+    setup: () => load({
+      slot: {
+        games: [game('A', 'La Crypte de Velmor', 3, 5), game('D', 'La Longue Nuit', 3, 5, true)],
+        groups: [group(3, 'A', 'E'), group(1, 'A'), group(3, 'AD', 'F'), group(2, 'D', 'EF'), group(2, 'D'), group(3, '', 'EF')],
+      },
+      next: { games: [game('E', "Cendres d'Ys", 3, 5), game('F', 'Code Hydre', 3, 4)], occupiedBy: 'D' },
+    }),
+    steps: [
+      ['Tirer le créneau 1', () => launch(51)],
+      ['Préparer le tirage du créneau 2', () => prepareNext()],
+      ['Tirer le créneau 2', () => launchNext(52)],
+      ['Relancer le créneau 1, puis préparer le créneau 2', () => { launch(53); prepareNext(); }],
+      ['Tirer le créneau 2', () => launchNext(54)],
+    ],
+  },
+  {
+    title: "Mesure de l'équilibre",
+    intro: `<p>Trois façons de mesurer l'équilibre (étape 4), qui ne s'accordent pas toujours. Le résumé du tirage
+      affiche les trois&nbsp;; celle qui a décidé est cerclée.</p>
+      <p>Premier cas&nbsp;: 7 joueurs pour une table de 6 et une de 3. Second cas&nbsp;: tables de 2, 6 et 3,
+      9 inscrits partout&nbsp;; l'écart entre extrêmes laisse deux répartitions ex aequo, que l'écart pondéré départage.</p>`,
+    setup: () => load({ slot: { games: [game('A', 'La Crypte de Velmor', 2, 6), game('B', 'Thé chez les Fées', 2, 3)], groups: [group(7, 'AB')] } }),
+    steps: [
+      ['Écart pondéré : lancer', () => { state.settings.balance = 'weighted'; launch(61); }],
+      ["Table la moins remplie d'abord : relancer", () => { state.settings.balance = 'leximin'; launch(62); }],
+      ['Écart entre extrêmes : relancer', () => { state.settings.balance = 'range'; launch(63); }],
+      ['Second cas : tables de 2, 6 et 3', () => load({
+        slot: { games: [game('A', 'Le Phare', 1, 2), game('B', 'La Crypte de Velmor', 1, 6), game('C', 'Thé chez les Fées', 1, 3)], groups: [group(9, 'ABC')] },
+      })],
+      ['Écart pondéré : lancer', () => { state.settings.balance = 'weighted'; launch(64); }],
+      ['Écart entre extrêmes : relancer', () => { state.settings.balance = 'range'; launch(61); }],
+    ],
+  },
+  {
+    title: 'Mêmes chances',
+    intro: `<p>Le test de la promesse «&nbsp;mêmes inscriptions, mêmes chances&nbsp;»&nbsp;: 2&nbsp;000 tirages du même créneau,
+      à graine fixe, donc toujours le même verdict (pas de test qui échoue une fois sur cent).</p>
+      <p>Il regroupe les participants aux inscriptions identiques et compare, dans chaque groupe, la part des tirages
+      où chacun est placé, et où il va à telle partie. Un écart passe s'il reste sous 5 écarts types du hasard.
+      Sans mélange, les premiers inscrits passent toujours&nbsp;: le test doit le voir.</p>
+      <p><strong>Le piège</strong>&nbsp;: il ne le voit que si le créneau coupe un groupe en deux (des membres placés et
+      d'autres non, ou répartis sur deux tables). Le second créneau n'en coupe aucun&nbsp;: le biais y passe inaperçu.</p>`,
+    setup: () => load({
+      slot: { games: [game('A', 'La Crypte de Velmor', 2, 4), game('B', 'Thé chez les Fées', 2, 3)], groups: [group(5, 'A'), group(3, 'AB'), group(2, 'B')] },
+    }),
+    steps: [
+      ['Tirer 2 000 fois, avec le mélange', () => { state.settings.shuffle = true; runFairness(); }],
+      ["Sans mélange (ordre d'inscription) : tirer 2 000 fois", () => { state.settings.shuffle = false; runFairness(); }],
+      ["Le piège : un créneau qui ne coupe aucun groupe", () => load({
+        settings: { ...CADRAGE, shuffle: false },
+        slot: { games: [game('A', 'La Crypte de Velmor', 2, 4), game('B', 'Thé chez les Fées', 2, 3)], groups: [group(4, 'A'), group(3, 'AB'), group(2, 'B')] },
+      })],
+      ['Sans mélange : tirer 2 000 fois', () => { state.settings.shuffle = false; runFairness(); }],
+      ['Remettre le mélange : tirer 2 000 fois', () => { state.settings.shuffle = true; runFairness(); }],
+    ],
+  },
+  {
+    title: 'Taille réelle',
+    intro: `<p>80 inscrits, 5 parties, 31 places&nbsp;: le haut de la fourchette. À regarder&nbsp;: le temps de calcul et le
+      nombre de répartitions examinées, dans le résumé, et le temps des 2&nbsp;000 tirages.</p>
+      <p>Quand les inscrits dépassent les places, le calcul est immédiat&nbsp;: une seule répartition remplit tout. Le coût
+      vient de la marge&nbsp;: plus il reste de places libres et plus les inscrits sont souples, plus il y a de répartitions
+      à comparer. Le cas extrême, sans rapport avec une vraie convention, le borne&nbsp;: 50 inscrits à toutes les parties,
+      5 parties de 30 places.</p>`,
+    setup: () => load({ slot: realSizeSlot() }),
+    steps: [
+      ['Lancer le tirage', () => launch(81)],
+      ['Relancer', () => launch(82)],
+      ['Tirer 2 000 fois', () => runFairness()],
+      ['Cas extrême : 50 inscrits partout, 5 × 30 places', () => load({
+        slot: { games: ['A', 'B', 'C', 'D', 'E'].map((id, k) => game(id, ['Le Bal des Ombres', 'Les Marées Noires', "Cendres d'Ys", 'Code Hydre', 'Le Phare'][k], 3, 30)), groups: [group(50, 'ABCDE')] },
+      })],
+      ['Lancer le tirage', () => launch(83)],
+    ],
+  },
+];
+
+function startScenario(k) {
+  ui.scenario = k;
+  ui.stepsDone = 0;
+  SCENARIOS[k].setup();
+}
+
+/* ---- Rendu ---- */
+
+const $ = (id) => document.getElementById(id);
+const gameLetter = (g) => `<span class="letter" title="${esc(g.title)}">${esc(g.id)}</span>`;
+
+function renderScenarios() {
+  const scenario = SCENARIOS[ui.scenario];
+  $('scenarios').innerHTML = `
+    <h2>Scénarios guidés</h2>
+    <div class="tabs" role="tablist">
+      ${SCENARIOS.map((s, k) => `<button class="tab" role="tab" aria-selected="${k === ui.scenario}" data-action="scenario" data-index="${k}">${esc(s.title)}</button>`).join('')}
+    </div>
+    <div class="intro">${scenario.intro}</div>
+    <ol class="steps">
+      ${scenario.steps.map(([label], k) => {
+        const kind = k < ui.stepsDone ? 'done' : k === ui.stepsDone ? 'primary' : '';
+        return `<li><button class="${kind}" data-action="step" data-index="${k}" ${k === ui.stepsDone ? '' : 'disabled'}>
+          <span class="num">${k < ui.stepsDone ? '✓' : k + 1}</span><span>${esc(label).replace(/ : /g, '&nbsp;: ')}</span></button></li>`;
+      }).join('')}
+    </ol>
+    <button class="link" data-action="restart">Recommencer ce scénario</button>`;
+}
+
+const SETTINGS = [
+  {
+    key: 'balance', legend: "Mesure de l'équilibre (étape 4)",
+    options: [
+      ['weighted', 'Écart pondéré', "L'écart type du remplissage, chaque place comptant pour une. Au plus bas quand toutes les tables ont le même remplissage. Calcul&nbsp;: somme des joueurs² / places, au plus bas."],
+      ['range', 'Écart entre extrêmes', "L'écart de remplissage entre la table la plus remplie et la moins remplie. Ignore les autres tables."],
+      ['leximin', "Table la moins remplie d'abord (retenue)", 'On remonte la table la plus vide en proportion, puis la suivante.'],
+    ],
+  },
+  {
+    key: 'underMin', legend: 'Parties qui restent sous leur minimum',
+    options: [
+      ['balance', 'Équilibrées comme les autres (cadrage)', ''],
+      ['fewest', 'Le moins de joueurs possible (retenue)', "Juste avant l'équilibre&nbsp;: le moins de joueurs possible dans les parties qui n'atteignent pas leur minimum. Un joueur qui a aussi une partie viable y va plutôt."],
+    ],
+  },
+  {
+    key: 'shuffle', legend: 'Mélange des participants',
+    options: [
+      [true, 'Ordre mélangé au hasard (cadrage)', ''],
+      [false, "Sans mélange&nbsp;: ordre d'inscription", "Biais volontaire, pour voir le test d'équité échouer."],
+    ],
+  },
+];
+
+function renderSettings() {
+  $('settings').innerHTML = `
+    <h2>Réglages de l'algorithme</h2>
+    ${SETTINGS.map((s) => `<fieldset><legend>${s.legend}</legend>
+      ${s.options.map(([value, label, hint]) => `<label class="option">
+        <input type="radio" name="${s.key}" data-setting="${s.key}" value="${value}" ${state.settings[s.key] === value ? 'checked' : ''}>
+        <span>${label}${hint ? `<small>${hint}</small>` : ''}</span></label>`).join('')}
+    </fieldset>`).join('')}
+    <p class="muted">Un réglage change le prochain tirage, pas le résultat affiché.</p>
+    <details class="how"><summary>Comment l'algorithme calcule</summary><ol>
+      <li>L'ordre des participants est mélangé&nbsp;: chaque ordre a la même chance. Rien d'autre ne vient du hasard, sauf le choix entre répartitions ex aequo.</li>
+      <li>Étape 2&nbsp;: le nombre maximum de participants plaçables, par couplage. Chacun, dans l'ordre, prend une place libre dans l'une de ses parties, quitte à faire glisser un joueur déjà assis vers une autre de ses parties.</li>
+      <li>Toutes les répartitions du nombre de joueurs par partie («&nbsp;A&nbsp;: 4, B&nbsp;: 2&nbsp;») qui placent ce maximum sont passées en revue. Une répartition est possible si aucun maximum n'est dépassé, et si, pour tout groupe de parties, elle n'y met pas plus de joueurs que d'inscrits à ce groupe (condition de Hall).</li>
+      <li>On garde les meilleures&nbsp;: le plus de parties à leur minimum (étape 3), puis la plus équilibrée (étape 4). Le hasard choisit entre les ex aequo.</li>
+      <li>Les participants s'assoient dans l'ordre mélangé, avec ces nombres de places. Un participant assis le reste&nbsp;: plus il est tôt dans l'ordre, plus il est sûr d'être placé.</li>
+    </ol></details>`;
+}
+
+const SETTING_NAMES = {
+  balance: { weighted: 'écart pondéré', range: 'écart entre extrêmes', leximin: "table la moins remplie d'abord" },
+  underMin: { balance: 'sous le minimum : cadrage', fewest: 'sous le minimum : proposition' },
+  shuffle: { true: 'avec mélange', false: 'sans mélange' },
+};
+const settingsLine = (s) =>
+  [SETTING_NAMES.balance[s.balance], SETTING_NAMES.underMin[s.underMin], SETTING_NAMES.shuffle[s.shuffle]].join(' · ').replace(/ : /g, '&nbsp;: ');
+
+function slotHtml({ label, games, input, people, draw, extra = '' }) {
+  const pseudo = new Map(people.map((p) => [p.id, p.pseudo]));
+  const places = games.reduce((sum, g) => sum + g.max, 0);
+  const minimum = games.reduce((sum, g) => sum + g.min, 0);
+  let html = `<div class="slot-head"><h3>${esc(label)}</h3>
+    <span class="muted">${plural(input.participants.length, 'inscrit', 'inscrits')} · ${plural(games.length, 'partie', 'parties')} ·
+    ${plural(places, 'place', 'places')} (minimum ${fr(minimum)})</span></div>${extra}`;
+
+  if (!draw) {
+    html += `<p class="muted">Tirage pas encore lancé.</p>`;
+  } else {
+    const counts = draw.distribution;
+    const placed = counts.reduce((a, b) => a + b, 0);
+    const atMin = games.filter((g, k) => counts[k] >= g.min).length;
+    const under = games.reduce((sum, g, k) => sum + (counts[k] < g.min ? counts[k] : 0), 0);
+    const balance = balanceOf(input.games, counts);
+    const metric = (labelText, value, active = false) =>
+      `<div class="metric${active ? ' active' : ''}"><div class="label">${labelText}</div><div class="value">${value}</div></div>`;
+    let changes = '';
+    if (draw.previous) {
+      const moved = input.participants.filter((p) => draw.previous.get(p.id) !== draw.assignments.get(p.id)).length;
+      changes = moved === 0
+        ? 'Même résultat que le tirage précédent.'
+        : `Par rapport au tirage précédent&nbsp;: ${plural(moved, 'participant a changé', 'participants ont changé')} de partie ou de statut (cerclés).`;
+    }
+    html += `<div class="summary">
+      ${metric('Placés', `${fr(placed)} / ${fr(input.participants.length)}`)}
+      ${metric('Parties à leur minimum', `${fr(atMin)} / ${fr(games.length)}`)}
+      ${metric('Joueurs dans une partie sous son minimum', fr(under))}
+      ${metric('Écart pondéré', pts(balance.weighted), draw.settings.balance === 'weighted')}
+      ${metric('Écart entre extrêmes', pts(balance.range), draw.settings.balance === 'range')}
+      ${metric('Table la moins remplie', pct(balance.lowest), draw.settings.balance === 'leximin')}
+      ${metric('Répartitions ex aequo', draw.tied === 1 ? 'Une seule meilleure' : `${fr(draw.tied)}, une tirée au hasard`)}
+      ${metric('Calcul', `${fr(draw.ms, 1)}&nbsp;ms · ${plural(draw.examined, 'répartition examinée', 'répartitions examinées')}`)}
+    </div>
+    <p class="muted">Réglages de ce tirage&nbsp;: ${settingsLine(draw.settings)}.</p>
+    ${changes ? `<p class="note">${changes}</p>` : ''}`;
+  }
+
+  const chip = (id, suffix = '') => {
+    const moved = draw?.previous && draw.previous.get(id) !== draw.assignments.get(id);
+    return `<span class="chip${moved ? ' moved' : ''}">${esc(pseudo.get(id))}${suffix}</span>`;
+  };
+  html += `<div class="games">${games.map((g, k) => {
+    const signedUp = input.participants.filter((p) => p.gameIds.includes(g.id)).length;
+    const players = draw ? input.participants.filter((p) => draw.assignments.get(p.id) === g.id) : [];
+    const count = players.length;
+    const playersSorted = [...players].sort((a, b) => pseudo.get(a.id).localeCompare(pseudo.get(b.id), 'fr'));
+    return `<article class="game">
+      <div class="game-title">${gameLetter(g)}<strong>${esc(g.title)}</strong></div>
+      <div class="muted">${fr(g.min)} à ${fr(g.max)} joueurs · ${plural(signedUp, 'inscrit', 'inscrits')}
+        ${signedUp > g.max ? '<span class="badge hot">Très demandée</span>' : ''}
+        ${g.twoSlot ? '<span class="badge info">Partie double</span>' : ''}</div>
+      ${draw ? `<div class="seats" aria-hidden="true">${Array.from({ length: g.max }, (_, i) =>
+        `<span class="seat${i < count ? ' filled' : ''}${i < g.min ? ' min' : ''}"></span>`).join('')}</div>
+        <div>${plural(count, 'joueur', 'joueurs')} · ${pct(count / g.max)}
+          ${count < g.min ? '<span class="badge warn">Sous son minimum</span>' : ''}</div>
+        <div class="chips">${playersSorted.map((p) => chip(p.id)).join('')}</div>` : ''}
+    </article>`;
+  }).join('')}</div>`;
+
+  if (draw) {
+    const unassigned = input.participants.filter((p) => draw.assignments.get(p.id) === null);
+    html += `<div class="unassigned"><strong>Non placés</strong>
+      ${unassigned.length === 0 ? '<span class="muted">&nbsp;: aucun.</span>' : `<div class="chips">${unassigned
+        .map((p) => chip(p.id, ` <span class="muted">(${p.gameIds.join(', ')})</span>`)).join('')}</div>`}
+      <p class="muted" style="margin-top:8px">Cases cerclées de jaune&nbsp;: le minimum de la partie. Entre parenthèses&nbsp;: les inscriptions du non placé.</p></div>`;
+  }
+  return html;
+}
+
+function renderState() {
+  const people = peopleOf(state.slot.groups);
+  $('state').innerHTML = `<h2>Résultat du tirage</h2>` + slotHtml({
+    label: state.slot.label,
+    games: state.slot.games,
+    input: state.draw?.input ?? inputOf(state.slot.games, people, 'gameIds'),
+    people,
+    draw: state.draw,
+  });
+}
+
+function renderNext() {
+  const section = $('next');
+  section.hidden = !state.next;
+  if (!state.next) return;
+  const people = peopleOf(state.slot.groups);
+  const pseudo = new Map(people.map((p) => [p.id, p.pseudo]));
+  const occupied = state.slot.games.find((g) => g.id === state.next.occupiedBy);
+  const head = `<h2>Créneau suivant</h2>`;
+  if (!state.draw) {
+    section.innerHTML = `${head}<p class="muted">Tirez d'abord le créneau 1&nbsp;: un tirage ne se lance que si le précédent est publié.</p>`;
+    return;
+  }
+  if (!state.next.prepared) {
+    section.innerHTML = `${head}<p class="muted">Le créneau 1 est tiré. «&nbsp;Préparer le tirage du créneau 2&nbsp;» applique TI-3.</p>`;
+    return;
+  }
+  const { slot, excluded } = nextInput();
+  const extra = `<p class="note">La table de « ${esc(occupied.title)} » reste occupée par la partie double.
+    ${excluded.length === 0 ? 'Aucun de ses joueurs ne s\'était inscrit au créneau 2.'
+      : `Ses joueurs inscrits au créneau 2 sortent de ce tirage, et leurs inscriptions y sont ignorées&nbsp;:`}
+    ${excluded.length ? `<span class="chips">${excluded.map((id) => `<span class="chip out">${esc(pseudo.get(id))}</span>`).join('')}</span>` : ''}</p>`;
+  section.innerHTML = head + slotHtml({
+    label: state.next.label,
+    games: state.next.games,
+    input: state.next.draw?.input ?? slot,
+    people,
+    draw: state.next.draw,
+    extra,
+  });
+}
+
+function renderFairness() {
+  const section = $('fairness');
+  const result = state.fairness;
+  section.hidden = !result;
+  if (!result) return;
+  const people = peopleOf(state.slot.groups);
+  const pseudo = new Map(people.map((p) => [p.id, p.pseudo]));
+  const titleOf = new Map(state.slot.games.map((g) => [g.id, g.title]));
+  const many = result.groups.length > 6;
+  const worst = result.groups.reduce((w, g) => (g.ratio > w.ratio ? g : w), result.groups[0]);
+  section.innerHTML = `<h2>Mêmes inscriptions, mêmes chances</h2>
+    <p class="verdict ${result.fair ? 'ok' : 'ko'}">${result.fair
+      ? "Promesse tenue&nbsp;: dans chaque groupe d'inscriptions identiques, les écarts restent dans le bruit du hasard."
+      : "Promesse rompue&nbsp;: dans au moins un groupe d'inscriptions identiques, les chances diffèrent."}</p>
+    <p class="muted">${fr(result.runs)} tirages à graine fixe en ${fr(result.ms)}&nbsp;ms · ${settingsLine(result.settings)} ·
+      plus grand écart ${pts(worst.gap)} (seuil ${pts(worst.tolerance)}).</p>
+    ${result.groups.map((g) => {
+      const head = g.gameIds.length === 1 ? `Inscrits à ${esc(g.gameIds[0])} seulement` : `Inscrits à ${g.gameIds.map(esc).join(', ')}`;
+      const status = g.rows.length === 1 ? '<span class="muted">seul de son groupe</span>'
+        : `<span class="${g.fair ? 'ok' : 'ko'}">${g.fair ? '✓' : '✗'} écart ${pts(g.gap)}, seuil ${pts(g.tolerance)}</span>`;
+      return `<details class="group" ${!many || !g.fair ? 'open' : ''}>
+        <summary>${head} · ${plural(g.rows.length, 'participant', 'participants')} · placés dans ${pct(g.placedShare)} des tirages · ${status}</summary>
+        <table><thead><tr><th>Participant</th>${g.outcomes.map((o) => `<th title="${esc(o ? titleOf.get(o) : '')}">${o ? esc(o) : 'Non placé'}</th>`).join('')}</tr></thead>
+        <tbody>${g.rows.map((row) => `<tr><td>${esc(pseudo.get(row.id))}</td>${row.shares.map((s) => `<td>${pct(s, 1)}</td>`).join('')}</tr>`).join('')}</tbody></table>
+      </details>`;
+    }).join('')}`;
+}
+
+function renderEditor() {
+  const { games, groups } = state.slot;
+  $('editor').innerHTML = `<h2>Jeu libre</h2>
+    <div class="actions">
+      <button class="primary" data-action="launch" ${games.length ? '' : 'disabled'}>Lancer le tirage</button>
+      <button data-action="launch" ${state.draw ? '' : 'disabled'}>Relancer</button>
+      <button data-action="fairness" ${games.length ? '' : 'disabled'}>Tirer 2&nbsp;000 fois</button>
+      <button data-action="clear" ${state.draw || state.fairness ? '' : 'disabled'}>Effacer le résultat</button>
+      ${state.next ? `<button data-action="launch-next" ${state.draw ? '' : 'disabled'}>Tirer le créneau 2</button>` : ''}
+    </div>
+    <p class="muted">Ici, le hasard n'a pas de graine fixe&nbsp;: chaque tirage est nouveau. Modifier le créneau efface le résultat.</p>
+    <h3>Parties du ${esc(state.slot.label.toLowerCase())}</h3>
+    ${games.map((g, k) => `<div class="row">${gameLetter(g)}
+      <input type="text" aria-label="Titre" data-field="title" data-index="${k}" value="${esc(g.title)}">
+      <label>de <input type="number" min="1" max="40" data-field="min" data-index="${k}" value="${g.min}"></label>
+      <label>à <input type="number" min="1" max="40" data-field="max" data-index="${k}" value="${g.max}"> joueurs</label>
+      <button data-action="remove-game" data-index="${k}">Retirer</button></div>`).join('')}
+    <button data-action="add-game" ${games.length >= 6 ? 'disabled' : ''}>Ajouter une partie</button>
+    <h3>Inscrits</h3>
+    ${groups.map((gr, k) => `<div class="row">
+      <input type="number" min="0" max="200" aria-label="Nombre d'inscrits" data-field="count" data-index="${k}" value="${gr.count}">
+      <span>inscrits à</span>
+      ${games.map((g) => `<label class="check"><input type="checkbox" data-field="signup" data-index="${k}" value="${esc(g.id)}" ${gr.gameIds.includes(g.id) ? 'checked' : ''}>${esc(g.id)}</label>`).join('')}
+      ${gr.nextGameIds.length ? `<span class="muted">· au créneau 2&nbsp;: ${gr.nextGameIds.join(', ')}</span>` : ''}
+      <button data-action="remove-group" data-index="${k}">Retirer</button></div>`).join('')}
+    <button data-action="add-group">Ajouter un groupe d'inscrits</button>`;
+}
+
+function render() {
+  renderScenarios();
+  renderSettings();
+  renderState();
+  renderNext();
+  renderFairness();
+  renderEditor();
+}
+
+/* ---- Gestes ---- */
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-action]');
+  if (!button) return;
+  const k = Number(button.dataset.index);
+  switch (button.dataset.action) {
+    case 'scenario': startScenario(k); break;
+    case 'restart': startScenario(ui.scenario); break;
+    case 'step': SCENARIOS[ui.scenario].steps[k][1](); ui.stepsDone = k + 1; break;
+    case 'launch': launch(); break;
+    case 'launch-next': launchNext(); break;
+    case 'fairness': runFairness(); break;
+    case 'clear': slotChanged(); break;
+    case 'add-game': {
+      const id = 'ABCDEFGH'.split('').find((letter) => !state.slot.games.some((g) => g.id === letter));
+      state.slot.games.push(game(id, `Partie ${id}`, 3, 5));
+      slotChanged();
+      break;
+    }
+    case 'remove-game': {
+      const [removed] = state.slot.games.splice(k, 1);
+      state.slot.groups.forEach((gr) => { gr.gameIds = gr.gameIds.filter((id) => id !== removed.id); });
+      slotChanged();
+      break;
+    }
+    case 'add-group': state.slot.groups.push(group(1, state.slot.games[0]?.id ?? '')); slotChanged(); break;
+    case 'remove-group': state.slot.groups.splice(k, 1); slotChanged(); break;
+  }
+  render();
+});
+
+document.addEventListener('change', (event) => {
+  const input = event.target;
+  if (input.dataset.setting) {
+    const key = input.dataset.setting;
+    state.settings[key] = key === 'shuffle' ? input.value === 'true' : input.value;
+    render();
+    return;
+  }
+  const field = input.dataset.field;
+  if (!field) return;
+  const k = Number(input.dataset.index);
+  const bounded = (value, low, high) => Math.min(high, Math.max(low, Math.round(Number(value) || 0)));
+  if (field === 'title') state.slot.games[k].title = input.value;
+  if (field === 'min') state.slot.games[k].min = bounded(input.value, 1, 40);
+  if (field === 'max') state.slot.games[k].max = bounded(input.value, 1, 40);
+  if (field === 'min' || field === 'max') {
+    const g = state.slot.games[k];
+    if (g.min > g.max) [g.min, g.max] = field === 'min' ? [g.min, g.min] : [g.max, g.max];
+  }
+  if (field === 'count') state.slot.groups[k].count = bounded(input.value, 0, 200);
+  if (field === 'signup') {
+    const gr = state.slot.groups[k];
+    gr.gameIds = input.checked ? [...gr.gameIds, input.value] : gr.gameIds.filter((id) => id !== input.value);
+    gr.gameIds.sort();
+  }
+  slotChanged();
+  render();
+});
+
+startScenario(0);
+render();
+</script>
+</body>
+</html>
