@@ -5,48 +5,39 @@ import type {
   TimeSlotTrackingDto,
   VerdictRefusalDto,
 } from '@chimeres/contract';
-import { countOf, formatCount, formatTimeSlotRanks, fr } from '@chimeres/design';
+import { countOf, formatCount, fr } from '@chimeres/design';
 import { Button } from '../ui/button';
-import { Icon } from '../ui/icon';
-import { ScenarioIllustration } from '../ui/scenario-illustration';
-import { TwoSlotBadge } from '../ui/two-slot-badge';
+import { ReservePastille } from '../ui/reserve-pastille';
+import { formatReserveRanks, ReserveScenarioCard } from '../ui/reserve-scenario-card';
 
 /** Un scénario de la réserve du créneau, et son motif, ou `null` s'il y est programmable. */
 type ReserveCard = { scenario: ReserveScenarioDto; refusal: VerdictRefusalDto | null };
 
 /**
  * L'onglet « Réserve du créneau » (docs/design/patterns.md, Pilotage du jour J) : combien de
- * scénarios y sont programmables, puis une carte par scénario, dans l'ordre reçu. Un scénario non
- * programmable est atténué, avec la phrase de son motif ; les autres offrent « Programmer ici… ».
+ * scénarios y sont programmables, puis une carte par scénario, dans l'ordre reçu, comme dans le bac
+ * de réserve. Un scénario non programmable est atténué, avec la phrase de son motif ; les autres
+ * offrent « Programmer ici… ».
  */
 @Component({
   selector: 'app-tracked-reserve-panel',
-  imports: [Button, Icon, ScenarioIllustration, TwoSlotBadge],
+  imports: [Button, ReservePastille, ReserveScenarioCard],
   template: `
     @if (cards().length) {
       <p>{{ heading() }}</p>
       <ul>
         @for (card of cards(); track card.scenario.id) {
           @let scenario = card.scenario;
-          <li [class.unschedulable]="card.refusal">
-            <app-scenario-illustration
-              format="thumb"
-              [title]="scenario.title"
-              [imageUrl]="scenario.imageUrl"
-            />
-            <h3 [id]="'slot-reserve-' + scenario.id">{{ scenario.title }}</h3>
-            <span class="meta">{{ scenario.system }} · {{ scenario.gameMaster.nickname }}</span>
-            @if (scenario.duration === 2) {
-              <app-two-slot-badge />
-            }
-            <div class="foot">
-              @if (card.refusal; as refusal) {
-                <p class="reason">{{ refusal.detail }}</p>
-              }
+          <li>
+            <app-reserve-scenario-card
+              [scenario]="scenario"
+              [refusal]="card.refusal"
+              [titleId]="'slot-reserve-' + scenario.id"
+            >
               @if (scheduledRanks(scenario); as ranks) {
-                <p class="scheduled">
-                  <app-icon name="circle-check" />Déjà programmé&nbsp;: {{ ranks }}
-                </p>
+                <app-reserve-pastille scheduled
+                  >Déjà programmé&nbsp;: {{ ranks }}</app-reserve-pastille
+                >
               }
               @if (!card.refusal) {
                 <button
@@ -58,7 +49,7 @@ type ReserveCard = { scenario: ReserveScenarioDto; refusal: VerdictRefusalDto | 
                   Programmer ici…
                 </button>
               }
-            </div>
+            </app-reserve-scenario-card>
           </li>
         }
       </ul>
@@ -87,88 +78,6 @@ type ReserveCard = { scenario: ReserveScenarioDto; refusal: VerdictRefusalDto | 
         margin: 0;
         padding: 0;
         list-style: none;
-      }
-
-      /* Vignette, titre et méta en tête ; le pied court sur toute la largeur de la carte. */
-      li {
-        display: grid;
-        grid-template-areas:
-          'thumb title badge'
-          'thumb meta badge'
-          'foot foot foot';
-        grid-template-columns: 44px minmax(0, 1fr) auto;
-        gap: var(--space-xs) var(--space-s);
-        align-items: center;
-        padding: var(--space-s);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-control);
-        background: var(--surface-1);
-      }
-
-      app-scenario-illustration {
-        grid-area: thumb;
-      }
-
-      h3 {
-        grid-area: title;
-        align-self: end;
-        margin: 0;
-        overflow: hidden;
-        font-family: var(--font-ui);
-        font-size: var(--font-size-body);
-        font-weight: 600;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-      }
-
-      .meta {
-        grid-area: meta;
-        align-self: start;
-        color: var(--text-muted);
-        font-size: var(--font-size-meta);
-      }
-
-      app-two-slot-badge {
-        grid-area: badge;
-        align-self: start;
-      }
-
-      .foot {
-        display: flex;
-        grid-area: foot;
-        flex-wrap: wrap;
-        gap: var(--space-xs) var(--space-s);
-        align-items: center;
-
-        > button {
-          margin-left: auto;
-        }
-      }
-
-      .reason {
-        flex-basis: 100%;
-        font-size: var(--font-size-meta);
-      }
-
-      .scheduled {
-        display: inline-flex;
-        gap: var(--space-xs);
-        align-items: center;
-        color: var(--success);
-        font-size: var(--font-size-meta);
-        white-space: nowrap;
-      }
-
-      /* Atténué : pas programmable ici. Son motif, lui, reste lisible. */
-      .unschedulable {
-        app-scenario-illustration {
-          opacity: 0.5;
-          filter: grayscale(1);
-        }
-
-        h3 {
-          color: var(--text-muted);
-        }
       }
     }
   `,
@@ -201,15 +110,8 @@ export class TrackedReservePanel {
     return fr`${countOf(schedulable, 'scénario programmable', 'scénarios programmables')} sur ce créneau${rest}.`;
   });
 
-  /**
-   * « créneau 1 », « créneaux 1 et 3 » : les autres créneaux où le scénario est programmé, ou `''`.
-   * Le second créneau d'une partie double peut être celui-ci.
-   */
-  protected scheduledRanks({ timeSlots }: ReserveScenarioDto): string {
-    return formatTimeSlotRanks(
-      timeSlots
-        .filter(({ timeSlotId, scheduled }) => scheduled && timeSlotId !== this.timeSlot().id)
-        .map(({ timeSlotId }) => this.timeSlots().find(({ id }) => id === timeSlotId)?.rank ?? 0),
-    );
+  /** Les autres créneaux où le scénario est programmé : « créneau 1 », ou `''`. */
+  protected scheduledRanks(scenario: ReserveScenarioDto): string {
+    return formatReserveRanks(scenario, 'scheduled', this.timeSlots(), this.timeSlot().id);
   }
 }

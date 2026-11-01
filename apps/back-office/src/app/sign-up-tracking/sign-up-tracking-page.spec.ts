@@ -640,7 +640,7 @@ describe('Pilotage du jour J', () => {
       const { cards } = await renderReserve();
       const aube = cards()[2]!;
 
-      expect(aube.classList).toContain('unschedulable');
+      expect(aube.querySelector('app-reserve-scenario-card')!.classList).toContain('unschedulable');
       expect(text(aube)).toContain('Toutes les tables sont prises sur le créneau 2.');
       expect(aube.querySelector('button')).toBeNull();
       expect(text(cards()[1]!.querySelector('button'))).toBe('Programmer ici…');
