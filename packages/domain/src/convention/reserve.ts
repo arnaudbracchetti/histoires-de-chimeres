@@ -2,8 +2,8 @@ import { Refusal } from '../refusal.js';
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import type { Day } from './day.js';
 import type { GameMaster } from './game-master.js';
+import type { Participants } from './participants.js';
 import type { Schedule } from './schedule.js';
-import type { UniquelyNamedCollection } from './uniquely-named-collection.js';
 
 /**
  * La place d'un scénario dans la réserve : sur chaque créneau, dans l'ordre de la journée, s'il y
@@ -30,10 +30,10 @@ export function computeReserve(
   catalogue: ScenarioCatalogue,
   day: Day,
   schedule: Schedule,
-  gameMasters: UniquelyNamedCollection<GameMaster>,
+  participants: Participants,
 ): ReserveOfScenario[] {
   return catalogue.listEntries().map((entry) => {
-    const gameMaster = gameMasters.findExistingItemById(entry.gameMasterId);
+    const gameMaster = participants.findExistingGameMasterById(entry.gameMasterId);
     const timeSlots = day.timeSlots.map((slot) => ({
       timeSlotId: slot.id,
       inReserve: isGameMasterFreeFrom(gameMaster, slot.id, entry.duration, day, schedule),

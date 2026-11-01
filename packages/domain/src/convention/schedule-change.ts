@@ -2,7 +2,7 @@ import { buildParticipantRecipients, type Notification } from '../notification.j
 import type { TimeSlotState } from './convention.js';
 import type { Day } from './day.js';
 import type { Game } from './game.js';
-import type { GameMaster } from './game-master.js';
+import type { Participants } from './participants.js';
 import type { Schedule } from './schedule.js';
 import type { SignUpCollaborators, SignUps } from './sign-ups.js';
 import type { Table } from './table.js';
@@ -10,7 +10,7 @@ import type { UniquelyNamedCollection } from './uniquely-named-collection.js';
 
 /**
  * Ce que le changement du Programme lit hors des deux Programmes. Le geste ne change ni la journée,
- * ni la date, ni les tables, ni les MJ : une seule valeur suffit. Les inscriptions sont celles
+ * ni la date, ni les tables, ni les participants : une seule valeur suffit. Les inscriptions sont celles
  * d'avant, avec ce qu'elles lisent dans le Programme d'avant : le geste efface celles qu'il retire.
  */
 export type ScheduleChangeCollaborators = {
@@ -18,7 +18,7 @@ export type ScheduleChangeCollaborators = {
   /** `AAAA-MM-JJ`, ou `null` : les notifications n'ont alors pas d'échéance (NO-3). */
   date: string | null;
   tables: UniquelyNamedCollection<Table>;
-  gameMasters: UniquelyNamedCollection<GameMaster>;
+  participants: Participants;
   previousSignUps: SignUps;
   previousSignUpCollaborators: SignUpCollaborators;
   getTimeSlotState(timeSlotId: string): TimeSlotState;
@@ -95,12 +95,12 @@ export class ScheduleChange {
   private buildOwnGameUnscheduledNotifications({
     day,
     date,
-    gameMasters,
+    participants,
   }: ScheduleChangeCollaborators): Notification[] {
     return this.listUnscheduledGames().map((game): Notification => ({
       code: 'own-game-unscheduled',
       params: { scenarioId: game.scenarioId, ranks: day.getTimeSlotRanks(game.timeSlotIds) },
-      recipients: buildParticipantRecipients([getGameMasterParticipantId(game, gameMasters)]),
+      recipients: buildParticipantRecipients([getGameMasterParticipantId(game, participants)]),
       deadline: day.computeEndOfTimeSlots(date, game.timeSlotIds),
     }));
   }
@@ -147,7 +147,7 @@ export class ScheduleChange {
    */
   private buildNewGameNotifications(
     moreSpecificRecipients: readonly string[],
-    { day, date, tables, gameMasters, getTimeSlotState }: ScheduleChangeCollaborators,
+    { day, date, tables, participants, getTimeSlotState }: ScheduleChangeCollaborators,
   ): Notification[] {
     return this.listGamesOnNewTimeSlots()
       .filter((game) => getTimeSlotState(game.timeSlotIds[0]!) !== 'published')
@@ -163,7 +163,7 @@ export class ScheduleChange {
           kind: 'everyone-except',
           participantIds: [
             ...new Set([
-              ...this.listParticipantIdsLeadingOnTimeSlots(game.timeSlotIds, gameMasters),
+              ...this.listParticipantIdsLeadingOnTimeSlots(game.timeSlotIds, participants),
               ...moreSpecificRecipients,
             ]),
           ],
@@ -180,7 +180,7 @@ export class ScheduleChange {
     day,
     date,
     tables,
-    gameMasters,
+    participants,
   }: ScheduleChangeCollaborators): Notification[] {
     return this.listGamesOnNewTimeSlots().map((game): Notification => ({
       code: 'own-game-scheduled',
@@ -191,7 +191,7 @@ export class ScheduleChange {
         start: day.findExistingTimeSlotById(game.timeSlotIds[0]!).start.toString(),
         end: day.findExistingTimeSlotById(game.timeSlotIds.at(-1)!).end.toString(),
       },
-      recipients: buildParticipantRecipients([getGameMasterParticipantId(game, gameMasters)]),
+      recipients: buildParticipantRecipients([getGameMasterParticipantId(game, participants)]),
       deadline: day.computeEndOfTimeSlots(date, game.timeSlotIds),
     }));
   }
@@ -223,9 +223,9 @@ export class ScheduleChange {
    */
   private listParticipantIdsLeadingOnTimeSlots(
     timeSlotIds: readonly string[],
-    gameMasters: UniquelyNamedCollection<GameMaster>,
+    participants: Participants,
   ): string[] {
-    return gameMasters.itemsInNaturalOrder
+    return participants.gameMasters
       .filter((gameMaster) =>
         timeSlotIds.some((slotId) =>
           this.next.isGameMasterLeadingOnTimeSlot(gameMaster.id, slotId),
@@ -236,11 +236,8 @@ export class ScheduleChange {
 }
 
 /** Le participant du MJ de la partie (ADR 0012). */
-function getGameMasterParticipantId(
-  game: Game,
-  gameMasters: UniquelyNamedCollection<GameMaster>,
-): string {
-  return gameMasters.findExistingItemById(game.gameMasterId).participant.id;
+function getGameMasterParticipantId(game: Game, participants: Participants): string {
+  return participants.findExistingGameMasterById(game.gameMasterId).participant.id;
 }
 
 /** Le nom de la table de la partie. */

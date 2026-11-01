@@ -6,9 +6,10 @@ import { Scenario, type ScenarioDetails } from '../scenario/scenario.js';
 import type { Seats } from '../scenario/seats.js';
 import { Day } from './day.js';
 import type { Game } from './game.js';
-import { GameMaster } from './game-master.js';
+import type { GameMaster } from './game-master.js';
 import { computeLatestEnd, type LocalMoment } from './local-moment.js';
-import { Participant } from './participant.js';
+import type { Participant } from './participant.js';
+import { Participants } from './participants.js';
 import type { PresenceCode } from './presence-code.js';
 import { Table } from './table.js';
 import { computeReserve, type ReserveOfScenario } from './reserve.js';
@@ -50,7 +51,7 @@ export class Convention {
   /** Reprise par `contract` (`TABLE_NAME_MAX_LENGTH`) ; le même test d'`application` le vérifie. */
   static readonly TABLE_NAME_MAX_LENGTH = 30;
   /** Reprise par `contract` (`NICKNAME_MAX_LENGTH`) ; le même test d'`application` le vérifie. */
-  static readonly NICKNAME_MAX_LENGTH = 30;
+  static readonly NICKNAME_MAX_LENGTH = Participants.NICKNAME_MAX_LENGTH;
 
   /**
    * La fin de la convention : la fin de son dernier créneau, le jour de sa date. Sans date ou sans
@@ -66,8 +67,7 @@ export class Convention {
     private state: Pick<ConventionState, 'id' | 'name' | 'date' | 'version' | 'presenceCode'>,
     private day: Day,
     private allTables: UniquelyNamedCollection<Table>,
-    private allGameMasters: UniquelyNamedCollection<GameMaster>,
-    private allParticipants: UniquelyNamedCollection<Participant>,
+    private allParticipants: Participants,
     private gameSchedule: Schedule,
     private allSignUps: SignUps,
   ) {}
@@ -85,15 +85,7 @@ export class Convention {
       state,
       Day.createFromTimeSlots(timeSlots),
       UniquelyNamedCollection.createFromItems(tables, TABLE_NAMING_RULES),
-      UniquelyNamedCollection.createFromItems(gameMasters, NICKNAME_RULES),
-      UniquelyNamedCollection.createFromItems(
-        new Map(
-          [...participants, ...gameMasters.map((gameMaster) => gameMaster.participant)].map(
-            (participant) => [participant.id, participant],
-          ),
-        ).values(),
-        PARTICIPANT_NICKNAME_RULES,
-      ),
+      Participants.createFromParticipantsAndGameMasters(participants, gameMasters),
       Schedule.createFromGames(games),
       SignUps.createFromSignUps(signUps),
     );
@@ -163,35 +155,22 @@ export class Convention {
     now: LocalMoment,
   ): Identification {
     this.verifyEntryAllowed(presentedCode, now);
-    const typed = ComparableName.createFromText(nickname);
-    const existing = this.allParticipants.findItemWithSameName(typed);
-    if (!existing) {
-      const participant = new Participant(newParticipantId, typed);
-      this.allParticipants = this.allParticipants.getCollectionAfterAddingItem(participant);
-      return { verdict: 'link', created: true, participant };
+    const identification = this.allParticipants.computeIdentification(
+      newParticipantId,
+      nickname,
+      confirmation,
+    );
+    if (identification.verdict === 'link' && identification.created) {
+      this.allParticipants = this.allParticipants.getParticipantsAfterAddingParticipant(
+        identification.participant,
+      );
     }
-    const expected = this.hasGameMasterRole(existing) ? 'game-master' : 'participant';
-    if (confirmation !== expected) {
-      return { verdict: 'confirm', confirmation: expected, nickname: existing.nickname.text };
-    }
-    return { verdict: 'link', created: false, participant: existing };
+    return identification;
   }
 
   /** Les participants, MJ compris, dans l'ordre naturel de leur pseudo. */
   get participants(): readonly Participant[] {
-    return this.allParticipants.itemsInNaturalOrder;
-  }
-
-  /** Le participant a un rôle de MJ (ADR 0012). */
-  private hasGameMasterRole(participant: Participant): boolean {
-    return this.findGameMasterOfParticipant(participant.id) !== undefined;
-  }
-
-  /** Le MJ du participant, ou `undefined` s'il n'en a pas le rôle (ADR 0012). */
-  private findGameMasterOfParticipant(participantId: string): GameMaster | undefined {
-    return this.allGameMasters.itemsInNaturalOrder.find(
-      (gameMaster) => gameMaster.participant.id === participantId,
-    );
+    return this.allParticipants.participants;
   }
 
   rename(name: string): void {
@@ -257,16 +236,13 @@ export class Convention {
     if (games > 0)
       throw new Refusal('time-slot-has-games', { rank: this.getTimeSlotRank(id), games });
     this.day = this.day.getDayAfterRemovingTimeSlot(id);
-    this.allGameMasters = this.allGameMasters.getCollectionAfterReplacingEachItem((gameMaster) =>
-      gameMaster.getGameMasterAfterWithdrawingAvailability(id),
-    );
+    this.allParticipants =
+      this.allParticipants.getParticipantsAfterWithdrawingAvailabilitiesOnTimeSlot(id);
   }
 
   /** Nombre de MJ disponibles sur le créneau. */
   countAvailabilitiesOnTimeSlot(timeSlotId: string): number {
-    return this.allGameMasters.itemsInNaturalOrder.filter((gameMaster) =>
-      gameMaster.isAvailableOnTimeSlot(timeSlotId),
-    ).length;
+    return this.allParticipants.countAvailabilitiesOnTimeSlot(timeSlotId);
   }
 
   /** Les tables, dans l'ordre naturel : « Table 2 » avant « Table 10 ». */
@@ -298,7 +274,7 @@ export class Convention {
 
   /** Les MJ, dans l'ordre naturel de leur pseudo. */
   get gameMasters(): readonly GameMaster[] {
-    return this.allGameMasters.itemsInNaturalOrder;
+    return this.allParticipants.gameMasters;
   }
 
   /**
@@ -306,15 +282,11 @@ export class Convention {
    * dans la convention, parmi les MJ comme parmi les participants (PR-12, ID-4, ID-7, ADR 0012).
    */
   addGameMaster(id: string, participantId: string, nickname: string): void {
-    const gameMaster = new GameMaster(
+    this.allParticipants = this.allParticipants.getParticipantsAfterAddingGameMaster(
       id,
-      new Participant(participantId, ComparableName.createFromText(nickname)),
+      participantId,
+      nickname,
     );
-    const gameMasters = this.allGameMasters.getCollectionAfterAddingItem(gameMaster);
-    this.allParticipants = this.allParticipants.getCollectionAfterAddingItem(
-      gameMaster.participant,
-    );
-    this.allGameMasters = gameMasters;
   }
 
   /**
@@ -322,14 +294,10 @@ export class Convention {
    * participant, dont les téléphones restent reliés (PR-12).
    */
   changeGameMasterNickname(id: string, nickname: string): void {
-    const renamed = this.allGameMasters
-      .findExistingItemById(id)
-      .getGameMasterAfterChangingNickname(ComparableName.createFromText(nickname));
-    const gameMasters = this.allGameMasters.getCollectionAfterReplacingItem(renamed);
-    this.allParticipants = this.allParticipants.getCollectionAfterReplacingItem(
-      renamed.participant,
+    this.allParticipants = this.allParticipants.getParticipantsAfterChangingGameMasterNickname(
+      id,
+      nickname,
     );
-    this.allGameMasters = gameMasters;
   }
 
   /**
@@ -337,22 +305,20 @@ export class Convention {
    * ses inscriptions. Un MJ qui a au moins un scénario reste (PR-12) : le catalogue, entier, le dit.
    */
   removeGameMaster(id: string, catalogue: ScenarioCatalogue): void {
-    const gameMaster = this.allGameMasters.findExistingItemById(id);
-    const scenarios = catalogue.countScenariosOfGameMaster(id);
-    if (scenarios > 0) throw new Refusal('game-master-has-scenarios', { scenarios });
-    this.allGameMasters = this.allGameMasters.getCollectionAfterRemovingItem(id);
-    this.allParticipants = this.allParticipants.getCollectionAfterRemovingItem(
-      gameMaster.participant.id,
+    const participantId = this.allParticipants.findExistingGameMasterById(id).participant.id;
+    this.allParticipants = this.allParticipants.getParticipantsAfterRemovingGameMaster(
+      id,
+      catalogue,
     );
-    this.allSignUps = this.allSignUps.getSignUpsAfterRemovingParticipant(gameMaster.participant.id);
+    this.allSignUps = this.allSignUps.getSignUpsAfterRemovingParticipant(participantId);
   }
 
   /** Le MJ se déclare disponible sur un créneau existant (PR-2). Déclarer deux fois ne change rien. */
   declareGameMasterAvailability(gameMasterId: string, timeSlotId: string): void {
-    const gameMaster = this.allGameMasters.findExistingItemById(gameMasterId);
-    this.day.verifyTimeSlotExists(timeSlotId);
-    this.allGameMasters = this.allGameMasters.getCollectionAfterReplacingItem(
-      gameMaster.getGameMasterAfterDeclaringAvailability(timeSlotId),
+    this.allParticipants = this.allParticipants.getParticipantsAfterDeclaringAvailability(
+      gameMasterId,
+      timeSlotId,
+      this.day,
     );
   }
 
@@ -361,12 +327,10 @@ export class Convention {
    * Retirer une absente ne change rien.
    */
   withdrawGameMasterAvailability(gameMasterId: string, timeSlotId: string): void {
-    const gameMaster = this.allGameMasters.findExistingItemById(gameMasterId);
-    this.day.verifyTimeSlotExists(timeSlotId);
-    const refusal = this.findWithdrawalRefusal(gameMaster, timeSlotId);
-    if (refusal) throw refusal;
-    this.allGameMasters = this.allGameMasters.getCollectionAfterReplacingItem(
-      gameMaster.getGameMasterAfterWithdrawingAvailability(timeSlotId),
+    this.allParticipants = this.allParticipants.getParticipantsAfterWithdrawingAvailability(
+      gameMasterId,
+      timeSlotId,
+      { day: this.day, schedule: this.gameSchedule },
     );
   }
 
@@ -375,13 +339,10 @@ export class Convention {
    * `withdrawGameMasterAvailability()` y lèverait, ou `null`.
    */
   computeWithdrawalVerdicts(gameMasterId: string): WithdrawalVerdict[] {
-    const gameMaster = this.allGameMasters.findExistingItemById(gameMasterId);
-    return this.day.timeSlots
-      .filter((slot) => gameMaster.isAvailableOnTimeSlot(slot.id))
-      .map((slot) => ({
-        timeSlotId: slot.id,
-        refusal: this.findWithdrawalRefusal(gameMaster, slot.id),
-      }));
+    return this.allParticipants.computeWithdrawalVerdicts(gameMasterId, {
+      day: this.day,
+      schedule: this.gameSchedule,
+    });
   }
 
   /**
@@ -389,7 +350,7 @@ export class Convention {
    * rien : le scénario est un agrégat à part (ADR 0005).
    */
   proposeScenario(id: string, gameMasterId: string, details: ScenarioDetails): Scenario {
-    this.allGameMasters.verifyItemExists(gameMasterId);
+    this.allParticipants.verifyGameMasterExists(gameMasterId);
     return Scenario.propose(id, gameMasterId, details);
   }
 
@@ -512,7 +473,7 @@ export class Convention {
 
   /** La réserve (PR-6) : voir `computeReserve()`. */
   computeReserve(catalogue: ScenarioCatalogue): ReserveOfScenario[] {
-    return computeReserve(catalogue, this.day, this.gameSchedule, this.allGameMasters);
+    return computeReserve(catalogue, this.day, this.gameSchedule, this.allParticipants);
   }
 
   /** Les inscriptions, dans l'ordre où elles ont été prises. */
@@ -595,7 +556,7 @@ export class Convention {
    * résultat de son tirage.
    */
   computeParticipantSituation(participantId: string): ParticipantSituation {
-    const participant = this.allParticipants.findExistingItemById(participantId);
+    const participant = this.allParticipants.findExistingParticipantById(participantId);
     return {
       signedUpGameIds: this.allSignUps.listActiveGameIdsOfParticipant(
         participant.id,
@@ -616,7 +577,7 @@ export class Convention {
     participantId: string,
     timeSlotId: string,
   ): Game | undefined {
-    const gameMaster = this.findGameMasterOfParticipant(participantId);
+    const gameMaster = this.allParticipants.findGameMasterOfParticipant(participantId);
     return (
       gameMaster && this.gameSchedule.findGameLedByGameMasterOnTimeSlot(gameMaster.id, timeSlotId)
     );
@@ -645,7 +606,7 @@ export class Convention {
   private buildSignUpCollaborators(schedule: Schedule): SignUpCollaborators {
     const ledGames: LedGames = {
       listGamesLedByParticipant: (participantId) => {
-        const gameMaster = this.findGameMasterOfParticipant(participantId);
+        const gameMaster = this.allParticipants.findGameMasterOfParticipant(participantId);
         return gameMaster ? schedule.listGamesLedByGameMaster(gameMaster.id) : [];
       },
     };
@@ -662,7 +623,7 @@ export class Convention {
    * de son créneau est lancé. Une partie double est tirée avec son premier créneau (TI-3).
    */
   private buildSignUpIfOpen(participantId: string, gameId: string): SignUp {
-    const participant = this.allParticipants.findExistingItemById(participantId);
+    const participant = this.allParticipants.findExistingParticipantById(participantId);
     const game = this.gameSchedule.findExistingGameById(gameId);
     const firstTimeSlotId = game.timeSlotIds[0]!;
     if (this.getTimeSlotState(firstTimeSlotId) !== 'sign-ups-open') {
@@ -720,7 +681,7 @@ export class Convention {
     tableId: string,
   ): PlacementCollaborators {
     const table = this.allTables.findExistingItemById(tableId);
-    return { gameMaster: this.allGameMasters.findExistingItemById(gameMasterId), table };
+    return { gameMaster: this.allParticipants.findExistingGameMasterById(gameMasterId), table };
   }
 
   /**
@@ -734,7 +695,7 @@ export class Convention {
       day: this.day,
       date: this.state.date,
       tables: this.allTables,
-      gameMasters: this.allGameMasters,
+      participants: this.allParticipants,
       previousSignUps: this.allSignUps,
       previousSignUpCollaborators: this.buildSignUpCollaborators(previous),
       getTimeSlotState: (timeSlotId) => this.getTimeSlotState(timeSlotId),
@@ -753,15 +714,6 @@ export class Convention {
   /** Le refus d'un geste, ou `null` s'il est permis : le verdict. */
   private extractRefusal(result: Schedule | Refusal): Refusal | null {
     return result instanceof Refusal ? result : null;
-  }
-
-  /** La règle PR-15 du retrait d'une disponibilité, la même pour l'écriture et pour le verdict. */
-  private findWithdrawalRefusal(gameMaster: GameMaster, timeSlotId: string): Refusal | null {
-    if (!this.gameSchedule.isGameMasterLeadingOnTimeSlot(gameMaster.id, timeSlotId)) return null;
-    return new Refusal('availability-has-game', {
-      nickname: gameMaster.nickname.text,
-      rank: this.getTimeSlotRank(timeSlotId),
-    });
   }
 
   /** Refuse une journée qui couperait une partie double (PR-11), et la renvoie sinon. */
@@ -839,33 +791,4 @@ const TABLE_NAMING_RULES: NamingRules<Table> = {
   refuseEmptyName: () => new Refusal('table-name-required', {}),
   refuseTooLongName: (max) => new Refusal('table-name-too-long', { max }),
   refuseTakenName: (namesake) => new Refusal('table-name-taken', { name: namesake.name.text }),
-};
-
-/**
- * Le pseudo d'un MJ : obligatoire, borné, unique parmi les MJ (PR-12, ID-7). Vérifié avant celui de
- * son participant, il donne son motif au refus d'un pseudo de MJ.
- */
-const NICKNAME_RULES: NamingRules<GameMaster> = {
-  getName: (gameMaster) => gameMaster.nickname,
-  maxLength: Convention.NICKNAME_MAX_LENGTH,
-  refuseMissingItem: () => new Refusal('game-master-not-found', {}),
-  refuseEmptyName: () => new Refusal('nickname-required', {}),
-  refuseTooLongName: (max) => new Refusal('nickname-too-long', { max }),
-  refuseTakenName: (namesake) =>
-    new Refusal('nickname-taken', { nickname: namesake.nickname.text }),
-};
-
-/**
- * Le pseudo d'un participant, MJ compris : obligatoire, borné, unique parmi les participants (ID-1,
- * ID-4, ID-7). `identifyByNickname()` relie un pseudo déjà pris au lieu de le refuser ; seuls l'ajout et le
- * renommage d'un MJ le refusent, une fois écarté un autre MJ (PR-12).
- */
-const PARTICIPANT_NICKNAME_RULES: NamingRules<Participant> = {
-  getName: (participant) => participant.nickname,
-  maxLength: Convention.NICKNAME_MAX_LENGTH,
-  refuseMissingItem: () => new Refusal('participant-not-found', {}),
-  refuseEmptyName: () => new Refusal('nickname-required', {}),
-  refuseTooLongName: (max) => new Refusal('nickname-too-long', { max }),
-  refuseTakenName: (namesake) =>
-    new Refusal('nickname-taken-by-participant', { nickname: namesake.nickname.text }),
 };
