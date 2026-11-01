@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import {
   MoveGame,
+  ReadCellPlacements,
   ReadMovePlacements,
   ReadPlacements,
   ReadSchedule,
@@ -20,6 +21,7 @@ import {
   SwapGames,
   UnscheduleGame,
   type Schedule,
+  type ScenarioCellPlacement,
 } from '@chimeres/application';
 import {
   scheduleEndpoints,
@@ -43,6 +45,7 @@ export class ScheduleController {
   constructor(
     @Inject(ReadSchedule) private readonly readSchedule: ReadSchedule,
     @Inject(ReadPlacements) private readonly readPlacements: ReadPlacements,
+    @Inject(ReadCellPlacements) private readonly readCellPlacements: ReadCellPlacements,
     @Inject(ScheduleGame) private readonly scheduleGame: ScheduleGame,
     @Inject(ReadMovePlacements) private readonly readMovePlacements: ReadMovePlacements,
     @Inject(MoveGame) private readonly moveGame: MoveGame,
@@ -64,6 +67,18 @@ export class ScheduleController {
     const placements = await this.readPlacements.execute(scenarioId);
     if (!placements) throw new Refusal('scenario-not-found', {});
     return placements.map(toPlacementDto);
+  }
+
+  /**
+   * Les verdicts de la case pour chaque scénario sans partie qui commence sur le créneau : les
+   * programmables d'abord, les autres avec le motif et la phrase de leur refus.
+   */
+  @Get(scheduleEndpoints.cellPlacements.path)
+  async cellPlacements(
+    @Param('timeSlotId') timeSlotId: string,
+    @Param('tableId') tableId: string,
+  ): Promise<ResponseOf<typeof scheduleEndpoints.cellPlacements>> {
+    return (await this.readCellPlacements.execute(timeSlotId, tableId)).map(toCellPlacementDto);
   }
 
   /** Renvoie le programme relu. */
@@ -124,6 +139,10 @@ export class ScheduleController {
 
 function toPlacementDto({ timeSlotId, tableId, refusal }: Placement) {
   return { timeSlotId, tableId, refusal: refusal && verdictOf(refusal) };
+}
+
+function toCellPlacementDto({ scenario, refusal }: ScenarioCellPlacement) {
+  return { scenario, refusal: refusal && verdictOf(refusal) };
 }
 
 function toMovePlacementDto({ swapWith, removedSignUps, ...placement }: MovePlacement) {

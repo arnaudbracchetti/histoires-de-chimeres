@@ -13,6 +13,7 @@ import {
   signUpEndpoints,
   tableEndpoints,
   timeSlotEndpoints,
+  type CellPlacementDto,
   type ConventionDto,
   type FrontOfficeScheduleDto,
   type IdentityConfirmationDto,
@@ -456,6 +457,49 @@ describe('Programme', () => {
       },
     ]);
     await placements(UNKNOWN_ID).expect(404);
+  });
+
+  it("donne les verdicts d'une case : les scénarios programmables d'abord, puis les autres avec leur motif", async () => {
+    await schedule({ scenarioId: neons.id, timeSlotId: slot(1), tableId: table('Table 1') }).expect(
+      201,
+    );
+    const cellPlacements = (timeSlotId: string, tableId: string) =>
+      server().get(apiUrl(scheduleEndpoints.cellPlacements, { timeSlotId, tableId }));
+
+    const response = await cellPlacements(slot(2), table('Table 1')).expect(200);
+
+    expect(response.body as CellPlacementDto[]).toEqual([
+      {
+        scenario: expect.objectContaining({
+          id: neons.id,
+          title: 'Néons',
+          gameMaster: expect.objectContaining({ nickname: 'Élodie' }),
+        }),
+        refusal: null,
+      },
+      { scenario: expect.objectContaining({ title: 'Ruines' }), refusal: null },
+      {
+        scenario: expect.objectContaining({ title: 'Brumes' }),
+        refusal: {
+          code: 'game-master-unavailable',
+          title: 'MJ indisponible',
+          detail: expect.stringContaining('Kaïros'),
+        },
+      },
+    ]);
+    // « Néons » commence déjà sur le créneau 1 : il n'y figure pas.
+    const first = (await cellPlacements(slot(1), table('Table 2')).expect(200))
+      .body as CellPlacementDto[];
+    expect(first.map(({ scenario, refusal }) => [scenario.title, refusal?.code ?? null])).toEqual([
+      ['Brumes', null],
+      ['Ruines', 'game-master-busy'],
+    ]);
+    expect((await cellPlacements(UNKNOWN_ID, table('Table 1')).expect(404)).body).toMatchObject({
+      code: 'time-slot-not-found',
+    });
+    expect((await cellPlacements(slot(1), UNKNOWN_ID).expect(404)).body).toMatchObject({
+      code: 'table-not-found',
+    });
   });
 
   describe('Partie double (PR-5, PR-8, PR-11)', () => {

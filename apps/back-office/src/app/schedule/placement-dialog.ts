@@ -74,7 +74,7 @@ let nextId = 0;
 @Component({
   selector: 'app-placement-dialog',
   imports: [Button, Loadable],
-  host: { '[attr.aria-busy]': 'gesture.running()' },
+  host: { class: 'placement-dialog', '[attr.aria-busy]': 'gesture.running()' },
   template: `
     <h2 [id]="request.titleId">{{ title }}</h2>
     <app-loadable [resource]="placements" failure="Impossible de lire les cases possibles.">
@@ -145,25 +145,6 @@ let nextId = 0;
   `,
   styles: `
     @layer components {
-      :host {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-m);
-        max-width: calc(100vw - 2 * var(--space-xl));
-        max-height: calc(100vh - 2 * var(--space-xl));
-        overflow: auto;
-        padding: var(--space-l) var(--space-xl);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-card);
-        background: var(--surface-2);
-      }
-
-      h2 {
-        font-family: var(--font-ui);
-        font-size: var(--font-size-block);
-        font-weight: 600;
-      }
-
       table {
         border-collapse: separate;
         border-spacing: var(--space-xs);
@@ -197,16 +178,6 @@ let nextId = 0;
       .off {
         color: var(--text-muted);
         font-size: var(--font-size-meta);
-      }
-
-      .refusal {
-        min-height: 1lh;
-        color: var(--danger);
-      }
-
-      .actions {
-        display: flex;
-        justify-content: flex-end;
       }
     }
   `,

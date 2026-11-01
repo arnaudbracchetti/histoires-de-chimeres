@@ -13,7 +13,12 @@ import { Participants } from './participants.js';
 import type { PresenceCode } from './presence-code.js';
 import { Table } from './table.js';
 import { computeReserve, computeReserveOfTimeSlot, type ReserveOfScenario } from './reserve.js';
-import { HYPOTHETICAL_GAME_ID, Schedule, type PlacementCollaborators } from './schedule.js';
+import {
+  HYPOTHETICAL_GAME_ID,
+  Schedule,
+  type PlacementCollaborators,
+  type SchedulableScenario,
+} from './schedule.js';
 import { ScheduleChange } from './schedule-change.js';
 import { SignUp } from './sign-up.js';
 import { computeSignUpTracking, type TimeSlotTracking } from './sign-up-tracking.js';
@@ -453,6 +458,30 @@ export class Convention {
   }
 
   /**
+   * Le verdict de la case pour chaque scénario du catalogue sans partie qui commence sur le créneau :
+   * le refus que `scheduleScenario()` y lèverait, ou `null`. Dans l'ordre du catalogue. Une case
+   * inconnue est refusée (`time-slot-not-found`, `table-not-found`).
+   */
+  computeCellPlacementVerdicts(
+    catalogue: ScenarioCatalogue,
+    timeSlotId: string,
+    tableId: string,
+  ): CellPlacement[] {
+    this.day.verifyTimeSlotExists(timeSlotId);
+    this.allTables.verifyItemExists(tableId);
+    const starting = this.gameSchedule.listGamesStartingOnTimeSlot(timeSlotId);
+    return catalogue
+      .listEntries()
+      .filter((entry) => !starting.some((game) => game.scenarioId === entry.id))
+      .map((entry) => ({
+        scenarioId: entry.id,
+        refusal: this.extractRefusal(
+          this.getScheduleAfterSchedulingScenario(HYPOTHETICAL_GAME_ID, entry, timeSlotId, tableId),
+        ),
+      }));
+  }
+
+  /**
    * Le verdict de chaque case créneaux × tables pour déplacer la partie, dans l'ordre des créneaux,
    * puis des tables. La première case d'une autre partie propose de l'échanger avec elle
    * (`swapWith`), avec le refus que `swapGames()` lèverait ; toute autre case, le refus que
@@ -673,7 +702,7 @@ export class Convention {
   /** Le Programme après la programmation du scénario sur cette case, ou le refus de PR-5. */
   private getScheduleAfterSchedulingScenario(
     id: string,
-    scenario: Scenario,
+    scenario: SchedulableScenario,
     timeSlotId: string,
     tableId: string,
   ): Schedule | Refusal {
@@ -817,6 +846,9 @@ export type ParticipantSituation = {
 
 /** Le verdict d'une case créneau × table pour un scénario : le refus d'écriture, ou `null`. */
 export type Placement = { timeSlotId: string; tableId: string; refusal: Refusal | null };
+
+/** Le verdict d'une case pour un scénario : le refus d'écriture, ou `null`. */
+export type CellPlacement = { scenarioId: string; refusal: Refusal | null };
 
 /**
  * Le verdict d'une case créneau × table pour déplacer une partie : `swapWith`, l'id de la partie

@@ -22,6 +22,7 @@ import {
   type Placed,
   type PlacementRequest,
 } from '../schedule/placement-dialog';
+import { CellPlacements, type CellPlacementRequest } from '../schedule/cell-placement-dialog';
 import { Alerts } from '../shell/alerts';
 import { Announcer } from '../shell/announcer';
 import { SignUpTrackingPage } from './sign-up-tracking-page';
@@ -188,16 +189,22 @@ describe('Pilotage du jour J', () => {
   let scheduleOn: ReturnType<
     typeof vi.fn<(request: PlacementRequest) => Promise<ScheduleDto | undefined>>
   >;
+  /** Le dialogue de « Programmer ici… » sur une table libre, qui a sa propre spec. */
+  let scheduleOnCell: ReturnType<
+    typeof vi.fn<(request: CellPlacementRequest) => Promise<ScheduleDto | undefined>>
+  >;
 
   beforeEach(() => {
     moveTo = vi.fn<(request: MoveRequest) => Promise<Placed | undefined>>();
     scheduleOn = vi.fn<(request: PlacementRequest) => Promise<ScheduleDto | undefined>>();
+    scheduleOnCell = vi.fn<(request: CellPlacementRequest) => Promise<ScheduleDto | undefined>>();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: Placements, useValue: { moveTo, scheduleOn } },
+        { provide: CellPlacements, useValue: { scheduleOn: scheduleOnCell } },
       ],
     });
   });
@@ -405,9 +412,9 @@ describe('Pilotage du jour J', () => {
       ]);
       expect(tabs()[0]!.getAttribute('aria-selected')).toBe('true');
       expect(rows().map(text)).toEqual([
-        'Dragon Table libre',
-        'Licorne Table libre',
-        'Phénix Table libre',
+        'Dragon Table libre Programmer ici…',
+        'Licorne Table libre Programmer ici…',
+        'Phénix Table libre Programmer ici…',
         'Sphinx Partie double, comptée sur le créneau 2',
       ]);
     });
@@ -431,7 +438,7 @@ describe('Pilotage du jour J', () => {
       expect(rows().map(text)).toEqual([
         'Dragon B Brumes Cthulhu · Kaïros 15 inscrits · 3 à 4 places · 11 de trop dont 8 sans autre inscription sur le créneau Très demandée',
         'Licorne Partie double, comptée sur le créneau 1',
-        'Phénix Table libre',
+        'Phénix Table libre Programmer ici…',
         'Sphinx N Néons Cthulhu · Kaïros 2 inscrits · 3 à 4 places · 1 manquant double Sous son minimum',
       ]);
     });
@@ -441,6 +448,36 @@ describe('Pilotage du jour J', () => {
 
       expect(rows()[1]!.classList).toContain('second-slot');
       expect(rows()[2]!.classList).toContain('free');
+    });
+
+    it('« Programmer ici… » sur une table libre : dialogue de la case, puis focus sur la partie et annonce', async () => {
+      const { rows, tabs, reread } = await render();
+      const programmed = game('p4', 'Abysses', 't3', ['s2']);
+      const games = [BRUMES, EPICE, NEONS, programmed];
+      scheduleOnCell.mockResolvedValue({ games, reserve: [] });
+
+      rows()[2]!.querySelector('button')!.click();
+      await reread({ ...TRACKING, games });
+
+      expect(scheduleOnCell).toHaveBeenCalledWith({
+        timeSlot: TRACKING.timeSlots[1],
+        table: TRACKING.tables[2],
+      });
+      expect(tabs()[0]!.getAttribute('aria-selected')).toBe('true');
+      expect(document.activeElement?.id).toBe('tracked-game-p4');
+      expect(TestBed.inject(Announcer).message()).toBe(
+        `Partie «${NBSP}Abysses${NBSP}» programmée${NBSP}: créneau 2, Phénix.`,
+      );
+    });
+
+    it('relit le suivi quand le dialogue de la case se ferme sans programmer', async () => {
+      const { rows, reread, panel } = await render();
+      scheduleOnCell.mockResolvedValue(undefined);
+
+      rows()[2]!.querySelector('button')!.click();
+      await reread(TRACKING);
+
+      expect(panel()).not.toBeNull();
     });
 
     it('montre chaque inscription d’une partie par une case de sa jauge', async () => {

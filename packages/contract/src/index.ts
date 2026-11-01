@@ -75,6 +75,8 @@ export {
 } from './scenario.js';
 export {
   scheduleEndpoints,
+  type CellParams,
+  type CellPlacementDto,
   type GameDto,
   type GameParams,
   type MoveGameBody,

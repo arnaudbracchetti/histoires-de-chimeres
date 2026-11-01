@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import {
   MoveGame,
+  ReadCellPlacements,
   ReadMovePlacements,
   ReadPlacements,
   ReadSchedule,
@@ -52,6 +53,15 @@ import { SCHEDULE_READER } from './schedule-reader.token.js';
         notifications: NotificationSender,
       ) => new ScheduleGame(conventions, scenarios, notifications, randomUUID),
       inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY, NOTIFICATION_SENDER],
+    },
+    {
+      provide: ReadCellPlacements,
+      useFactory: (
+        conventions: ConventionRepository,
+        scenarios: ScenarioRepository,
+        reader: ScheduleReader,
+      ) => new ReadCellPlacements(conventions, scenarios, reader),
+      inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY, SCHEDULE_READER],
     },
     {
       provide: ReadMovePlacements,

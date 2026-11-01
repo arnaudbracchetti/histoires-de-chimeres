@@ -49,6 +49,15 @@ export type PlacementDto = {
 };
 
 /**
+ * Le verdict d'une case créneau × table pour un scénario sans partie qui commence sur ce créneau :
+ * `refusal` est `null` si on peut l'y programmer, sinon le refus que l'écriture lèverait.
+ */
+export type CellPlacementDto = {
+  scenario: ScheduleScenarioDto;
+  refusal: VerdictRefusalDto | null;
+};
+
+/**
  * Les inscriptions qu'un geste retirerait à une partie (IN-6) : ses inscriptions actives
  * (`signUpCount`, IN-4), et combien de ses inscrits n'ont pas d'autre inscription active sur son
  * premier créneau (`withoutOtherSignUpCount`).
@@ -78,6 +87,9 @@ export type ScheduleGameBody = { scenarioId: string; timeSlotId: string; tableId
 
 export type GameParams = { gameId: string };
 
+/** Une case du programme. */
+export type CellParams = { timeSlotId: string; tableId: string };
+
 /** La nouvelle place d'une partie : pour une partie double, son premier créneau. */
 export type MoveGameBody = { timeSlotId: string; tableId: string };
 
@@ -86,12 +98,18 @@ export type SwapGamesBody = { otherGameId: string };
 
 /**
  * `placements` et `movePlacements` rendent la grille dans l'ordre des créneaux, puis des tables.
+ * `cellPlacements` rend les verdicts d'une case : les scénarios programmables d'abord, puis les
+ * autres, chaque groupe dans l'ordre naturel des titres.
  * `unscheduleVerdict` donne, avant de déprogrammer, les inscriptions que le geste retirerait.
  * Programmer, déplacer, échanger et déprogrammer renvoient le programme relu.
  */
 export const scheduleEndpoints = {
   read: endpoint<ScheduleDto>('GET', 'schedule'),
   placements: endpoint<PlacementDto[], ScenarioParams>('GET', 'scenarios/:scenarioId/placements'),
+  cellPlacements: endpoint<CellPlacementDto[], CellParams>(
+    'GET',
+    'time-slots/:timeSlotId/tables/:tableId/placements',
+  ),
   schedule: endpoint<ScheduleDto, never, ScheduleGameBody>('POST', 'games'),
   movePlacements: endpoint<MovePlacementDto[], GameParams>('GET', 'games/:gameId/placements'),
   move: endpoint<ScheduleDto, GameParams, MoveGameBody>('PUT', 'games/:gameId/placement'),

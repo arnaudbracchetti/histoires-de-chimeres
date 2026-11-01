@@ -1,6 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import type { TableDto, TimeSlotTrackingDto, TrackedGameDto } from '@chimeres/contract';
 import { countOf, formatCount, formatSeats } from '@chimeres/design';
+import { Button } from '../ui/button';
 import { Gauge } from '../ui/gauge';
 import { ScenarioIllustration } from '../ui/scenario-illustration';
 import { GameBadges } from './game-badges';
@@ -17,17 +18,18 @@ type TableRow = { table: TableDto } & (
  * L'onglet « Parties du créneau » (docs/design/patterns.md, Pilotage du jour J) : le nombre de
  * tables libres, puis une ligne par table, dans l'ordre des tables. Une partie montre ses inscrits
  * face à ses places, avec leur écart (« 11 de trop », « 1 manquant »), d'après les chiffres et les
- * drapeaux reçus. Un clic sur sa ligne ouvre sa fiche ; au clavier, son titre en est le bouton.
+ * drapeaux reçus. Un clic sur sa ligne ouvre sa fiche ; au clavier, son titre en est le bouton. Une
+ * table libre offre « Programmer ici… ».
  */
 @Component({
   selector: 'app-tracked-games-panel',
-  imports: [GameBadges, Gauge, ScenarioIllustration],
+  imports: [Button, GameBadges, Gauge, ScenarioIllustration],
   template: `
     <p class="free-tables">{{ countOf(freeTableCount(), 'table libre', 'tables libres') }}</p>
     <ul>
       @for (row of rows(); track row.table.id) {
         <li [class]="row.kind" (click)="openRow(row)">
-          <span class="table">{{ row.table.name }}</span>
+          <span class="table" [id]="tableNameIdOf(row.table)">{{ row.table.name }}</span>
           @switch (row.kind) {
             @case ('game') {
               @let game = row.game;
@@ -84,6 +86,14 @@ type TableRow = { table: TableDto } & (
             }
             @case ('free') {
               <span class="meta">Table libre</span>
+              <button
+                type="button"
+                appButton="secondary"
+                [attr.aria-describedby]="tableNameIdOf(row.table)"
+                (click)="scheduleOn.emit(row.table)"
+              >
+                Programmer ici…
+              </button>
             }
           }
         </li>
@@ -140,8 +150,16 @@ type TableRow = { table: TableDto } & (
         opacity: 0.6;
       }
 
-      li:not(.game) .meta {
+      li.second-slot .meta {
         grid-column: 2 / -1;
+      }
+
+      li.free .meta {
+        grid-column: 2 / 4;
+      }
+
+      li.free button {
+        justify-self: end;
       }
 
       .table {
@@ -204,11 +222,18 @@ export class TrackedGamesPanel {
   readonly openGameId = input<string | null>(null);
 
   readonly opened = output<TrackedGameDto>();
+  /** « Programmer ici… » sur une table libre du créneau. */
+  readonly scheduleOn = output<TableDto>();
 
   protected readonly countOf = countOf;
   protected readonly formatCount = formatCount;
   protected readonly formatSeats = formatSeats;
   protected readonly rowIdOf = rowIdOf;
+
+  /** L'id du nom de la table, dans sa ligne : il décrit « Programmer ici… ». */
+  protected tableNameIdOf(table: TableDto): string {
+    return `tracked-table-${table.id}`;
+  }
 
   /** Le clic du titre remonte jusqu'à la ligne : une seule ouverture. */
   protected openRow(row: TableRow) {

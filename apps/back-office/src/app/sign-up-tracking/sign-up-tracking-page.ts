@@ -14,7 +14,9 @@ import { Tab, TabContent, TabList, TabPanel, Tabs } from '@angular/aria/tabs';
 import { RouterLink } from '@angular/router';
 import {
   signUpTrackingEndpoints,
+  type ScheduleDto,
   type ScheduleScenarioDto,
+  type TableDto,
   type TimeSlotStateDto,
   type TimeSlotTrackingDto,
   type TrackedGameDto,
@@ -30,6 +32,7 @@ import {
 } from '@chimeres/design';
 import { apiResource, currentValue } from '../api-resource';
 import { injectGesture } from '../gesture';
+import { CellPlacements } from '../schedule/cell-placement-dialog';
 import { GameSheet } from '../schedule/game-sheet';
 import {
   describeMovedGame,
@@ -193,6 +196,7 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                           [games]="tracking.games"
                           [openGameId]="openGame()?.id ?? null"
                           (opened)="open($event)"
+                          (scheduleOn)="scheduleOnTable(slot, $event)"
                         />
                       </ng-template>
                     </div>
@@ -475,6 +479,7 @@ export class SignUpTrackingPage {
   /** Un refus part en alerte : la fiche n'a pas de place pour lui. */
   protected readonly unscheduling = injectGesture({ alert: true, refreshes: true });
   private readonly placements = inject(Placements);
+  private readonly cellPlacements = inject(CellPlacements);
   private readonly announcer = inject(Announcer);
   private readonly gestures = inject(RemovedSignUpsGestures);
   private readonly injector = inject(Injector);
@@ -546,14 +551,36 @@ export class SignUpTrackingPage {
   }
 
   /**
-   * Ouvre le dialogue de placement du scénario, limité à la colonne du créneau. Une fois la partie
-   * programmée, la page ouvre l'onglet Parties, et met le focus sur sa ligne, une fois le suivi
-   * relu. La région `aria-live` l'annonce.
+   * Ouvre le dialogue de placement du scénario, limité à la colonne du créneau : voir
+   * `concludeScheduling()`.
    */
   protected async scheduleOn(slot: TimeSlotTrackingDto, scenario: ScheduleScenarioDto) {
+    await this.concludeScheduling(
+      slot,
+      this.placements.scheduleOn({ scenario, timeSlots: [slot], tables: this.value()!.tables }),
+    );
+  }
+
+  /**
+   * Ouvre le dialogue de « Programmer ici… » sur la table libre du créneau : voir
+   * `concludeScheduling()`.
+   */
+  protected async scheduleOnTable(slot: TimeSlotTrackingDto, table: TableDto) {
+    await this.concludeScheduling(slot, this.cellPlacements.scheduleOn({ timeSlot: slot, table }));
+  }
+
+  /**
+   * Attend le dialogue de programmation sur le créneau. Une fois la partie programmée, la page
+   * ouvre l'onglet Parties, et met le focus sur sa ligne, une fois le suivi relu ; la région
+   * `aria-live` l'annonce.
+   */
+  private async concludeScheduling(
+    slot: TimeSlotTrackingDto,
+    dialog: Promise<ScheduleDto | undefined>,
+  ) {
     const { tables, games } = this.value()!;
     const known = new Set(games.map(({ id }) => id));
-    const schedule = await this.placements.scheduleOn({ scenario, timeSlots: [slot], tables });
+    const schedule = await dialog;
     // Fermé sans geste, le dialogue a pu essuyer un refus périmé : le suivi se relit aussi.
     const game = schedule?.games.find(({ id }) => !known.has(id));
     if (game) {

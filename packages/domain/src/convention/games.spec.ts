@@ -445,6 +445,66 @@ describe('Verdicts de placement', () => {
   });
 });
 
+describe("Verdicts d'une case (PR-5)", () => {
+  const double = aScenario('d', 'g1', 2);
+  const scenarios = [neons, ruines, brumes, double];
+  const catalogue = ScenarioCatalogue.restore(
+    scenarios.map(({ id, gameMasterId, duration, seats }) => ({
+      id,
+      gameMasterId,
+      duration,
+      minSeats: seats.min,
+      maxSeats: seats.max,
+    })),
+  );
+  /** « a » (Élodie) programmé sur s1, à la table t1. */
+  const withOneGame = () => {
+    const convention = aConvention();
+    convention.scheduleScenario('p1', neons, 's1', 't1');
+    return convention;
+  };
+  const verdictsOf = (convention: Convention, timeSlotId: string, tableId: string) =>
+    convention
+      .computeCellPlacementVerdicts(catalogue, timeSlotId, tableId)
+      .map(({ scenarioId, refusal }) => [scenarioId, refusal?.code ?? null]);
+
+  it("donne, pour chaque scénario sans partie qui commence sur le créneau, le refus de l'écriture, ou rien", () => {
+    expect(verdictsOf(withOneGame(), 's1', 't2')).toEqual([
+      ['b', 'game-master-busy'],
+      ['c', null],
+      ['d', 'game-master-busy'],
+    ]);
+    expect(verdictsOf(withOneGame(), 's2', 't1')).toEqual([
+      ['a', null],
+      ['b', null],
+      ['c', 'game-master-unavailable'],
+      ['d', 'no-next-time-slot'],
+    ]);
+    for (const timeSlotId of ['s1', 's2']) {
+      for (const { scenarioId, refusal } of withOneGame().computeCellPlacementVerdicts(
+        catalogue,
+        timeSlotId,
+        't2',
+      )) {
+        const copy = withOneGame();
+        const scenario = scenarios.find(({ id }) => id === scenarioId)!;
+        const write = () => copy.scheduleScenario('p2', scenario, timeSlotId, 't2');
+        if (refusal) expect(refusalOf(write)).toEqual(refusal);
+        else expect(write).not.toThrow();
+      }
+    }
+  });
+
+  it('refuse une case dont le créneau ou la table est inconnu', () => {
+    expect(
+      refusalOf(() => withOneGame().computeCellPlacementVerdicts(catalogue, 'x', 't1')),
+    ).toMatchObject({ code: 'time-slot-not-found' });
+    expect(
+      refusalOf(() => withOneGame().computeCellPlacementVerdicts(catalogue, 's1', 'x')),
+    ).toMatchObject({ code: 'table-not-found' });
+  });
+});
+
 describe('Déplacer une partie (PR-17)', () => {
   /** Ce que la frise montre d'une partie : son identité, sa table, ses créneaux et ses places. */
   const placeOf = (convention: Convention, gameId: string) => {

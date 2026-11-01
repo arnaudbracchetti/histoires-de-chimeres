@@ -96,3 +96,38 @@
     cursor: not-allowed !important;
   }
 }
+
+@layer components {
+  /*
+   * Boîte des dialogues de placement : « Programmer sur… », « Déplacer vers… » et « Programmer
+   * ici… ». La ligne du refus est réservée : un refus ne décale rien.
+   */
+  .placement-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-m);
+    max-width: calc(100vw - 2 * var(--space-xl));
+    max-height: calc(100vh - 2 * var(--space-xl));
+    overflow: auto;
+    padding: var(--space-l) var(--space-xl);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface-2);
+
+    > h2 {
+      font-family: var(--font-ui);
+      font-size: var(--font-size-block);
+      font-weight: 600;
+    }
+
+    > .refusal {
+      min-height: 1lh;
+      color: var(--danger);
+    }
+
+    > .actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+  }
+}
