@@ -8,7 +8,7 @@ Cette page décrit les patterns du back office. Une partie vaut aussi pour le fr
 | [Champs](#champs), [Validation](#validation), [Une erreur ne décale rien](#une-erreur-ne-décale-rien), [Enregistrement](#enregistrement) (pendant l'envoi, un second envoi est refusé) | [Où se fait la saisie](#où-se-fait-la-saisie) : cartes, lignes et pages de saisie |
 | [Actions destructrices](#actions-destructrices) : le dialogue de confirmation, le refus dans le dialogue | [Tableaux](#tableaux) |
 | [Erreur hors formulaire](#erreur-hors-formulaire), sauf la place des alertes : en bas à droite ici, en bas de l'écran sur le téléphone | [Chargement, état vide, erreur de lecture](#chargement-état-vide-erreur-de-lecture), jusqu'aux premiers écrans du front office qui en ont besoin |
-| [Succès](#succès) : pas d'alerte de succès, annonce aux lecteurs d'écran | [Programmation](#programmation) |
+| [Succès](#succès) : pas d'alerte de succès, annonce aux lecteurs d'écran | [Programmation](#programmation), [Pilotage du jour J](#pilotage-du-jour-j), [Jauge](#jauge) |
 | [Statuts](#statuts), [Focus](#focus) | |
 
 ## Le back office sur l'écran
@@ -23,7 +23,7 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 - **Haut du rail** : l'emblème et « Histoires de Chimères », puis la convention en cours (nom et date, ou « date à fixer »), qui mène à « Créneaux et tables ».
 - **Sections**, une page chacune :
   - **Préparation** : Calendrier (écran d'accueil), MJ, Scénarios, Créneaux et tables ;
-  - **Jour J** : Pilotage du jour J, Participants. Leur place est prise, grisée, avec « à venir ».
+  - **Jour J** : Pilotage du jour J, Participants. La place de Participants est prise, grisée, avec « à venir ».
 - **Bas du rail** : l'utilisateur. Avant l'authentification, « Organisateur, sans authentification ».
 - **La fiche d'un MJ** (MJ › pseudo) regroupe ses scénarios, ses disponibilités et ses parties. C'est le seul écran restreint à un MJ : il deviendra tout son espace avec l'authentification, sans le rail des Organisateurs ni le calendrier.
 
@@ -298,3 +298,27 @@ Sur la fiche du MJ, la **frise de la journée** : un bloc par créneau, à sa pl
 - **Chaque bloc s'enregistre dès qu'on clique dessus** : c'est un geste, une case à cocher (« Créneau 1 · 9 h 00 – 12 h 30 ») sous son dessin. Pendant l'écriture, le bloc est atténué ; refusé, il revient à son état.
 - **Un créneau court reste lisible** : il garde une largeur minimale, prise sur les pauses. Son texte rétrécit (de 13 à 11 px), la plage passe à la ligne entre début et fin, sans couper une heure, puis « Créneau » se réduit au rang et l'état à son icône.
 - Une disponibilité sur laquelle le MJ mène une partie (PR-15) est **cochée et verrouillée**, avec son motif : « Mène « Néons sur Neo-Paris » », et la table en dessous. Ce verdict vient de la lecture de la fiche, calculé par le domaine ; le front ne recode pas la règle.
+
+## Pilotage du jour J
+
+La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque créneau avant le tirage (PRD §4.4, étape 1). Elle est disponible avant le jour J, sans condition de date. Le Calendrier reste l'écran d'accueil. Elle affiche ce que l'API calcule, sans recalcul.
+
+- **En-tête** : h1 « Pilotage du jour J », et dessous une ligne réservée à l'âge des chiffres. Elle garde sa hauteur même vide : son texte, quand il vient, ne décale rien.
+- **Bande des créneaux** : une tuile par créneau, dans l'ordre de la journée. C'est un bouton à `aria-pressed`, bordé d'orange quand le créneau est choisi.
+  - Créneau dont les inscriptions sont ouvertes : « Créneau 2 », la plage, le ratio demande / capacité maximum en grand (« 26 / 22 »), la légende « participants / places », la [jauge](#jauge).
+  - Créneau dont le tirage est lancé ou publié : tuile atténuée, cadenas (`lock`), « Tirage en cours » ou « Tirage publié », sans chiffres.
+  - À l'ouverture, la page choisit le premier créneau dont les inscriptions sont ouvertes.
+- **Résumé du créneau choisi**, dans une carte : « Créneau 2 · 13 h 00 – 15 h 30 », la demande (« 26 participants ») et la capacité (« 14 à 22 places », ou « 22 places » quand les deux bornes sont égales) en grand, et une jauge large.
+  - Sans inscription : « Aucune inscription sur ce créneau pour l'instant. » Les chiffres restent affichés, même à 0.
+  - Créneau publié : « Tirage publié : les inscriptions sont fermées et le programme du créneau ne change plus. », sans chiffres ni action.
+- La **demande** compte des participants distincts : un participant inscrit à trois parties du créneau compte pour un. La **capacité** est une fourchette, de la somme des places minimum à la somme des places maximum des parties qui commencent sur le créneau. Une partie double ne compte que sur son premier créneau.
+- Les grands chiffres de la tuile et du résumé prennent `--font-size-title`, en police système, à chasse fixe.
+
+## Jauge
+
+Le dessin d'un nombre face à des places, pour un créneau (demande face à la capacité) comme pour une partie (inscrits face à ses places).
+
+- Une **zone claire** du minimum au maximum, un **trait** à chaque borne, et un **remplissage** jusqu'au nombre, au plus le maximum.
+- Au-delà du maximum, des **hachures** : rouges pour un créneau, neutres pour une partie.
+- Chaque jauge a **sa propre échelle** : le maximum, ou le nombre s'il le dépasse. Deux jauges voisines ne se comparent pas à l'œil, mais par leurs chiffres.
+- Elle est **décorative** (`aria-hidden`) : les chiffres sont toujours écrits à côté.

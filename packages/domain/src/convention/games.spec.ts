@@ -793,7 +793,7 @@ describe('Déprogrammer une partie (PR-17)', () => {
 
     expect(convention.games.map(({ id }) => id)).toEqual(['p2']);
     const catalogue = ScenarioCatalogue.restore([
-      { id: neons.id, gameMasterId: 'g1', duration: 1, maxSeats: 5 },
+      { id: neons.id, gameMasterId: 'g1', duration: 1, minSeats: 3, maxSeats: 5 },
     ]);
     expect(convention.computeReserve(catalogue)[0]!.timeSlots[0]).toMatchObject({
       inReserve: true,
@@ -927,6 +927,7 @@ describe('Réserve (PR-6)', () => {
         id,
         gameMasterId,
         duration,
+        minSeats: seats.min,
         maxSeats: seats.max,
       }),
     ),
@@ -1006,6 +1007,7 @@ describe('Réserve (PR-6)', () => {
         id,
         gameMasterId,
         duration,
+        minSeats: seats.min,
         maxSeats: seats.max,
       })),
     );
@@ -1024,7 +1026,7 @@ describe('Réserve (PR-6)', () => {
   describe('un scénario double', () => {
     const double = aScenario('e', 'g2', 2);
     const withDouble = ScenarioCatalogue.restore([
-      { id: double.id, gameMasterId: 'g2', duration: 2, maxSeats: 5 },
+      { id: double.id, gameMasterId: 'g2', duration: 2, minSeats: 3, maxSeats: 5 },
     ]);
     /** Kaïros (g2) disponible sur s1 et s2, puis s3 (17 h – 19 h 30), sans disponibilité. */
     const withThreeSlots = () => {

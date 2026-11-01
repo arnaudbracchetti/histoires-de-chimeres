@@ -64,7 +64,27 @@ describe('Rail', () => {
     fixture.detectChanges();
 
     const links = [...host.querySelectorAll('nav a')].map((a) => a.textContent?.trim());
-    expect(links).toEqual(['Calendrier', 'MJ', 'Scénarios', 'Créneaux et tables']);
+    expect(links).toEqual([
+      'Calendrier',
+      'MJ',
+      'Scénarios',
+      'Créneaux et tables',
+      'Pilotage du jour J',
+    ]);
+  });
+
+  it('mène au Pilotage du jour J ; « Participants » reste à venir', () => {
+    const { host } = render();
+
+    const pilotage = [...host.querySelectorAll<HTMLAnchorElement>('nav a')].find(
+      (a) => a.textContent?.trim() === 'Pilotage du jour J',
+    );
+    expect(pilotage?.getAttribute('href')).toBe('/pilotage');
+    expect(
+      [...host.querySelectorAll('nav .upcoming')].map((entry) =>
+        entry.textContent?.replace(/\s+/g, ' ').trim(),
+      ),
+    ).toEqual(['Participants à venir']);
   });
 
   it('affiche la convention en cours, date à fixer', async () => {

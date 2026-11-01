@@ -79,6 +79,11 @@ export class Schedule {
     return this.games.filter((game) => game.gameMasterId === gameMasterId);
   }
 
+  /** Les parties qui commencent sur ce créneau, dans l'ordre de leur programmation. */
+  listGamesStartingOnTimeSlot(timeSlotId: string): Game[] {
+    return this.games.filter((game) => game.timeSlotIds[0] === timeSlotId);
+  }
+
   /** La partie, autre que `game`, dont c'est la première case, ou `undefined`. */
   findOtherGameStartingAt(game: Game, timeSlotId: string, tableId: string): Game | undefined {
     return this.games.find(

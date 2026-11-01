@@ -78,6 +78,7 @@ La taille de base du back office est de 13 px (`--font-size-body`), posée dans 
 | Rôle | Police | Jeton |
 |---|---|---|
 | Titre de page (h1) | Uncial Antiqua | `--font-size-title` |
+| Grands chiffres du Pilotage du jour J : ratio d'une tuile, demande et capacité du résumé | système, chasse fixe | `--font-size-title` |
 | Titre de section (h2) | système, semi-gras | `--font-size-section` |
 | Titre de carte ou de bloc (h3) | système, semi-gras | `--font-size-block` |
 | Texte courant | système | `--font-size-body` |

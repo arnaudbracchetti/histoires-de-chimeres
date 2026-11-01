@@ -6,7 +6,8 @@ export type CatalogueEntry = {
   id: string;
   gameMasterId: string;
   duration: Duration;
-  /** Les places maximum, celles de ses parties (PR-4). */
+  /** Les places minimum et maximum, celles de ses parties (PR-4). */
+  minSeats: number;
   maxSeats: number;
 };
 

@@ -16,6 +16,7 @@ import { computeReserve, type ReserveOfScenario } from './reserve.js';
 import { Schedule, type PlacementCollaborators } from './schedule.js';
 import { ScheduleChange } from './schedule-change.js';
 import { SignUp } from './sign-up.js';
+import { computeSignUpTracking, type TimeSlotTracking } from './sign-up-tracking.js';
 import {
   SignUps,
   type LedGames,
@@ -489,6 +490,19 @@ export class Convention {
   /** La réserve (PR-6) : voir `computeReserve()`. */
   computeReserve(catalogue: ScenarioCatalogue): ReserveOfScenario[] {
     return computeReserve(catalogue, this.day, this.gameSchedule, this.allParticipants);
+  }
+
+  /**
+   * Le suivi des inscriptions de chaque créneau, dans l'ordre de la journée : son état, sa demande et
+   * sa capacité, que le catalogue, entier, donne (§4.4). Voir `computeSignUpTracking()`.
+   */
+  computeSignUpTracking(catalogue: ScenarioCatalogue): TimeSlotTracking[] {
+    return computeSignUpTracking(catalogue, {
+      day: this.day,
+      signUps: this.allSignUps,
+      signUpCollaborators: this.buildSignUpCollaborators(this.gameSchedule),
+      getTimeSlotState: (timeSlotId) => this.getTimeSlotState(timeSlotId),
+    });
   }
 
   /** Les inscriptions, dans l'ordre où elles ont été prises. */

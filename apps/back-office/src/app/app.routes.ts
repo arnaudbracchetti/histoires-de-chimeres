@@ -3,6 +3,7 @@ import { CalendarPage } from './schedule/calendar-page';
 import { GameMasterPage } from './game-masters/game-master-page';
 import { GameMastersPage } from './game-masters/game-masters-page';
 import { ScenariosPage } from './scenarios/scenarios-page';
+import { SignUpTrackingPage } from './sign-up-tracking/sign-up-tracking-page';
 import { TimeSlotsAndTablesPage } from './convention/time-slots-and-tables-page';
 import { leaveUnsaved } from './shell/leave-unsaved';
 
@@ -28,5 +29,6 @@ export const routes: Routes = [
     canDeactivate: [leaveUnsaved],
   },
   { path: 'creneaux-et-tables', title: 'Créneaux et tables', component: TimeSlotsAndTablesPage },
+  { path: 'pilotage', title: 'Pilotage du jour J', component: SignUpTrackingPage },
   { path: '**', redirectTo: '' },
 ];

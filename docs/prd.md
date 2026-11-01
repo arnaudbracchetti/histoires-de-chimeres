@@ -79,7 +79,7 @@ Les inscriptions sont déjà ouvertes : il n'y a pas d'état où l'on lit le pro
 
 ### 4.4 Pilotage d'un créneau (Organisateur, back office)
 
-1. **Surveiller la surcharge** : le back office affiche en permanence, pour chaque créneau, *demande / capacité*, avec un code couleur dès que la demande dépasse la capacité.
+1. **Surveiller la surcharge** : le back office affiche en permanence, pour chaque créneau, *demande / capacité*, avec un code couleur dès que la demande dépasse la capacité. La demande compte des participants distincts : un participant inscrit à plusieurs parties du créneau compte pour un. La capacité est une fourchette, de la somme des places minimum à la somme des places maximum des parties qui commencent sur le créneau.
 2. **Soulager un créneau** : l'Organisateur programme une partie depuis la réserve. Tous ceux qui peuvent s'inscrire sur ce créneau reçoivent une notification « Créneau *N* : nouvelle partie » (NO-2).
 3. **Lancer le tirage** : les inscriptions du créneau se ferment ; le tirage produit un résultat **provisoire**.
 4. **Examiner et ajuster** : l'Organisateur voit les parties, leurs joueurs, les parties sous leur minimum et les **non placés**, et peut faire des **ajustements** (§5.5).

@@ -4,6 +4,7 @@ export {
   countOf,
   formatCount,
   formatList,
+  formatSeatRange,
   formatSeats,
   fr,
   NBSP,

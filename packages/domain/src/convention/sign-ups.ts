@@ -146,6 +146,18 @@ export class SignUps {
   }
 
   /**
+   * La demande du créneau : le nombre de participants distincts qui ont au moins une inscription
+   * active sur une partie qui y commence. Une partie double ne compte que sur son premier créneau.
+   */
+  countDemandOnTimeSlot(timeSlotId: string, collaborators: SignUpCollaborators): number {
+    return new Set(
+      collaborators.schedule
+        .listGamesStartingOnTimeSlot(timeSlotId)
+        .flatMap((game) => this.listActiveParticipantIdsOfGame(game, collaborators)),
+    ).size;
+  }
+
+  /**
    * Les destinataires de « partie très demandée » si cette inscription, la dernière prise, fait
    * passer sa partie au-dessus de ses places maximum, que le catalogue, entier, donne ; sinon aucun.
    * L'auteur de l'inscription n'en est pas : il vient de voir la confirmation (IN-5).

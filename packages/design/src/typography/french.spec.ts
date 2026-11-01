@@ -3,6 +3,7 @@ import {
   countOf,
   formatCount,
   formatList,
+  formatSeatRange,
   formatSeats,
   fr,
   NBSP,
@@ -63,5 +64,11 @@ describe('Typographie française', () => {
   it('donne les places d’un scénario, « 4 places » quand minimum et maximum sont égaux', () => {
     expect(formatSeats({ min: 3, max: 5 })).toBe(`3 à 5${NBSP}places`);
     expect(formatSeats({ min: 4, max: 4 })).toBe(`4${NBSP}places`);
+    expect(formatSeats({ min: 1, max: 1 })).toBe(`1${NBSP}place`);
+  });
+
+  it('écrit la fourchette de places sans le nom', () => {
+    expect(formatSeatRange({ min: 14, max: 22 })).toBe('14 à 22');
+    expect(formatSeatRange({ min: 22, max: 22 })).toBe('22');
   });
 });

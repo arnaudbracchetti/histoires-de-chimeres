@@ -6,8 +6,9 @@ export type Crumb = { label: string; link: string };
 
 /**
  * En-tête d'une page : fil d'Ariane dès le second niveau, h1 en Uncial Antiqua, et à droite une
- * seule action principale, projetée. Ce qui porte `appPageTitle` se place à côté du h1 ;
- * `titleHidden` retire le h1, pour modifier le titre dans un champ en place.
+ * seule action principale, projetée. Ce qui porte `appPageTitle` se place à côté du h1, ce qui
+ * porte `appPageSubtitle` dessous ; `titleHidden` retire le h1, pour modifier le titre dans un
+ * champ en place.
  */
 @Component({
   selector: 'app-page-header',
@@ -32,6 +33,7 @@ export type Crumb = { label: string; link: string };
         }
         <ng-content select="[appPageTitle]" />
       </div>
+      <ng-content select="[appPageSubtitle]" />
     </div>
     <ng-content />
   `,

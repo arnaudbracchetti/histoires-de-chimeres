@@ -23,6 +23,7 @@ export { ReadMovePlacements } from './game/read-move-placements.js';
 export { ReadPlacements } from './game/read-placements.js';
 export { ReadUnscheduleVerdict } from './game/read-unschedule-verdict.js';
 export { ReadSchedule, type ReserveScenario, type Schedule } from './game/read-schedule.js';
+export { ReadSignUpTracking } from './sign-up-tracking/read-sign-up-tracking.js';
 export { ReadParticipantSituation } from './sign-up/read-participant-situation.js';
 export { SignUpForGame } from './sign-up/sign-up-for-game.js';
 export { WithdrawFromGame } from './sign-up/withdraw-from-game.js';

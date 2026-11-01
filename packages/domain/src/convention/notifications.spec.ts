@@ -65,9 +65,9 @@ function aConvention(date: string | null = '2027-03-14'): Convention {
 
 /** Les scénarios a, b et c, à 5 places maximum. */
 const CATALOGUE = ScenarioCatalogue.restore([
-  { id: 'a', gameMasterId: 'g1', duration: 1, maxSeats: 5 },
-  { id: 'b', gameMasterId: 'g2', duration: 2, maxSeats: 5 },
-  { id: 'c', gameMasterId: 'g1', duration: 1, maxSeats: 5 },
+  { id: 'a', gameMasterId: 'g1', duration: 1, minSeats: 3, maxSeats: 5 },
+  { id: 'b', gameMasterId: 'g2', duration: 2, minSeats: 3, maxSeats: 5 },
+  { id: 'c', gameMasterId: 'g1', duration: 1, minSeats: 3, maxSeats: 5 },
 ]);
 
 const endOfDay = (time: string): LocalMoment => ({ date: '2027-03-14', time: at(time) });

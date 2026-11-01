@@ -10,6 +10,7 @@ import { GameModule } from './game/game.module.js';
 import { GameMasterModule } from './game-master/game-master.module.js';
 import { HealthModule } from './health/health.module.js';
 import { ScenarioModule } from './scenario/scenario.module.js';
+import { SignUpTrackingModule } from './sign-up-tracking/sign-up-tracking.module.js';
 import { TableModule } from './table/table.module.js';
 import { TimeSlotModule } from './time-slot/time-slot.module.js';
 import { ProblemFilter } from './http/problem.filter.js';
@@ -49,6 +50,7 @@ const fronts = existsSync(publicDir)
     GameMasterModule,
     ScenarioModule,
     GameModule,
+    SignUpTrackingModule,
     FrontOfficeModule,
   ],
   // Filtre global, déclaré ici pour valoir aussi dans les tests qui démarrent AppModule.

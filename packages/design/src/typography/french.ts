@@ -48,9 +48,14 @@ export function countOf(count: number, singular: string, pluralForm: string): st
 }
 
 /** « 3 à 5 places », ou « 4 places » quand minimum et maximum sont égaux : les places d'un scénario. */
-export function formatSeats({ min, max }: { min: number; max: number }): string {
-  if (min === max) return countOf(min, 'place', 'places');
-  return `${formatCount(min)} à ${formatCount(max)}${NBSP}places`;
+export function formatSeats(seats: { min: number; max: number }): string {
+  return `${formatSeatRange(seats)}${NBSP}${plural(seats.max, 'place', 'places')}`;
+}
+
+/** « 3 à 5 », ou « 4 » quand minimum et maximum sont égaux : le nombre de `formatSeats()`, sans le nom. */
+export function formatSeatRange({ min, max }: { min: number; max: number }): string {
+  if (min === max) return formatCount(min);
+  return `${formatCount(min)} à ${formatCount(max)}`;
 }
 
 const LIST = new Intl.ListFormat('fr', { type: 'conjunction' });

@@ -89,6 +89,12 @@ export {
   type UnscheduleVerdictDto,
 } from './schedule.js';
 export {
+  signUpTrackingEndpoints,
+  type CapacityDto,
+  type SignUpTrackingDto,
+  type TimeSlotTrackingDto,
+} from './sign-up-tracking.js';
+export {
   TABLE_NAME_MAX_LENGTH,
   tableEndpoints,
   type TableDto,

@@ -12,7 +12,9 @@ const COLLAPSED_KEY = 'back-office.rail-collapsed';
 /** Sous cette largeur, le rail se replie de lui-même (docs/design/patterns.md). */
 const NARROW = '(max-width: 1279.98px)';
 
+/** Une entrée du rail ; sans lien, sa place est prise, avec « à venir ». */
 type Entry = { label: string; icon: string; link: string };
+type UpcomingEntry = Omit<Entry, 'link'> & { link?: never };
 
 const PREPARATION: readonly Entry[] = [
   { label: 'Calendrier', icon: 'calendar', link: '/' },
@@ -21,8 +23,8 @@ const PREPARATION: readonly Entry[] = [
   { label: 'Créneaux et tables', icon: 'layout-grid', link: '/creneaux-et-tables' },
 ];
 
-const DAY_OF: readonly Omit<Entry, 'link'>[] = [
-  { label: 'Pilotage du jour J', icon: 'radio-tower' },
+const DAY_OF: readonly (Entry | UpcomingEntry)[] = [
+  { label: 'Pilotage du jour J', icon: 'radio-tower', link: '/pilotage' },
   { label: 'Participants', icon: 'user-round' },
 ];
 
