@@ -347,3 +347,65 @@ describe('Participants de chaque créneau (§4.4)', () => {
     );
   });
 });
+
+/** La réserve du créneau de rang `index + 1`, en « scénario, code du refus, paramètres ». */
+const describeReserveOfTimeSlot = (convention: Convention, index: number) =>
+  convention
+    .computeSignUpTracking(CATALOGUE)
+    [index]!.reserve.map(({ scenarioId, refusal }) => [
+      scenarioId,
+      refusal?.code ?? null,
+      refusal?.params ?? null,
+    ]);
+
+describe('Réserve de chaque créneau (PR-6, §4.4 étape 2)', () => {
+  it('rend programmable un scénario qu’une table au moins permet', () => {
+    expect(describeReserveOfTimeSlot(aConvention(), 2)).toEqual([
+      ['a', null, null],
+      ['b', 'no-next-time-slot', { rank: 3 }],
+      ['c', null, null],
+    ]);
+  });
+
+  it('écarte un scénario qui a une partie qui commence sur le créneau', () => {
+    // « brumes » (a) et « epice » (b) commencent sur le créneau 1.
+    expect(describeReserveOfTimeSlot(aConvention(), 0).map(([id]) => id)).toEqual(['c']);
+  });
+
+  it('écarte un scénario dont le MJ n’est pas disponible sur le créneau', () => {
+    const convention = aConvention();
+    convention.withdrawGameMasterAvailability('g1', 's3');
+
+    expect(describeReserveOfTimeSlot(convention, 2).map(([id]) => id)).toEqual(['b', 'c']);
+  });
+
+  it('donne le premier refus de ses cases qui n’est pas « table prise »', () => {
+    // Sur le créneau 2, Kaïros mène déjà le second créneau de « epice » ; la table 1 porte « neons ».
+    expect(describeReserveOfTimeSlot(aConvention(), 1)).toContainEqual([
+      'b',
+      'game-master-busy',
+      { nickname: 'Kaïros', rank: 2 },
+    ]);
+  });
+
+  it('dit que toutes les tables sont prises, pour un scénario simple', () => {
+    expect(describeReserveOfTimeSlot(aConvention(), 1)).toContainEqual([
+      'a',
+      'no-free-table',
+      { rank: 2, twoSlot: false },
+    ]);
+  });
+
+  it('dit que toutes les tables sont prises, pour un scénario double', () => {
+    const convention = aConvention();
+    convention.unscheduleGame('epice');
+    // Table 1 prise sur le créneau 2 par « neons », table 2 sur le créneau 3 par « brumes ».
+    convention.moveGame('brumes', 's3', 't2');
+
+    expect(describeReserveOfTimeSlot(convention, 1)).toContainEqual([
+      'b',
+      'no-free-table',
+      { rank: 2, twoSlot: true },
+    ]);
+  });
+});

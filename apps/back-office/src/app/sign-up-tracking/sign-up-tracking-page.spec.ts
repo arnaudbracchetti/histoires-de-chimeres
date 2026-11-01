@@ -8,6 +8,7 @@ import {
   signUpTrackingEndpoints,
   type ProblemDto,
   type RemovedSignUpsDto,
+  type ReserveScenarioDto,
   type ScheduleDto,
   type SignUpTrackingDto,
   type TimeSlotTrackingDto,
@@ -15,7 +16,12 @@ import {
   type TrackedParticipantDto,
 } from '@chimeres/contract';
 import { NBSP, THIN_NBSP } from '@chimeres/design';
-import { Placements, type MoveRequest, type Placed } from '../schedule/placement-dialog';
+import {
+  Placements,
+  type MoveRequest,
+  type Placed,
+  type PlacementRequest,
+} from '../schedule/placement-dialog';
 import { Alerts } from '../shell/alerts';
 import { Announcer } from '../shell/announcer';
 import { SignUpTrackingPage } from './sign-up-tracking-page';
@@ -34,6 +40,7 @@ const timeSlot = (
   demand: 0,
   capacity: { min: 0, max: 0 },
   participants: [],
+  reserve: [],
   ...figures,
 });
 
@@ -81,6 +88,46 @@ const NEONS = game('p3', 'Néons', 't4', ['s2', 's3'], {
 /** « Épice » (Licorne), double, des créneaux 1 et 2. */
 const EPICE = game('p2', 'Épice', 't2', ['s1', 's2'], { signUpCount: 6 });
 
+/** Un scénario de la réserve, programmé sur les créneaux `scheduledOn`. */
+const reserveScenario = (
+  id: string,
+  title: string,
+  scheduledOn: string[] = [],
+): ReserveScenarioDto => ({
+  id,
+  title,
+  system: 'Cthulhu',
+  seats: { min: 3, max: 4 },
+  duration: 1,
+  imageUrl: null,
+  gameMaster: { id: `g-${id}`, nickname: 'Mira' },
+  timeSlots: ['s1', 's2', 's3'].map((timeSlotId) => ({
+    timeSlotId,
+    inReserve: !scheduledOn.includes(timeSlotId),
+    scheduled: scheduledOn.includes(timeSlotId),
+  })),
+  unschedulable: null,
+});
+
+/** La réserve : « Abysses », programmé au créneau 1, « Aube » et « Cendres ». */
+const ABYSSES = reserveScenario('r1', 'Abysses', ['s1']);
+const AUBE = reserveScenario('r3', 'Aube');
+const CENDRES = reserveScenario('r2', 'Cendres');
+
+/** Au créneau 2 : « Abysses » et « Cendres » programmables ; « Aube » non, toutes les tables prises. */
+const RESERVE_OF_SLOT_2: TimeSlotTrackingDto['reserve'] = [
+  { scenarioId: 'r1', refusal: null },
+  { scenarioId: 'r2', refusal: null },
+  {
+    scenarioId: 'r3',
+    refusal: {
+      code: 'no-free-table',
+      title: 'Aucune table libre',
+      detail: `Toutes les tables sont prises sur le créneau 2.`,
+    },
+  },
+];
+
 /**
  * Les participants du créneau 2 : Anna (« Brumes »), qui risque de ne pas être placée ; Sven
  * (« Néons »), qui risque de rester sans table ; Lune, inscrite aux deux.
@@ -106,6 +153,7 @@ const TRACKING: SignUpTrackingDto = {
       demand: 26,
       capacity: { min: 14, max: 22 },
       participants: PARTICIPANTS,
+      reserve: RESERVE_OF_SLOT_2,
     }),
     timeSlot(3, '16:00', '18:30', { capacity: { min: 4, max: 4 } }),
   ],
@@ -116,6 +164,7 @@ const TRACKING: SignUpTrackingDto = {
     { id: 't4', name: 'Sphinx' },
   ],
   games: [BRUMES, EPICE, NEONS],
+  reserve: [ABYSSES, AUBE, CENDRES],
 };
 
 /** Le texte, un blanc entre deux nœuds, espaces normalisées : pour comparer sans les insécables. */
@@ -136,15 +185,19 @@ const text = (element: Element | null | undefined) => {
 describe('Pilotage du jour J', () => {
   /** Le dialogue de placement, qui a sa propre spec : il rend ce que le test lui fait rendre. */
   let moveTo: ReturnType<typeof vi.fn<(request: MoveRequest) => Promise<Placed | undefined>>>;
+  let scheduleOn: ReturnType<
+    typeof vi.fn<(request: PlacementRequest) => Promise<ScheduleDto | undefined>>
+  >;
 
   beforeEach(() => {
     moveTo = vi.fn<(request: MoveRequest) => Promise<Placed | undefined>>();
+    scheduleOn = vi.fn<(request: PlacementRequest) => Promise<ScheduleDto | undefined>>();
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: Placements, useValue: { moveTo } },
+        { provide: Placements, useValue: { moveTo, scheduleOn } },
       ],
     });
   });
@@ -297,10 +350,15 @@ describe('Pilotage du jour J', () => {
     it('montre les onglets, « Parties du créneau » choisi, avec leur icône et leur compteur', async () => {
       const { tabs, panel } = await render();
 
-      expect(tabs().map(text)).toEqual(['Parties du créneau 2', 'Inscrits du créneau 26']);
+      expect(tabs().map(text)).toEqual([
+        'Parties du créneau 2',
+        'Inscrits du créneau 26',
+        'Réserve du créneau 2',
+      ]);
       expect(tabs().map((tab) => tab.querySelector('app-icon')?.getAttribute('name'))).toEqual([
         'dices',
         'users',
+        'inbox',
       ]);
       expect(tabs()[0]!.getAttribute('aria-selected')).toBe('true');
       expect(panel()).not.toBeNull();
@@ -324,7 +382,7 @@ describe('Pilotage du jour J', () => {
       for (const [key, selected] of [
         ['ArrowRight', 1],
         ['ArrowLeft', 0],
-        ['End', 1],
+        ['End', 2],
         ['Home', 0],
       ] as const) {
         document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
@@ -340,7 +398,11 @@ describe('Pilotage du jour J', () => {
       tiles()[2]!.click();
       fixture.detectChanges();
 
-      expect(tabs().map(text)).toEqual(['Parties du créneau 0', 'Inscrits du créneau 0']);
+      expect(tabs().map(text)).toEqual([
+        'Parties du créneau 0',
+        'Inscrits du créneau 0',
+        'Réserve du créneau 0',
+      ]);
       expect(tabs()[0]!.getAttribute('aria-selected')).toBe('true');
       expect(rows().map(text)).toEqual([
         'Dragon Table libre',
@@ -551,6 +613,97 @@ describe('Pilotage du jour J', () => {
       expect(button('Déprogrammer')).toBeUndefined();
     });
   });
+  describe('onglet Réserve du créneau', () => {
+    /** Ouvre l'onglet « Réserve du créneau ». */
+    async function renderReserve(tracking = TRACKING) {
+      const rendered = await render(tracking);
+      rendered.tabs()[2]!.click();
+      await rendered.settle();
+      const cards = () => [...(rendered.panel()?.querySelectorAll('li') ?? [])];
+      return { ...rendered, cards };
+    }
+
+    it('compte les programmables et les autres, puis une carte par scénario, dans l’ordre reçu', async () => {
+      const { panel, cards } = await renderReserve();
+
+      expect(text(panel()?.querySelector('p'))).toBe(
+        '2 scénarios programmables sur ce créneau, 1 autre en réserve.',
+      );
+      expect(cards().map((card) => text(card.querySelector('h3')))).toEqual([
+        'Abysses',
+        'Cendres',
+        'Aube',
+      ]);
+    });
+
+    it('atténue un scénario non programmable, avec la phrase de son motif et sans action', async () => {
+      const { cards } = await renderReserve();
+      const aube = cards()[2]!;
+
+      expect(aube.classList).toContain('unschedulable');
+      expect(text(aube)).toContain('Toutes les tables sont prises sur le créneau 2.');
+      expect(aube.querySelector('button')).toBeNull();
+      expect(text(cards()[1]!.querySelector('button'))).toBe('Programmer ici…');
+    });
+
+    it('dit qu’un scénario est déjà programmé sur un autre créneau', async () => {
+      const { cards } = await renderReserve();
+
+      expect(text(cards()[0])).toContain('Déjà programmé : créneau 1');
+      expect(text(cards()[1])).not.toContain('Déjà programmé');
+    });
+
+    it('ne cite pas le créneau affiché parmi ceux où le scénario est programmé', async () => {
+      // « Cendres », partie double des créneaux 1 et 2 : sur le créneau 2, son MJ est occupé.
+      const cendres = reserveScenario('r2', 'Cendres', ['s1', 's2']);
+      const { cards } = await renderReserve({ ...TRACKING, reserve: [ABYSSES, AUBE, cendres] });
+
+      expect(text(cards()[1])).toContain('Déjà programmé : créneau 1');
+    });
+
+    it('dit qu’un créneau n’a aucun scénario en réserve', async () => {
+      const { fixture, tiles, panel } = await renderReserve();
+
+      tiles()[2]!.click();
+      fixture.detectChanges();
+
+      expect(text(panel())).toBe('Aucun scénario en réserve sur ce créneau.');
+    });
+
+    it('« Programmer ici… » : dialogue limité au créneau, puis onglet Parties, focus sur la partie et annonce', async () => {
+      const { cards, tabs, reread } = await renderReserve();
+      const programmed = game('p4', 'Abysses', 't3', ['s2'], {
+        scenario: { ...game('p4', 'Abysses', 't3', ['s2']).scenario, id: 'r1' },
+      });
+      const games = [BRUMES, EPICE, NEONS, programmed];
+      scheduleOn.mockResolvedValue({ games, reserve: [] });
+
+      cards()[0]!.querySelector('button')!.click();
+      await reread({ ...TRACKING, games });
+
+      expect(scheduleOn).toHaveBeenCalledWith({
+        scenario: ABYSSES,
+        timeSlots: [TRACKING.timeSlots[1]],
+        tables: TRACKING.tables,
+      });
+      expect(tabs()[0]!.getAttribute('aria-selected')).toBe('true');
+      expect(document.activeElement?.id).toBe('tracked-game-p4');
+      expect(TestBed.inject(Announcer).message()).toBe(
+        `Partie «${NBSP}Abysses${NBSP}» programmée${NBSP}: créneau 2, Phénix.`,
+      );
+    });
+
+    it('relit le suivi quand le dialogue se ferme sans programmer', async () => {
+      const { cards, reread, panel } = await renderReserve();
+      scheduleOn.mockResolvedValue(undefined);
+
+      cards()[0]!.querySelector('button')!.click();
+      await reread(TRACKING);
+
+      expect(panel()).not.toBeNull();
+    });
+  });
+
   describe('onglet Inscrits du créneau', () => {
     /** Ouvre l'onglet « Inscrits du créneau ». */
     async function renderParticipants(tracking = TRACKING) {

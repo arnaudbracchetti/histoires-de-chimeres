@@ -187,6 +187,13 @@ export const problemCatalogue: Catalogue = {
     detail: ({ table, rank }) =>
       fr`La table « ${table} » accueille déjà une partie sur le créneau ${rank} : choisis une autre table.`,
   },
+  'no-free-table': {
+    title: 'Aucune table libre',
+    detail: ({ rank, twoSlot }) =>
+      twoSlot
+        ? fr`Toutes les tables sont prises sur le créneau ${rank} ou sur le suivant.`
+        : fr`Toutes les tables sont prises sur le créneau ${rank}.`,
+  },
   'no-next-time-slot': {
     title: 'Pas de créneau suivant',
     detail: ({ rank }) =>

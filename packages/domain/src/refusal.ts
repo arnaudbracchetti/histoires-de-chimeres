@@ -49,6 +49,11 @@ export type RefusalParams = {
   'game-master-without-consecutive-availabilities': { nickname: string };
   /** `table` : le nom de la table ; `rank` : le rang du créneau. */
   'table-taken': { table: string; rank: number };
+  /**
+   * `rank` : le rang du créneau dont toutes les tables sont prises ; `twoSlot` : le scénario est
+   * double, et chaque table est prise sur ce créneau ou sur le suivant (PR-6).
+   */
+  'no-free-table': { rank: number; twoSlot: boolean };
   /** `rank` : le rang du dernier créneau, où une partie double ne commence pas. */
   'no-next-time-slot': { rank: number };
   /** `rank` : le rang du premier créneau de la partie double qu'un créneau couperait (PR-11). */

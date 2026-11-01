@@ -316,7 +316,7 @@ La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque c
 - **Résumé du créneau choisi**, dans une carte : « Créneau 2 · 13 h 00 – 15 h 30 », la demande (« 26 participants ») et la capacité (« 14 à 22 places », ou « 22 places » quand les deux bornes sont égales) en grand, et une jauge large.
   - Sans inscription : « Aucune inscription sur ce créneau pour l'instant. » Les chiffres restent affichés, même à 0.
   - Créneau publié : « Tirage publié : les inscriptions sont fermées et le programme du créneau ne change plus. », sans chiffres ni action.
-- **Onglets du créneau**, sous le résumé, en [onglets de classeur](#onglets-de-classeur) : « Parties du créneau » (`dices`, nombre de parties qui commencent sur le créneau) et « Inscrits du créneau » (`users`, la demande). Aucun onglet sur un créneau fermé.
+- **Onglets du créneau**, sous le résumé, en [onglets de classeur](#onglets-de-classeur) : « Parties du créneau » (`dices`, nombre de parties qui commencent sur le créneau), « Inscrits du créneau » (`users`, la demande) et « Réserve du créneau » (`inbox`, nombre de scénarios programmables). Aucun onglet sur un créneau fermé.
 - **Onglet Parties du créneau** : « 1 table libre » en tête, puis une ligne par table, dans l'ordre des tables.
   - Partie : nom de la table, vignette, titre (bouton qui ouvre la fiche, `aria-expanded` ; un clic n'importe où sur la ligne l'ouvre aussi), « jeu · MJ », jauge, « 15 inscrits · 3 à 4 places », suivi de son écart (« · 11 de trop », « · 1 manquant »), « dont 8 sans autre inscription sur le créneau » (absent à 0), puis les badges « double », « Très demandée » (neutre, `users`) et « Sous son minimum » (jaune, `triangle-alert`).
   - Table libre : ligne en pointillés, « Table libre ».
@@ -327,8 +327,15 @@ La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque c
   - Deux groupes, dans l'ordre reçu de l'API : « Une seule inscription · N », puis « Plusieurs inscriptions · N ». Un groupe vide après filtre n'apparaît pas.
   - La colonne « Avertissement » porte la pastille du risque : « Risque de ne pas être placé » (rouge, `octagon-alert`) quand toutes ses parties du créneau sont très demandées, ou « Risque de rester sans table » (jaune, `triangle-alert`) quand aucune n'est sûre et que l'une au moins est sous son minimum. Le MJ qui mène sur le créneau n'y figure pas (IN-4).
   - Sans inscription : « Aucune inscription sur ce créneau pour l'instant. »
+- **Onglet Réserve du créneau** : les scénarios dont le MJ est disponible sur le créneau, et qui n'y ont aucune partie qui commence, dans l'ordre reçu de l'API (programmables d'abord, puis l'ordre naturel des titres).
+  - En tête : « 4 scénarios programmables sur ce créneau, 5 autres en réserve. »
+  - Une carte par scénario, comme dans le bac de réserve : vignette, titre, « jeu · MJ », badge « double ». « Déjà programmé : créneau 1 » quand il est programmé sur un autre créneau.
+  - Programmable : « Programmer ici… », qui ouvre le dialogue de placement limité à la colonne du créneau.
+  - Non programmable : carte atténuée, avec la phrase de son motif, sans action. Quand toutes les tables sont prises : « Toutes les tables sont prises sur le créneau 2. », sans autre proposition.
+  - Vide : « Aucun scénario en réserve sur ce créneau. »
 - **Fiche de la partie** : celle du Calendrier, à droite du créneau, qui se rétrécit. Sur un créneau dont le tirage est lancé, elle n'offre aucune action. Une partie qui disparaît du programme à une relecture ferme la fiche.
-- **Gestes** : pas de glisser-déposer. On déplace par « Déplacer vers… » et on déprogramme par la fiche, avec la même confirmation que dans le Calendrier quand le geste retire des inscriptions (voir [Actions destructrices](#actions-destructrices)). Après chaque geste, réussi ou refusé comme périmé, la page relit le suivi.
+- **Gestes** : pas de glisser-déposer. On programme par « Programmer ici… » de l'onglet Réserve, on déplace par « Déplacer vers… » et on déprogramme par la fiche, avec la même confirmation que dans le Calendrier quand le geste retire des inscriptions (voir [Actions destructrices](#actions-destructrices)). Après chaque geste, réussi ou refusé comme périmé, la page relit le suivi.
+  - Programmer : la page ouvre l'onglet Parties et met le focus sur la ligne de la nouvelle partie.
   - Déplacer ou échanger : la page choisit le créneau où la partie commence désormais, ouvre l'onglet Parties et met le focus sur sa ligne.
   - Déprogrammer : la fiche se ferme, et le focus va au titre du résumé du créneau.
   - Chaque geste réussi est annoncé par la région `aria-live` de la coquille, comme dans le Calendrier.

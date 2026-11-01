@@ -1,6 +1,7 @@
 import { endpoint } from './endpoint.js';
 import type { TimeSlotStateDto } from './front-office.js';
-import type { GameDto } from './schedule.js';
+import type { VerdictRefusalDto } from './problem.js';
+import type { GameDto, ReserveScenarioDto } from './schedule.js';
 import type { TableDto } from './table.js';
 
 /**
@@ -29,6 +30,14 @@ export type TrackedParticipantDto = {
 };
 
 /**
+ * Un scénario de la réserve du créneau : son MJ y est disponible, et il n'a aucune partie qui y
+ * commence. `refusal` est `null` s'il y est programmable (une table au moins le permet, PR-5),
+ * sinon son motif : le premier refus de ses cases qui n'est pas « table prise », ou
+ * `no-free-table`.
+ */
+export type TimeSlotReserveEntryDto = { scenarioId: string; refusal: VerdictRefusalDto | null };
+
+/**
  * Le suivi des inscriptions d'un créneau. `demand` : les participants distincts qui ont au moins
  * une inscription active sur une partie qui y commence (IN-4). Une partie double ne compte que sur
  * son premier créneau.
@@ -50,6 +59,11 @@ export type TimeSlotTrackingDto = {
    * pas (IN-4).
    */
   participants: TrackedParticipantDto[];
+  /**
+   * Les programmables d'abord, puis les autres, chaque groupe dans l'ordre naturel des titres : le
+   * front garde cet ordre. Vide sur un créneau fermé.
+   */
+  reserve: TimeSlotReserveEntryDto[];
 };
 
 /**
@@ -70,12 +84,13 @@ export type TrackedGameDto = GameDto & {
 
 /**
  * Le suivi des inscriptions : les créneaux, dans l'ordre de la journée, les tables, dans l'ordre
- * naturel, et les parties, dans l'ordre de leur programmation.
+ * naturel, les parties, dans l'ordre de leur programmation, et la réserve, comme dans le programme.
  */
 export type SignUpTrackingDto = {
   timeSlots: TimeSlotTrackingDto[];
   tables: TableDto[];
   games: TrackedGameDto[];
+  reserve: ReserveScenarioDto[];
 };
 
 /** La page « Pilotage du jour J » lit tout ce qu'elle montre en une seule lecture. */

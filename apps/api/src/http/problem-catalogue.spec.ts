@@ -18,3 +18,16 @@ describe('Catalogue des messages de l’API', () => {
     },
   );
 });
+
+describe('Aucune table libre', () => {
+  it('dit le créneau, et pour un scénario double aussi le suivant', () => {
+    const { detail } = problemCatalogue['no-free-table'];
+
+    expect(detail({ rank: 2, twoSlot: false })).toBe(
+      'Toutes les tables sont prises sur le créneau 2.',
+    );
+    expect(detail({ rank: 2, twoSlot: true })).toBe(
+      'Toutes les tables sont prises sur le créneau 2 ou sur le suivant.',
+    );
+  });
+});

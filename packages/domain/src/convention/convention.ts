@@ -12,8 +12,8 @@ import type { Participant } from './participant.js';
 import { Participants } from './participants.js';
 import type { PresenceCode } from './presence-code.js';
 import { Table } from './table.js';
-import { computeReserve, type ReserveOfScenario } from './reserve.js';
-import { Schedule, type PlacementCollaborators } from './schedule.js';
+import { computeReserve, computeReserveOfTimeSlot, type ReserveOfScenario } from './reserve.js';
+import { HYPOTHETICAL_GAME_ID, Schedule, type PlacementCollaborators } from './schedule.js';
 import { ScheduleChange } from './schedule-change.js';
 import { SignUp } from './sign-up.js';
 import { computeSignUpTracking, type TimeSlotTracking } from './sign-up-tracking.js';
@@ -494,8 +494,8 @@ export class Convention {
 
   /**
    * Le suivi des inscriptions de chaque créneau, dans l'ordre de la journée : son état, sa demande et
-   * sa capacité, que le catalogue, entier, donne, ses parties et ses participants (§4.4). Voir
-   * `computeSignUpTracking()`.
+   * sa capacité, que le catalogue, entier, donne, ses parties, ses participants (§4.4) et sa réserve
+   * (§4.4 étape 2). Voir `computeSignUpTracking()`.
    */
   computeSignUpTracking(catalogue: ScenarioCatalogue): TimeSlotTracking[] {
     return computeSignUpTracking(catalogue, {
@@ -504,6 +504,13 @@ export class Convention {
       signUpCollaborators: this.buildSignUpCollaborators(this.gameSchedule),
       participants: this.allParticipants.participants,
       getTimeSlotState: (timeSlotId) => this.getTimeSlotState(timeSlotId),
+      computeReserveOfTimeSlot: (timeSlotId) =>
+        computeReserveOfTimeSlot(timeSlotId, catalogue, {
+          day: this.day,
+          schedule: this.gameSchedule,
+          participants: this.allParticipants,
+          tables: this.tables,
+        }),
     });
   }
 
@@ -762,9 +769,6 @@ export class Convention {
     return nextDay;
   }
 }
-
-/** L'id d'une partie qui n'existera pas : un verdict ne programme rien. */
-const HYPOTHETICAL_GAME_ID = '';
 
 /**
  * La réponse « oui » à la confirmation d'un pseudo existant : « Est-ce bien toi qui l'as créé ? »

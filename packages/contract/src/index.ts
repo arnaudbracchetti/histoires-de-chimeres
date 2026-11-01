@@ -93,6 +93,7 @@ export {
   type CapacityDto,
   type ParticipantRiskDto,
   type SignUpTrackingDto,
+  type TimeSlotReserveEntryDto,
   type TimeSlotTrackingDto,
   type TrackedGameDto,
   type TrackedParticipantDto,

@@ -1,5 +1,5 @@
 import type { GameDto, ScheduleScenarioDto } from '@chimeres/contract';
-import type { ReserveOfScenario } from '@chimeres/domain';
+import type { Convention, ReserveOfScenario, ScenarioCatalogue } from '@chimeres/domain';
 import type { ConventionRepository } from '../convention/convention-repository.js';
 import type { ScenarioRepository } from '../scenario/scenario-repository.js';
 import type { ScheduleReader } from './schedule-reader.js';
@@ -24,13 +24,22 @@ export class ReadSchedule {
       this.scenarios.catalogue(),
       this.reader.games(),
     ]);
-    const places = new Map(
-      convention.computeReserve(catalogue).map(({ scenarioId, ...place }) => [scenarioId, place]),
-    );
-    const scenarios = await this.reader.scenarios([...places.keys()]);
-    return {
-      games,
-      reserve: scenarios.map((scenario) => ({ ...scenario, ...places.get(scenario.id)! })),
-    };
+    return { games, reserve: await readReserve(convention, catalogue, this.reader) };
   }
+}
+
+/**
+ * La réserve, que la convention calcule (PR-6), avec la présentation de chaque scénario, dans
+ * l'ordre naturel des titres.
+ */
+export async function readReserve(
+  convention: Convention,
+  catalogue: ScenarioCatalogue,
+  reader: ScheduleReader,
+): Promise<ReserveScenario[]> {
+  const places = new Map(
+    convention.computeReserve(catalogue).map(({ scenarioId, ...place }) => [scenarioId, place]),
+  );
+  const scenarios = await reader.scenarios([...places.keys()]);
+  return scenarios.map((scenario) => ({ ...scenario, ...places.get(scenario.id)! }));
 }

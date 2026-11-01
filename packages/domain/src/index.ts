@@ -15,7 +15,7 @@ export {
 export { Game } from './convention/game.js';
 export type { LocalMoment } from './convention/local-moment.js';
 export { PresenceCode } from './convention/presence-code.js';
-export type { ReserveOfScenario } from './convention/reserve.js';
+export type { ReserveOfScenario, TimeSlotReserveEntry } from './convention/reserve.js';
 export { GameMaster } from './convention/game-master.js';
 export { Participant } from './convention/participant.js';
 export { SignUp } from './convention/sign-up.js';

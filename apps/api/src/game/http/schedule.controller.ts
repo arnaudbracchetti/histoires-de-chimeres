@@ -31,6 +31,7 @@ import {
 import { Refusal, type MovePlacement, type Placement } from '@chimeres/domain';
 import { verdictOf } from '../../http/problem-catalogue.js';
 import { ZodBody } from '../../http/zod-body.pipe.js';
+import { toReserveDto } from './reserve-dto.js';
 import {
   moveGameBodySchema,
   scheduleGameBodySchema,
@@ -129,13 +130,6 @@ function toMovePlacementDto({ swapWith, removedSignUps, ...placement }: MovePlac
   return { ...toPlacementDto(placement), swapWith, removedSignUps };
 }
 
-/** Un scénario sans créneau possible porte le motif et la phrase de son refus. */
 function toDto({ games, reserve }: Schedule): ResponseOf<typeof scheduleEndpoints.read> {
-  return {
-    games,
-    reserve: reserve.map(({ unschedulable, ...scenario }) => ({
-      ...scenario,
-      unschedulable: unschedulable && verdictOf(unschedulable),
-    })),
-  };
+  return { games, reserve: toReserveDto(reserve) };
 }

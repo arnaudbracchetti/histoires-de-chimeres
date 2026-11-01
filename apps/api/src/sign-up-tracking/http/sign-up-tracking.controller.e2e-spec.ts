@@ -42,6 +42,30 @@ describe('Suivi des inscriptions', () => {
     return added;
   };
 
+  /** Le MJ se déclare disponible sur le créneau de ce rang. */
+  const available = (gameMasterId: string, rank: number) =>
+    server()
+      .put(apiUrl(availabilityEndpoints.declare, { gameMasterId, timeSlotId: slot(rank) }))
+      .expect(200);
+
+  /** Propose un scénario du MJ, sans le programmer : son id. */
+  const proposed = async (gameMasterId: string, title: string, duration: 1 | 2 = 1) =>
+    (
+      (
+        await server()
+          .post(apiUrl(scenarioEndpoints.propose, { gameMasterId }))
+          .send({
+            title,
+            system: 'Cthulhu',
+            presentation: 'Une enquête.',
+            contentWarnings: '',
+            seats: { min: 2, max: 4 },
+            duration,
+          })
+          .expect(201)
+      ).body as ScenarioDto
+    ).id;
+
   /** Programme un scénario du MJ au créneau 1, à la table : l'id de la partie. */
   const scheduled = async (
     gameMasterId: string,
@@ -127,6 +151,7 @@ describe('Suivi des inscriptions', () => {
           demand: 2,
           capacity: { min: 5, max: 9 },
           participants: expect.any(Array),
+          reserve: expect.any(Array),
         },
         {
           id: slot(2),
@@ -137,6 +162,7 @@ describe('Suivi des inscriptions', () => {
           demand: 0,
           capacity: { min: 0, max: 0 },
           participants: [],
+          reserve: [],
         },
       ],
       tables: [
@@ -217,5 +243,79 @@ describe('Suivi des inscriptions', () => {
       ],
       [],
     ]);
+  });
+
+  describe('réserve du créneau', () => {
+    /**
+     * Créneau 1 : « Néons » (Élodie) et « Brumes » (Kaïros) prennent les deux tables. Mira propose
+     * « Abysses » et « Cendres », Zoé « Aube », double : toutes deux sont disponibles sur les
+     * créneaux 1 et 2.
+     */
+    const prepare = async () => {
+      const elodie = await gameMaster('Élodie');
+      const kairos = await gameMaster('Kaïros');
+      const mira = await gameMaster('Mira');
+      const zoe = await gameMaster('Zoé');
+      await scheduled(elodie.id, 'Néons', { min: 3, max: 5 }, 'Table 10');
+      await scheduled(kairos.id, 'Brumes', { min: 2, max: 4 }, 'Table 2');
+      await available(mira.id, 2);
+      await available(zoe.id, 2);
+      return {
+        cendres: await proposed(mira.id, 'Cendres'),
+        abysses: await proposed(mira.id, 'Abysses'),
+        aube: await proposed(zoe.id, 'Aube', 2),
+      };
+    };
+
+    it('rend les programmables d’abord, puis dans l’ordre naturel des titres', async () => {
+      const { abysses, aube, cendres } = await prepare();
+
+      const dto = (await server().get(apiUrl(signUpTrackingEndpoints.read)).expect(200))
+        .body as SignUpTrackingDto;
+
+      expect(dto.timeSlots[1]!.reserve).toEqual([
+        { scenarioId: abysses, refusal: null },
+        { scenarioId: cendres, refusal: null },
+        { scenarioId: aube, refusal: expect.objectContaining({ code: 'no-next-time-slot' }) },
+      ]);
+    });
+
+    it('dit que toutes les tables sont prises, avec le message du refus', async () => {
+      const { abysses, aube, cendres } = await prepare();
+
+      const dto = (await server().get(apiUrl(signUpTrackingEndpoints.read)).expect(200))
+        .body as SignUpTrackingDto;
+
+      const refusal = (detail: string) => ({
+        code: 'no-free-table',
+        title: 'Aucune table libre',
+        detail,
+      });
+      expect(dto.timeSlots[0]!.reserve).toEqual([
+        {
+          scenarioId: abysses,
+          refusal: refusal('Toutes les tables sont prises sur le créneau 1.'),
+        },
+        {
+          scenarioId: aube,
+          refusal: refusal('Toutes les tables sont prises sur le créneau 1 ou sur le suivant.'),
+        },
+        {
+          scenarioId: cendres,
+          refusal: refusal('Toutes les tables sont prises sur le créneau 1.'),
+        },
+      ]);
+    });
+
+    it('rend la réserve comme le programme : présentation, et créneaux où chacun est programmé', async () => {
+      await prepare();
+      const schedule = (await server().get(apiUrl(scheduleEndpoints.read)).expect(200))
+        .body as ScheduleDto;
+
+      const dto = (await server().get(apiUrl(signUpTrackingEndpoints.read)).expect(200))
+        .body as SignUpTrackingDto;
+
+      expect(dto.reserve).toEqual(schedule.reserve);
+    });
   });
 });

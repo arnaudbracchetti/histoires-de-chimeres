@@ -11,6 +11,12 @@ import type { Table } from './table.js';
  */
 export type PlacementCollaborators = { gameMaster: GameMaster; table: Table };
 
+/** Ce que la programmation lit d'un scénario : un `Scenario`, ou son entrée du catalogue. */
+export type SchedulableScenario = Pick<Scenario, 'id' | 'gameMasterId' | 'duration'>;
+
+/** L'id d'une partie qui n'existera pas : un verdict ne programme rien. */
+export const HYPOTHETICAL_GAME_ID = '';
+
 /**
  * Programme : les parties programmées, dans l'ordre de leur programmation. Il garde la règle PR-5,
  * la même pour l'écriture et pour le verdict : chaque geste rend le Programme d'après, ou le refus
@@ -97,7 +103,7 @@ export class Schedule {
    */
   getScheduleAfterSchedulingScenario(
     id: string,
-    scenario: Scenario,
+    scenario: SchedulableScenario,
     timeSlotId: string,
     collaborators: PlacementCollaborators,
     day: Day,

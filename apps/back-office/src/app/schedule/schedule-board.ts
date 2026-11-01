@@ -22,9 +22,12 @@ import { ConventionStore } from '../convention/convention-store';
 import { injectGesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
-import { fr } from '@chimeres/design';
 import { GameSheet } from './game-sheet';
-import { describeMovedGame, describeUnscheduledGame } from './gesture-announcements';
+import {
+  describeMovedGame,
+  describeScheduledGame,
+  describeUnscheduledGame,
+} from './gesture-announcements';
 import { Placements } from './placement-dialog';
 import { buildMoveOrSwapConfirmation } from './removed-sign-ups-confirmations';
 import { RemovedSignUpsGestures } from './removed-sign-ups-gestures';
@@ -172,7 +175,7 @@ export class ScheduleBoard {
     const { timeSlots, tables } = this.convention();
     const known = this.gameIds();
     const schedule = await this.placements.scheduleOn({ scenario, timeSlots, tables });
-    if (schedule) this.scheduled(schedule, known, scenario);
+    if (schedule) this.scheduled(schedule, known);
   }
 
   /** Ouvre la fiche de la partie, et y met le focus. */
@@ -227,7 +230,7 @@ export class ScheduleBoard {
     const written = await this.writeDrop(subject, target, removedSignUps, schedule.games);
     this.pending.set(null);
     if (!written) return;
-    if (subject.kind === 'scenario') this.scheduled(written, known, subject.scenario);
+    if (subject.kind === 'scenario') this.scheduled(written, known);
     else if (target.kind === 'reserve') this.unscheduled(written, subject.game);
     else this.moved(written, subject.game.id, swapGameId(subject.game, target));
   }
@@ -350,20 +353,12 @@ export class ScheduleBoard {
   }
 
   /** La nouvelle partie du scénario : la région `aria-live` l'annonce, et le focus va à sa carte. */
-  private scheduled(
-    schedule: ScheduleDto,
-    known: ReadonlySet<string>,
-    scenario: ScheduleScenarioDto,
-  ) {
+  private scheduled(schedule: ScheduleDto, known: ReadonlySet<string>) {
     const { timeSlots, tables } = this.convention();
     this.schedule.set(schedule);
     const game = schedule.games.find(({ id }) => !known.has(id));
     if (!game) return;
-    const slot = timeSlots.find(({ id }) => id === game.timeSlotIds[0]);
-    const table = tables.find(({ id }) => id === game.tableId);
-    this.announcer.announce(
-      fr`Partie « ${scenario.title} » programmée : créneau ${slot?.rank}, ${table?.name}.`,
-    );
+    this.announcer.announce(describeScheduledGame(game, timeSlots, tables));
     this.focusGame(game.id);
   }
 

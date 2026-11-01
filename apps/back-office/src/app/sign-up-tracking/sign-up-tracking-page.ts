@@ -14,6 +14,7 @@ import { Tab, TabContent, TabList, TabPanel, Tabs } from '@angular/aria/tabs';
 import { RouterLink } from '@angular/router';
 import {
   signUpTrackingEndpoints,
+  type ScheduleScenarioDto,
   type TimeSlotStateDto,
   type TimeSlotTrackingDto,
   type TrackedGameDto,
@@ -30,7 +31,11 @@ import {
 import { apiResource, currentValue } from '../api-resource';
 import { injectGesture } from '../gesture';
 import { GameSheet } from '../schedule/game-sheet';
-import { describeMovedGame, describeUnscheduledGame } from '../schedule/gesture-announcements';
+import {
+  describeMovedGame,
+  describeScheduledGame,
+  describeUnscheduledGame,
+} from '../schedule/gesture-announcements';
 import { Placements } from '../schedule/placement-dialog';
 import { RemovedSignUpsGestures } from '../schedule/removed-sign-ups-gestures';
 import { Announcer } from '../shell/announcer';
@@ -47,9 +52,10 @@ import {
   type ParticipantFilter,
   TrackedParticipantsPanel,
 } from './tracked-participants-panel';
+import { TrackedReservePanel } from './tracked-reserve-panel';
 
-/** Les onglets du créneau : « Parties du créneau » et « Inscrits du créneau », pour l'instant. */
-type TabValue = 'games' | 'participants';
+/** Les onglets du créneau : « Parties du créneau », « Inscrits du créneau » et « Réserve du créneau ». */
+type TabValue = 'games' | 'participants' | 'reserve';
 
 /** L'état d'un créneau fermé, sur sa tuile : les termes du front office. */
 const CLOSED_STATE: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string> = {
@@ -88,6 +94,7 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
     TrackedGameSignUps,
     TrackedGamesPanel,
     TrackedParticipantsPanel,
+    TrackedReservePanel,
   ],
   template: `
     <app-page-header title="Pilotage du jour J">
@@ -172,6 +179,10 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                         <app-icon name="users" />Inscrits du créneau
                         <span class="count">{{ formatCount(slot.demand) }}</span>
                       </button>
+                      <button ngTab type="button" value="reserve">
+                        <app-icon name="inbox" />Réserve du créneau
+                        <span class="count">{{ formatCount(schedulableCountOf(slot)) }}</span>
+                      </button>
                     </div>
                     <div ngTabPanel value="games" class="panel">
                       <ng-template ngTabContent>
@@ -194,6 +205,16 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                           [openGameId]="openGame()?.id ?? null"
                           [(filter)]="participantFilter"
                           (opened)="open($event)"
+                        />
+                      </ng-template>
+                    </div>
+                    <div ngTabPanel value="reserve" class="panel">
+                      <ng-template ngTabContent>
+                        <app-tracked-reserve-panel
+                          [timeSlot]="slot"
+                          [timeSlots]="tracking.timeSlots"
+                          [reserve]="tracking.reserve"
+                          (scheduleOn)="scheduleOn(slot, $event)"
                         />
                       </ng-template>
                     </div>
@@ -474,6 +495,11 @@ export class SignUpTrackingPage {
     return (this.value()?.games ?? []).filter(({ timeSlotIds }) => timeSlotIds[0] === slot.id);
   }
 
+  /** Les scénarios programmables sur le créneau : le compteur de l'onglet Réserve. */
+  protected schedulableCountOf(slot: TimeSlotTrackingDto): number {
+    return slot.reserve.filter(({ refusal }) => !refusal).length;
+  }
+
   /** Les inscriptions du premier créneau de la partie sont ouvertes : la fiche offre ses gestes. */
   protected areSignUpsOpen(game: TrackedGameDto): boolean {
     const slot = this.value()?.timeSlots.find(({ id }) => id === game.timeSlotIds[0]);
@@ -515,6 +541,25 @@ export class SignUpTrackingPage {
       this.selectedId.set(moved.timeSlotIds[0]);
       this.selectedTab.set('games');
       this.focusAfterReading.set(rowIdOf(moved.id));
+    }
+    this.tracking.reload();
+  }
+
+  /**
+   * Ouvre le dialogue de placement du scénario, limité à la colonne du créneau. Une fois la partie
+   * programmée, la page ouvre l'onglet Parties, et met le focus sur sa ligne, une fois le suivi
+   * relu. La région `aria-live` l'annonce.
+   */
+  protected async scheduleOn(slot: TimeSlotTrackingDto, scenario: ScheduleScenarioDto) {
+    const { tables, games } = this.value()!;
+    const known = new Set(games.map(({ id }) => id));
+    const schedule = await this.placements.scheduleOn({ scenario, timeSlots: [slot], tables });
+    // Fermé sans geste, le dialogue a pu essuyer un refus périmé : le suivi se relit aussi.
+    const game = schedule?.games.find(({ id }) => !known.has(id));
+    if (game) {
+      this.announcer.announce(describeScheduledGame(game, [slot], tables));
+      this.selectedTab.set('games');
+      this.focusAfterReading.set(rowIdOf(game.id));
     }
     this.tracking.reload();
   }
