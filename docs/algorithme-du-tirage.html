@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Algorithme du tirage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Uncial+Antiqua&family=Aldrich&display=swap">
+<style>
+/* Une colonne de lecture ; les schémas débordent un peu de la colonne de texte. Identité d'Histoires de Chimères, sombre par choix. */
+:root {
+  color-scheme: dark;
+  --bg: #151717;
+  --panel: #1b1e1e;
+  --panel-2: #222525;
+  --line: #313535;
+  --line-strong: #626767;
+  --fg: #eceae6;
+  --muted: #a9a49e;
+  --accent: #fc9203;
+  --accent-soft: rgba(252, 146, 3, 0.2);
+  --warn: #e8d25c;
+  --ok: #6cc08b;
+  --bad: #f07f63;
+  --font-display: 'Uncial Antiqua', Georgia, serif;
+  --font-caps: 'Aldrich', system-ui, sans-serif;
+  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.6 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 48px 96px;
+}
+.page { max-width: 920px; margin: 0 auto; }
+.prose { max-width: 68ch; }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code { font: 0.9em var(--font-mono); background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 14px; padding-left: 1.4em; }
+li { margin-bottom: 6px; }
+li::marker { color: var(--muted); }
+
+.eyebrow {
+  font: 400 0.75rem/1.2 var(--font-caps); letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--accent); margin: 0 0 12px;
+}
+h1 { font: 400 clamp(2rem, 6vw, 2.75rem)/1.1 var(--font-display); margin: 0 0 16px; text-wrap: balance; }
+h2 {
+  font: 400 1.6rem/1.2 var(--font-display); margin: 64px 0 16px; text-wrap: balance;
+  padding-top: 24px; border-top: 1px solid var(--line);
+}
+h3 { font: 600 1.125rem/1.35 var(--font-body); margin: 36px 0 10px; text-wrap: balance; }
+h3 .step { font: 400 0.8rem var(--font-caps); color: var(--accent); letter-spacing: 0.08em; margin-right: 8px; }
+h4 { font: 600 1rem/1.4 var(--font-body); margin: 28px 0 8px; color: var(--fg); }
+.lead { font-size: 1.15rem; line-height: 1.55; }
+.meta { color: var(--muted); font-size: 0.9rem; }
+
+nav.toc { margin: 28px 0 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.9rem; }
+nav.toc a { color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line-strong); }
+nav.toc a:hover { color: var(--fg); }
+
+ol.rules { list-style: none; padding: 0; counter-reset: rule; display: grid; gap: 10px; margin: 20px 0; }
+ol.rules li {
+  counter-increment: rule; display: grid; grid-template-columns: 2.2em minmax(0, 1fr); gap: 12px;
+  align-items: baseline; margin: 0;
+}
+ol.rules li::before {
+  content: counter(rule); font: 400 1.1rem var(--font-caps); color: var(--accent); text-align: right;
+}
+ol.rules li.new strong::after {
+  content: "nouvelle"; font: 400 0.68rem var(--font-caps); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 0 5px; margin-left: 8px;
+  vertical-align: 2px;
+}
+
+figure { margin: 24px 0 32px; }
+.figure-scroll {
+  overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 20px;
+}
+.figure-scroll svg {
+  display: block; width: 100%; min-width: 600px; height: auto; color: var(--fg); font-family: var(--font-body);
+}
+figcaption { color: var(--muted); font-size: 0.9rem; margin-top: 10px; max-width: 68ch; }
+
+svg text { fill: currentColor; font-size: 13px; }
+svg .sm { font-size: 12px; }
+svg .xs { font-size: 11px; }
+svg .strong { font-weight: 600; }
+svg .mono { font-family: var(--font-mono); }
+svg .mut { fill: var(--muted); }
+svg .acc { fill: var(--accent); }
+svg .warn-t { fill: var(--warn); }
+svg .bad-t { fill: var(--bad); }
+svg .box { fill: var(--panel-2); stroke: var(--line-strong); stroke-width: 1; }
+svg .box-acc { fill: var(--panel-2); stroke: var(--accent); stroke-width: 1.5; }
+svg .box-empty { fill: none; stroke: var(--line-strong); stroke-width: 1; stroke-dasharray: 4 4; }
+svg .box-dest { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 5 4; }
+svg .edge { stroke: var(--line-strong); stroke-width: 1.2; fill: none; }
+svg .edge-acc { stroke: var(--accent); stroke-width: 1.4; fill: none; }
+svg .arrow { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+svg .arrow-acc { stroke: var(--accent); stroke-width: 2; fill: none; }
+svg .ah { fill: var(--muted); }
+svg .ah-acc { fill: var(--accent); }
+svg .seat { fill: var(--bg); stroke: var(--line-strong); stroke-width: 1.2; }
+svg .seat.min { stroke: var(--warn); }
+svg .seat.on { fill: var(--accent); }
+svg .axis { stroke: var(--line-strong); stroke-width: 1; }
+svg .grid { stroke: var(--line); stroke-width: 1; }
+svg .limit { stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 5 4; fill: none; }
+svg .placed-line { stroke: var(--accent); stroke-width: 1.2; stroke-dasharray: 2 4; }
+svg .dot { fill: var(--line-strong); }
+svg .dot-fg { fill: var(--fg); }
+svg .dot-bad { fill: var(--bad); }
+svg .pick { fill: var(--accent); }
+svg .beaten { fill: var(--bg); stroke: var(--accent); stroke-width: 2; }
+svg .cross { stroke: var(--bad); stroke-width: 2.5; }
+svg .band { fill: var(--accent-soft); }
+svg .tick-acc { stroke: var(--accent); stroke-width: 2; }
+svg .track { fill: var(--line); }
+svg .fill-n { fill: var(--muted); }
+svg .fill-a { fill: var(--accent); }
+
+.table-scroll { overflow-x: auto; margin: 16px 0 24px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 0.95rem; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: 0.85rem; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+tr.low td { color: var(--accent); }
+
+.aside {
+  border-left: 3px solid var(--line-strong); padding: 4px 0 4px 16px; color: var(--muted); margin: 20px 0;
+}
+footer { margin-top: 72px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.85rem; }
+
+@media (max-width: 520px) {
+  body { padding-block: 28px 64px; }
+  h2 { margin-top: 48px; }
+  .figure-scroll { padding: 14px; }
+}
+</style>
+
+<div class="page">
+  <header class="prose">
+    <p class="eyebrow">Histoires de Chimères · tirage d'un créneau</p>
+    <h1>Algorithme du tirage</h1>
+    <p class="lead">Au lancement du tirage, l'algorithme répartit les inscrits d'un créneau sur ses parties. Cette page explique, étape par étape, comment il choisit, et pourquoi deux participants aux mêmes inscriptions ont les mêmes chances.</p>
+    <p class="meta">Décidé dans <a href="https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/110">Prototype de l'algorithme de tirage</a>, sur la carte <a href="https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/109">Tirage d'un créneau&nbsp;: algorithme, ajustements et publication</a>. Le contrat de l'algorithme vient de <a href="https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/115">Isolement de l'algorithme de tirage</a>.</p>
+    <nav class="toc" aria-label="Sommaire">
+      <a href="#regles">Les règles</a>
+      <a href="#roles">Qui fait quoi</a>
+      <a href="#exemple">L'exemple</a>
+      <a href="#etapes">Étape par étape</a>
+      <a href="#manque">Quand les places manquent</a>
+      <a href="#chances">Mêmes chances</a>
+      <a href="#double">Partie double</a>
+      <a href="#temps">Temps de calcul</a>
+    </nav>
+  </header>
+
+  <section id="regles">
+    <h2>Les règles, dans l'ordre</h2>
+    <div class="prose">
+      <p>Chaque règle ne sert qu'à départager les répartitions que les règles précédentes laissent à égalité.</p>
+      <ol class="rules">
+        <li><span><strong>Jamais au-dessus du maximum</strong> d'une partie, et un participant seulement sur une partie où il est inscrit. C'est une règle absolue.</span></li>
+        <li><span><strong>Placer le plus de participants</strong> possible.</span></li>
+        <li><span>À égalité, <strong>le plus de parties à leur minimum</strong>.</span></li>
+        <li class="new"><span>À égalité, <strong>le moins de joueurs possible dans les parties qui restent sous leur minimum</strong>.</span></li>
+        <li><span>À égalité, <strong>les tables les plus équilibrées</strong>&nbsp;: la moins remplie d'abord.</span></li>
+        <li><span><strong>Le hasard</strong> départage le reste.</span></li>
+      </ol>
+      <p>Rien d'autre ne pèse&nbsp;: ni l'heure d'inscription, ni l'ordre d'inscription, ni le pseudo. L'algorithme ne les reçoit même pas.</p>
+    </div>
+  </section>
+
+  <section id="roles">
+    <h2>Qui fait quoi</h2>
+    <div class="prose">
+      <p>L'algorithme est une pièce isolée, <code>packages/draw</code>, branchée par l'API. Il ne connaît qu'un créneau à la fois&nbsp;: des parties avec leur minimum et leur maximum, des participants avec les parties où ils sont inscrits, sous forme d'identifiants, et une source de hasard.</p>
+      <p>Le domaine (<code>Convention</code>) lui prépare cette entrée, puis vérifie sa réponse. Un algorithme bogué ne peut donc casser aucune règle absolue&nbsp;: le domaine refuse son résultat.</p>
+    </div>
+    <figure>
+      <div class="figure-scroll">
+        <svg viewBox="0 0 820 272" role="img" aria-label="Le domaine prépare l'entrée de l'algorithme, l'algorithme répartit, le domaine vérifie le résultat avant d'en faire le résultat provisoire.">
+          <defs>
+            <marker id="ar1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+          </defs>
+          <rect x="1" y="20" width="250" height="160" rx="10" class="box"/>
+          <text x="16" y="46" class="strong">Convention (domaine)</text>
+          <text x="16" y="68" class="sm mut">prépare l'entrée&nbsp;:</text>
+          <text x="16" y="94" class="sm">• les parties non annulées</text>
+          <text x="16" y="116" class="sm">• les inscriptions actives (TI-2)</text>
+          <text x="16" y="138" class="sm">• sans les joueurs déjà pris</text>
+          <text x="27" y="158" class="sm">par une partie double (TI-3)</text>
+
+          <line x1="253" y1="100" x2="317" y2="100" class="arrow" marker-end="url(#ar1)"/>
+          <text x="285" y="88" class="xs mut" text-anchor="middle">identifiants</text>
+          <text x="285" y="120" class="xs mut" text-anchor="middle">+ hasard</text>
+
+          <rect x="320" y="20" width="210" height="160" rx="10" class="box-acc"/>
+          <text x="335" y="46" class="strong mono">DrawAlgorithm</text>
+          <text x="335" y="66" class="sm mut mono">packages/draw</text>
+          <text x="335" y="94" class="sm">1. mélange l'ordre</text>
+          <text x="335" y="116" class="sm">2. compte le maximum</text>
+          <text x="335" y="138" class="sm">3. choisit la répartition</text>
+          <text x="335" y="160" class="sm">4. assoit les participants</text>
+
+          <line x1="532" y1="100" x2="597" y2="100" class="arrow" marker-end="url(#ar1)"/>
+          <text x="565" y="88" class="xs mut" text-anchor="middle">partie ou</text>
+          <text x="565" y="120" class="xs mut" text-anchor="middle">non placé</text>
+
+          <rect x="600" y="20" width="218" height="160" rx="10" class="box"/>
+          <text x="615" y="46" class="strong">Convention vérifie</text>
+          <text x="615" y="68" class="sm mut">et refuse sinon&nbsp;:</text>
+          <text x="615" y="94" class="sm">• pas au-delà du maximum</text>
+          <text x="615" y="116" class="sm">• une partie où il est inscrit</text>
+          <text x="615" y="138" class="sm">• chacun une seule fois</text>
+
+          <line x1="709" y1="182" x2="709" y2="220" class="arrow" marker-end="url(#ar1)"/>
+          <rect x="600" y="224" width="218" height="40" rx="10" class="box"/>
+          <text x="709" y="249" text-anchor="middle" class="strong">Résultat provisoire</text>
+          <text x="588" y="249" text-anchor="end" class="sm mut">puis ajustements et publication, dans le domaine</text>
+        </svg>
+      </div>
+      <figcaption>Le domaine prépare l'entrée et vérifie la sortie&nbsp;; l'algorithme ne fait que répartir. Changer d'algorithme, c'est changer une ligne du câblage de l'API.</figcaption>
+    </figure>
+  </section>
+
+  <section id="exemple">
+    <h2>L'exemple suivi</h2>
+    <div class="prose">
+      <p>Pour suivre les étapes, un petit créneau&nbsp;: deux parties, sept inscrits. Trois ne sont inscrits qu'à la Crypte, deux qu'au Thé, et deux aux deux parties.</p>
+    </div>
+    <figure>
+      <div class="figure-scroll">
+        <svg viewBox="0 0 640 290" role="img" aria-label="Sept participants reliés aux parties où ils sont inscrits : trois à la Crypte seulement, deux aux deux parties, deux au Thé seulement.">
+          <text x="0" y="72" class="xs mut">Crypte seulement</text>
+          <text x="0" y="167" class="xs mut">les deux</text>
+          <text x="0" y="243" class="xs mut">Thé seulement</text>
+
+          <g class="sm">
+            <text x="152" y="34" text-anchor="end">Kaïros</text>
+            <text x="152" y="72" text-anchor="end">Mothas</text>
+            <text x="152" y="110" text-anchor="end">Elyrik</text>
+            <text x="152" y="148" text-anchor="end">Brinor</text>
+            <text x="152" y="186" text-anchor="end">Loudwen</text>
+            <text x="152" y="224" text-anchor="end">Thargane</text>
+            <text x="152" y="262" text-anchor="end">Zémir</text>
+          </g>
+
+          <line x1="166" y1="30" x2="420" y2="88" class="edge"/>
+          <line x1="166" y1="68" x2="420" y2="88" class="edge"/>
+          <line x1="166" y1="106" x2="420" y2="88" class="edge"/>
+          <line x1="166" y1="144" x2="420" y2="88" class="edge-acc"/>
+          <line x1="166" y1="182" x2="420" y2="88" class="edge-acc"/>
+          <line x1="166" y1="144" x2="420" y2="218" class="edge-acc"/>
+          <line x1="166" y1="182" x2="420" y2="218" class="edge-acc"/>
+          <line x1="166" y1="220" x2="420" y2="218" class="edge"/>
+          <line x1="166" y1="258" x2="420" y2="218" class="edge"/>
+
+          <g class="dot-fg">
+            <circle cx="164" cy="30" r="4"/><circle cx="164" cy="68" r="4"/><circle cx="164" cy="106" r="4"/>
+            <circle cx="164" cy="144" r="4"/><circle cx="164" cy="182" r="4"/><circle cx="164" cy="220" r="4"/>
+            <circle cx="164" cy="258" r="4"/>
+          </g>
+
+          <rect x="420" y="40" width="210" height="96" rx="10" class="box"/>
+          <text x="434" y="64" class="strong">A · La Crypte de Velmor</text>
+          <text x="434" y="84" class="sm mut">2 à 6 joueurs · 5 inscrits</text>
+          <rect x="434" y="100" width="18" height="18" rx="3" class="seat min"/>
+          <rect x="458" y="100" width="18" height="18" rx="3" class="seat min"/>
+          <rect x="482" y="100" width="18" height="18" rx="3" class="seat"/>
+          <rect x="506" y="100" width="18" height="18" rx="3" class="seat"/>
+          <rect x="530" y="100" width="18" height="18" rx="3" class="seat"/>
+          <rect x="554" y="100" width="18" height="18" rx="3" class="seat"/>
+
+          <rect x="420" y="170" width="210" height="96" rx="10" class="box"/>
+          <text x="434" y="194" class="strong">B · Thé chez les Fées</text>
+          <text x="434" y="214" class="sm mut">2 à 3 joueurs · 4 inscrits</text>
+          <rect x="434" y="230" width="18" height="18" rx="3" class="seat min"/>
+          <rect x="458" y="230" width="18" height="18" rx="3" class="seat min"/>
+          <rect x="482" y="230" width="18" height="18" rx="3" class="seat"/>
+        </svg>
+      </div>
+      <figcaption>Ce que reçoit l'algorithme&nbsp;: qui est inscrit où. Une case par place&nbsp;; les cases cerclées de jaune forment le minimum. En orange, les inscriptions des deux participants souples, les seuls que l'algorithme peut mettre à l'une ou l'autre table. Les pseudos aident la lecture&nbsp;: l'algorithme ne voit que des identifiants.</figcaption>
+    </figure>
+    <div class="prose">
+      <p>Il y a 9 places pour 7 inscrits&nbsp;: tout le monde peut jouer. Il reste à décider combien de joueurs à chaque table, et qui va où.</p>
+    </div>
+  </section>
+
+  <section id="etapes">
+    <h2>Étape par étape</h2>
+
+    <div class="prose">
+      <h3><span class="step">Étape 1</span>Mélanger l'ordre des participants</h3>
+      <p>Avant tout calcul, l'ordre des participants est mélangé (mélange de Fisher-Yates)&nbsp;: chaque ordre possible a la même chance. C'est l'une des deux seules sources de hasard, avec le choix entre répartitions ex aequo (étape 5). Le reste est un calcul sans hasard sur cet ordre.</p>
+      <p>Dans l'exemple, l'ordre tiré est&nbsp;: Brinor, Loudwen, Kaïros, Mothas, Elyrik, Thargane, Zémir.</p>
+
+      <h3><span class="step">Étape 2</span>Compter le maximum de participants plaçables</h3>
+      <p>On assoit les participants un par un, dans l'ordre mélangé, avec les places maximum des parties. Chacun prend une place libre dans l'une de ses parties. S'il n'en reste pas, on cherche un joueur déjà assis qui peut glisser vers une autre de ses parties pour lui faire de la place, et ce glissement peut s'enchaîner. En théorie des graphes, c'est un couplage par chemins augmentants. Un joueur assis n'est jamais délogé&nbsp;: il peut seulement changer de table.</p>
+      <p>Ce calcul donne le nombre exact de participants plaçables&nbsp;: 7 dans l'exemple. Le même mécanisme sert à l'étape 6, où il est dessiné.</p>
+
+      <h3><span class="step">Étape 3</span>Passer en revue les répartitions possibles</h3>
+      <p>Une répartition, c'est le nombre de joueurs de chaque partie&nbsp;: «&nbsp;4 à la Crypte, 3 au Thé&nbsp;». On les énumère toutes, mais seulement celles qui placent le maximum trouvé à l'étape 2 et ne dépassent aucun maximum.</p>
+      <p>Encore faut-il que les inscriptions permettent la répartition. C'est la <strong>condition de Hall</strong>&nbsp;: pour tout groupe de parties, la répartition n'y met pas plus de joueurs qu'il n'y a d'inscrits à au moins l'une de ces parties. Avec 5 parties, il y a 31 groupes à vérifier. Si aucun ne bloque, il existe à coup sûr une façon d'asseoir tout le monde.</p>
+    </div>
+    <figure>
+      <div class="figure-scroll">
+        <svg viewBox="0 0 640 330" role="img" aria-label="Les répartitions possibles sur une grille : seules celles de la ligne des 7 placés sont examinées ; 4 + 3 est retenue, 5 + 2 est battue à l'équilibre, 6 + 1 est exclue par la condition de Hall.">
+          <line x1="80" y1="40" x2="80" y2="280" class="axis"/>
+          <line x1="80" y1="280" x2="500" y2="280" class="axis"/>
+          <g class="xs mut" text-anchor="middle">
+            <text x="80" y="298">0</text><text x="136" y="298">1</text><text x="192" y="298">2</text><text x="248" y="298">3</text>
+            <text x="304" y="298">4</text><text x="360" y="298">5</text><text x="416" y="298">6</text><text x="472" y="298">7</text>
+          </g>
+          <g class="xs mut" text-anchor="end">
+            <text x="70" y="284">0</text><text x="70" y="228">1</text><text x="70" y="172">2</text><text x="70" y="116">3</text><text x="70" y="60">4</text>
+          </g>
+          <text x="290" y="322" text-anchor="middle" class="sm mut">joueurs à la Crypte (A)</text>
+          <text x="22" y="168" text-anchor="middle" class="sm mut" transform="rotate(-90 22 168)">joueurs au Thé (B)</text>
+
+          <rect x="80" y="112" width="336" height="168" class="limit"/>
+          <text x="88" y="140" class="xs mut">places maximum&nbsp;: 6 et 3</text>
+
+          <line x1="360" y1="48" x2="360" y2="280" class="limit"/>
+          <text x="366" y="52" class="xs mut">au plus 5&nbsp;: 5 inscrits à A</text>
+
+          <line x1="248" y1="56" x2="472" y2="280" class="placed-line"/>
+          <text x="480" y="276" class="xs acc">ligne des 7 placés</text>
+
+          <g class="dot">
+            <circle cx="80" cy="280" r="2.5"/><circle cx="136" cy="280" r="2.5"/><circle cx="192" cy="280" r="2.5"/><circle cx="248" cy="280" r="2.5"/><circle cx="304" cy="280" r="2.5"/><circle cx="360" cy="280" r="2.5"/><circle cx="416" cy="280" r="2.5"/>
+            <circle cx="80" cy="224" r="2.5"/><circle cx="136" cy="224" r="2.5"/><circle cx="192" cy="224" r="2.5"/><circle cx="248" cy="224" r="2.5"/><circle cx="304" cy="224" r="2.5"/><circle cx="360" cy="224" r="2.5"/>
+            <circle cx="80" cy="168" r="2.5"/><circle cx="136" cy="168" r="2.5"/><circle cx="192" cy="168" r="2.5"/><circle cx="248" cy="168" r="2.5"/><circle cx="304" cy="168" r="2.5"/><circle cx="416" cy="168" r="2.5"/>
+            <circle cx="80" cy="112" r="2.5"/><circle cx="136" cy="112" r="2.5"/><circle cx="192" cy="112" r="2.5"/><circle cx="248" cy="112" r="2.5"/><circle cx="360" cy="112" r="2.5"/><circle cx="416" cy="112" r="2.5"/>
+          </g>
+
+          <circle cx="304" cy="112" r="8" class="pick"/>
+          <text x="292" y="96" text-anchor="end" class="sm acc strong">4 + 3&nbsp;: retenue</text>
+
+          <circle cx="360" cy="168" r="7" class="beaten"/>
+          <text x="374" y="172" class="sm">5 + 2&nbsp;: battue à l'équilibre</text>
+
+          <line x1="409" y1="217" x2="423" y2="231" class="cross"/>
+          <line x1="423" y1="217" x2="409" y2="231" class="cross"/>
+          <text x="432" y="228" class="sm bad-t">6 + 1&nbsp;: impossible</text>
+          <text x="432" y="244" class="xs mut">seuls 5 inscrits à A</text>
+        </svg>
+      </div>
+      <figcaption>Chaque point est une répartition (joueurs à la Crypte, joueurs au Thé). Seules celles de la ligne des 7 placés sont examinées. 6 + 1 tient dans les places, mais la condition de Hall l'exclut&nbsp;: seuls 5 participants sont inscrits à la Crypte. Restent 4 + 3 et 5 + 2.</figcaption>
+    </figure>
+
+    <div class="prose">
+      <h3><span class="step">Étape 4</span>Garder la meilleure</h3>
+      <p>Chaque répartition reçoit une note à plusieurs étages, comparés dans l'ordre des règles&nbsp;:</p>
+      <ul>
+        <li>le nombre de parties à leur minimum (règle 3)&nbsp;: 4 + 3 et 5 + 2 en ont deux chacune&nbsp;;</li>
+        <li>le nombre de joueurs dans les parties sous leur minimum (règle 4)&nbsp;: aucun, des deux côtés&nbsp;;</li>
+        <li>l'équilibre (règle 5), qui départage ici.</li>
+      </ul>
+
+      <h4>Les parties qui restent sous leur minimum</h4>
+      <p>Parfois une partie ne peut pas atteindre son minimum. Sans la règle 4, l'équilibre y enverrait des joueurs qui ont une autre possibilité. Exemple&nbsp;: 4 inscrits aux deux parties, chacune de 3 à 6 joueurs. Une seule des deux peut atteindre son minimum.</p>
+    </div>
+    <figure>
+      <div class="figure-scroll">
+        <svg viewBox="0 0 720 190" role="img" aria-label="Quatre inscrits sur deux parties de 3 à 6 joueurs. Sans la règle 4 : 3 + 1, un joueur seul sous le minimum. Avec la règle 4 : 4 + 0.">
+          <text x="0" y="22" class="sm mut strong">Sans la règle 4&nbsp;: 3 + 1</text>
+          <text x="370" y="22" class="sm acc strong">Avec la règle 4 (retenue)&nbsp;: 4 + 0</text>
+
+          <text x="0" y="68" class="sm">Les Marées Noires</text>
+          <text x="0" y="84" class="xs mut">3 à 6 joueurs</text>
+          <rect x="140" y="53" width="24" height="24" rx="4" class="seat min on"/>
+          <rect x="170" y="53" width="24" height="24" rx="4" class="seat min on"/>
+          <rect x="200" y="53" width="24" height="24" rx="4" class="seat min on"/>
+          <rect x="230" y="53" width="24" height="24" rx="4" class="seat"/>
+          <rect x="260" y="53" width="24" height="24" rx="4" class="seat"/>
+          <rect x="290" y="53" width="24" height="24" rx="4" class="seat"/>
+          <text x="140" y="96" class="xs mut">3 joueurs&nbsp;: minimum atteint</text>
+
+          <text x="0" y="138" class="sm">Le Train Fantôme</text>
+          <text x="0" y="154" class="xs mut">3 à 6 joueurs</text>
+          <rect x="140" y="123" width="24" height="24" rx="4" class="seat min on"/>
+          <rect x="170" y="123" width="24" height="24" rx="4" class="seat min"/>
+          <rect x="200" y="123" width="24" height="24" rx="4" class="seat min"/>
+          <rect x="230" y="123" width="24" height="24" rx="4" class="seat"/>
+          <rect x="260" y="123" width="24" height="24" rx="4" class="seat"/>
+          <rect x="290" y="123" width="24" height="24" rx="4" class="seat"/>
+          <text x="140" y="166" class="xs warn-t">1 joueur seul&nbsp;: sous son minimum</text>
+
+          <text x="370" y="68" class="sm">Les Marées Noires</text>
+          <text x="370" y="84" class="xs mut">3 à 6 joueurs</text>
+          <rect x="510" y="53" width="24" height="24" rx="4" class="seat min on"/>
+          <rect x="540" y="53" width="24" height="24" rx="4" class="seat min on"/>
+          <rect x="570" y="53" width="24" height="24" rx="4" class="seat min on"/>
+          <rect x="600" y="53" width="24" height="24" rx="4" class="seat on"/>
+          <rect x="630" y="53" width="24" height="24" rx="4" class="seat"/>
+          <rect x="660" y="53" width="24" height="24" rx="4" class="seat"/>
+          <text x="510" y="96" class="xs mut">4 joueurs</text>
+
+          <text x="370" y="138" class="sm">Le Train Fantôme</text>
+          <text x="370" y="154" class="xs mut">3 à 6 joueurs</text>
+          <rect x="510" y="123" width="24" height="24" rx="4" class="seat min"/>
+          <rect x="540" y="123" width="24" height="24" rx="4" class="seat min"/>
+          <rect x="570" y="123" width="24" height="24" rx="4" class="seat min"/>
+          <rect x="600" y="123" width="24" height="24" rx="4" class="seat"/>
+          <rect x="630" y="123" width="24" height="24" rx="4" class="seat"/>
+          <rect x="660" y="123" width="24" height="24" rx="4" class="seat"/>
+          <text x="510" y="166" class="xs mut">vide&nbsp;: à annuler</text>
+        </svg>
+      </div>
+      <figcaption>Sans la règle 4, un joueur se retrouve seul dans une partie qui sera sans doute annulée, et il faudrait le déplacer à la main. Avec elle, seuls ceux qui n'ont pas d'autre choix restent dans une partie sous son minimum.</figcaption>
+    </figure>
+    <div class="prose">
+      <p>Le revers, accepté&nbsp;: la règle peut vider une partie qu'on aurait maintenue à un joueur près. Quand plusieurs parties peuvent être vidées, le hasard choisit laquelle. L'Organisateur garde la main&nbsp;: il maintient ou annule chaque partie sous son minimum, et peut déplacer des joueurs.</p>
+
+      <h4>La mesure de l'équilibre&nbsp;: la table la moins remplie d'abord</h4>
+      <p>Le remplissage d'une partie, c'est ses joueurs divisés par ses places maximum. On range les remplissages d'une répartition du plus bas au plus haut. Pour comparer deux répartitions, on lit les deux listes rang par rang&nbsp;: au premier rang où elles diffèrent, la plus remplie l'emporte. On remonte donc d'abord la table la plus vide, puis la suivante.</p>
+    </div>
+    <figure>
+      <div class="figure-scroll">
+        <svg viewBox="0 0 710 160" role="img" aria-label="Comparaison des répartitions 4 + 3 et 5 + 2 rang par rang : égalité à 67 % au premier rang, puis 100 % contre 83 % au second ; 4 + 3 l'emporte.">
+          <text x="150" y="22" class="strong">Répartition 4 + 3</text>
+          <text x="380" y="22" class="strong">Répartition 5 + 2</text>
+          <text x="600" y="22" class="sm mut">Verdict</text>
+
+          <text x="0" y="76" class="sm mut">Table la moins remplie</text>
+          <text x="150" y="56" class="xs">Crypte · 4/6 · 67&nbsp;%</text>
+          <rect x="150" y="64" width="190" height="14" rx="3" class="track"/>
+          <rect x="150" y="64" width="127" height="14" rx="3" class="fill-n"/>
+          <text x="380" y="56" class="xs">Thé · 2/3 · 67&nbsp;%</text>
+          <rect x="380" y="64" width="190" height="14" rx="3" class="track"/>
+          <rect x="380" y="64" width="127" height="14" rx="3" class="fill-n"/>
+          <text x="600" y="76" class="sm mut">égalité</text>
+
+          <text x="0" y="136" class="sm mut">Table suivante</text>
+          <text x="150" y="116" class="xs">Thé · 3/3 · 100&nbsp;%</text>
+          <rect x="150" y="124" width="190" height="14" rx="3" class="track"/>
+          <rect x="150" y="124" width="190" height="14" rx="3" class="fill-a"/>
+          <text x="380" y="116" class="xs">Crypte · 5/6 · 83&nbsp;%</text>
+          <rect x="380" y="124" width="190" height="14" rx="3" class="track"/>
+          <rect x="380" y="124" width="158" height="14" rx="3" class="fill-n"/>
+          <text x="600" y="136" class="sm acc strong">4 + 3 l'emporte</text>
+        </svg>
+      </div>
+      <figcaption>Au premier rang, égalité à 67&nbsp;%. Au second, 100&nbsp;% contre 83&nbsp;%&nbsp;: la répartition 4 + 3 l'emporte, et la petite table se remplit.</figcaption>
+    </figure>
+    <div class="prose">
+      <p>Les remplissages se comparent en nombres entiers, places ramenées au même dénominateur. Deux répartitions à égalité le sont donc vraiment, sans erreur d'arrondi.</p>
+      <p class="aside">Deux autres mesures ont été comparées dans le prototype puis écartées&nbsp;: l'écart pondéré (somme des joueurs² divisée par les places), qui aurait donné 5 + 2 ici, et l'écart entre la table la plus remplie et la moins remplie, qui laisse plus d'ex aequo au hasard.</p>
+
+      <h3><span class="step">Étape 5</span>Tirer au hasard entre les ex aequo</h3>
+      <p>S'il reste plusieurs répartitions à égalité sur toutes les règles, le hasard en choisit une. Par exemple, 7 inscrits sur deux parties identiques de 2 à 6 joueurs donnent 4 + 3 ou 3 + 4.</p>
+      <p>Relancer refait tout&nbsp;: nouveau mélange, nouveau choix entre ex aequo. Le résultat peut pourtant être le même, quand une seule répartition et un seul placement sont possibles.</p>
+
+      <h3><span class="step">Étape 6</span>Asseoir les participants</h3>
+      <p>On assoit les participants comme à l'étape 2, dans le même ordre mélangé, mais cette fois avec les places de la répartition retenue&nbsp;: 4 à la Crypte, 3 au Thé. Comme la condition de Hall est respectée, chacun trouve sa place.</p>
+      <p>Brinor, Loudwen, Kaïros et Mothas arrivent les premiers et remplissent les 4 places de la Crypte. Puis vient Elyrik, inscrit à la seule Crypte.</p>
+    </div>
+    <figure>
+      <div class="figure-scroll">
+        <svg viewBox="0 0 720 230" role="img" aria-label="Elyrik arrive alors que la Crypte est pleine ; Brinor, inscrit aux deux parties, glisse vers le Thé et Elyrik prend sa place.">
+          <defs>
+            <marker id="ar6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-acc"/></marker>
+          </defs>
+          <text x="230" y="38" class="sm mut">Crypte (A) · 4 places à pourvoir · <tspan class="warn-t">pleine</tspan></text>
+          <rect x="230" y="50" width="96" height="36" rx="6" class="box-acc"/>
+          <text x="278" y="73" text-anchor="middle" class="sm">Brinor</text>
+          <rect x="334" y="50" width="96" height="36" rx="6" class="box"/>
+          <text x="382" y="73" text-anchor="middle" class="sm">Loudwen</text>
+          <rect x="438" y="50" width="96" height="36" rx="6" class="box"/>
+          <text x="486" y="73" text-anchor="middle" class="sm">Kaïros</text>
+          <rect x="542" y="50" width="96" height="36" rx="6" class="box"/>
+          <text x="590" y="73" text-anchor="middle" class="sm">Mothas</text>
+
+          <text x="230" y="160" class="sm mut">Thé (B) · 3 places à pourvoir</text>
+          <rect x="230" y="172" width="96" height="36" rx="6" class="box-dest"/>
+          <text x="278" y="195" text-anchor="middle" class="sm acc">Brinor</text>
+          <rect x="334" y="172" width="96" height="36" rx="6" class="box-empty"/>
+          <rect x="438" y="172" width="96" height="36" rx="6" class="box-empty"/>
+
+          <rect x="10" y="102" width="150" height="44" rx="8" class="box-acc"/>
+          <text x="24" y="121" class="strong">Elyrik</text>
+          <text x="24" y="137" class="xs mut">Crypte seulement</text>
+
+          <line x1="278" y1="88" x2="278" y2="168" class="arrow-acc" marker-end="url(#ar6)"/>
+          <text x="290" y="122" class="sm">1. Brinor glisse vers le Thé</text>
+          <text x="290" y="138" class="xs mut">il y est inscrit aussi</text>
+
+          <line x1="162" y1="112" x2="226" y2="80" class="arrow-acc" marker-end="url(#ar6)"/>
+          <text x="10" y="90" class="sm">2. Elyrik prend sa place</text>
+        </svg>
+      </div>
+      <figcaption>Le glissement d'un joueur souple libère une place pour un joueur qui n'a pas le choix. Personne n'est délogé&nbsp;: Brinor reste placé, à une autre de ses tables.</figcaption>
+    </figure>
+    <div class="prose">
+      <p>Thargane et Zémir complètent le Thé. Résultat&nbsp;: Elyrik, Kaïros, Loudwen et Mothas à la Crypte&nbsp;; Brinor, Thargane et Zémir au Thé. Avec un autre ordre, Brinor et Loudwen auraient pu échanger leurs tables.</p>
+    </div>
+  </section>
+
+  <section id="manque">
+    <h2>Quand les places manquent</h2>
+    <div class="prose">
+      <p>La règle 2 place le plus de monde possible, mais elle ne dit pas qui reste dehors. C'est l'ordre mélangé qui le décide&nbsp;: les premiers de l'ordre sont assis les premiers, et ne sont plus délogés.</p>
+      <p>Les inscriptions pèsent pourtant. Exemple du prototype&nbsp;: 17 inscrits pour 14 places. «&nbsp;Le Bal des Ombres&nbsp;» a 5 places et 12 inscrits, dont 8 qui n'ont pris qu'elle.</p>
+    </div>
+    <div class="table-scroll prose">
+      <table>
+        <thead><tr><th>Inscriptions</th><th class="num">Inscrits</th><th class="num">Placés, sur 2&nbsp;000 tirages</th></tr></thead>
+        <tbody>
+          <tr class="low"><td>Le Bal des Ombres seulement</td><td class="num">8</td><td class="num">63&nbsp;%</td></tr>
+          <tr><td>Le Bal des Ombres et Les Marées Noires</td><td class="num">4</td><td class="num">100&nbsp;%</td></tr>
+          <tr><td>Les Marées Noires et Le Phare</td><td class="num">3</td><td class="num">100&nbsp;%</td></tr>
+          <tr><td>Le Phare seulement</td><td class="num">2</td><td class="num">100&nbsp;%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="prose">
+      <p>Pour placer 14 personnes, les 4 inscrits au Bal et aux Marées Noires doivent jouer aux Marées&nbsp;: sinon, leurs places au Bal manquent aux 8 autres. Les 3 non placés sont donc toujours parmi les 8 inscrits au seul Bal. Ce n'est pas un biais, c'est la règle 2. D'où l'invitation, sur le téléphone, à s'inscrire aussi à une autre partie.</p>
+      <p>Quand rien ne fait goulot, le risque est le même pour tous. Autre exemple du prototype&nbsp;: 24 inscrits pour 20 places, chacun sur une à quatre parties. Chacun est placé dans environ 83&nbsp;% des tirages, qu'il soit inscrit à une partie ou à quatre.</p>
+    </div>
+  </section>
+
+  <section id="chances">
+    <h2>Mêmes inscriptions, mêmes chances</h2>
+    <div class="prose">
+      <h3>Pourquoi c'est vrai</h3>
+      <p>Pour l'algorithme, deux participants aux inscriptions identiques ne diffèrent que par leur rang dans l'ordre mélangé. Échanger leurs rangs échange exactement leurs résultats. Or le mélange donne la même chance à chaque ordre&nbsp;: «&nbsp;Kaïros avant Mothas&nbsp;» est aussi probable que «&nbsp;Mothas avant Kaïros&nbsp;». Leurs chances d'être placés, et d'aller à telle table, sont donc les mêmes.</p>
+
+      <h3>Comment le test le vérifie</h3>
+      <ul>
+        <li>2&nbsp;000 tirages du même créneau, avec une graine fixe&nbsp;: le verdict est toujours le même, le test n'échoue jamais par malchance&nbsp;;</li>
+        <li>les participants aux inscriptions identiques forment un groupe&nbsp;;</li>
+        <li>pour chaque issue (chacune de leurs parties, et «&nbsp;non placé&nbsp;»), la part de chacun ne doit pas s'écarter de la moyenne du groupe de plus de 5 écarts types du hasard, soit 5 × √(p × (1 − p) / 2&nbsp;000).</li>
+      </ul>
+    </div>
+    <figure>
+      <div class="figure-scroll">
+        <svg viewBox="0 0 720 215" role="img" aria-label="Avec mélange, les huit inscrits au seul Bal sont placés dans 61 à 65 % des tirages, dans la bande tolérée. Sans mélange, quatre sont toujours placés et un jamais : le test échoue.">
+          <line x1="190" y1="34" x2="190" y2="184" class="grid"/>
+          <line x1="315" y1="34" x2="315" y2="184" class="grid"/>
+          <line x1="440" y1="34" x2="440" y2="184" class="grid"/>
+          <line x1="565" y1="34" x2="565" y2="184" class="grid"/>
+          <line x1="690" y1="34" x2="690" y2="184" class="grid"/>
+          <g class="xs mut" text-anchor="middle">
+            <text x="190" y="202">0&nbsp;%</text><text x="315" y="202">25&nbsp;%</text><text x="440" y="202">50&nbsp;%</text>
+            <text x="565" y="202">75&nbsp;%</text><text x="690" y="202">100&nbsp;%</text>
+          </g>
+          <text x="440" y="20" text-anchor="middle" class="xs mut">part des tirages où le participant est placé</text>
+
+          <text x="0" y="66" class="strong">Avec mélange</text>
+          <text x="0" y="84" class="xs mut">8 inscrits au seul Bal</text>
+          <rect x="475.5" y="54" width="54" height="32" class="band"/>
+          <line x1="502.5" y1="52" x2="502.5" y2="88" class="tick-acc"/>
+          <text x="502" y="46" text-anchor="middle" class="xs acc">62,5&nbsp;% ± 5,4 pts</text>
+          <g class="dot-fg">
+            <circle cx="495.5" cy="62" r="3.5"/><circle cx="498" cy="78" r="3.5"/><circle cx="499" cy="70" r="3.5"/>
+            <circle cx="500" cy="62" r="3.5"/><circle cx="501" cy="78" r="3.5"/><circle cx="501.5" cy="70" r="3.5"/>
+            <circle cx="509" cy="70" r="3.5"/><circle cx="516.5" cy="70" r="3.5"/>
+          </g>
+          <text x="540" y="74" class="xs ok-t" style="fill: var(--ok)">test réussi</text>
+
+          <text x="0" y="136" class="strong">Sans mélange</text>
+          <text x="0" y="154" class="xs mut">5 inscrits à la seule Crypte</text>
+          <rect x="567.5" y="124" width="45" height="32" class="band"/>
+          <line x1="590" y1="122" x2="590" y2="158" class="tick-acc"/>
+          <text x="590" y="116" text-anchor="middle" class="xs acc">80&nbsp;% ± 4,5 pts</text>
+          <g class="dot-fg">
+            <circle cx="690" cy="128" r="3.5"/><circle cx="690" cy="136" r="3.5"/><circle cx="690" cy="144" r="3.5"/><circle cx="690" cy="152" r="3.5"/>
+          </g>
+          <circle cx="190" cy="140" r="4" class="dot-bad"/>
+          <text x="200" y="144" class="xs bad-t">1 jamais placé&nbsp;: test échoué</text>
+          <text x="682" y="174" text-anchor="end" class="xs mut">4 toujours placés</text>
+        </svg>
+      </div>
+      <figcaption>En haut, l'algorithme retenu, sur l'exemple du Bal&nbsp;: les 8 inscrits au seul Bal sont placés dans 61 à 65&nbsp;% des tirages, dans la bande tolérée. En bas, le même algorithme sans mélange, sur un créneau où 5 inscrits se disputent 4 places&nbsp;: 4 sont toujours placés, 1 jamais. Le test le voit.</figcaption>
+    </figure>
+    <div class="prose">
+      <h3>Le piège</h3>
+      <p>Le test ne voit un biais que si le créneau coupe un groupe en deux&nbsp;: des membres placés et d'autres non, ou répartis sur deux tables. Sur un créneau où chaque groupe est placé en entier, ou pas du tout, un algorithme sans mélange passe le test. Les créneaux de la suite de tests doivent donc couper des groupes.</p>
+      <p>Le test ne compare pas non plus des groupes différents entre eux. La promesse ne le demande pas, et les règles 2 à 5 traitent parfois des groupes différemment, à raison&nbsp;: voir le Bal plus haut.</p>
+    </div>
+  </section>
+
+  <section id="double">
+    <h2>Partie double</h2>
+    <div class="prose">
+      <p>Pour l'algorithme, une partie double n'est qu'une partie de son premier créneau, tirée avec lui (TI-3). C'est le domaine qui prépare le créneau suivant&nbsp;: il en retire les joueurs placés dans la partie double, et ignore leurs inscriptions de ce créneau. Les inscrits de la partie double qui n'y ont pas été placés gardent les leurs.</p>
+    </div>
+    <figure>
+      <div class="figure-scroll">
+        <svg viewBox="0 0 680 255" role="img" aria-label="La Longue Nuit occupe la table 2 sur les créneaux 1 et 2. Elle est tirée au créneau 1 ; ses joueurs ne participent pas au tirage du créneau 2.">
+          <text x="270" y="24" text-anchor="middle" class="strong">Créneau 1</text>
+          <text x="515" y="24" text-anchor="middle" class="strong">Créneau 2</text>
+
+          <text x="0" y="66" class="sm mut">Table 1</text>
+          <text x="0" y="126" class="sm mut">Table 2</text>
+          <text x="0" y="186" class="sm mut">Table 3</text>
+
+          <rect x="160" y="40" width="220" height="44" rx="8" class="box"/>
+          <text x="270" y="66" text-anchor="middle" class="sm">A · La Crypte de Velmor</text>
+          <rect x="400" y="40" width="230" height="44" rx="8" class="box"/>
+          <text x="515" y="66" text-anchor="middle" class="sm">E · Cendres d'Ys</text>
+
+          <rect x="160" y="100" width="470" height="44" rx="8" class="box-acc"/>
+          <text x="395" y="126" text-anchor="middle" class="sm"><tspan class="strong">D · La Longue Nuit</tspan> · partie double</text>
+
+          <rect x="160" y="160" width="220" height="44" rx="8" class="box-empty"/>
+          <text x="270" y="186" text-anchor="middle" class="xs mut">libre</text>
+          <rect x="400" y="160" width="230" height="44" rx="8" class="box"/>
+          <text x="515" y="186" text-anchor="middle" class="sm">F · Code Hydre</text>
+
+          <text x="270" y="230" text-anchor="middle" class="sm">tirage 1&nbsp;: A et D</text>
+          <text x="515" y="230" text-anchor="middle" class="sm">tirage 2&nbsp;: E et F,</text>
+          <text x="515" y="247" text-anchor="middle" class="sm acc">sans les joueurs placés à D</text>
+        </svg>
+      </div>
+      <figcaption>«&nbsp;La Longue Nuit&nbsp;» occupe la table 2 sur les deux créneaux. Elle est tirée au créneau 1, et ses joueurs ne participent pas au tirage du créneau 2.</figcaption>
+    </figure>
+    <div class="prose">
+      <p>Un tirage ne se lance que si le créneau précédent est publié. Quand le créneau 2 est tiré, les joueurs de la partie double sont donc connus et définitifs.</p>
+    </div>
+  </section>
+
+  <section id="temps">
+    <h2>Temps de calcul</h2>
+    <div class="prose">
+      <p>Le calcul est exact&nbsp;: il compare toutes les répartitions possibles, sans raccourci. Il reste très rapide aux tailles d'une convention, de 25 à 80 participants et de 3 à 5 parties par créneau.</p>
+    </div>
+    <div class="table-scroll prose">
+      <table>
+        <thead><tr><th>Créneau</th><th class="num">Un tirage</th><th class="num">Répartitions examinées</th></tr></thead>
+        <tbody>
+          <tr><td>L'exemple suivi&nbsp;: 7 inscrits, 2 parties</td><td class="num">&lt; 1&nbsp;ms</td><td class="num">2</td></tr>
+          <tr><td>80 inscrits, 5 parties, 31 places</td><td class="num">≈ 1&nbsp;ms</td><td class="num">1</td></tr>
+          <tr><td>Cas extrême&nbsp;: 50 inscrits à tout, 5 parties de 30 places</td><td class="num">≈ 250&nbsp;ms</td><td class="num">271&nbsp;976</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="prose">
+      <p>2&nbsp;000 tirages à 80 inscrits prennent 0,4&nbsp;s&nbsp;: la suite de tests reste rapide. Le coût ne vient pas du nombre d'inscrits, mais des places libres et des inscrits souples&nbsp;: plus il y a de façons de répartir, plus il y a de répartitions à comparer. Quand les inscrits dépassent les places, une seule répartition remplit tout.</p>
+      <p class="meta">Mesures faites avec le module du prototype, sous Node.js, sur un poste de développement.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Ce que l'algorithme ne fait pas</h2>
+    <div class="prose">
+      <p>Les ajustements (déplacer un participant, maintenir ou annuler une partie, relancer, programmer depuis la réserve), la publication et les notifications vivent dans le domaine. Ils ne dépendent pas de l'algorithme&nbsp;: en changer ne touche à aucun de ces gestes.</p>
+    </div>
+  </section>
+
+  <footer class="prose">
+    Page écrite à partir du prototype de l'algorithme (<a href="https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/110">Prototype de l'algorithme de tirage</a>), dont le module pur servira de base à <code>packages/draw</code>.
+  </footer>
+</div>
+</html>
