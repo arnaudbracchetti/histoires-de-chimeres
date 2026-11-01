@@ -7,6 +7,7 @@ import type { GridTimeSlot } from './grid-time-slot';
 import {
   buildUnscheduleConfirmation,
   type ConfirmationTexts,
+  type CurrentSignUpFigures,
 } from './removed-sign-ups-confirmations';
 
 /** La confirmation d'une déprogrammation, lue : ses textes, aucun sans inscrit ; ou illisible. */
@@ -24,16 +25,24 @@ export class RemovedSignUpsGestures {
   private readonly apiCall = injectApiCall();
 
   /**
-   * Déprogramme la partie : aussitôt sans inscrit, sinon après la confirmation. Le programme relu,
-   * ou `undefined` sans écriture.
+   * Déprogramme la partie : aussitôt sans inscrit, sinon après la confirmation, dont les chiffres
+   * suivent `current` s'il est donné. Le geste retire les inscriptions présentes à l'écriture. Le
+   * programme relu, ou `undefined` sans écriture.
    */
   async unschedule(
     game: GameDto,
     timeSlots: readonly GridTimeSlot[],
     gesture: Gesture,
     onStale: () => void,
+    current?: CurrentSignUpFigures,
   ): Promise<ScheduleDto | undefined> {
-    const confirmation = await this.readUnscheduleConfirmation(game, timeSlots, gesture, onStale);
+    const confirmation = await this.readUnscheduleConfirmation(
+      game,
+      timeSlots,
+      gesture,
+      onStale,
+      current,
+    );
     if (confirmation.status === 'unreadable') return undefined;
     return this.writeConfirmingIfAny(
       () => this.apiCall(scheduleEndpoints.unschedule, { params: { gameId: game.id } }),
@@ -46,13 +55,14 @@ export class RemovedSignUpsGestures {
   /**
    * La confirmation de déprogrammer la partie, d'après les inscriptions que le geste retirerait,
    * lues par `gesture`. `unreadable` si la lecture est refusée : le refus part en alerte, et s'il
-   * dit l'écran périmé, `onStale`.
+   * dit l'écran périmé, `onStale`. Avec `current`, les chiffres du dialogue ouvert le suivent.
    */
   async readUnscheduleConfirmation(
     game: GameDto,
     timeSlots: readonly GridTimeSlot[],
     gesture: Gesture,
     onStale: () => void,
+    current?: CurrentSignUpFigures,
   ): Promise<UnscheduleConfirmation> {
     const verdict = await gesture.run(() =>
       this.apiCall(scheduleEndpoints.unscheduleVerdict, { params: { gameId: game.id } }),
@@ -62,7 +72,7 @@ export class RemovedSignUpsGestures {
     const [removed] = verdict.value.removedSignUps;
     return {
       status: 'read',
-      texts: removed && buildUnscheduleConfirmation(game, removed, timeSlots),
+      texts: removed && buildUnscheduleConfirmation(game, removed, timeSlots, current),
     };
   }
 

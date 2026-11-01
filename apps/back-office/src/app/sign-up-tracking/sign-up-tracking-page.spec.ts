@@ -1239,5 +1239,62 @@ describe('Pilotage du jour J', () => {
 
       expect(dialog()).not.toBeNull();
     });
+
+    /** Le suivi relu, où « Brumes » a ces chiffres. */
+    const withBrumes = (figures: Partial<TrackedGameDto>): SignUpTrackingDto => ({
+      ...TRACKING,
+      games: [{ ...BRUMES, ...figures }, EPICE, NEONS],
+    });
+
+    it('reprend dans le dialogue ouvert les chiffres relus de la partie', async () => {
+      const { askUnschedule, dialog, reread } = await render();
+      await askUnschedule([{ gameId: 'p1', signUpCount: 15, withoutOtherSignUpCount: 8 }]);
+
+      vi.advanceTimersByTime(30_000);
+      await reread(withBrumes({ signUpCount: 12, withoutOtherSignUpCount: 1 }));
+
+      expect([...dialog()!.querySelectorAll('h2, p')].map(text)).toEqual([
+        'Déprogrammer « Brumes » du créneau 2 ?',
+        'Il y a 12 inscrits à la partie. Ils perdront leur inscription et seront notifiés.',
+        "1 d'entre eux n'a pas d'autre inscription sur le créneau.",
+        'Le scénario revient en réserve, sans ses inscriptions.',
+      ]);
+    });
+
+    it('dit dans le dialogue ouvert qu’aucun inscrit ne perd son inscription quand leur nombre retombe à 0', async () => {
+      const { askUnschedule, dialog, reread } = await render();
+      await askUnschedule([{ gameId: 'p1', signUpCount: 15, withoutOtherSignUpCount: 8 }]);
+
+      vi.advanceTimersByTime(30_000);
+      await reread(withBrumes({ signUpCount: 0, withoutOtherSignUpCount: 0 }));
+
+      expect([...dialog()!.querySelectorAll('h2, p')].map(text)).toEqual([
+        'Déprogrammer « Brumes » du créneau 2 ?',
+        'Aucun inscrit ne perd son inscription.',
+        'Le scénario revient en réserve, sans ses inscriptions.',
+      ]);
+    });
+
+    it('donne au dialogue « Déplacer vers… » les chiffres relus de chaque partie', async () => {
+      const { host, settle, button, reread } = await render();
+      moveTo.mockReturnValue(new Promise(() => {}));
+      host.querySelector<HTMLButtonElement>('#tracked-game-p1')!.click();
+      await settle();
+      button('Déplacer vers…')!.click();
+      await settle();
+      const { currentSignUpFigures } = moveTo.mock.calls[0]![0];
+
+      vi.advanceTimersByTime(30_000);
+      await reread(withBrumes({ signUpCount: 12, withoutOtherSignUpCount: 1 }));
+
+      expect(currentSignUpFigures?.('p1')).toMatchObject({
+        signUpCount: 12,
+        withoutOtherSignUpCount: 1,
+      });
+      expect(currentSignUpFigures?.('p3')).toMatchObject({
+        signUpCount: 2,
+        withoutOtherSignUpCount: 0,
+      });
+    });
   });
 });

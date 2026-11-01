@@ -259,6 +259,50 @@ describe('Suivi des parties de chaque créneau (§4.4)', () => {
       withoutOtherSignUpCount: 1,
     });
   });
+
+  it('donne à une partie les chiffres des inscriptions qu’un geste lui retirerait (IN-6)', () => {
+    const convention = aConvention();
+    convention.unscheduleGame('neons');
+    signUp(convention, { 'p-g3': ['epice'], p1: ['brumes', 'epice'], p2: ['brumes'] });
+    signUp(convention, { p3: ['epice'] });
+    convention.scheduleScenario('neons', aScenario('c'), 's2', 't1');
+    signUp(convention, { p2: ['neons'] });
+    /** Les chiffres du suivi de la partie, sur son premier créneau. */
+    const trackedFiguresOf = (gameId: string) => {
+      const tracked = convention
+        .computeSignUpTracking(CATALOGUE)
+        .flatMap(({ games }) => games)
+        .find((game) => game.gameId === gameId)!;
+      return {
+        gameId,
+        signUpCount: tracked.signUpCount,
+        withoutOtherSignUpCount: tracked.withoutOtherSignUpCount,
+      };
+    };
+    /** Les inscriptions retirées par le geste de la case, dans les verdicts de déplacement. */
+    const removedOnMoveTo = (gameId: string, timeSlotId: string, tableId: string) =>
+      convention
+        .computeMoveVerdicts(gameId)
+        .find((verdict) => verdict.timeSlotId === timeSlotId && verdict.tableId === tableId)!
+        .removedSignUps;
+
+    expect(trackedFiguresOf('epice')).toEqual({
+      gameId: 'epice',
+      signUpCount: 2,
+      withoutOtherSignUpCount: 1,
+    });
+    for (const gameId of ['brumes', 'epice', 'neons']) {
+      expect(convention.computeUnscheduleVerdict(gameId).removedSignUps).toEqual([
+        trackedFiguresOf(gameId),
+      ]);
+    }
+    expect(removedOnMoveTo('brumes', 's3', 't1')).toEqual([trackedFiguresOf('brumes')]);
+    // Échanger « brumes » (créneau 1) et « neons » (créneau 2).
+    expect(removedOnMoveTo('brumes', 's2', 't1')).toEqual([
+      trackedFiguresOf('brumes'),
+      trackedFiguresOf('neons'),
+    ]);
+  });
 });
 
 /** Les participants du créneau de rang `rank`, en « id, parties, risque ». */

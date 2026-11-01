@@ -321,6 +321,17 @@ describe('Inscriptions retirées par un geste (IN-6)', () => {
     ]);
   });
 
+  it('le geste retire les inscriptions présentes à l’écriture, même prises après le verdict', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+    convention.computeUnscheduleVerdict('epice');
+    convention.signUpForGame('p2', 'epice', CATALOGUE);
+
+    convention.unscheduleGame('epice');
+
+    expect(signUpsOf(convention)).toEqual([]);
+  });
+
   it('refuse le verdict de déprogrammation d’une partie inconnue', () => {
     expect(refusalOf(() => aConvention().computeUnscheduleVerdict('x')).code).toBe(
       'game-not-found',

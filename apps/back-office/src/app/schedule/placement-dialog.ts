@@ -29,6 +29,7 @@ import { Confirmation } from '../ui/confirmation';
 import {
   buildMoveOrSwapConfirmation,
   type ConfirmationTexts,
+  type CurrentSignUpFigures,
 } from './removed-sign-ups-confirmations';
 import type { GridTimeSlot } from './grid-time-slot';
 
@@ -43,9 +44,14 @@ export type PlacementRequest = Grid & { scenario: ScheduleScenarioDto };
 
 /**
  * Déplacer une partie : sa case, celle de son premier créneau, n'offre pas « Choisir ». `games` :
- * le programme, qui nomme la partie d'un échange.
+ * le programme, qui nomme la partie d'un échange. `currentSignUpFigures` : les chiffres à jour que
+ * suit la confirmation ouverte ; sans eux, elle garde ceux des verdicts de déplacement.
  */
-export type MoveRequest = Grid & { game: GameDto; games: readonly GameDto[] };
+export type MoveRequest = Grid & {
+  game: GameDto;
+  games: readonly GameDto[];
+  currentSignUpFigures?: CurrentSignUpFigures;
+};
 
 /**
  * Le programme relu après le geste, et l'id de la partie échangée avec celle qu'on déplace, ou
@@ -246,7 +252,7 @@ export class PlacementDialog {
       this.conclude(outcome, null);
       return;
     }
-    const { game, games, timeSlots } = request;
+    const { game, games, timeSlots, currentSignUpFigures } = request;
     await this.write(
       () => this.apiCall(scheduleEndpoints.move, { params: { gameId: game.id }, body: place }),
       null,
@@ -257,6 +263,7 @@ export class PlacementDialog {
         verdict.removedSignUps ?? [],
         games,
         timeSlots,
+        currentSignUpFigures,
       ),
     );
   }
@@ -264,7 +271,7 @@ export class PlacementDialog {
   /** Échange la partie avec celle de la case ; un refus s'affiche comme pour « Choisir ». */
   protected async swap(otherGameId: string, verdict: Verdict) {
     if (!('game' in this.request)) return;
-    const { game, games, timeSlots } = this.request;
+    const { game, games, timeSlots, currentSignUpFigures } = this.request;
     await this.write(
       () =>
         this.apiCall(scheduleEndpoints.swap, {
@@ -279,6 +286,7 @@ export class PlacementDialog {
         verdict.removedSignUps ?? [],
         games,
         timeSlots,
+        currentSignUpFigures,
       ),
     );
   }

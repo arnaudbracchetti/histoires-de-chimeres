@@ -1,5 +1,5 @@
 import { Dialog, DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
-import { Component, computed, inject, Injectable } from '@angular/core';
+import { Component, computed, inject, Injectable, isSignal, type Signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { injectGesture } from '../gesture';
 import { Button } from './button';
@@ -7,8 +7,11 @@ import { Button } from './button';
 export type ConfirmationRequest = {
   /** Question qui nomme l'objet : « Supprimer le créneau 2 ? ». */
   question: string;
-  /** Ce qui part avec lui, un paragraphe chacun : « Ses 4 disponibilités seront supprimées. » */
-  consequences?: readonly string[];
+  /**
+   * Ce qui part avec lui, un paragraphe chacun : « Ses 4 disponibilités seront supprimées. ». Un
+   * signal tient le dialogue ouvert à jour.
+   */
+  consequences?: readonly string[] | Signal<readonly string[]>;
   /** Bouton destructeur, qui nomme l'action : « Supprimer le créneau ». */
   confirmLabel: string;
   /** L'écriture, lancée par le bouton destructeur. Un refus s'affiche dans le dialogue. */
@@ -32,7 +35,7 @@ let nextId = 0;
   host: { '[attr.aria-busy]': 'gesture.running()' },
   template: `
     <h2 [id]="request.titleId">{{ request.question }}</h2>
-    @for (consequence of request.consequences ?? []; track $index) {
+    @for (consequence of consequences(); track $index) {
       <p>{{ consequence }}</p>
     }
     @if (refusal(); as message) {
@@ -84,6 +87,10 @@ let nextId = 0;
 export class ConfirmDialog {
   protected readonly request = inject<DialogData>(DIALOG_DATA);
   protected readonly ref = inject<DialogRef<boolean>>(DialogRef);
+  protected readonly consequences = computed(() => {
+    const consequences = this.request.consequences;
+    return isSignal(consequences) ? consequences() : (consequences ?? []);
+  });
 
   protected readonly gesture = injectGesture();
   protected readonly refusal = computed(() => this.gesture.refusal()?.message);

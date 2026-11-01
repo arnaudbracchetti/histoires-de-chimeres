@@ -1,6 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { ApplicationRef } from '@angular/core';
+import { ApplicationRef, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
   apiUrl,
@@ -9,13 +9,14 @@ import {
   type MovePlacementDto,
   type PlacementDto,
   type ProblemDto,
+  type RemovedSignUpsDto,
   type ScheduleDto,
   type ScheduleScenarioDto,
   type TableDto,
   type TimeSlotDto,
 } from '@chimeres/contract';
 import { NBSP, THIN_NBSP } from '@chimeres/design';
-import { Placements } from './placement-dialog';
+import { Placements, type MoveRequest } from './placement-dialog';
 
 const TIME_SLOTS: TimeSlotDto[] = [
   { id: 's1', rank: 1, start: '09:00', end: '11:30', availabilityCount: 2 },
@@ -206,13 +207,17 @@ describe('PlacementDialog', () => {
       removedSignUps: [],
     }));
 
-    async function openMove(placements = MOVE_PLACEMENTS) {
+    async function openMove(
+      placements = MOVE_PLACEMENTS,
+      currentSignUpFigures?: MoveRequest['currentSignUpFigures'],
+    ) {
       const http = TestBed.inject(HttpTestingController);
       const closed = TestBed.inject(Placements).moveTo({
         game: GAME,
         games: [GAME, OTHER],
         timeSlots: TIME_SLOTS,
         tables: TABLES,
+        currentSignUpFigures,
       });
       await settle();
       http.expectOne(apiUrl(scheduleEndpoints.movePlacements, { gameId: 'p1' })).flush(placements);
@@ -400,6 +405,40 @@ describe('PlacementDialog', () => {
         http.expectOne(apiUrl(scheduleEndpoints.swap, { gameId: 'p1' })).flush(SCHEDULE);
 
         expect(await closed).toEqual({ schedule: SCHEDULE, swappedWith: 'p2' });
+      });
+
+      it('suit les chiffres à jour de chaque partie tant que la confirmation est ouverte', async () => {
+        const current = signal<Record<string, RemovedSignUpsDto>>({});
+        const { dialog } = await openMove(
+          MOVE_PLACEMENTS.map((verdict) =>
+            verdict.timeSlotId === 's2' && verdict.tableId === 't1'
+              ? {
+                  ...verdict,
+                  swapWith: 'p2',
+                  refusal: null,
+                  removedSignUps: [
+                    { gameId: 'p1', signUpCount: 1, withoutOtherSignUpCount: 0 },
+                    { gameId: 'p2', signUpCount: 4, withoutOtherSignUpCount: 1 },
+                  ],
+                }
+              : verdict,
+          ),
+          (gameId) => current()[gameId],
+        );
+        dialog().querySelector<HTMLButtonElement>('button[aria-label^="Échanger"]')!.click();
+        await settle();
+
+        current.set({
+          p1: { gameId: 'p1', signUpCount: 0, withoutOtherSignUpCount: 0 },
+          p2: { gameId: 'p2', signUpCount: 2, withoutOtherSignUpCount: 0 },
+        });
+        await settle();
+
+        expect(confirmationTexts()).toEqual([
+          `Échanger «${NBSP}Brumes${NBSP}» et «${NBSP}Néons${NBSP}»${THIN_NBSP}?`,
+          `Aucun inscrit de «${NBSP}Brumes${NBSP}» (créneau 1) ne perd son inscription.`,
+          `Il y a 2${NBSP}inscrits à «${NBSP}Néons${NBSP}» (créneau 2). Ils perdront leur inscription et seront notifiés.`,
+        ]);
       });
     });
   });

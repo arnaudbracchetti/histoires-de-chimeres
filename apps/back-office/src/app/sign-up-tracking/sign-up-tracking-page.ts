@@ -678,7 +678,13 @@ export class SignUpTrackingPage {
    */
   protected async move(game: TrackedGameDto) {
     const { timeSlots, tables, games } = this.value()!;
-    const outcome = await this.placements.moveTo({ game, games, timeSlots, tables });
+    const outcome = await this.placements.moveTo({
+      game,
+      games,
+      timeSlots,
+      tables,
+      currentSignUpFigures: this.currentSignUpFigures,
+    });
     // Fermé sans geste, le dialogue a pu essuyer un refus périmé : le suivi se relit aussi.
     if (!outcome) {
       this.tracking.reload();
@@ -743,8 +749,12 @@ export class SignUpTrackingPage {
    */
   protected async unschedule(game: TrackedGameDto) {
     const { timeSlots } = this.value()!;
-    const schedule = await this.gestures.unschedule(game, timeSlots, this.unscheduling, () =>
-      this.tracking.reload(),
+    const schedule = await this.gestures.unschedule(
+      game,
+      timeSlots,
+      this.unscheduling,
+      () => this.tracking.reload(),
+      this.currentSignUpFigures,
     );
     if (!schedule) return;
     this.openGameId.set(null);
@@ -752,6 +762,13 @@ export class SignUpTrackingPage {
     this.focusById('summary-title');
     this.tracking.reload();
   }
+
+  /**
+   * Les chiffres du suivi de la partie, sur son premier créneau, à la dernière lecture : un dialogue
+   * de confirmation ouvert les suit à chaque relecture.
+   */
+  private readonly currentSignUpFigures = (gameId: string) =>
+    this.value()?.games.find(({ id }) => id === gameId);
 
   /** Met le focus sur le premier élément affiché de ces ids. */
   private focusById(...ids: string[]) {
