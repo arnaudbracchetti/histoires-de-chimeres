@@ -111,6 +111,10 @@ _Avoid_: Admin, staff
 Le fait, pour un participant, de se déclarer intéressé par une partie. Un participant peut s'inscrire à plusieurs parties d'un même créneau ; l'inscription n'est pas une garantie de jouer. On s'inscrit (`signUp`) ; on se désinscrit (`withdraw`).
 _Avoid_: Vœu, choix, réservation, Registration
 
+**Inscription active** · `ActiveSignUp`:
+Inscription prise en compte dans le nombre d'inscrits, « très demandée » et le tirage. Celle d'un MJ sur un créneau où il mène une partie ne l'est pas tant qu'il y mène ; elle reste en place et redevient active quand il n'y mène plus (IN-4).
+_Avoid_: Inscription qui compte, inscription suspendue
+
 **Partie très demandée** · `OversubscribedGame`:
 Partie dont le nombre d'inscrits dépasse le nombre de places maximum.
 
@@ -118,7 +122,7 @@ Partie dont le nombre d'inscrits dépasse le nombre de places maximum.
 Partie dont le nombre d'inscrits est entre ses places minimum et maximum.
 
 **Demande** · `Demand`:
-Nombre de participants qui ont au moins une inscription qui compte sur un créneau. Un participant inscrit à plusieurs parties du créneau compte pour un.
+Nombre de participants qui ont au moins une inscription active sur un créneau. Un participant inscrit à plusieurs parties du créneau compte pour un.
 
 **Capacité** · `Capacity`:
 Places d'un créneau : de la somme des places minimum à la somme des places maximum des parties qui y commencent.

@@ -439,7 +439,7 @@ export class HomePage {
 
   protected readonly unassignedText = unassignedText;
 
-  /** « Tirage en cours » : les inscriptions qui comptent pour ce tirage (story 57). */
+  /** « Tirage en cours » : les inscriptions actives pour ce tirage (story 57). */
   protected drawingText(signedUpGames: FrontOfficeGameDto[]): string {
     const titles = formatList(signedUpGames.map(({ title }) => title));
     return signedUpGames.length > 1

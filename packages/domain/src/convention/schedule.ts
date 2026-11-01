@@ -69,11 +69,9 @@ export class Schedule {
     );
   }
 
-  /** Les créneaux où le MJ mène une partie. */
-  listTimeSlotIdsLedByGameMaster(gameMasterId: string): string[] {
-    return this.games
-      .filter((game) => game.gameMasterId === gameMasterId)
-      .flatMap((game) => game.timeSlotIds);
+  /** Les parties que mène le MJ, dans l'ordre de leur programmation. */
+  listGamesLedByGameMaster(gameMasterId: string): Game[] {
+    return this.games.filter((game) => game.gameMasterId === gameMasterId);
   }
 
   /** La partie, autre que `game`, dont c'est la première case, ou `undefined`. */

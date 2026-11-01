@@ -7,6 +7,8 @@ import type { LocalMoment } from './local-moment.js';
 import { PresenceCode } from './presence-code.js';
 import { TimeOfDay } from './time-of-day.js';
 
+// Les règles des inscriptions (module `SignUps`), à travers `Convention` : son interface est la surface de test.
+
 const at = TimeOfDay.parse;
 const NOW: LocalMoment = { date: '2027-03-14', time: at('08:00') };
 

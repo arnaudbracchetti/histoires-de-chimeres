@@ -6,7 +6,7 @@ import {
   type FrontOfficeGameDto,
   type FrontOfficeScheduleDto,
 } from '@chimeres/contract';
-import { ComparableName, Convention, TimeOfDay } from '@chimeres/domain';
+import { ComparableName, Convention, SignUps, TimeOfDay } from '@chimeres/domain';
 import { fromDatabaseDate } from '../../convention/persistence/calendar-date.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 
@@ -77,12 +77,11 @@ export class PrismaFrontOfficeScheduleReader implements FrontOfficeScheduleReade
         )
         .map(({ id, signUps, scenario, timeSlots: gameSlots }): FrontOfficeGameDto => {
           const timeSlotIds = gameSlots.map(({ timeSlotId }) => timeSlotId);
-          const signUpCount = signUps.filter(
-            ({ participant }) =>
-              !Convention.isSignUpSuspendedByLedTimeSlots(
-                timeSlotIds,
-                participant.gameMaster?.games.map(({ timeSlotId }) => timeSlotId) ?? [],
-              ),
+          const signUpCount = signUps.filter(({ participant }) =>
+            SignUps.isSignUpActive(
+              timeSlotIds,
+              participant.gameMaster?.games.map(({ timeSlotId }) => timeSlotId) ?? [],
+            ),
           ).length;
           return {
             id,
