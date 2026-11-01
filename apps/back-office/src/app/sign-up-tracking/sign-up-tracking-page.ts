@@ -16,6 +16,9 @@ import {
   signUpTrackingEndpoints,
   type ScheduleDto,
   type ScheduleScenarioDto,
+  type SignUpWarningCode,
+  type SignUpWarningDto,
+  type SignUpWarningLevel,
   type TableDto,
   type TimeSlotStateDto,
   type TimeSlotTrackingDto,
@@ -23,6 +26,7 @@ import {
   type TrackedParticipantDto,
 } from '@chimeres/contract';
 import {
+  countOf,
   formatCount,
   formatSeatRange,
   formatTimeRange,
@@ -67,6 +71,24 @@ const CLOSED_STATE: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string> =
   published: 'Tirage publié',
 };
 
+/** L'icône de chaque niveau d'avertissement de suivi (docs/design/patterns.md, Statuts). */
+const WARNING_ICONS: Record<SignUpWarningLevel, string> = {
+  danger: 'octagon-alert',
+  warning: 'triangle-alert',
+};
+
+/** Le bouton de chaque avertissement de suivi : son libellé, et l'onglet où il mène. */
+const WARNING_ACTIONS: Record<SignUpWarningCode, { label: string; tab: TabValue }> = {
+  'seats-missing': { label: 'Voir la réserve', tab: 'reserve' },
+  'nearly-full': { label: 'Voir la réserve', tab: 'reserve' },
+  'participants-may-not-be-placed': { label: 'Voir les participants', tab: 'participants' },
+  'too-many-games': { label: 'Voir les parties', tab: 'games' },
+  'games-below-minimum': { label: 'Voir les parties', tab: 'games' },
+};
+
+/** Les avertissements de suivi qui remplissent en jaune la jauge d'un créneau. */
+const SHORTFALL_WARNINGS: readonly SignUpWarningCode[] = ['nearly-full', 'too-many-games'];
+
 /** Ce que dit le résumé d'un créneau fermé. */
 const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string> = {
   drawing: fr`Tirage en cours : les inscriptions sont fermées.`,
@@ -108,7 +130,10 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
         }
       </p>
     </app-page-header>
-    <app-loadable [resource]="tracking.firstRead" failure="Impossible de charger le suivi des inscriptions.">
+    <app-loadable
+      [resource]="tracking.firstRead"
+      failure="Impossible de charger le suivi des inscriptions."
+    >
       @if (value(); as tracking) {
         @if (!tracking.timeSlots.length) {
           <app-empty-state>
@@ -138,8 +163,16 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                     [count]="slot.demand"
                     [min]="slot.capacity.min"
                     [max]="slot.capacity.max"
+                    [shortfall]="isShortfall(slot)"
                     overflow="danger"
                   />
+                  @if (slot.warnings.length) {
+                    <span class="warning-count" [class.danger]="isDanger(slot)"
+                      ><app-icon [name]="warningIcons[isDanger(slot) ? 'danger' : 'warning']" />{{
+                        countOf(slot.warnings.length, 'avertissement', 'avertissements')
+                      }}</span
+                    >
+                  }
                 } @else {
                   <span class="state"><app-icon name="lock" />{{ closedState[slot.state] }}</span>
                 }
@@ -167,10 +200,27 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                       [count]="slot.demand"
                       [min]="slot.capacity.min"
                       [max]="slot.capacity.max"
+                      [shortfall]="isShortfall(slot)"
                       overflow="danger"
                     />
                     @if (!slot.demand) {
                       <p class="quiet">Aucune inscription sur ce créneau pour l'instant.</p>
+                    }
+                    @if (slot.warnings.length) {
+                      <ul class="warnings" aria-label="Avertissements de suivi">
+                        @for (warning of slot.warnings; track warning.code) {
+                          <li [class]="warning.level">
+                            <app-icon [name]="warningIcons[warning.level]" />
+                            <p>
+                              <span class="title">{{ warning.title }}</span>
+                              <span class="detail">{{ warning.detail }}</span>
+                            </p>
+                            <button type="button" appButton="secondary" (click)="follow(warning)">
+                              {{ warningActions[warning.code].label }}
+                            </button>
+                          </li>
+                        }
+                      </ul>
                     }
                   } @else {
                     <p class="quiet">{{ closedSummary[slot.state] }}</p>
@@ -179,15 +229,15 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                 @if (slot.state === 'sign-ups-open') {
                   <div ngTabs class="binder">
                     <div ngTabList aria-label="Vues du créneau" [(selectedTab)]="selectedTab">
-                      <button ngTab type="button" value="games">
+                      <button ngTab id="tab-games" type="button" value="games">
                         <app-icon name="dices" />Parties du créneau
                         <span class="count">{{ formatCount(gamesOf(slot).length) }}</span>
                       </button>
-                      <button ngTab type="button" value="participants">
+                      <button ngTab id="tab-participants" type="button" value="participants">
                         <app-icon name="users" />Inscrits du créneau
                         <span class="count">{{ formatCount(slot.demand) }}</span>
                       </button>
-                      <button ngTab type="button" value="reserve">
+                      <button ngTab id="tab-reserve" type="button" value="reserve">
                         <app-icon name="inbox" />Réserve du créneau
                         <span class="count">{{ formatCount(schedulableCountOf(slot)) }}</span>
                       </button>
@@ -338,6 +388,59 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
         line-height: var(--line-height-title);
       }
 
+      .warning-count {
+        display: inline-flex;
+        gap: var(--space-xs);
+        align-items: center;
+        margin-top: var(--space-xs);
+        color: var(--warning);
+        font-size: var(--font-size-meta);
+
+        &.danger {
+          color: var(--danger);
+        }
+      }
+
+      /* Un avertissement par ligne : icône, titre en couleur, détail en gris, et son bouton. */
+      .warnings {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-s);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+
+        li {
+          display: flex;
+          gap: var(--space-s);
+          align-items: center;
+        }
+
+        p {
+          display: flex;
+          flex: 1;
+          flex-wrap: wrap;
+          gap: 0 var(--space-s);
+          align-items: baseline;
+        }
+
+        .title {
+          font-weight: 600;
+        }
+
+        .detail {
+          color: var(--text-muted);
+        }
+
+        .danger :is(app-icon, .title) {
+          color: var(--danger);
+        }
+
+        .warning :is(app-icon, .title) {
+          color: var(--warning);
+        }
+      }
+
       .state {
         display: inline-flex;
         gap: var(--space-xs);
@@ -460,7 +563,10 @@ export class SignUpTrackingPage {
   protected readonly value = this.tracking.value;
   protected readonly closedState = CLOSED_STATE;
   protected readonly closedSummary = CLOSED_SUMMARY;
+  protected readonly countOf = countOf;
   protected readonly formatCount = formatCount;
+  protected readonly warningIcons = WARNING_ICONS;
+  protected readonly warningActions = WARNING_ACTIONS;
   protected readonly formatSeatRange = formatSeatRange;
   protected readonly timeSlotLabel = timeSlotLabel;
 
@@ -514,6 +620,29 @@ export class SignUpTrackingPage {
 
   protected gamesOf(slot: TimeSlotTrackingDto): TrackedGameDto[] {
     return (this.value()?.games ?? []).filter(({ timeSlotIds }) => timeSlotIds[0] === slot.id);
+  }
+
+  /** Le plus grave des avertissements du créneau est rouge : l'icône de sa tuile. */
+  protected isDanger(slot: TimeSlotTrackingDto): boolean {
+    return slot.warnings.some(({ level }) => level === 'danger');
+  }
+
+  /** La jauge du créneau se remplit en jaune : il porte `nearly-full` ou `too-many-games`. */
+  protected isShortfall(slot: TimeSlotTrackingDto): boolean {
+    return slot.warnings.some(({ code }) => SHORTFALL_WARNINGS.includes(code));
+  }
+
+  /**
+   * Mène à l'onglet où agir sur l'avertissement, et y met le focus : « Voir les participants »
+   * filtre les inscrits sur la puce « Risquent de ne pas être placés ».
+   */
+  protected follow(warning: SignUpWarningDto) {
+    const { tab } = WARNING_ACTIONS[warning.code];
+    if (warning.code === 'participants-may-not-be-placed') {
+      this.participantFilter.set('may-not-be-placed');
+    }
+    this.selectedTab.set(tab);
+    this.focusById(`tab-${tab}`);
   }
 
   /** Les scénarios programmables sur le créneau : le compteur de l'onglet Réserve. */

@@ -17,8 +17,8 @@ type Cell = {
  * par personne (inscrit d'une partie, participant d'un créneau). Les cases du minimum au maximum
  * sont claires, un trait marque chaque borne, et le remplissage va jusqu'au nombre. Au-delà du
  * maximum, les cases sont hachurées, en rouge pour un créneau (`overflow="danger"`). Remplissage
- * jaune pour une partie sous son minimum (`shortfall`). Décorative : les chiffres sont toujours
- * écrits à côté.
+ * jaune pour une partie sous son minimum, ou un créneau « presque plein » ou qui a « trop de
+ * parties » (`shortfall`). Décorative : les chiffres sont toujours écrits à côté.
  */
 @Component({
   selector: 'app-gauge',

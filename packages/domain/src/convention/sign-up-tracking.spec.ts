@@ -320,13 +320,15 @@ describe('Participants de chaque créneau (§4.4)', () => {
     signUp(convention, { p5: ['epice', 'brumes'] });
 
     // Élodie (p1), Lune (p2), p4, Sven (p3), puis p5 et ses deux inscriptions.
-    expect(describeParticipantsOfTimeSlot(convention, 1).map(([id, , risk]) => [id, risk])).toEqual([
-      ['p1', 'may-not-be-placed'],
-      ['p2', 'may-not-be-placed'],
-      ['p4', 'may-not-be-placed'],
-      ['p3', 'may-not-be-placed'],
-      ['p5', 'may-be-left-without-table'],
-    ]);
+    expect(describeParticipantsOfTimeSlot(convention, 1).map(([id, , risk]) => [id, risk])).toEqual(
+      [
+        ['p1', 'may-not-be-placed'],
+        ['p2', 'may-not-be-placed'],
+        ['p4', 'may-not-be-placed'],
+        ['p3', 'may-not-be-placed'],
+        ['p5', 'may-be-left-without-table'],
+      ],
+    );
   });
 
   it('ne rend pas le MJ qui mène sur le créneau (IN-4)', () => {
@@ -342,9 +344,9 @@ describe('Participants de chaque créneau (§4.4)', () => {
     const convention = aConvention();
     signUp(convention, { p1: ['epice'], p2: ['epice', 'neons'] });
 
-    expect(describeParticipantsOfTimeSlot(convention, 2).map(([id, gameIds]) => [id, gameIds])).toEqual(
-      [['p2', ['neons']]],
-    );
+    expect(
+      describeParticipantsOfTimeSlot(convention, 2).map(([id, gameIds]) => [id, gameIds]),
+    ).toEqual([['p2', ['neons']]]);
   });
 });
 
@@ -406,6 +408,165 @@ describe('Réserve de chaque créneau (PR-6, §4.4 étape 2)', () => {
       'b',
       'no-free-table',
       { rank: 2, twoSlot: true },
+    ]);
+  });
+});
+
+/** Le catalogue, avec en plus les scénarios d (5 places tout juste) et e (1 place tout juste). */
+const WARNING_CATALOGUE = ScenarioCatalogue.restore([
+  ...CATALOGUE.listEntries(),
+  { id: 'd', gameMasterId: 'g1', duration: 1, minSeats: 5, maxSeats: 5 },
+  { id: 'e', gameMasterId: 'g2', duration: 1, minSeats: 1, maxSeats: 1 },
+]);
+
+/** Un scénario simple du catalogue des avertissements. */
+function aWarningScenario(id: 'd' | 'e'): Scenario {
+  const { minSeats, maxSeats, gameMasterId } = WARNING_CATALOGUE.findExistingEntryById(id);
+  return Scenario.propose(id, gameMasterId, {
+    title: `Scénario ${id}`,
+    system: 'Cthulhu',
+    presentation: 'Une enquête.',
+    contentWarnings: '',
+    seats: { min: minSeats, max: maxSeats },
+    duration: 1,
+  });
+}
+
+/** Identifie `count` participants de plus (« x1 », « x2 »…), inscrits aux parties données. */
+function signUpOthers(
+  convention: Convention,
+  count: number,
+  gameIds: string[],
+  prefix = 'x',
+): void {
+  const ids = Array.from({ length: count }, (_, index) => `${prefix}${index + 1}`);
+  identify(convention, ids);
+  for (const id of ids) {
+    for (const gameId of gameIds) convention.signUpForGame(id, gameId, WARNING_CATALOGUE);
+  }
+}
+
+/** La convention de `aConvention()`, sans « epice » : au créneau 1, « brumes » seule (3 à 5 places). */
+function aConventionWithBrumesAlone(): Convention {
+  const convention = aConvention();
+  convention.unscheduleGame('epice');
+  return convention;
+}
+
+/** Les avertissements de suivi du créneau de rang `rank`, en « code, niveau, paramètres ». */
+const describeWarningsOfTimeSlot = (convention: Convention, rank: number) =>
+  convention
+    .computeSignUpTracking(WARNING_CATALOGUE)
+    [rank - 1]!.warnings.map(({ code, level, params }) => [code, level, params]);
+
+describe('Avertissements de suivi de chaque créneau (§4.4)', () => {
+  it('n’en donne aucun sur un créneau sans inscription', () => {
+    expect(describeWarningsOfTimeSlot(aConvention(), 1)).toEqual([]);
+  });
+
+  it('dit qu’il manque des places quand la demande dépasse la capacité maximum', () => {
+    const convention = aConventionWithBrumesAlone();
+    signUpOthers(convention, 6, ['brumes']);
+
+    expect(describeWarningsOfTimeSlot(convention, 1)[0]).toEqual([
+      'seats-missing',
+      'danger',
+      { demand: 6, maxCapacity: 5, missingSeats: 1 },
+    ]);
+  });
+
+  it('dit combien de participants risquent de ne pas être placés, après les places qui manquent', () => {
+    const convention = aConventionWithBrumesAlone();
+    signUpOthers(convention, 7, ['brumes']);
+
+    expect(describeWarningsOfTimeSlot(convention, 1)).toEqual([
+      ['seats-missing', 'danger', { demand: 7, maxCapacity: 5, missingSeats: 2 }],
+      ['participants-may-not-be-placed', 'danger', { participants: 7 }],
+    ]);
+  });
+
+  it('dit « presque plein » à exactement 80 % de la capacité maximum', () => {
+    const convention = aConventionWithBrumesAlone();
+    signUpOthers(convention, 4, ['brumes']);
+
+    expect(describeWarningsOfTimeSlot(convention, 1)).toEqual([
+      ['nearly-full', 'warning', { demand: 4, maxCapacity: 5 }],
+    ]);
+  });
+
+  it('dit « presque plein » à la capacité maximum', () => {
+    const convention = aConventionWithBrumesAlone();
+    signUpOthers(convention, 5, ['brumes']);
+
+    expect(describeWarningsOfTimeSlot(convention, 1)).toEqual([
+      ['nearly-full', 'warning', { demand: 5, maxCapacity: 5 }],
+    ]);
+  });
+
+  it('ne dit rien sous 80 % de la capacité maximum, quand chaque partie est sûre', () => {
+    const convention = aConventionWithBrumesAlone();
+    signUpOthers(convention, 3, ['brumes']);
+
+    expect(describeWarningsOfTimeSlot(convention, 1)).toEqual([]);
+  });
+
+  it('dit « trop de parties » quand la demande est sous la capacité minimum', () => {
+    const convention = aConvention();
+    signUp(convention, { p1: ['brumes'], p2: ['brumes'], p3: ['epice'] });
+    signUpOthers(convention, 1, ['epice']);
+
+    // Capacité de 5 à 9 places : « brumes » (2 inscrits pour 3 au moins) est sous son minimum.
+    expect(describeWarningsOfTimeSlot(convention, 1)).toEqual([
+      [
+        'too-many-games',
+        'warning',
+        { demand: 4, minCapacity: 5, gamesBelowMinimum: 1, participantsMayBeLeftWithoutTable: 2 },
+      ],
+    ]);
+  });
+
+  it('dit combien de parties sont sous leur minimum quand la demande atteint la capacité minimum', () => {
+    const convention = aConvention();
+    signUpOthers(convention, 4, ['epice']);
+    signUp(convention, { p1: ['brumes'] });
+
+    expect(describeWarningsOfTimeSlot(convention, 1)).toEqual([
+      [
+        'games-below-minimum',
+        'warning',
+        { demand: 5, minCapacity: 5, gamesBelowMinimum: 1, participantsMayBeLeftWithoutTable: 1 },
+      ],
+    ]);
+  });
+
+  it('dit à la fois « presque plein » et « trop de parties » quand les minimums sont proches des maximums', () => {
+    const convention = aConvention();
+    // Au créneau 3, « dune » (d, 5 places tout juste) seule.
+    convention.scheduleScenario('dune', aWarningScenario('d'), 's3', 't1');
+    signUpOthers(convention, 4, ['dune']);
+
+    expect(describeWarningsOfTimeSlot(convention, 3).map(([code]) => code)).toEqual([
+      'nearly-full',
+      'too-many-games',
+    ]);
+  });
+
+  it('donne les rouges d’abord, trois au plus', () => {
+    const convention = aConvention();
+    // Au créneau 3 : « dune » (d, 5 places tout juste) et « eclat » (e, 1 place tout juste).
+    convention.scheduleScenario('dune', aWarningScenario('d'), 's3', 't1');
+    convention.scheduleScenario('eclat', aWarningScenario('e'), 's3', 't2');
+    signUpOthers(convention, 3, ['dune']);
+    signUpOthers(convention, 2, ['eclat'], 'y');
+
+    expect(describeWarningsOfTimeSlot(convention, 3)).toEqual([
+      ['participants-may-not-be-placed', 'danger', { participants: 2 }],
+      ['nearly-full', 'warning', { demand: 5, maxCapacity: 6 }],
+      [
+        'too-many-games',
+        'warning',
+        { demand: 5, minCapacity: 6, gamesBelowMinimum: 1, participantsMayBeLeftWithoutTable: 3 },
+      ],
     ]);
   });
 });

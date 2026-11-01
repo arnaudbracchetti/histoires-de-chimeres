@@ -151,6 +151,7 @@ describe('Suivi des inscriptions', () => {
           demand: 2,
           capacity: { min: 5, max: 9 },
           participants: expect.any(Array),
+          warnings: expect.any(Array),
           reserve: expect.any(Array),
         },
         {
@@ -162,6 +163,7 @@ describe('Suivi des inscriptions', () => {
           demand: 0,
           capacity: { min: 0, max: 0 },
           participants: [],
+          warnings: [],
           reserve: [],
         },
       ],
@@ -243,6 +245,73 @@ describe('Suivi des inscriptions', () => {
       ],
       [],
     ]);
+  });
+
+  describe('avertissements de suivi', () => {
+    /** Relie un téléphone à chaque pseudo, et l'inscrit à la partie. */
+    const signUpAll = async (gameId: string, nicknames: string[]) => {
+      for (const nickname of nicknames) await signUp(gameId, await linkedPhone(nickname));
+    };
+
+    it('écrit en français le titre et le détail d’un avertissement de chaque ligne', async () => {
+      const elodie = await gameMaster('Élodie');
+      const kairos = await gameMaster('Kaïros');
+      const neons = await scheduled(elodie.id, 'Néons', { min: 3, max: 5 }, 'Table 10');
+      const brumes = await scheduled(kairos.id, 'Brumes', { min: 1, max: 1 }, 'Table 2');
+      await signUpAll(brumes, ['Anna', 'Bran', 'Cyd', 'Dag', 'Eve', 'Fey']);
+      await signUpAll(neons, ['Lune']);
+
+      const dto = (await server().get(apiUrl(signUpTrackingEndpoints.read)).expect(200))
+        .body as SignUpTrackingDto;
+
+      // 7 participants pour 4 à 6 places : « Brumes » est très demandée, « Néons » sous son minimum.
+      expect(dto.timeSlots.map(({ warnings }) => warnings)).toEqual([
+        [
+          {
+            code: 'seats-missing',
+            level: 'danger',
+            title: 'Il manque 1 place',
+            detail: '7 participants pour 6 places au plus.',
+          },
+          {
+            code: 'participants-may-not-be-placed',
+            level: 'danger',
+            title: '6 participants risquent de ne pas être placés',
+            detail: 'Toutes leurs parties du créneau sont très demandées.',
+          },
+          {
+            code: 'games-below-minimum',
+            level: 'warning',
+            title: '1 partie sous son minimum',
+            detail: '1 participant risque de rester sans table.',
+          },
+        ],
+        [],
+      ]);
+    });
+
+    it('écrit « trop de parties » avec une espace insécable devant « : »', async () => {
+      const elodie = await gameMaster('Élodie');
+      const kairos = await gameMaster('Kaïros');
+      const neons = await scheduled(elodie.id, 'Néons', { min: 3, max: 5 }, 'Table 10');
+      const brumes = await scheduled(kairos.id, 'Brumes', { min: 2, max: 4 }, 'Table 2');
+      await signUpAll(neons, ['Lune']);
+      await signUpAll(brumes, ['Sven']);
+
+      const dto = (await server().get(apiUrl(signUpTrackingEndpoints.read)).expect(200))
+        .body as SignUpTrackingDto;
+
+      expect(dto.timeSlots[0]!.warnings).toEqual([
+        {
+          code: 'too-many-games',
+          level: 'warning',
+          title: 'Trop de parties',
+          detail:
+            '2 participants pour 5 places au moins : une partie au moins finira sous son minimum. ' +
+            '2 parties sous leur minimum, 2 participants risquent de rester sans table.',
+        },
+      ]);
+    });
   });
 
   describe('réserve du créneau', () => {

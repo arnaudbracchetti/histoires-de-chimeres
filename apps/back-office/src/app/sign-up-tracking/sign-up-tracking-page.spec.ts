@@ -41,6 +41,7 @@ const timeSlot = (
   demand: 0,
   capacity: { min: 0, max: 0 },
   participants: [],
+  warnings: [],
   reserve: [],
   ...figures,
 });
@@ -351,6 +352,138 @@ describe('Pilotage du jour J', () => {
     expect(text(summary())).toBe(
       'Créneau 1 · 9 h 00 – 11 h 30 Tirage publié : les inscriptions sont fermées et le programme du créneau ne change plus.',
     );
+  });
+
+  describe('avertissements de suivi', () => {
+    /** Les avertissements du créneau 2, dans l'ordre de l'API. */
+    const WARNINGS: TimeSlotTrackingDto['warnings'] = [
+      {
+        code: 'seats-missing',
+        level: 'danger',
+        title: 'Il manque 4 places',
+        detail: '26 participants pour 22 places au plus.',
+      },
+      {
+        code: 'participants-may-not-be-placed',
+        level: 'danger',
+        title: '1 participant risque de ne pas être placé',
+        detail: 'Toutes ses parties du créneau sont très demandées.',
+      },
+      {
+        code: 'games-below-minimum',
+        level: 'warning',
+        title: '1 partie sous son minimum',
+        detail: '1 participant risque de rester sans table.',
+      },
+    ];
+
+    /** Le suivi, avec ces avertissements au créneau 2. */
+    const withWarnings = (warnings: TimeSlotTrackingDto['warnings']): SignUpTrackingDto => ({
+      ...TRACKING,
+      timeSlots: TRACKING.timeSlots.map((slot) => (slot.rank === 2 ? { ...slot, warnings } : slot)),
+    });
+
+    const lines = (summary: Element | null) => [
+      ...(summary?.querySelectorAll('.warnings li') ?? []),
+    ];
+
+    it('montre un avertissement par ligne, dans l’ordre reçu, avec son icône et son bouton', async () => {
+      const { summary } = await render(withWarnings(WARNINGS));
+
+      expect(lines(summary()).map(text)).toEqual([
+        'Il manque 4 places 26 participants pour 22 places au plus. Voir la réserve',
+        '1 participant risque de ne pas être placé Toutes ses parties du créneau sont très demandées. Voir les participants',
+        '1 partie sous son minimum 1 participant risque de rester sans table. Voir les parties',
+      ]);
+      expect(
+        lines(summary()).map((line) => [
+          line.querySelector('use')?.getAttribute('href'),
+          line.classList.contains('danger') ? 'danger' : 'warning',
+        ]),
+      ).toEqual([
+        [expect.stringContaining('octagon-alert'), 'danger'],
+        [expect.stringContaining('octagon-alert'), 'danger'],
+        [expect.stringContaining('triangle-alert'), 'warning'],
+      ]);
+    });
+
+    it('choisit le bouton de « presque plein » et de « trop de parties » selon leur code', async () => {
+      const { summary } = await render(
+        withWarnings([
+          { code: 'nearly-full', level: 'warning', title: 'Presque plein', detail: '' },
+          { code: 'too-many-games', level: 'warning', title: 'Trop de parties', detail: '' },
+        ]),
+      );
+
+      expect(lines(summary()).map((line) => text(line.querySelector('button')))).toEqual([
+        'Voir la réserve',
+        'Voir les parties',
+      ]);
+    });
+
+    it('n’affiche aucune liste sans avertissement', async () => {
+      const { summary } = await render();
+
+      expect(summary()?.querySelector('.warnings')).toBeNull();
+    });
+
+    it('mène à l’onglet de chaque bouton, et à la puce « Risquent de ne pas être placés »', async () => {
+      const { summary, tabs, panel, settle } = await render(withWarnings(WARNINGS));
+      const follow = async (index: number) => {
+        lines(summary())[index]!.querySelector('button')!.click();
+        await settle();
+      };
+
+      await follow(0);
+      expect(tabs()[2]!.getAttribute('aria-selected')).toBe('true');
+      expect(document.activeElement).toBe(tabs()[2]);
+
+      await follow(1);
+      expect(tabs()[1]!.getAttribute('aria-selected')).toBe('true');
+      expect(
+        [...panel()!.querySelectorAll('.filters button[aria-pressed="true"]')].map(text),
+      ).toEqual(['Risquent de ne pas être placés · 1']);
+
+      await follow(2);
+      expect(tabs()[0]!.getAttribute('aria-selected')).toBe('true');
+      expect(document.activeElement).toBe(tabs()[0]);
+    });
+
+    it('compte les avertissements sur la tuile, avec l’icône du plus grave', async () => {
+      const { tiles } = await render(withWarnings(WARNINGS));
+
+      expect(text(tiles()[1]!.querySelector('.warning-count'))).toBe('3 avertissements');
+      expect(tiles()[1]!.querySelector('.warning-count use')?.getAttribute('href')).toContain(
+        'octagon-alert',
+      );
+      expect(tiles()[2]!.querySelector('.warning-count')).toBeNull();
+    });
+
+    it('compte un seul avertissement jaune, au singulier', async () => {
+      const { tiles } = await render(withWarnings([WARNINGS[2]!]));
+
+      expect(text(tiles()[1]!.querySelector('.warning-count'))).toBe('1 avertissement');
+      expect(tiles()[1]!.querySelector('.warning-count use')?.getAttribute('href')).toContain(
+        'triangle-alert',
+      );
+    });
+
+    it('remplit en jaune la jauge d’un créneau « presque plein » ou qui a « trop de parties »', async () => {
+      const gauges = async (code: 'nearly-full' | 'too-many-games' | 'seats-missing') => {
+        const { tiles, summary, fixture } = await render(
+          withWarnings([{ code, level: 'warning', title: '', detail: '' }]),
+        );
+        const shortfalls = [tiles()[1]!, summary()!].map((element) =>
+          element.querySelector('app-gauge')!.classList.contains('shortfall'),
+        );
+        fixture.destroy();
+        return shortfalls;
+      };
+
+      expect(await gauges('nearly-full')).toEqual([true, true]);
+      expect(await gauges('too-many-games')).toEqual([true, true]);
+      expect(await gauges('seats-missing')).toEqual([false, false]);
+    });
   });
 
   describe('onglets', () => {
@@ -976,7 +1109,8 @@ describe('Pilotage du jour J', () => {
         .flush(null, { status: 502, statusText: 'Bad Gateway' });
       await new Promise((resolve) => setTimeout(resolve));
     };
-    const ageLine = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('.freshness button');
+    const ageLine = (host: HTMLElement) =>
+      host.querySelector<HTMLButtonElement>('.freshness button');
 
     it('relit le suivi toutes les 30 s quand l’onglet est visible', async () => {
       const { http, tiles, reread } = await render();

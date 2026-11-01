@@ -211,13 +211,13 @@ Un geste de programmation refusé après une course, une déprogrammation qui é
 
 ## Statuts
 
-Pensés dès maintenant pour le pilotage du jour J (demande / capacité, PRD §4.4), sans en concevoir les écrans.
+Pensés pour le pilotage du jour J (demande / capacité, PRD §4.4) et les autres écrans.
 
 | Rôle | Jeton | Icône Lucide | Sens |
 |---|---|---|---|
 | Vert | `--success` | `circle-check` | correct, complet |
-| Jaune | `--warning` | `triangle-alert` | attention : la demande approche de la capacité, une partie reste sous son minimum |
-| Rouge brique | `--danger` | `octagon-alert` | surcharge, erreur |
+| Jaune | `--warning` | `triangle-alert` | attention : la demande atteint 80 % de la capacité maximum, trop de parties, une partie reste sous son minimum |
+| Rouge brique | `--danger` | `octagon-alert` | surcharge (il manque des places, des participants risquent de ne pas être placés), erreur |
 | Neutre | `--text-muted` sur `--surface-3` | propre au sens : `clock` (à venir), `inbox` (en réserve) | information sans jugement : « double », « à venir », « en réserve » |
 
 - Une forme d'icône par couleur : aucune information ne passe par la couleur seule. Un statut a **toujours une icône et un libellé**.
@@ -226,7 +226,8 @@ Pensés dès maintenant pour le pilotage du jour J (demande / capacité, PRD §4
   - **badge** : fond teinté à 14 % et libellé, en pilule, dans une carte.
 - **Jamais un bouton plein** : les statuts voisinent avec l'orange des actions. Seul le bouton destructeur est rouge plein.
 - Un **ratio demande / capacité** s'écrit « 42 / 36 », en chiffres à chasse fixe, à côté de sa pastille.
-- Les **seuils** du jaune et du rouge relèvent de l'effort du jour J. La charte n'en fixe que le sens.
+- Les **seuils** du suivi des inscriptions sont fixés, sans réglage : rouge dès que la demande dépasse la capacité maximum, jaune dès qu'elle en atteint 80 %. Les autres avertissements de suivi suivent leurs propres règles (voir [Pilotage du jour J](#pilotage-du-jour-j)).
+- **Pas de vert pour le suivi** : un créneau sans avertissement n'affiche rien de plus. L'absence de signal veut dire « rien à faire ».
 
 ## Focus
 
@@ -310,11 +311,21 @@ La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque c
 
 - **En-tête** : h1 « Pilotage du jour J », et dessous une ligne réservée à l'âge des chiffres. Elle garde sa hauteur même vide : son texte, quand il vient, ne décale rien.
 - **Bande des créneaux** : une tuile par créneau, dans l'ordre de la journée. C'est un bouton à `aria-pressed`, bordé d'orange quand le créneau est choisi.
-  - Créneau dont les inscriptions sont ouvertes : « Créneau 2 », la plage, le ratio demande / capacité maximum en grand (« 26 / 22 »), la légende « participants / places », la [jauge](#jauge).
+  - Créneau dont les inscriptions sont ouvertes : « Créneau 2 », la plage, le ratio demande / capacité maximum en grand (« 26 / 22 »), la légende « participants / places », la [jauge](#jauge), puis le nombre d'avertissements de suivi avec l'icône du plus grave (« 2 avertissements »). Rien sans avertissement. Le nombre est la longueur de la liste reçue.
   - Créneau dont le tirage est lancé ou publié : tuile atténuée, cadenas (`lock`), « Tirage en cours » ou « Tirage publié », sans chiffres.
   - À l'ouverture, la page choisit le premier créneau dont les inscriptions sont ouvertes.
 - **Résumé du créneau choisi**, dans une carte : « Créneau 2 · 13 h 00 – 15 h 30 », la demande (« 26 participants ») et la capacité (« 14 à 22 places », ou « 22 places » quand les deux bornes sont égales) en grand, et une jauge large.
-  - Sans inscription : « Aucune inscription sur ce créneau pour l'instant. » Les chiffres restent affichés, même à 0.
+  - Les **avertissements de suivi**, dans l'ordre reçu de l'API (trois au plus, les rouges d'abord), un par ligne : l'icône de son niveau, le titre en couleur, le détail en gris, et un bouton secondaire choisi selon le code, qui ouvre l'onglet où agir et y met le focus. L'API écrit le titre et le détail ; le front ne lit le code que pour choisir le bouton.
+
+    | Code | Niveau | Titre (exemple) | Bouton |
+    |---|---|---|---|
+    | `seats-missing` | rouge | « Il manque 4 places » | « Voir la réserve » |
+    | `participants-may-not-be-placed` | rouge | « 8 participants risquent de ne pas être placés » | « Voir les participants » (onglet Inscrits, puce « Risquent de ne pas être placés ») |
+    | `nearly-full` | jaune | « Presque plein » | « Voir la réserve » |
+    | `too-many-games` | jaune | « Trop de parties » | « Voir les parties » |
+    | `games-below-minimum` | jaune | « 3 parties sous leur minimum » | « Voir les parties » |
+
+  - Sans inscription : aucun avertissement, et « Aucune inscription sur ce créneau pour l'instant. » Les chiffres restent affichés, même à 0.
   - Créneau publié : « Tirage publié : les inscriptions sont fermées et le programme du créneau ne change plus. », sans chiffres ni action.
 - **Onglets du créneau**, sous le résumé, en [onglets de classeur](#onglets-de-classeur) : « Parties du créneau » (`dices`, nombre de parties qui commencent sur le créneau), « Inscrits du créneau » (`users`, la demande) et « Réserve du créneau » (`inbox`, nombre de scénarios programmables). Aucun onglet sur un créneau fermé.
 - **Onglet Parties du créneau** : « 1 table libre » en tête, puis une ligne par table, dans l'ordre des tables.
@@ -359,7 +370,7 @@ Le dessin d'un nombre face à des places, pour un créneau (demande face à la c
 - Des **cases** bout à bout, qui se comptent : une case par personne, inscrit d'une partie comme participant d'un créneau.
 - Les cases du minimum au maximum sont **claires**, un **trait** marque chaque borne, et le **remplissage** va jusqu'au nombre, au plus le maximum.
 - Au-delà du maximum, les cases sont **hachurées** : rouges pour un créneau, neutres pour une partie très demandée.
-- **Remplissage jaune** pour une partie sous son minimum. Les couleurs viennent des drapeaux reçus, jamais d'un nouveau calcul.
+- **Remplissage jaune** pour une partie sous son minimum, ou pour un créneau qui porte `nearly-full` ou `too-many-games`. Les couleurs viennent des drapeaux et des codes reçus, jamais d'un nouveau calcul.
 - Chaque jauge a **sa propre échelle** : le maximum, ou le nombre s'il le dépasse. Deux jauges voisines se comparent par leurs cases et leurs chiffres, pas par leur longueur.
 - L'**écart** d'une partie s'écrit à côté de ses chiffres : « 15 inscrits · 3 à 4 places · 11 de trop », ou « · 1 manquant » sous son minimum (en jaune). L'API le calcule.
 - Elle est **décorative** (`aria-hidden`) : les chiffres sont toujours écrits à côté.

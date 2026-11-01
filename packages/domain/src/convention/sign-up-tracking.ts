@@ -3,6 +3,7 @@ import type { TimeSlotState } from './convention.js';
 import type { Day } from './day.js';
 import type { Participant } from './participant.js';
 import type { TimeSlotReserveEntry } from './reserve.js';
+import { computeSignUpWarnings, type SignUpWarning } from './sign-up-warning.js';
 import type { SignUpCollaborators, SignUpFigures, SignUps } from './sign-ups.js';
 
 /**
@@ -45,8 +46,9 @@ export type ParticipantTracking = {
 /**
  * Le suivi des inscriptions d'un créneau : son état, sa demande, sa capacité, ses parties, celles
  * qui y commencent, dans l'ordre de leur programmation, ses participants : ceux qui n'y ont
- * qu'une inscription d'abord, puis les autres, chaque groupe dans l'ordre naturel des pseudos, et
- * sa réserve, vide sur un créneau fermé.
+ * qu'une inscription d'abord, puis les autres, chaque groupe dans l'ordre naturel des pseudos, ses
+ * avertissements de suivi (aucun sur un créneau sans inscription, ou fermé), et sa réserve, vide sur
+ * un créneau fermé.
  */
 export type TimeSlotTracking = {
   timeSlotId: string;
@@ -55,6 +57,7 @@ export type TimeSlotTracking = {
   capacity: Capacity;
   games: GameTracking[];
   participants: ParticipantTracking[];
+  warnings: SignUpWarning[];
   reserve: TimeSlotReserveEntry[];
 };
 
@@ -100,27 +103,41 @@ export function computeSignUpTracking(
         missingSignUpCount: belowMinimum ? minSeats - figures.signUpCount : 0,
       };
     });
+    const capacity = seats.reduce(
+      (sum, { minSeats, maxSeats }) => ({ min: sum.min + minSeats, max: sum.max + maxSeats }),
+      { min: 0, max: 0 },
+    );
+    const participants = listParticipantsOfTimeSlot(
+      { state, demand, games: tracked },
+      collaborators,
+    );
+    const countParticipantsAtRisk = (risk: ParticipantRisk) =>
+      participants.filter((participant) => participant.risk === risk).length;
     return {
       timeSlotId: slot.id,
       state,
       demand,
+      capacity,
       games: tracked,
-      participants: listParticipantsOfTimeSlot({ state, demand, games: tracked }, collaborators),
+      participants,
+      warnings: isTrackingShortfalls(state, demand)
+        ? computeSignUpWarnings({
+            demand,
+            capacity,
+            gamesBelowMinimum: tracked.filter((game) => game.belowMinimum).length,
+            participantsMayNotBePlaced: countParticipantsAtRisk('may-not-be-placed'),
+            participantsMayBeLeftWithoutTable: countParticipantsAtRisk('may-be-left-without-table'),
+          })
+        : [],
       reserve: state === 'sign-ups-open' ? computeReserveOfTimeSlot(slot.id) : [],
-      capacity: seats.reduce(
-        (capacity, { minSeats, maxSeats }) => ({
-          min: capacity.min + minSeats,
-          max: capacity.max + maxSeats,
-        }),
-        { min: 0, max: 0 },
-      ),
     };
   });
 }
 
 /**
- * « Sous son minimum » et les risques ne valent que sur un créneau ouvert qui a des inscriptions :
- * avant, les parties ne paraissent pas menacées dès leur programmation.
+ * « Sous son minimum », les risques et les avertissements de suivi ne valent que sur un créneau
+ * ouvert qui a des inscriptions : avant, les parties ne paraissent pas menacées dès leur
+ * programmation.
  */
 function isTrackingShortfalls(state: TimeSlotState, demand: number): boolean {
   return state === 'sign-ups-open' && demand > 0;

@@ -1,12 +1,16 @@
 import type { SignUpTrackingDto, TimeSlotTrackingDto } from '@chimeres/contract';
-import type { TimeSlotReserveEntry } from '@chimeres/domain';
+import type { SignUpWarning, TimeSlotReserveEntry } from '@chimeres/domain';
 import type { ConventionRepository } from '../convention/convention-repository.js';
 import { readReserve, type ReserveScenario } from '../game/read-schedule.js';
 import type { ScheduleReader } from '../game/schedule-reader.js';
 import type { ScenarioRepository } from '../scenario/scenario-repository.js';
 
-/** Le suivi d'un créneau, avec sa réserve, dont les motifs restent des refus du domaine. */
-export type TrackedTimeSlot = Omit<TimeSlotTrackingDto, 'reserve'> & {
+/**
+ * Le suivi d'un créneau, avec ses avertissements de suivi, qui restent des codes du domaine, et sa
+ * réserve, dont les motifs restent des refus du domaine.
+ */
+export type TrackedTimeSlot = Omit<TimeSlotTrackingDto, 'warnings' | 'reserve'> & {
+  warnings: SignUpWarning[];
   reserve: TimeSlotReserveEntry[];
 };
 
@@ -45,27 +49,30 @@ export class ReadSignUpTracking {
       tracking.flatMap((slot) => slot.games).map(({ gameId, ...figures }) => [gameId, figures]),
     );
     return {
-      timeSlots: tracking.map(({ timeSlotId, state, demand, capacity, participants, ...slot }) => ({
-        id: timeSlotId,
-        rank: convention.getTimeSlotRank(timeSlotId),
-        start: slots.get(timeSlotId)!.start.toString(),
-        end: slots.get(timeSlotId)!.end.toString(),
-        state,
-        demand,
-        capacity,
-        participants: participants.map(({ participantId, gameIds, risk }) => ({
-          id: participantId,
-          nickname: nicknames.get(participantId)!,
-          gameIds,
-          risk,
-        })),
-        // Les programmables d'abord, puis les autres, chaque groupe dans l'ordre naturel des titres.
-        reserve: slot.reserve.toSorted(
-          (a, b) =>
-            Number(a.refusal !== null) - Number(b.refusal !== null) ||
-            titleOrder.get(a.scenarioId)! - titleOrder.get(b.scenarioId)!,
-        ),
-      })),
+      timeSlots: tracking.map(
+        ({ timeSlotId, state, demand, capacity, participants, warnings, ...slot }) => ({
+          id: timeSlotId,
+          rank: convention.getTimeSlotRank(timeSlotId),
+          start: slots.get(timeSlotId)!.start.toString(),
+          end: slots.get(timeSlotId)!.end.toString(),
+          state,
+          demand,
+          capacity,
+          participants: participants.map(({ participantId, gameIds, risk }) => ({
+            id: participantId,
+            nickname: nicknames.get(participantId)!,
+            gameIds,
+            risk,
+          })),
+          warnings,
+          // Les programmables d'abord, puis les autres, chaque groupe dans l'ordre naturel des titres.
+          reserve: slot.reserve.toSorted(
+            (a, b) =>
+              Number(a.refusal !== null) - Number(b.refusal !== null) ||
+              titleOrder.get(a.scenarioId)! - titleOrder.get(b.scenarioId)!,
+          ),
+        }),
+      ),
       tables: convention.tables.map((table) => ({ id: table.id, name: table.name.text })),
       // Une partie écrite entre les deux lectures attend la relecture suivante.
       games: games.flatMap((game) => {

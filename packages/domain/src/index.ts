@@ -28,6 +28,13 @@ export type {
   ParticipantTracking,
   TimeSlotTracking,
 } from './convention/sign-up-tracking.js';
+export {
+  NEARLY_FULL_PERCENT,
+  type SignUpWarning,
+  type SignUpWarningCode,
+  type SignUpWarningLevel,
+  type SignUpWarningParams,
+} from './convention/sign-up-warning.js';
 export { Table } from './convention/table.js';
 export { TimeOfDay } from './convention/time-of-day.js';
 export { TimeSlot } from './convention/time-slot.js';
