@@ -7,8 +7,8 @@ import { Button } from './button';
 export type ConfirmationRequest = {
   /** Question qui nomme l'objet : « Supprimer le créneau 2 ? ». */
   question: string;
-  /** Ce qui part avec lui : « Ses 4 disponibilités seront supprimées. » */
-  consequence?: string;
+  /** Ce qui part avec lui, un paragraphe chacun : « Ses 4 disponibilités seront supprimées. » */
+  consequences?: readonly string[];
   /** Bouton destructeur, qui nomme l'action : « Supprimer le créneau ». */
   confirmLabel: string;
   /** L'écriture, lancée par le bouton destructeur. Un refus s'affiche dans le dialogue. */
@@ -32,8 +32,8 @@ let nextId = 0;
   host: { '[attr.aria-busy]': 'gesture.running()' },
   template: `
     <h2 [id]="request.titleId">{{ request.question }}</h2>
-    @if (request.consequence) {
-      <p>{{ request.consequence }}</p>
+    @for (consequence of request.consequences ?? []; track $index) {
+      <p>{{ consequence }}</p>
     }
     @if (refusal(); as message) {
       <p role="alert" class="refusal">{{ message }}</p>

@@ -11,11 +11,13 @@ class Host {
   private readonly confirmation = inject(Confirmation);
   action = vi.fn<() => Promise<void>>(() => Promise.resolve());
   onStale = vi.fn();
+  consequences: string[] = [];
   result: Promise<boolean> | undefined;
 
   open() {
     this.result = this.confirmation.ask({
       question: 'Supprimer le créneau 2\u202f?',
+      consequences: this.consequences,
       confirmLabel: 'Supprimer le créneau',
       action: this.action,
       onStale: this.onStale,
@@ -24,8 +26,9 @@ class Host {
 }
 
 describe('Confirmation', () => {
-  async function render() {
+  async function render(consequences: string[] = []) {
     const fixture = TestBed.createComponent(Host);
+    fixture.componentInstance.consequences = consequences;
     fixture.detectChanges();
     const opener = (fixture.nativeElement as HTMLElement).querySelector('button')!;
     opener.focus();
@@ -47,6 +50,18 @@ describe('Confirmation', () => {
     expect(dialog()?.textContent).toContain('Supprimer le créneau 2\u202f?');
     expect(button('Supprimer le créneau')).toBeDefined();
     expect(document.activeElement).toBe(button('Annuler'));
+  });
+
+  it('écrit chaque conséquence dans son paragraphe', async () => {
+    const { dialog } = await render([
+      'Ses 4 disponibilités seront supprimées.',
+      'Le scénario revient en réserve.',
+    ]);
+
+    expect([...dialog()!.querySelectorAll('p')].map((p) => p.textContent)).toEqual([
+      'Ses 4 disponibilités seront supprimées.',
+      'Le scénario revient en réserve.',
+    ]);
   });
 
   it('« Annuler » ferme sans rien faire, et rend le focus à l’élément d’origine', async () => {

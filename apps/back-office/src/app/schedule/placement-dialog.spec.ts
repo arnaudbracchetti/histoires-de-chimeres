@@ -14,7 +14,7 @@ import {
   type TableDto,
   type TimeSlotDto,
 } from '@chimeres/contract';
-import { NBSP } from '@chimeres/design';
+import { NBSP, THIN_NBSP } from '@chimeres/design';
 import { Placements } from './placement-dialog';
 
 const TIME_SLOTS: TimeSlotDto[] = [
@@ -185,16 +185,32 @@ describe('PlacementDialog', () => {
       scenario: SCENARIO,
     };
 
+    /** La partie de Brann sur le créneau 2, table 1. */
+    const OTHER: GameDto = {
+      id: 'p2',
+      tableId: 't1',
+      timeSlotIds: ['s2'],
+      seats: { min: 3, max: 5 },
+      scenario: {
+        ...SCENARIO,
+        id: 'b',
+        title: 'Néons',
+        gameMaster: { id: 'g1', nickname: 'Brann' },
+      },
+    };
+
     /** Les verdicts de PLACEMENTS : un déplacement sur chaque case. */
     const MOVE_PLACEMENTS: MovePlacementDto[] = PLACEMENTS.map((verdict) => ({
       ...verdict,
       swapWith: null,
+      removedSignUps: [],
     }));
 
     async function openMove(placements = MOVE_PLACEMENTS) {
       const http = TestBed.inject(HttpTestingController);
       const closed = TestBed.inject(Placements).moveTo({
         game: GAME,
+        games: [GAME, OTHER],
         timeSlots: TIME_SLOTS,
         tables: TABLES,
       });
@@ -273,6 +289,118 @@ describe('PlacementDialog', () => {
       request.flush(SCHEDULE);
 
       expect(await closed).toEqual({ schedule: SCHEDULE, swappedWith: 'p2' });
+    });
+
+    describe('un geste qui retire des inscriptions (IN-6, NO-2)', () => {
+      const confirmation = () => document.querySelector<HTMLElement>('[role="alertdialog"]');
+      const confirmationTexts = () =>
+        [...confirmation()!.querySelectorAll('h2, p')].map((element) =>
+          element.textContent?.trim(),
+        );
+      const confirmationButton = (name: string) =>
+        [...confirmation()!.querySelectorAll('button')].find(
+          (button) => button.textContent?.trim() === name,
+        )!;
+      /** Le créneau 2, table 1 permis : un déplacement qui retire 12 inscriptions. */
+      const toSlot2 = MOVE_PLACEMENTS.map((verdict) =>
+        verdict.timeSlotId === 's2' && verdict.tableId === 't1'
+          ? {
+              ...verdict,
+              refusal: null,
+              removedSignUps: [{ gameId: 'p1', signUpCount: 12, withoutOtherSignUpCount: 3 }],
+            }
+          : verdict,
+      );
+
+      it('« Choisir » demande d’abord une confirmation, sans rien dire sur la case', async () => {
+        const { http, closed, dialog } = await openMove(toSlot2);
+        const choose = dialog().querySelector<HTMLButtonElement>('button[aria-label^="Choisir"]')!;
+        expect(choose.textContent?.trim()).toBe('Choisir');
+
+        choose.click();
+        await settle();
+
+        expect(confirmationTexts()).toEqual([
+          `Déplacer «${NBSP}Brumes${NBSP}» sur le créneau 2${THIN_NBSP}?`,
+          `Il y a 12${NBSP}inscrits à la partie. Ils perdront leur inscription et seront notifiés.`,
+          "3 d'entre eux n'ont pas d'autre inscription sur le créneau.",
+        ]);
+        expect(document.activeElement).toBe(confirmationButton('Annuler'));
+        http.expectNone(apiUrl(scheduleEndpoints.move, { gameId: 'p1' }));
+
+        confirmationButton('Déplacer la partie').click();
+        http.expectOne(apiUrl(scheduleEndpoints.move, { gameId: 'p1' })).flush(SCHEDULE);
+
+        expect(await closed).toEqual({ schedule: SCHEDULE, swappedWith: null });
+      });
+
+      it('« Annuler » n’écrit rien, et rend le focus à « Choisir »', async () => {
+        const { http, dialog } = await openMove(toSlot2);
+        const choose = dialog().querySelector<HTMLButtonElement>('button[aria-label^="Choisir"]')!;
+        choose.focus();
+        choose.click();
+        await settle();
+
+        confirmationButton('Annuler').click();
+        await settle();
+
+        expect(confirmation()).toBeNull();
+        expect(document.activeElement).toBe(choose);
+        http.verify();
+      });
+
+      it('un refus s’affiche dans la confirmation, puis la grille se relit', async () => {
+        const { http, dialog } = await openMove(toSlot2);
+        dialog().querySelector<HTMLButtonElement>('button[aria-label^="Choisir"]')!.click();
+        await settle();
+        const detail = "Cette partie n'existe plus\u00a0: recharge la page.";
+
+        confirmationButton('Déplacer la partie').click();
+        http
+          .expectOne(apiUrl(scheduleEndpoints.move, { gameId: 'p1' }))
+          .flush(
+            { status: 404, code: 'game-not-found', title: 'Partie introuvable', detail },
+            { status: 404, statusText: 'Introuvable' },
+          );
+        await settle();
+
+        expect(confirmation()!.querySelector('[role="alert"]')?.textContent).toBe(detail);
+        confirmationButton('Fermer').click();
+        await settle();
+        http.expectOne(apiUrl(scheduleEndpoints.movePlacements, { gameId: 'p1' }));
+      });
+
+      it('« Échanger » donne une ligne par partie qui perd ses inscriptions', async () => {
+        const { http, closed, dialog } = await openMove(
+          MOVE_PLACEMENTS.map((verdict) =>
+            verdict.timeSlotId === 's2' && verdict.tableId === 't1'
+              ? {
+                  ...verdict,
+                  swapWith: 'p2',
+                  refusal: null,
+                  removedSignUps: [
+                    { gameId: 'p1', signUpCount: 1, withoutOtherSignUpCount: 0 },
+                    { gameId: 'p2', signUpCount: 4, withoutOtherSignUpCount: 1 },
+                  ],
+                }
+              : verdict,
+          ),
+        );
+
+        dialog().querySelector<HTMLButtonElement>('button[aria-label^="Échanger"]')!.click();
+        await settle();
+
+        expect(confirmationTexts()).toEqual([
+          `Échanger «${NBSP}Brumes${NBSP}» et «${NBSP}Néons${NBSP}»${THIN_NBSP}?`,
+          `Il y a 1${NBSP}inscrit à «${NBSP}Brumes${NBSP}» (créneau 1). Il perdra son inscription et sera notifié.`,
+          `Il y a 4${NBSP}inscrits à «${NBSP}Néons${NBSP}» (créneau 2). Ils perdront leur inscription et seront notifiés.`,
+          "1 d'entre eux n'a pas d'autre inscription sur le créneau.",
+        ]);
+        confirmationButton('Échanger les parties').click();
+        http.expectOne(apiUrl(scheduleEndpoints.swap, { gameId: 'p1' })).flush(SCHEDULE);
+
+        expect(await closed).toEqual({ schedule: SCHEDULE, swappedWith: 'p2' });
+      });
     });
   });
 });

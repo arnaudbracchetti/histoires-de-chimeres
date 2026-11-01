@@ -175,13 +175,17 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 |---|---|
 | Supprimer un créneau, une table, un MJ, un scénario | oui |
 | Retirer l'image d'un scénario | oui |
-| Déprogrammer une partie | non : c'est l'inverse de programmer, et le geste est fréquent |
+| Déprogrammer une partie | oui, si elle a des inscrits ; sans inscrit, non |
+| Déplacer une partie vers un autre créneau | oui, si elle a des inscrits ; vers une autre table du même créneau, non (IN-6) |
+| Échanger deux parties de créneaux différents | oui, si l'une a des inscrits ; sur le même créneau, non (IN-6) |
 | Retirer une disponibilité | non : c'est une case à cocher |
 | Revenir aux places du scénario | non |
 
 - **Le dialogue de confirmation** :
   - pose une question qui nomme l'objet : « Supprimer le créneau 2 ? » ;
-  - dit ce qui part avec lui : « Ses 4 disponibilités seront supprimées. » (PR-10, PR-12) ;
+  - dit ce qui part avec lui, en un ou plusieurs paragraphes : « Ses 4 disponibilités seront supprimées. » (PR-10, PR-12) ;
+  - pour un geste qui retire des inscriptions, pose le chiffre, puis la conséquence : « Il y a 12 inscrits à la partie. Ils perdront leur inscription et seront notifiés. », puis, à la ligne, « 3 d'entre eux n'ont pas d'autre inscription sur le créneau. » (absente à 0). Au singulier : « Il y a 1 inscrit à la partie. Il perdra son inscription et sera notifié. », puis « C'est sa seule inscription sur le créneau. ». Une partie double ajoute ses créneaux (« à la partie (créneaux 2 et 3) »). Un échange donne ces phrases pour chaque partie touchée, nommée : « Il y a 4 inscrits à « Néons » (créneau 2). ». Une déprogrammation ajoute « Le scénario revient en réserve, sans ses inscriptions. » ;
+  - s'en tient aux chiffres de l'API (inscriptions actives, IN-4) : ni pseudos, ni places restantes. « Déplacer vers… » ne les annonce pas sur ses cases, qui gardent leur seul verdict PR-5 ;
   - propose « Annuler » (discret) et un bouton destructeur qui nomme l'action : « Supprimer le créneau » ;
   - met le focus initial sur « Annuler ».
 - **Aucune annulation après coup**, nulle part.

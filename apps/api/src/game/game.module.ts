@@ -5,6 +5,7 @@ import {
   ReadMovePlacements,
   ReadPlacements,
   ReadSchedule,
+  ReadUnscheduleVerdict,
   ScheduleGame,
   SwapGames,
   UnscheduleGame,
@@ -68,6 +69,11 @@ import { SCHEDULE_READER } from './schedule-reader.token.js';
       useFactory: (conventions: ConventionRepository, notifications: NotificationSender) =>
         new SwapGames(conventions, notifications),
       inject: [CONVENTION_REPOSITORY, NOTIFICATION_SENDER],
+    },
+    {
+      provide: ReadUnscheduleVerdict,
+      useFactory: (conventions: ConventionRepository) => new ReadUnscheduleVerdict(conventions),
+      inject: [CONVENTION_REPOSITORY],
     },
     {
       provide: UnscheduleGame,

@@ -224,6 +224,110 @@ describe('Gestes de programmation et inscriptions (IN-6)', () => {
   });
 });
 
+describe('Inscriptions retirées par un geste (IN-6)', () => {
+  /** Les inscriptions retirées par le geste de la case, dans les verdicts de déplacement. */
+  const removedOnMoveTo = (
+    convention: Convention,
+    gameId: string,
+    timeSlotId: string,
+    tableId: string,
+  ) =>
+    convention
+      .computeMoveVerdicts(gameId)
+      .find((verdict) => verdict.timeSlotId === timeSlotId && verdict.tableId === tableId)!
+      .removedSignUps;
+
+  it('déplacer sur un autre créneau retire les inscriptions de la partie, avec ses inscrits sans autre inscription sur le créneau', () => {
+    const convention = aConvention();
+    convention.addTimeSlot('s3', at('18:00'), at('20:30'));
+    convention.declareGameMasterAvailability('g1', 's3');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+    convention.signUpForGame('p2', 'brumes', CATALOGUE);
+
+    expect(removedOnMoveTo(convention, 'brumes', 's3', 't1')).toEqual([
+      { gameId: 'brumes', signUpCount: 2, withoutOtherSignUpCount: 1 },
+    ]);
+  });
+
+  it('changer de table ne retire rien', () => {
+    const convention = aConvention();
+    convention.addTable('t3', 'Table 3');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+
+    expect(removedOnMoveTo(convention, 'brumes', 's1', 't3')).toEqual([]);
+  });
+
+  it('une case refusée, ou une partie sans inscrit, ne retire rien', () => {
+    const convention = aConvention();
+    convention.addTimeSlot('s3', at('18:00'), at('20:30'));
+    convention.declareGameMasterAvailability('g1', 's3');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+
+    expect(removedOnMoveTo(convention, 'brumes', 's2', 't2')).toEqual([]);
+    expect(removedOnMoveTo(convention, 'neons', 's3', 't1')).toEqual([]);
+  });
+
+  it('échanger entre deux créneaux retire les inscriptions des deux parties, dans l’ordre du programme', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'neons', CATALOGUE);
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'epice', CATALOGUE);
+
+    expect(removedOnMoveTo(convention, 'brumes', 's2', 't1')).toEqual([
+      { gameId: 'brumes', signUpCount: 2, withoutOtherSignUpCount: 1 },
+      { gameId: 'neons', signUpCount: 1, withoutOtherSignUpCount: 1 },
+    ]);
+  });
+
+  it('échanger sur un même créneau ne retire rien', () => {
+    const convention = aConvention();
+    convention.unscheduleGame('neons');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'epice', CATALOGUE);
+
+    expect(removedOnMoveTo(convention, 'brumes', 's1', 't2')).toEqual([]);
+  });
+
+  it('déprogrammer retire les inscriptions de la partie', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+    convention.signUpForGame('p2', 'epice', CATALOGUE);
+    convention.signUpForGame('p2', 'brumes', CATALOGUE);
+
+    expect(convention.computeUnscheduleVerdict('epice')).toEqual({
+      removedSignUps: [{ gameId: 'epice', signUpCount: 2, withoutOtherSignUpCount: 1 }],
+    });
+    expect(convention.computeUnscheduleVerdict('neons')).toEqual({ removedSignUps: [] });
+  });
+
+  it('les inscriptions d’un MJ qui mène sur le créneau ne comptent pas (IN-4)', () => {
+    const convention = aConvention();
+    convention.addTable('t3', 'Table 3');
+    convention.addGameMaster('g3', 'p-g3', 'Mira');
+    convention.declareGameMasterAvailability('g3', 's2');
+    convention.signUpForGame('p-g3', 'epice', CATALOGUE);
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+    convention.scheduleScenario('ombres', aScenario('d', 'g3'), 's2', 't3');
+
+    expect(convention.computeUnscheduleVerdict('epice')).toEqual({
+      removedSignUps: [{ gameId: 'epice', signUpCount: 1, withoutOtherSignUpCount: 1 }],
+    });
+    convention.addTimeSlot('s3', at('18:00'), at('20:30'));
+    convention.declareGameMasterAvailability('g2', 's3');
+    expect(removedOnMoveTo(convention, 'epice', 's2', 't2')).toEqual([
+      { gameId: 'epice', signUpCount: 1, withoutOtherSignUpCount: 1 },
+    ]);
+  });
+
+  it('refuse le verdict de déprogrammation d’une partie inconnue', () => {
+    expect(refusalOf(() => aConvention().computeUnscheduleVerdict('x')).code).toBe(
+      'game-not-found',
+    );
+  });
+});
+
 describe('Un MJ qui mène sur un créneau où il est inscrit (IN-4)', () => {
   /**
    * « Mira » (g3, p-g3), disponible sur les deux créneaux, inscrite comme joueuse à « brumes »

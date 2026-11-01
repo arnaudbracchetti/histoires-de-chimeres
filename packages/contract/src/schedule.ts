@@ -49,10 +49,30 @@ export type PlacementDto = {
 };
 
 /**
+ * Les inscriptions qu'un geste retirerait à une partie (IN-6) : ses inscriptions actives
+ * (`signUpCount`, IN-4), et combien de ses inscrits n'ont pas d'autre inscription active sur son
+ * premier créneau (`withoutOtherSignUpCount`).
+ */
+export type RemovedSignUpsDto = {
+  gameId: string;
+  signUpCount: number;
+  withoutOtherSignUpCount: number;
+};
+
+/**
  * Le verdict d'une case pour déplacer une partie. `swapWith` : sur la première case d'une autre
  * partie, l'id de celle-ci, avec laquelle l'échanger ; `null` pour un simple déplacement.
+ * `removedSignUps` : sur une case permise, une entrée par partie qui perdrait ses inscriptions, dans
+ * l'ordre du programme ; vide pour un changement de table, un échange sur le même créneau, une
+ * partie sans inscrit ou une case refusée.
  */
-export type MovePlacementDto = PlacementDto & { swapWith: string | null };
+export type MovePlacementDto = PlacementDto & {
+  swapWith: string | null;
+  removedSignUps: RemovedSignUpsDto[];
+};
+
+/** Le verdict de la déprogrammation d'une partie : vide si elle n'a aucun inscrit actif. */
+export type UnscheduleVerdictDto = { removedSignUps: RemovedSignUpsDto[] };
 
 export type ScheduleGameBody = { scenarioId: string; timeSlotId: string; tableId: string };
 
@@ -66,6 +86,7 @@ export type SwapGamesBody = { otherGameId: string };
 
 /**
  * `placements` et `movePlacements` rendent la grille dans l'ordre des créneaux, puis des tables.
+ * `unscheduleVerdict` donne, avant de déprogrammer, les inscriptions que le geste retirerait.
  * Programmer, déplacer, échanger et déprogrammer renvoient le programme relu.
  */
 export const scheduleEndpoints = {
@@ -75,5 +96,9 @@ export const scheduleEndpoints = {
   movePlacements: endpoint<MovePlacementDto[], GameParams>('GET', 'games/:gameId/placements'),
   move: endpoint<ScheduleDto, GameParams, MoveGameBody>('PUT', 'games/:gameId/placement'),
   swap: endpoint<ScheduleDto, GameParams, SwapGamesBody>('POST', 'games/:gameId/swap'),
+  unscheduleVerdict: endpoint<UnscheduleVerdictDto, GameParams>(
+    'GET',
+    'games/:gameId/unschedule-verdict',
+  ),
   unschedule: endpoint<ScheduleDto, GameParams>('DELETE', 'games/:gameId'),
 };

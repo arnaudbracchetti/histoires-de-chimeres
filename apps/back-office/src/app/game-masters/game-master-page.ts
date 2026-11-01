@@ -12,7 +12,7 @@ import { gameMasterEndpoints, type GameMasterSheetDto } from '@chimeres/contract
 import { injectApiCall } from '../api-call';
 import { apiResource, currentValue } from '../api-resource';
 import { ConventionStore } from '../convention/convention-store';
-import { availabilitiesConsequence } from './availabilities-consequence';
+import { availabilitiesConsequences } from './availabilities-consequences';
 import { AvailabilityTimeline } from './availability-timeline';
 import { NicknameEditor } from './nickname-editor';
 import { formatScenarioDuration } from '../scenarios/scenario-format';
@@ -250,7 +250,7 @@ export class GameMasterPage {
   private async remove({ id, nickname, availabilities }: GameMasterSheetDto) {
     const removed = await this.confirmation.ask({
       question: fr`Supprimer le MJ « ${nickname} » ?`,
-      consequence: availabilitiesConsequence(availabilities.length),
+      consequences: availabilitiesConsequences(availabilities.length),
       confirmLabel: 'Supprimer le MJ',
       action: () => this.apiCall(gameMasterEndpoints.remove, { params: { gameMasterId: id } }),
       onStale: () => this.reloadAfterRefusal(),

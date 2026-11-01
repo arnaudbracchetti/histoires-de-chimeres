@@ -21,6 +21,7 @@ export { MoveGame } from './game/move-game.js';
 export type { NotificationSender } from './notification/notification-sender.js';
 export { ReadMovePlacements } from './game/read-move-placements.js';
 export { ReadPlacements } from './game/read-placements.js';
+export { ReadUnscheduleVerdict } from './game/read-unschedule-verdict.js';
 export { ReadSchedule, type ReserveScenario, type Schedule } from './game/read-schedule.js';
 export { ReadParticipantSituation } from './sign-up/read-participant-situation.js';
 export { SignUpForGame } from './sign-up/sign-up-for-game.js';

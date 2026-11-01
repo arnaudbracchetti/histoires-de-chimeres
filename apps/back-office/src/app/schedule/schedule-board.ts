@@ -23,7 +23,9 @@ import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { fr } from '@chimeres/design';
 import { GameSheet } from './game-sheet';
+import { Confirmation } from '../ui/confirmation';
 import { Placements } from './placement-dialog';
+import { buildUnscheduleConfirmation } from './removed-sign-ups-confirmations';
 import { ReserveTray } from './reserve-tray';
 import {
   ScheduleDrag,
@@ -149,6 +151,7 @@ export class ScheduleBoard {
   );
   private readonly sheet = viewChild(GameSheet);
   private readonly placements = inject(Placements);
+  private readonly confirmation = inject(Confirmation);
   private readonly announcer = inject(Announcer);
   private readonly store = inject(ConventionStore);
   private readonly apiCall = injectApiCall();
@@ -188,16 +191,35 @@ export class ScheduleBoard {
    */
   protected async move(game: GameDto) {
     const { timeSlots, tables } = this.convention();
-    const outcome = await this.placements.moveTo({ game, timeSlots, tables });
+    const games = this.schedule.value()?.games ?? [];
+    const outcome = await this.placements.moveTo({ game, games, timeSlots, tables });
     if (outcome) this.moved(outcome.schedule, game.id, outcome.swappedWith);
   }
 
   /**
-   * Déprogramme la partie, sans confirmation (docs/design/patterns.md, Actions destructrices). La
-   * fiche se ferme, et le focus va à la réserve, où revient son scénario. Un refus s'affiche en
-   * alerte ; s'il dit l'écran périmé, la convention et le programme se relisent.
+   * Déprogramme la partie (docs/design/patterns.md, Actions destructrices). Elle lit d'abord les
+   * inscriptions que le geste retirerait : sans inscrit, il est immédiat, et un refus s'affiche en
+   * alerte ; sinon, un dialogue le confirme, et y affiche son refus. La fiche se ferme, et le focus
+   * va à la réserve, où revient son scénario. Un refus qui dit l'écran périmé relit la convention et
+   * le programme.
    */
   protected async unschedule(game: GameDto) {
+    const verdict = await this.unscheduling.run(() =>
+      this.apiCall(scheduleEndpoints.unscheduleVerdict, { params: { gameId: game.id } }),
+    );
+    if (verdict.status === 'refused' && verdict.refusal.stale) this.refresh();
+    if (verdict.status !== 'done') return;
+    const [removed] = verdict.value.removedSignUps;
+    if (removed) {
+      let schedule: ScheduleDto | undefined;
+      const done = await this.confirmation.ask({
+        ...buildUnscheduleConfirmation(game, removed, this.convention().timeSlots),
+        action: async () => (schedule = await this.unscheduleCall(game)),
+        onStale: () => this.refresh(),
+      });
+      if (done && schedule) this.unscheduled(schedule, game);
+      return;
+    }
     const outcome = await this.unscheduling.run(() => this.unscheduleCall(game));
     if (outcome.status === 'refused' && outcome.refusal.stale) this.refresh();
     if (outcome.status === 'done') this.unscheduled(outcome.value, game);

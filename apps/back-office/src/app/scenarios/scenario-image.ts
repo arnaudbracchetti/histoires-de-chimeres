@@ -181,7 +181,7 @@ export class ScenarioImage {
     let scenario: ScenarioDto | undefined;
     const removed = await this.confirmation.ask({
       question: fr`Retirer l'image du scénario « ${this.title()} » ?`,
-      consequence: "L'illustration par défaut la remplacera.",
+      consequences: ["L'illustration par défaut la remplacera."],
       confirmLabel: "Retirer l'image",
       action: async () => {
         scenario = await this.apiCall(scenarioEndpoints.removeImage, {

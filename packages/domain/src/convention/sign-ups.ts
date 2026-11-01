@@ -15,6 +15,13 @@ export type LedGames = {
 };
 
 /**
+ * Les inscriptions qu'un geste retire à une partie (IN-6) : ses inscriptions actives
+ * (`signUpCount`), et combien de ses inscrits n'ont pas d'autre inscription active sur son premier
+ * créneau (`withoutOtherSignUpCount`).
+ */
+export type RemovedSignUps = { gameId: string; signUpCount: number; withoutOtherSignUpCount: number };
+
+/**
  * Ce que les règles des inscriptions lisent hors d'elles : le Programme, et qui y mène quoi. La
  * convention les fournit ensemble, tirés du même état.
  */
@@ -91,9 +98,32 @@ export class SignUps {
   getSignUpsAfterChangingSchedule(previous: Schedule, next: Schedule): SignUps {
     return new SignUps(
       this.signUps.filter(({ gameId }) =>
-        next.hasGameOnSameTimeSlots(previous.findExistingGameById(gameId)),
+        SignUps.isGameKeepingSignUps(previous.findExistingGameById(gameId), next),
       ),
     );
+  }
+
+  /**
+   * Les inscriptions actives que le passage au Programme `next` retirerait, selon la règle de
+   * `getSignUpsAfterChangingSchedule()` (IN-6) : une entrée par partie qui en perd, dans l'ordre du
+   * Programme d'avant. `collaborators` : ceux du Programme d'avant. Une partie sans inscrit actif
+   * n'en a pas.
+   */
+  computeRemovedSignUpsAfterChangingSchedule(
+    next: Schedule,
+    collaborators: SignUpCollaborators,
+  ): RemovedSignUps[] {
+    return collaborators.schedule.games
+      .filter((game) => !SignUps.isGameKeepingSignUps(game, next))
+      .flatMap((game): RemovedSignUps[] => {
+        const signUpCount = this.listActiveParticipantIdsOfGame(game, collaborators).length;
+        if (!signUpCount) return [];
+        const withoutOtherSignUpCount = this.listParticipantIdsWithOnlyActiveSignUpOnFirstTimeSlot(
+          game,
+          collaborators,
+        ).length;
+        return [{ gameId: game.id, signUpCount, withoutOtherSignUpCount }];
+      });
   }
 
   /** Les participants dont l'inscription à la partie est active (IN-4), dans l'ordre de leur inscription. */
@@ -172,6 +202,11 @@ export class SignUps {
     return this.listActiveParticipantIdsOfGame(game, collaborators).filter(
       (participantId) => !signedUpElsewhere.has(participantId),
     );
+  }
+
+  /** La partie garde ses inscriptions dans le Programme `next` : elle y est, sur les mêmes créneaux (IN-6). */
+  private static isGameKeepingSignUps(game: Game, next: Schedule): boolean {
+    return next.hasGameOnSameTimeSlots(game);
   }
 
   /** L'inscription est active : voir `SignUps.isSignUpActive()`. */

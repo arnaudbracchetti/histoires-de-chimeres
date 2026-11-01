@@ -20,6 +20,7 @@ import {
   type GameMasterDto,
   type GameMasterSheetDto,
   type MovePlacementDto,
+  type UnscheduleVerdictDto,
   type PlacementDto,
   type ScenarioDto,
   type ScheduleDto,
@@ -847,6 +848,36 @@ describe('Programme', () => {
         expect(await signUpCountOf(neonsGameId, lune)).toBe(0);
       });
 
+      it('les verdicts de déplacement et de déprogrammation disent les inscriptions retirées (IN-6)', async () => {
+        const neonsGameId = await scheduled(neons.id, 1, 'Table 1');
+        const brumesGameId = await scheduled(brumes.id, 1, 'Table 2');
+        const lune = await linkedPhone('Lune');
+        const mira = await linkedPhone('Mira');
+        await signUp(neonsGameId, lune);
+        await signUp(brumesGameId, lune);
+        await signUp(neonsGameId, mira);
+        const removed = [
+          { gameId: neonsGameId, signUpCount: 2, withoutOtherSignUpCount: 1 },
+        ];
+
+        const verdicts = (
+          await server()
+            .get(apiUrl(scheduleEndpoints.movePlacements, { gameId: neonsGameId }))
+            .expect(200)
+        ).body as MovePlacementDto[];
+        const verdictAt = (rank: number, tableName: string) =>
+          verdicts.find(
+            ({ timeSlotId, tableId }) => timeSlotId === slot(rank) && tableId === table(tableName),
+          )!.removedSignUps;
+        expect(verdictAt(2, 'Table 1')).toEqual(removed);
+        expect(verdictAt(1, 'Table 2')).toEqual([]);
+
+        const response = await server()
+          .get(apiUrl(scheduleEndpoints.unscheduleVerdict, { gameId: neonsGameId }))
+          .expect(200);
+        expect(response.body as UnscheduleVerdictDto).toEqual({ removedSignUps: removed });
+      });
+
       it('deux parties échangées entre deux créneaux perdent leurs inscriptions (IN-6)', async () => {
         const neonsGameId = await scheduled(neons.id, 2, 'Table 1');
         const ruinesGameId = await scheduled(ruines.id, 1, 'Table 2');
@@ -911,6 +942,7 @@ describe('Programme', () => {
         await move(UNKNOWN_ID, body),
         await unschedule(UNKNOWN_ID),
         await server().get(apiUrl(scheduleEndpoints.movePlacements, { gameId: UNKNOWN_ID })),
+        await server().get(apiUrl(scheduleEndpoints.unscheduleVerdict, { gameId: UNKNOWN_ID })),
       ]) {
         expect(response.status).toBe(404);
         expect(response.body).toMatchObject({

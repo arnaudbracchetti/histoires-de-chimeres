@@ -10,9 +10,10 @@ import {
   type GameDto,
   type ProblemDto,
   type ScheduleDto,
+  type UnscheduleVerdictDto,
 } from '@chimeres/contract';
 import { Alerts } from '../shell/alerts';
-import { NBSP } from '@chimeres/design';
+import { NBSP, THIN_NBSP } from '@chimeres/design';
 import { ScheduleBoard } from './schedule-board';
 import type { Drop } from './schedule-drag';
 import { ScheduleTimeline } from './schedule-timeline';
@@ -65,13 +66,17 @@ describe('ScheduleBoard', () => {
     });
   });
 
-  async function render() {
+  afterEach(() => {
+    document.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
+
+  async function render(convention = CONVENTION, scheduled = SCHEDULED) {
     const fixture = TestBed.createComponent(ScheduleBoard);
-    fixture.componentRef.setInput('convention', CONVENTION);
+    fixture.componentRef.setInput('convention', convention);
     const http = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
-    http.match(apiUrl(conventionEndpoints.read)).forEach((read) => read.flush(CONVENTION));
-    http.expectOne(apiUrl(scheduleEndpoints.read)).flush(SCHEDULED);
+    http.match(apiUrl(conventionEndpoints.read)).forEach((read) => read.flush(convention));
+    http.expectOne(apiUrl(scheduleEndpoints.read)).flush(scheduled);
     await fixture.whenStable();
     const host = fixture.nativeElement as HTMLElement;
     const settle = async () => {
@@ -83,13 +88,23 @@ describe('ScheduleBoard', () => {
     const button = (name: string) =>
       [...host.querySelectorAll('button')].find((b) => text(b) === name)!;
     const sheet = () => host.querySelector('app-game-sheet');
-    const unschedule = async () => {
+    /** « Déprogrammer » dans la fiche : lit les inscriptions retirées, puis écrit sans elles. */
+    const askUnschedule = async (verdict: UnscheduleVerdictDto) => {
       host.querySelector<HTMLButtonElement>('#game-p1')!.click();
       await settle();
+      button('Déprogrammer').focus();
       button('Déprogrammer').click();
       await fixture.whenStable();
+      http.expectOne(apiUrl(scheduleEndpoints.unscheduleVerdict, { gameId: 'p1' })).flush(verdict);
+      await settle();
+    };
+    const unschedule = async () => {
+      await askUnschedule({ removedSignUps: [] });
       return http.expectOne(apiUrl(scheduleEndpoints.unschedule, { gameId: 'p1' }));
     };
+    const dialog = () => document.querySelector<HTMLElement>('[role="alertdialog"]');
+    const dialogButton = (name: string) =>
+      [...(dialog()?.querySelectorAll('button') ?? [])].find((b) => text(b) === name)!;
     /** Lâche la partie sur une case de la frise. */
     const drop = async (target: Drop['target']) => {
       const timeline = fixture.debugElement.query(By.directive(ScheduleTimeline));
@@ -106,7 +121,20 @@ describe('ScheduleBoard', () => {
       );
       return game && { title: text(game.querySelector('h3')), pending: game.matches('.pending') };
     };
-    return { http, host, settle, sheet, unschedule, drop, gameAt };
+    return {
+      http,
+      host,
+      settle,
+      sheet,
+      button,
+      askUnschedule,
+      unschedule,
+      dialog,
+      dialogButton,
+      text,
+      drop,
+      gameAt,
+    };
   }
 
   it('« Déprogrammer » ferme la fiche, et le scénario revient dans la réserve', async () => {
@@ -157,6 +185,118 @@ describe('ScheduleBoard', () => {
       expect.objectContaining({ title: `Pas de connexion${NBSP}: rien n'a été enregistré.` }),
     ]);
     http.verify();
+  });
+
+  describe('« Déprogrammer » une partie qui a des inscrits (IN-6, NO-2)', () => {
+    const TWELVE: UnscheduleVerdictDto = {
+      removedSignUps: [{ gameId: 'p1', signUpCount: 12, withoutOtherSignUpCount: 3 }],
+    };
+
+    it('demande d’abord une confirmation, qui dit combien d’inscrits perdent leur inscription', async () => {
+      const { http, settle, sheet, askUnschedule, dialog, dialogButton, text } = await render();
+
+      await askUnschedule(TWELVE);
+
+      expect([...dialog()!.querySelectorAll('h2, p')].map(text)).toEqual([
+        `Déprogrammer «${NBSP}Brumes${NBSP}» du créneau 1${THIN_NBSP}?`,
+        `Il y a 12${NBSP}inscrits à la partie. Ils perdront leur inscription et seront notifiés.`,
+        "3 d'entre eux n'ont pas d'autre inscription sur le créneau.",
+        'Le scénario revient en réserve, sans ses inscriptions.',
+      ]);
+      expect(document.activeElement).toBe(dialogButton('Annuler'));
+      http.expectNone(apiUrl(scheduleEndpoints.unschedule, { gameId: 'p1' }));
+
+      dialogButton('Déprogrammer la partie').click();
+      http.expectOne(apiUrl(scheduleEndpoints.unschedule, { gameId: 'p1' })).flush(UNSCHEDULED);
+      await settle();
+
+      expect(dialog()).toBeNull();
+      expect(sheet()).toBeNull();
+    });
+
+    it('au singulier, pour un inscrit dont c’est la seule inscription', async () => {
+      const { askUnschedule, dialog, text } = await render();
+
+      await askUnschedule({
+        removedSignUps: [{ gameId: 'p1', signUpCount: 1, withoutOtherSignUpCount: 1 }],
+      });
+
+      expect([...dialog()!.querySelectorAll('p')].map(text)).toEqual([
+        `Il y a 1${NBSP}inscrit à la partie. Il perdra son inscription et sera notifié.`,
+        "C'est sa seule inscription sur le créneau.",
+        'Le scénario revient en réserve, sans ses inscriptions.',
+      ]);
+    });
+
+    it('désigne une partie double par ses deux créneaux', async () => {
+      const { askUnschedule, dialog, text } = await render(
+        {
+          ...CONVENTION,
+          timeSlots: [
+            ...CONVENTION.timeSlots,
+            { id: 's2', rank: 2, start: '14:00', end: '16:30', availabilityCount: 1 },
+          ],
+        },
+        { games: [{ ...GAME, timeSlotIds: ['s1', 's2'] }], reserve: [] },
+      );
+
+      await askUnschedule(TWELVE);
+
+      expect(text(dialog()!.querySelector('h2'))).toBe(
+        `Déprogrammer «${NBSP}Brumes${NBSP}» des créneaux 1 et 2${THIN_NBSP}?`,
+      );
+      expect(text(dialog()!.querySelector('p'))).toBe(
+        `Il y a 12${NBSP}inscrits à la partie (créneaux 1 et 2). Ils perdront leur inscription et seront notifiés.`,
+      );
+    });
+
+    it('sans inscrit, déprogramme aussitôt, sans dialogue', async () => {
+      const { unschedule, dialog } = await render();
+
+      (await unschedule()).flush(UNSCHEDULED);
+
+      expect(dialog()).toBeNull();
+    });
+
+    it('« Annuler » n’écrit rien, et rend le focus à « Déprogrammer »', async () => {
+      const { http, settle, sheet, button, askUnschedule, dialog, dialogButton } = await render();
+
+      await askUnschedule(TWELVE);
+      dialogButton('Annuler').click();
+      await settle();
+
+      expect(dialog()).toBeNull();
+      expect(sheet()).not.toBeNull();
+      expect(document.activeElement).toBe(button('Déprogrammer'));
+      http.verify();
+    });
+
+    it('un geste périmé est refusé dans le dialogue, puis la convention et le programme se relisent', async () => {
+      const { http, settle, askUnschedule, dialog, dialogButton } = await render();
+      const problem: Partial<ProblemDto> = {
+        status: 404,
+        code: 'game-not-found',
+        title: 'Partie introuvable',
+        detail: "Cette partie n'existe plus : recharge la page.",
+      };
+
+      await askUnschedule(TWELVE);
+      dialogButton('Déprogrammer la partie').click();
+      http
+        .expectOne(apiUrl(scheduleEndpoints.unschedule, { gameId: 'p1' }))
+        .flush(problem, { status: 404, statusText: 'Introuvable' });
+      await settle();
+
+      expect(dialog()?.querySelector('[role="alert"]')?.textContent).toContain(problem.detail);
+      expect(TestBed.inject(Alerts).notices()).toEqual([]);
+      dialogButton('Fermer').click();
+      await new Promise((resolve) => setTimeout(resolve));
+      TestBed.tick();
+      http.expectOne(apiUrl(conventionEndpoints.read)).flush(CONVENTION);
+      http.expectOne(apiUrl(scheduleEndpoints.read)).flush(UNSCHEDULED);
+      await settle();
+      http.verify();
+    });
   });
 
   describe('glisser-déposer', () => {

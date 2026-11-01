@@ -16,7 +16,12 @@ import { computeReserve, type ReserveOfScenario } from './reserve.js';
 import { Schedule, type PlacementCollaborators } from './schedule.js';
 import { ScheduleChange } from './schedule-change.js';
 import { SignUp } from './sign-up.js';
-import { SignUps, type LedGames, type SignUpCollaborators } from './sign-ups.js';
+import {
+  SignUps,
+  type LedGames,
+  type RemovedSignUps,
+  type SignUpCollaborators,
+} from './sign-ups.js';
 import type { TimeOfDay } from './time-of-day.js';
 import type { TimeSlot } from './time-slot.js';
 import { UniquelyNamedCollection, type NamingRules } from './uniquely-named-collection.js';
@@ -450,25 +455,35 @@ export class Convention {
    * Le verdict de chaque case créneaux × tables pour déplacer la partie, dans l'ordre des créneaux,
    * puis des tables. La première case d'une autre partie propose de l'échanger avec elle
    * (`swapWith`), avec le refus que `swapGames()` lèverait ; toute autre case, le refus que
-   * `moveGame()` y lèverait. Sa propre case est permise.
+   * `moveGame()` y lèverait. Sa propre case est permise. Une case permise dit aussi les inscriptions
+   * que le geste retirerait (IN-6).
    */
   computeMoveVerdicts(gameId: string): MovePlacement[] {
     const game = this.gameSchedule.findExistingGameById(gameId);
     return this.day.timeSlots.flatMap((slot) =>
       this.tables.map((table) => {
         const other = this.gameSchedule.findOtherGameStartingAt(game, slot.id, table.id);
+        const result = other
+          ? this.getScheduleAfterSwappingGames(game, other)
+          : this.getScheduleAfterMovingGame(game, slot.id, table.id);
         return {
           timeSlotId: slot.id,
           tableId: table.id,
           swapWith: other?.id ?? null,
-          refusal: this.extractRefusal(
-            other
-              ? this.getScheduleAfterSwappingGames(game, other)
-              : this.getScheduleAfterMovingGame(game, slot.id, table.id),
-          ),
+          refusal: this.extractRefusal(result),
+          removedSignUps: this.computeRemovedSignUps(result),
         };
       }),
     );
+  }
+
+  /** Le verdict de `unscheduleGame()` : les inscriptions qu'il retirerait (IN-6). */
+  computeUnscheduleVerdict(gameId: string): UnscheduleVerdict {
+    return {
+      removedSignUps: this.computeRemovedSignUps(
+        this.gameSchedule.getScheduleAfterUnschedulingGame(gameId),
+      ),
+    };
   }
 
   /** La réserve (PR-6) : voir `computeReserve()`. */
@@ -711,6 +726,15 @@ export class Convention {
     return result;
   }
 
+  /** Les inscriptions que le passage au Programme d'après retirerait ; aucune pour un geste refusé. */
+  private computeRemovedSignUps(next: Schedule | Refusal): RemovedSignUps[] {
+    if (next instanceof Refusal) return [];
+    return this.allSignUps.computeRemovedSignUpsAfterChangingSchedule(
+      next,
+      this.buildSignUpCollaborators(this.gameSchedule),
+    );
+  }
+
   /** Le refus d'un geste, ou `null` s'il est permis : le verdict. */
   private extractRefusal(result: Schedule | Refusal): Refusal | null {
     return result instanceof Refusal ? result : null;
@@ -776,9 +800,16 @@ export type Placement = { timeSlotId: string; tableId: string; refusal: Refusal 
 
 /**
  * Le verdict d'une case créneau × table pour déplacer une partie : `swapWith`, l'id de la partie
- * avec laquelle l'échanger, ou `null` pour un déplacement ; le refus d'écriture, ou `null`.
+ * avec laquelle l'échanger, ou `null` pour un déplacement ; le refus d'écriture, ou `null` ; les
+ * inscriptions que le geste retirerait, aucune s'il est refusé.
  */
-export type MovePlacement = Placement & { swapWith: string | null };
+export type MovePlacement = Placement & {
+  swapWith: string | null;
+  removedSignUps: RemovedSignUps[];
+};
+
+/** Le verdict de la déprogrammation d'une partie : les inscriptions qu'elle retirerait. */
+export type UnscheduleVerdict = { removedSignUps: RemovedSignUps[] };
 
 /** Le verdict de retrait d'une disponibilité : le refus d'écriture, ou `null`. */
 export type WithdrawalVerdict = { timeSlotId: string; refusal: Refusal | null };

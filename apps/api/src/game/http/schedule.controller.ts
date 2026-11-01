@@ -15,6 +15,7 @@ import {
   ReadMovePlacements,
   ReadPlacements,
   ReadSchedule,
+  ReadUnscheduleVerdict,
   ScheduleGame,
   SwapGames,
   UnscheduleGame,
@@ -45,6 +46,7 @@ export class ScheduleController {
     @Inject(ReadMovePlacements) private readonly readMovePlacements: ReadMovePlacements,
     @Inject(MoveGame) private readonly moveGame: MoveGame,
     @Inject(SwapGames) private readonly swapGames: SwapGames,
+    @Inject(ReadUnscheduleVerdict) private readonly readUnscheduleVerdict: ReadUnscheduleVerdict,
     @Inject(UnscheduleGame) private readonly unscheduleGame: UnscheduleGame,
   ) {}
 
@@ -101,6 +103,14 @@ export class ScheduleController {
     return toDto(await this.readSchedule.execute());
   }
 
+  /** Les inscriptions que la déprogrammation de la partie retirerait. */
+  @Get(scheduleEndpoints.unscheduleVerdict.path)
+  async unscheduleVerdict(
+    @Param('gameId') gameId: string,
+  ): Promise<ResponseOf<typeof scheduleEndpoints.unscheduleVerdict>> {
+    return this.readUnscheduleVerdict.execute(gameId);
+  }
+
   /** Renvoie le programme relu. */
   @Delete(scheduleEndpoints.unschedule.path)
   async unschedule(
@@ -115,8 +125,8 @@ function toPlacementDto({ timeSlotId, tableId, refusal }: Placement) {
   return { timeSlotId, tableId, refusal: refusal && verdictOf(refusal) };
 }
 
-function toMovePlacementDto({ swapWith, ...placement }: MovePlacement) {
-  return { ...toPlacementDto(placement), swapWith };
+function toMovePlacementDto({ swapWith, removedSignUps, ...placement }: MovePlacement) {
+  return { ...toPlacementDto(placement), swapWith, removedSignUps };
 }
 
 /** Un scénario sans créneau possible porte le motif et la phrase de son refus. */

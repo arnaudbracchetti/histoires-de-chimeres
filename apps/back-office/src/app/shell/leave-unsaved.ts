@@ -17,7 +17,7 @@ export const leaveUnsaved: CanDeactivateFn<UnsavedChanges> = (page) =>
   !page.hasUnsavedChanges() ||
   inject(Confirmation).ask({
     question: fr`Quitter sans enregistrer ?`,
-    consequence: 'Tes modifications seront perdues.',
+    consequences: ['Tes modifications seront perdues.'],
     confirmLabel: 'Quitter sans enregistrer',
     action: async () => undefined,
   });

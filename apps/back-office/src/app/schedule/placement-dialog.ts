@@ -26,6 +26,12 @@ import { injectGesture, type GestureOutcome } from '../gesture';
 import { Loadable } from '../shell/loadable';
 import { formatTimeRange, fr, timeSlotLabel } from '@chimeres/design';
 import { Button } from '../ui/button';
+import { Confirmation } from '../ui/confirmation';
+import {
+  buildMoveConfirmation,
+  buildSwapConfirmation,
+  type ConfirmationTexts,
+} from './removed-sign-ups-confirmations';
 
 /** La grille du programme : ses créneaux, dans l'ordre de la journée, et ses tables, dans l'ordre naturel. */
 type Grid = {
@@ -36,8 +42,11 @@ type Grid = {
 /** Programmer un scénario de la réserve. */
 export type PlacementRequest = Grid & { scenario: ScheduleScenarioDto };
 
-/** Déplacer une partie : sa case, celle de son premier créneau, n'offre pas « Choisir ». */
-export type MoveRequest = Grid & { game: GameDto };
+/**
+ * Déplacer une partie : sa case, celle de son premier créneau, n'offre pas « Choisir ». `games` :
+ * le programme, qui nomme la partie d'un échange.
+ */
+export type MoveRequest = Grid & { game: GameDto; games: readonly GameDto[] };
 
 /**
  * Le programme relu après le geste, et l'id de la partie échangée avec celle qu'on déplace, ou
@@ -45,8 +54,11 @@ export type MoveRequest = Grid & { game: GameDto };
  */
 export type Placed = { schedule: ScheduleDto; swappedWith: string | null };
 
-/** Le verdict d'une case : un déplacement propose aussi d'échanger avec une autre partie. */
-type Verdict = PlacementDto & Partial<Pick<MovePlacementDto, 'swapWith'>>;
+/**
+ * Le verdict d'une case : un déplacement propose aussi d'échanger avec une autre partie, et dit les
+ * inscriptions que le geste retirerait.
+ */
+type Verdict = PlacementDto & Partial<Pick<MovePlacementDto, 'swapWith' | 'removedSignUps'>>;
 
 type DialogData = (PlacementRequest | MoveRequest) & { titleId: string };
 
@@ -57,7 +69,8 @@ let nextId = 0;
  * Programmation) : une grille créneaux × tables, lue dans l'API à l'ouverture. Chaque case est
  * « Choisir », « Échanger » sur la première case d'une autre partie, ou éteinte avec le motif de
  * son verdict ; le front ne recalcule jamais PR-5. Choisir programme ou déplace la partie, Échanger
- * échange les deux parties, et le dialogue se ferme sur le programme relu.
+ * échange les deux parties, et le dialogue se ferme sur le programme relu. Un geste dont le verdict
+ * retire des inscriptions (IN-6) demande d'abord une confirmation ; les cases n'en disent rien.
  */
 @Component({
   selector: 'app-placement-dialog',
@@ -102,7 +115,7 @@ let nextId = 0;
                           type="button"
                           appButton="secondary"
                           [attr.aria-label]="'Échanger ' + label(slot, table)"
-                          (click)="swap(other)"
+                          (click)="swap(other, verdict)"
                         >
                           Échanger
                         </button>
@@ -111,7 +124,7 @@ let nextId = 0;
                           type="button"
                           appButton="secondary"
                           [attr.aria-label]="'Choisir ' + label(slot, table)"
-                          (click)="choose(slot, table)"
+                          (click)="choose(slot, table, verdict)"
                         >
                           Choisir
                         </button>
@@ -210,6 +223,7 @@ export class PlacementDialog {
       : fr`Programmer « ${this.request.scenario.title} » sur…`;
   protected readonly placements = placementsOf(this.request);
   protected readonly gesture = injectGesture();
+  private readonly confirmation = inject(Confirmation);
   protected readonly refusal = computed(() => this.gesture.refusal()?.message);
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
@@ -250,27 +264,65 @@ export class PlacementDialog {
    * Un refus s'affiche dans le dialogue. S'il dit le programme changé entre-temps, la grille se
    * relit ; après une coupure, elle reste telle quelle, pour réessayer.
    */
-  protected async choose(slot: TimeSlotDto, table: TableDto) {
+  protected async choose(slot: TimeSlotDto, table: TableDto, verdict: Verdict) {
     const place = { timeSlotId: slot.id, tableId: table.id };
     const request = this.request;
-    const outcome = await this.gesture.run(() =>
-      'game' in request
-        ? this.apiCall(scheduleEndpoints.move, { params: { gameId: request.game.id }, body: place })
-        : this.apiCall(scheduleEndpoints.schedule, {
-            body: { scenarioId: request.scenario.id, ...place },
-          }),
+    if (!('game' in request)) {
+      const outcome = await this.gesture.run(() =>
+        this.apiCall(scheduleEndpoints.schedule, {
+          body: { scenarioId: request.scenario.id, ...place },
+        }),
+      );
+      this.conclude(outcome, null);
+      return;
+    }
+    const { game, timeSlots } = request;
+    const [removed] = verdict.removedSignUps ?? [];
+    await this.write(
+      () => this.apiCall(scheduleEndpoints.move, { params: { gameId: game.id }, body: place }),
+      null,
+      removed && buildMoveConfirmation(game, slot.id, removed, timeSlots),
     );
-    this.conclude(outcome, null);
   }
 
   /** Échange la partie avec celle de la case ; un refus s'affiche comme pour « Choisir ». */
-  protected async swap(otherGameId: string) {
+  protected async swap(otherGameId: string, verdict: Verdict) {
     if (!('game' in this.request)) return;
-    const gameId = this.request.game.id;
-    const outcome = await this.gesture.run(() =>
-      this.apiCall(scheduleEndpoints.swap, { params: { gameId }, body: { otherGameId } }),
+    const { game, games, timeSlots } = this.request;
+    const other = games.find(({ id }) => id === otherGameId);
+    const removed = verdict.removedSignUps ?? [];
+    await this.write(
+      () =>
+        this.apiCall(scheduleEndpoints.swap, {
+          params: { gameId: game.id },
+          body: { otherGameId },
+        }),
+      otherGameId,
+      removed.length ? buildSwapConfirmation(game, other, removed, timeSlots) : undefined,
     );
-    this.conclude(outcome, otherGameId);
+  }
+
+  /**
+   * Écrit le déplacement ou l'échange : aussitôt, ou par le dialogue de confirmation de `texts`,
+   * qui affiche son refus. Un refus périmé relit la grille ; « Annuler » n'écrit rien, et le
+   * dialogue de placement reste ouvert.
+   */
+  private async write(
+    call: () => Promise<ScheduleDto>,
+    swappedWith: string | null,
+    texts: ConfirmationTexts | undefined,
+  ) {
+    if (!texts) {
+      this.conclude(await this.gesture.run(call), swappedWith);
+      return;
+    }
+    let schedule: ScheduleDto | undefined;
+    const done = await this.confirmation.ask({
+      ...texts,
+      action: async () => (schedule = await call()),
+      onStale: () => this.placements.reload(),
+    });
+    if (done && schedule) this.ref.close({ schedule, swappedWith });
   }
 
   private conclude(outcome: GestureOutcome<ScheduleDto>, swappedWith: string | null) {
