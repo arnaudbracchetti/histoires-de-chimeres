@@ -934,4 +934,176 @@ describe('Pilotage du jour J', () => {
       expect(button('Déprogrammer')).toBeUndefined();
     });
   });
+
+  describe('relecture', () => {
+    /** L'état de l'onglet du navigateur, lu par la page. */
+    let visibility: DocumentVisibilityState;
+    /** Le suivi relu : le créneau 2 a gagné deux participants. */
+    const LATER: SignUpTrackingDto = {
+      ...TRACKING,
+      timeSlots: TRACKING.timeSlots.map((slot) =>
+        slot.id === 's2' ? { ...slot, demand: 28 } : slot,
+      ),
+    };
+
+    beforeEach(() => {
+      // Seuls l'intervalle et l'heure sont simulés : le reste de la page garde ses minuteries.
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+      vi.setSystemTime(new Date(2027, 2, 14, 14, 5));
+      visibility = 'visible';
+      vi.spyOn(document, 'visibilityState', 'get').mockImplementation(() => visibility);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    });
+
+    /** L'onglet du navigateur se cache, ou redevient visible. */
+    const show = (state: DocumentVisibilityState) => {
+      visibility = state;
+      document.dispatchEvent(new Event('visibilitychange'));
+    };
+    const reads = (http: HttpTestingController) => {
+      TestBed.tick();
+      return http.match(apiUrl(signUpTrackingEndpoints.read));
+    };
+    /** La lecture en attente échoue : pas de réseau, ou redéploiement. */
+    const fail = async (http: HttpTestingController) => {
+      TestBed.tick();
+      http
+        .expectOne(apiUrl(signUpTrackingEndpoints.read))
+        .flush(null, { status: 502, statusText: 'Bad Gateway' });
+      await new Promise((resolve) => setTimeout(resolve));
+    };
+    const ageLine = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('.freshness button');
+
+    it('relit le suivi toutes les 30 s quand l’onglet est visible', async () => {
+      const { http, tiles, reread } = await render();
+
+      vi.advanceTimersByTime(29_999);
+      expect(reads(http)).toHaveLength(0);
+      vi.advanceTimersByTime(1);
+      await reread(LATER);
+
+      expect(text(tiles()[1])).toContain('28 / 22');
+    });
+
+    it('ne relit rien quand l’onglet est caché, puis relit à son retour', async () => {
+      const { http, tiles, reread } = await render();
+
+      show('hidden');
+      vi.advanceTimersByTime(90_000);
+      expect(reads(http)).toHaveLength(0);
+
+      show('visible');
+      await reread(LATER);
+
+      expect(text(tiles()[1])).toContain('28 / 22');
+    });
+
+    it('relit sans barre de progression, en gardant le créneau, l’onglet et la fiche', async () => {
+      const { fixture, host, http, tiles, tabs, sheet, settle } = await render();
+      host.querySelector<HTMLButtonElement>('#tracked-game-p1')!.click();
+      await settle();
+      tabs()[1]!.click();
+      fixture.detectChanges();
+
+      vi.advanceTimersByTime(30_000);
+      TestBed.tick();
+      // Au-delà du délai de la barre de progression d'une lecture lente.
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      fixture.detectChanges();
+      expect(host.querySelector('[role="progressbar"]')).toBeNull();
+      expect(host.querySelector('app-loadable')!.getAttribute('aria-busy')).toBe('false');
+      http.expectOne(apiUrl(signUpTrackingEndpoints.read)).flush(LATER);
+      await settle();
+
+      expect(tiles()[1]!.getAttribute('aria-pressed')).toBe('true');
+      expect(tabs()[1]!.getAttribute('aria-selected')).toBe('true');
+      expect(text(sheet()?.querySelector('h2'))).toContain('Brumes');
+    });
+
+    it('garde les derniers chiffres quand une lecture échoue, sans ligne d’âge avant 2 minutes', async () => {
+      const { fixture, host, http, tiles } = await render();
+
+      for (let reread = 0; reread < 4; reread++) {
+        vi.advanceTimersByTime(30_000);
+        await fail(http);
+      }
+      fixture.detectChanges();
+
+      expect(text(tiles()[1])).toContain('26 / 22');
+      expect(text(host)).not.toContain('Impossible de charger le suivi');
+      expect(ageLine(host)).toBeNull();
+    });
+
+    it('dit de quand datent les chiffres au-delà de 2 minutes sans lecture réussie', async () => {
+      const { fixture, host, http } = await render();
+
+      for (let reread = 0; reread < 5; reread++) {
+        vi.advanceTimersByTime(30_000);
+        await fail(http);
+      }
+      fixture.detectChanges();
+
+      expect(text(ageLine(host))).toBe('Pas de connexion · à jour à 14 h 05');
+    });
+
+    it('relance la lecture d’un clic sur la ligne d’âge, qui disparaît une fois les chiffres relus', async () => {
+      const { fixture, host, http, tiles, reread } = await render();
+      for (let attempt = 0; attempt < 5; attempt++) {
+        vi.advanceTimersByTime(30_000);
+        await fail(http);
+      }
+      fixture.detectChanges();
+
+      ageLine(host)!.click();
+      await reread(LATER);
+
+      expect(text(tiles()[1])).toContain('28 / 22');
+      expect(ageLine(host)).toBeNull();
+    });
+
+    it('ne montre pas la ligne d’âge pendant la relecture du retour sur l’onglet', async () => {
+      const { host, reread } = await render();
+      show('hidden');
+      vi.advanceTimersByTime(180_000);
+
+      show('visible');
+      TestBed.tick();
+      expect(ageLine(host)).toBeNull();
+
+      // La relecture du retour, servie ici, prouve qu'elle est partie.
+      await reread(LATER);
+      expect(ageLine(host)).toBeNull();
+    });
+
+    it('relit encore après un geste fait pendant une lecture qui suit un échec', async () => {
+      const { http, rows, tiles, reread } = await render();
+      scheduleOnCell.mockResolvedValue(undefined);
+      vi.advanceTimersByTime(30_000);
+      await fail(http);
+      vi.advanceTimersByTime(30_000);
+      TestBed.tick();
+
+      // Le geste finit pendant cette lecture, partie avant lui : « Programmer ici… », fermé.
+      rows()[2]!.querySelector('button')!.click();
+      await new Promise((resolve) => setTimeout(resolve));
+      http.expectOne(apiUrl(signUpTrackingEndpoints.read)).flush(TRACKING);
+      await reread(LATER);
+
+      expect(text(tiles()[1])).toContain('28 / 22');
+    });
+
+    it('ne ferme pas un dialogue ouvert', async () => {
+      const { askUnschedule, dialog, reread } = await render();
+      await askUnschedule([{ gameId: 'p1', signUpCount: 15, withoutOtherSignUpCount: 8 }]);
+
+      vi.advanceTimersByTime(30_000);
+      await reread(LATER);
+
+      expect(dialog()).not.toBeNull();
+    });
+  });
 });

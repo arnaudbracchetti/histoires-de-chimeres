@@ -19,7 +19,7 @@ import {
   type ParticipantSituationDto,
   type TimeSlotStateDto,
 } from '@chimeres/contract';
-import { formatDayAndMonth, formatTimeOfDay, fr } from '@chimeres/design';
+import { formatAgeLine, fr } from '@chimeres/design';
 import { injectApiCall, injectApiRead } from '../api-call';
 import { gamesWithSeatsOn, timeSlotsOf } from '../game/game-text';
 import { LinkedPhone } from '../linked-phone';
@@ -32,8 +32,6 @@ import { PhoneClock } from './phone-clock';
 
 /** Relecture tant que la page est visible (ADR 0011). */
 const REREAD_EVERY_MS = 30_000;
-/** Au-delà, la ligne d'âge dit de quand date la donnée (§6, Fraîcheur). */
-const STALE_AFTER_MS = 2 * 60_000;
 /** Au-delà, un geste sans réponse dit de vérifier, puis relit (§6). */
 const GESTURE_TIMEOUT_MS = 10_000;
 const SLOW_NETWORK = fr`Le réseau ne répond pas : vérifie ton inscription.`;
@@ -196,12 +194,7 @@ export class ParticipantData {
    */
   readonly ageLine = computed<string | null>(() => {
     const readAt = this.readAt();
-    const now = this.now();
-    if (!readAt || now.getTime() - readAt.getTime() <= STALE_AFTER_MS) return null;
-    const time = formatTimeOfDay(readAt);
-    return readAt.toDateString() === now.toDateString()
-      ? `Pas de connexion · à jour à ${time}`
-      : `Pas de connexion · à jour le ${formatDayAndMonth(readAt)} à ${time}`;
+    return readAt ? formatAgeLine(readAt, this.now()) : null;
   });
 
   /**

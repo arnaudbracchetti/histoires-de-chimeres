@@ -30,8 +30,9 @@ import {
   plural,
   timeSlotLabel,
 } from '@chimeres/design';
-import { apiResource, currentValue } from '../api-resource';
+import { apiResource } from '../api-resource';
 import { injectGesture } from '../gesture';
+import { liveResource } from '../live-resource';
 import { CellPlacements } from '../schedule/cell-placement-dialog';
 import { GameSheet } from '../schedule/game-sheet';
 import {
@@ -75,8 +76,8 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
 /**
  * Pilotage du jour J (docs/design/patterns.md) : la bande des créneaux de la journée, avec la
  * demande et la capacité de chacun, le résumé du créneau choisi, ses onglets, et la fiche de la
- * partie à droite. La page affiche ce que l'API calcule, sans recalcul. Après chaque geste, elle
- * relit le suivi.
+ * partie à droite. La page affiche ce que l'API calcule, sans recalcul. Elle se relit seule, en
+ * silence (`liveResource()`) : toutes les 30 s, au retour sur l'onglet et après chaque geste.
  */
 @Component({
   selector: 'app-sign-up-tracking-page',
@@ -101,9 +102,13 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
   ],
   template: `
     <app-page-header title="Pilotage du jour J">
-      <p appPageSubtitle class="freshness"></p>
+      <p appPageSubtitle class="freshness">
+        @if (tracking.ageLine(); as line) {
+          <button type="button" (click)="tracking.reload()">{{ line }}</button>
+        }
+      </p>
     </app-page-header>
-    <app-loadable [resource]="tracking" failure="Impossible de charger le suivi des inscriptions.">
+    <app-loadable [resource]="tracking.firstRead" failure="Impossible de charger le suivi des inscriptions.">
       @if (value(); as tracking) {
         @if (!tracking.timeSlots.length) {
           <app-empty-state>
@@ -256,6 +261,16 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
         margin: var(--space-xs) 0 0;
         color: var(--text-muted);
         font-size: var(--font-size-meta);
+
+        button {
+          padding: 0;
+          border: none;
+          background: none;
+          color: inherit;
+          font: inherit;
+          text-decoration: underline;
+          cursor: pointer;
+        }
       }
 
       :host > app-loadable {
@@ -440,8 +455,9 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
   `,
 })
 export class SignUpTrackingPage {
-  protected readonly tracking = apiResource(signUpTrackingEndpoints.read);
-  protected readonly value = currentValue(this.tracking);
+  /** Le suivi, relu toutes les 30 s, au retour sur l'onglet et après chaque geste. */
+  protected readonly tracking = liveResource(apiResource(signUpTrackingEndpoints.read));
+  protected readonly value = this.tracking.value;
   protected readonly closedState = CLOSED_STATE;
   protected readonly closedSummary = CLOSED_SUMMARY;
   protected readonly formatCount = formatCount;
