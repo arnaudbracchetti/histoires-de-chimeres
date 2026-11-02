@@ -135,6 +135,10 @@ Nombre de participants qui ont au moins une inscription active sur un créneau, 
 Participant qui reste dans le tirage d'un créneau sans aucune inscription active sur ce créneau : un Organisateur a déprogrammé sa partie, ou l'a déplacée sur un autre créneau, et c'était sa dernière inscription active ; ou c'est le MJ d'une partie annulée, sans autre inscription active sur le créneau. Il cesse de l'être dès qu'il s'inscrit à une partie du créneau, s'il se retire du tirage ou, pour le MJ, quand sa partie est rétablie.
 _Avoid_: Inscription au créneau, en attente
 
+**Se retirer du tirage** · `withdrawFromDraw`:
+Geste du participant sans partie qui quitte le tirage d'un créneau, sur son téléphone, tant que ses inscriptions sont ouvertes.
+_Avoid_: Se désinscrire (réservé à une inscription)
+
 **Capacité** · `Capacity`:
 Places d'un créneau : de la somme des places minimum à la somme des places maximum des parties qui y commencent.
 _Avoid_: Plancher
@@ -148,12 +152,42 @@ Exception : dans la tuile d'un créneau, le compteur dit « avertissements » to
 Répartition aléatoire des participants inscrits sur les parties d'un créneau, en respectant leurs inscriptions, avec pour objectif que chaque inscrit puisse jouer. Son résultat reste provisoire tant qu'un Organisateur ne l'a pas publié.
 _Avoid_: Loterie, matching, draft, Lottery
 
+**Lancer le tirage** · `launchDraw`:
+Geste d'un Organisateur qui ferme les inscriptions d'un créneau et produit le résultat provisoire de son tirage. Il ne se lance que sur le premier créneau dont le tirage n'est pas publié.
+_Avoid_: Démarrer, exécuter
+
+**Relancer le tirage** · `rerunDraw`:
+Geste d'un Organisateur qui refait le tirage provisoire d'un créneau à partir des inscriptions actives : les déplacements de participants sont effacés, les parties annulées le restent.
+_Avoid_: Retirer, refaire
+
+**Rouvrir les inscriptions** · `reopenSignUps`:
+Geste d'un Organisateur qui efface le tirage provisoire d'un créneau, parties annulées comprises, et rouvre ses inscriptions, pour un tirage lancé par erreur ou trop tôt.
+_Avoid_: Annuler le tirage (« annuler » est réservé à la partie)
+
+**Algorithme de tirage** · `DrawAlgorithm`:
+Le calcul qui produit le résultat d'un tirage à partir des seuls participants du créneau, de leurs inscriptions et des places de ses parties (TI-4). Il est remplaçable (ADR 0014).
+
 **Ajustement** · `Adjustment`:
 Modification manuelle, par un Organisateur, du résultat provisoire d'un tirage (déplacer un participant, annuler une partie sous son minimum ou la rétablir, programmer une partie depuis la réserve, relancer le tirage) avant sa publication.
+
+**Déplacer un participant** · `moveParticipant`:
+Ajustement qui change l'affectation provisoire d'un participant : vers une autre partie du créneau, même une où il n'est pas inscrit et au-delà de son maximum, ou vers les non placés (« Retirer de sa table »).
+_Avoid_: Réaffecter, Déplacer une partie (réservé au programme)
+
+**Déplacé à la main** · `movedByHand`:
+Participant dont l'affectation provisoire vient d'un déplacement par un Organisateur, et non de l'algorithme. Relancer le tirage efface ces déplacements.
 
 **Annuler une partie** · `cancelGame`:
 Geste d'un Organisateur qui retire du tirage provisoire une partie sous son minimum : elle ne sera pas jouée, et son MJ redevient participant sur ses créneaux. L'annulation se défait en rétablissant la partie, jusqu'à la publication, qui déprogramme la partie annulée. Une partie qui n'est pas annulée est maintenue.
 _Avoid_: Déprogrammer (avant le tirage), supprimer
+
+**Rétablir une partie** · `restoreGame`:
+Geste d'un Organisateur qui défait l'annulation d'une partie, avant la publication : elle revient sans joueur, et son MJ quitte le tirage.
+_Avoid_: Réactiver, désannuler
+
+**Signal du tirage** · `DrawSignal`:
+Signal qui attire l'œil d'un Organisateur sur le résultat provisoire d'un tirage : non placés, parties sous leur minimum, parties au-delà de leur maximum, parties sans joueur. Après le lancement, il remplace les avertissements de suivi du créneau.
+_Avoid_: Avertissement de suivi (réservé à avant le tirage), alerte
 
 **Publication du tirage** · `publishDraw`:
 Moment où un Organisateur rend définitif le résultat d'un tirage ; les participants sont alors notifiés, et plus aucune partie ne peut être programmée sur ce créneau.
