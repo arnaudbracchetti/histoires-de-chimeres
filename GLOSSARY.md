@@ -13,6 +13,10 @@ L'événement dans son ensemble, sur une journée, découpé en créneaux. Elle 
 Plage horaire de la journée, habituellement de 2h30, pendant laquelle se jouent les parties en parallèle. Les créneaux ne se chevauchent pas ; deux créneaux sont consécutifs quand aucun autre ne se place entre eux, même s'ils sont séparés par une pause (repas, etc.).
 _Avoid_: Session, tour, slot (seul)
 
+**Créneau terminé** · `hasEnded`:
+Créneau dont l'heure de fin est passée.
+_Avoid_: Clos, fini
+
 **Journée** · `Day`:
 La suite ordonnée des créneaux de la convention. Elle dit le rang de chaque créneau et quels créneaux sont consécutifs.
 _Avoid_: Planning, grille, Programme (réservé aux parties programmées)
@@ -141,14 +145,18 @@ Répartition aléatoire des participants inscrits sur les parties d'un créneau,
 _Avoid_: Loterie, matching, draft, Lottery
 
 **Ajustement** · `Adjustment`:
-Modification manuelle, par un Organisateur, du résultat provisoire d'un tirage (déplacer un participant, maintenir ou annuler une partie, programmer une partie depuis la réserve, relancer le tirage) avant sa publication.
+Modification manuelle, par un Organisateur, du résultat provisoire d'un tirage (déplacer un participant, annuler une partie sous son minimum ou la rétablir, programmer une partie depuis la réserve, relancer le tirage) avant sa publication.
+
+**Annuler une partie** · `cancelGame`:
+Geste d'un Organisateur qui retire du tirage provisoire une partie sous son minimum : elle n'est pas jouée, et son MJ redevient participant sur ses créneaux. Une partie qui n'est pas annulée est maintenue.
+_Avoid_: Déprogrammer (avant le tirage), supprimer
 
 **Publication du tirage** · `publishDraw`:
 Moment où un Organisateur rend définitif le résultat d'un tirage ; les participants sont alors notifiés, et plus aucune partie ne peut être programmée sur ce créneau.
 _Avoid_: Validation
 
 **Affectation** · `Assignment`:
-Résultat publié du tirage pour un participant : la partie (et donc la table) où il joue sur un créneau.
+Résultat du tirage pour un participant, provisoire ou publié : la partie (et donc la table) où il joue sur un créneau.
 _Avoid_: Placement (réservé au verdict de placement), assignation
 
 **Non placé** · `Unassigned`:
