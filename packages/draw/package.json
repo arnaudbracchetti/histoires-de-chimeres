@@ -1,0 +1,38 @@
+{
+  "name": "@chimeres/draw",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Algorithmes de tirage, derrière l'interface DrawAlgorithm du domaine (ADR 0014), et leur suite de tests de contrat. TypeScript pur : ne dépend que de domain.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./contract-suite": {
+      "types": "./dist/contract-suite/index.d.ts",
+      "default": "./dist/contract-suite/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "lint": "oxlint src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@chimeres/domain": "workspace:*"
+  },
+  "peerDependencies": {
+    "vitest": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

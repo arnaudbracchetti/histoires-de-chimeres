@@ -13,6 +13,14 @@ export {
   type UnscheduleVerdict,
   type WithdrawalVerdict,
 } from './convention/convention.js';
+export type {
+  DrawAlgorithm,
+  DrawGame,
+  DrawInput,
+  DrawOutput,
+  DrawParticipant,
+  RandomSource,
+} from './convention/draw-algorithm.js';
 export { Game } from './convention/game.js';
 export type { LocalMoment } from './convention/local-moment.js';
 export { PresenceCode } from './convention/presence-code.js';

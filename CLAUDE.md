@@ -41,6 +41,7 @@ Pièges :
 | `packages/domain` | Agrégats, entités, value objects | rien |
 | `packages/application` | Commandes, ports (`<Concept>Reader`, `<Aggregate>Repository`) | `domain`, `contract` |
 | `packages/contract` | DTO de l'API et descripteurs de ses endpoints (`<concept>Endpoints.<action>`) | rien |
+| `packages/draw` | Algorithmes de tirage, derrière l'interface `DrawAlgorithm` de `domain`, et leur suite de tests de contrat (`@chimeres/draw/contract-suite`) ([ADR 0014](docs/adr/0014-l-algorithme-de-tirage-derriere-une-interface-du-domaine.md)) | `domain` |
 | `apps/api` | NestJS : controllers (`<module>/http/`), implémentations Prisma des ports (`<module>/persistence/`), câblage (`<module>.module.ts`) | tout |
 | `packages/design` | Identité commune aux fronts : jetons CSS, polices, sprites SVG, icônes de PWA, typographie française, textes des notifications de NO-2 (repris par l'alerte de changement), `initialOf`, `renderPresentation` ([ADR 0006](docs/adr/0006-interface-sans-bibliotheque-de-composants.md)) | `marked` |
 | `apps/front-office`, `apps/back-office` | Angular, CDK et Aria, CSS natif, sans bibliothèque de composants | `contract`, `design` |

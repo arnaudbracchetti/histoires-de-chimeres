@@ -4,6 +4,7 @@
     { "path": "./packages/contract" },
     { "path": "./packages/domain" },
     { "path": "./packages/application" },
+    { "path": "./packages/draw" },
     { "path": "./packages/design" }
   ]
 }

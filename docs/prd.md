@@ -183,7 +183,9 @@ Une barre fixée en bas de l'écran porte le geste : « S'inscrire » ou, une fo
   1. ne jamais dépasser le maximum d'une partie et ne placer un participant que sur une partie où il est inscrit ;
   2. placer le plus de participants possible ;
   3. parmi les répartitions équivalentes, maximiser le nombre de parties qui atteignent leur minimum ;
-  4. départager le reste au hasard.
+  4. à égalité, mettre le moins de joueurs possible dans les parties qui restent sous leur minimum ;
+  5. à égalité, équilibrer les tables, la moins remplie d'abord (le remplissage d'une partie : ses joueurs divisés par ses places maximum) ;
+  6. départager le reste au hasard.
 - **TI-5** Le résultat est provisoire. L'Organisateur voit, par partie, ses joueurs et si elle est sous son minimum, ainsi que la liste des non placés.
 - **TI-6** Ajustements possibles avant publication :
   - déplacer n'importe quel participant, y compris vers une partie où il n'est pas inscrit ;
