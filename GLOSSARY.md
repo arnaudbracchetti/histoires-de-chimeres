@@ -129,7 +129,11 @@ Partie dont le nombre d'inscrits dépasse le nombre de places maximum.
 Partie dont le nombre d'inscrits est entre ses places minimum et maximum.
 
 **Demande** · `Demand`:
-Nombre de participants qui ont au moins une inscription active sur un créneau. Un participant inscrit à plusieurs parties du créneau compte pour un.
+Nombre de participants qui ont au moins une inscription active sur un créneau, ou qui y sont sans partie. Un participant inscrit à plusieurs parties du créneau compte pour un.
+
+**Participant sans partie** · `ParticipantWithoutGame`:
+Participant qui reste dans le tirage d'un créneau sans aucune inscription active sur ce créneau : un Organisateur a déprogrammé sa partie, ou l'a déplacée sur un autre créneau, et c'était sa dernière inscription active ; ou c'est le MJ d'une partie annulée, sans autre inscription active sur le créneau. Il cesse de l'être dès qu'il s'inscrit à une partie du créneau, s'il se retire du tirage ou, pour le MJ, quand sa partie est rétablie.
+_Avoid_: Inscription au créneau, en attente
 
 **Capacité** · `Capacity`:
 Places d'un créneau : de la somme des places minimum à la somme des places maximum des parties qui y commencent.
@@ -148,7 +152,7 @@ _Avoid_: Loterie, matching, draft, Lottery
 Modification manuelle, par un Organisateur, du résultat provisoire d'un tirage (déplacer un participant, annuler une partie sous son minimum ou la rétablir, programmer une partie depuis la réserve, relancer le tirage) avant sa publication.
 
 **Annuler une partie** · `cancelGame`:
-Geste d'un Organisateur qui retire du tirage provisoire une partie sous son minimum : elle n'est pas jouée, et son MJ redevient participant sur ses créneaux. Une partie qui n'est pas annulée est maintenue.
+Geste d'un Organisateur qui retire du tirage provisoire une partie sous son minimum : elle ne sera pas jouée, et son MJ redevient participant sur ses créneaux. L'annulation se défait en rétablissant la partie, jusqu'à la publication, qui déprogramme la partie annulée. Une partie qui n'est pas annulée est maintenue.
 _Avoid_: Déprogrammer (avant le tirage), supprimer
 
 **Publication du tirage** · `publishDraw`:
@@ -160,4 +164,4 @@ Résultat du tirage pour un participant, provisoire ou publié : la partie (et d
 _Avoid_: Placement (réservé au verdict de placement), assignation
 
 **Non placé** · `Unassigned`:
-Participant inscrit sur un créneau qui n'a obtenu aucune affectation au tirage.
+Participant du tirage d'un créneau, inscrit ou sans partie, qui n'a obtenu aucune affectation.
