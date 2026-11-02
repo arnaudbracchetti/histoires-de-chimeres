@@ -211,7 +211,7 @@ describe('ScheduleBoard', () => {
       expect([...dialog()!.querySelectorAll('h2, p')].map(text)).toEqual([
         `Déprogrammer «${NBSP}Brumes${NBSP}» du créneau 1${THIN_NBSP}?`,
         `Il y a 12${NBSP}inscrits à la partie. Ils perdront leur inscription et seront notifiés.`,
-        "3 d'entre eux n'ont pas d'autre inscription sur le créneau.",
+        "3 d'entre eux n'ont pas d'autre inscription sur le créneau\u00a0: ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie.",
         'Le scénario revient en réserve, sans ses inscriptions.',
       ]);
       expect(document.activeElement).toBe(dialogButton('Annuler'));
@@ -234,7 +234,7 @@ describe('ScheduleBoard', () => {
 
       expect([...dialog()!.querySelectorAll('p')].map(text)).toEqual([
         `Il y a 1${NBSP}inscrit à la partie. Il perdra son inscription et sera notifié.`,
-        "C'est sa seule inscription sur le créneau.",
+        "C'est sa seule inscription sur le créneau\u00a0: il reste dans le tirage du créneau, mais sans être inscrit à aucune partie.",
         'Le scénario revient en réserve, sans ses inscriptions.',
       ]);
     });
@@ -445,7 +445,7 @@ describe('ScheduleBoard', () => {
         expect([...dialog()!.querySelectorAll('h2, p')].map(text)).toEqual([
           `Échanger «${NBSP}Brumes${NBSP}» et «${NBSP}Néons${NBSP}»${THIN_NBSP}?`,
           `Il y a 12${NBSP}inscrits à «${NBSP}Brumes${NBSP}» (créneau 1). Ils perdront leur inscription et seront notifiés.`,
-          "3 d'entre eux n'ont pas d'autre inscription sur le créneau.",
+          "3 d'entre eux n'ont pas d'autre inscription sur le créneau\u00a0: ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie.",
           `Il y a 4${NBSP}inscrits à «${NBSP}Néons${NBSP}» (créneau 2). Ils perdront leur inscription et seront notifiés.`,
         ]);
         expect(gameAt('s2', 't1')).toEqual({ title: 'Brumes', pending: true });

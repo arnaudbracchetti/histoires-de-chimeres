@@ -170,6 +170,7 @@ En tête, une seule carte (stories 54, 55, 57, 59), puis « Ton programme ». Au
 | État | Icône | Libellé · détail |
 |---|---|---|
 | inscriptions ouvertes | `circle-check` orange, ou `plus` | « 2 inscriptions » · leurs titres, ou « Aucune inscription » · « Choisir une partie » |
+| sans partie, inscriptions ouvertes (IN-6) | `triangle-alert` jaune | « Sans partie » · « Inscris-toi à une autre partie » |
 | tirage en cours | `hourglass` | « Tirage en cours » · ses inscriptions |
 | table | `circle-check` vert | « Table Griffon » · « *Titre*, avec *MJ* » |
 | pas de place | `triangle-alert` jaune | « Pas de place pour toi » · les tables où il en reste |
@@ -185,6 +186,7 @@ L'onglet suit la journée du pseudo, créneau par créneau à venir (story 86). 
 
 - **Rappel « partie très demandée »** (IN-5) : en tête du créneau, sur fond jaune teinté à 14 %, avec `triangle-alert` en jaune : « Ta seule inscription du créneau 2 est une partie très demandée : inscris-toi aussi à une autre partie. » Il disparaît dès le lancement du tirage.
 - **Inscriptions** : une carte par partie, en Anthracite 3 sous un filet, qui ouvre sa fiche. À gauche, le titre, la table (et « créneaux 3 et 4 » pour une partie double, listée sous son seul premier créneau), puis « Très demandée » s'il y a lieu ; à droite, la vignette de 44 px du scénario. Sans inscription : « Aucune inscription sur ce créneau. », en texte secondaire.
+- **Sans partie** (IN-6), inscriptions ouvertes : à la place de « Aucune inscription sur ce créneau. », une carte en Anthracite 2 bordée de jaune : « Toutes tes parties ont été retirées de ce créneau. Tu restes dans le tirage du créneau 2 : inscris-toi à une autre partie pour avoir une table. », puis « Me retirer du tirage » (secondaire). Le tap retire le pseudo du tirage, sans confirmation, puis l'application relit.
 - **Affectation**, après la publication, sous les inscriptions : une carte qui ouvre la fiche, avec `circle-check` en vert, le surtitre « Table Griffon » et « Tu joues à *Titre*, avec *MJ* ». Non placé : « Pas de place pour toi », avec `triangle-alert` en jaune.
 - **Partie menée** (§5.7, [#54](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/54), variante B) : sur chaque créneau où le MJ mène, les deux d'une partie double, à la place des inscriptions. Carte en Anthracite 2, bordée d'orange : la vignette de 48 px, « Tu mènes » en surtitre, « Table Dragon », le titre en lien orange vers la fiche, le jeu ; puis « Début à 14 h 00 » ou « Maintenant » (`clock`, orange). Selon le tirage de son premier créneau :
   - inscriptions ouvertes : « 7 inscrits · 4 à 5 places », « Très demandée » s'il y a lieu, sans les pseudos, puis « Tes joueurs s'afficheront ici à la publication du tirage. » ;

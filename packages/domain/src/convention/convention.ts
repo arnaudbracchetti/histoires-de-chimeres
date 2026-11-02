@@ -9,6 +9,7 @@ import type { Game } from './game.js';
 import type { GameMaster } from './game-master.js';
 import { computeLatestEnd, type LocalMoment } from './local-moment.js';
 import type { Participant } from './participant.js';
+import { ParticipantWithoutGame } from './participant-without-game.js';
 import { Participants } from './participants.js';
 import type { PresenceCode } from './presence-code.js';
 import { Table } from './table.js';
@@ -47,6 +48,8 @@ export type ConventionState = {
   participants: Participant[];
   /** Dans l'ordre où elles ont été prises. */
   signUps: SignUp[];
+  /** Dans n'importe quel ordre. */
+  participantsWithoutGame: ParticipantWithoutGame[];
   /** Les parties programmées, dans l'ordre de leur programmation. */
   games: Game[];
   /** Numéro de version, pour le verrou optimiste : seul le repository le fait avancer. */
@@ -89,6 +92,7 @@ export class Convention {
     gameMasters,
     participants,
     signUps,
+    participantsWithoutGame,
     games,
     ...state
   }: ConventionState): Convention {
@@ -98,7 +102,7 @@ export class Convention {
       UniquelyNamedCollection.createFromItems(tables, TABLE_NAMING_RULES),
       Participants.createFromParticipantsAndGameMasters(participants, gameMasters),
       Schedule.createFromGames(games),
-      SignUps.createFromSignUps(signUps),
+      SignUps.createFromSignUps(signUps, participantsWithoutGame),
     );
   }
 
@@ -238,8 +242,8 @@ export class Convention {
   }
 
   /**
-   * Supprime un créneau, et les disponibilités qui s'y rattachent. Un créneau qui porte des parties
-   * reste (PR-10).
+   * Supprime un créneau, et les disponibilités et les participants sans partie qui s'y rattachent.
+   * Un créneau qui porte des parties reste (PR-10).
    */
   removeTimeSlot(id: string): void {
     this.day.verifyTimeSlotExists(id);
@@ -249,6 +253,7 @@ export class Convention {
     this.day = this.day.getDayAfterRemovingTimeSlot(id);
     this.allParticipants =
       this.allParticipants.getParticipantsAfterWithdrawingAvailabilitiesOnTimeSlot(id);
+    this.allSignUps = this.allSignUps.getSignUpsAfterRemovingTimeSlot(id);
   }
 
   /** Nombre de MJ disponibles sur le créneau. */
@@ -312,8 +317,8 @@ export class Convention {
   }
 
   /**
-   * Supprime un MJ, et avec lui ses disponibilités et son participant, donc ses téléphones reliés et
-   * ses inscriptions. Un MJ qui a au moins un scénario reste (PR-12) : le catalogue, entier, le dit.
+   * Supprime un MJ, et avec lui ses disponibilités et son participant, donc ses téléphones reliés,
+   * ses inscriptions et son état sans partie. Un MJ qui a au moins un scénario reste (PR-12) : le catalogue, entier, le dit.
    */
   removeGameMaster(id: string, catalogue: ScenarioCatalogue): void {
     const participantId = this.allParticipants.findExistingGameMasterById(id).participant.id;
@@ -548,6 +553,11 @@ export class Convention {
     return this.allSignUps.signUps;
   }
 
+  /** Les participants sans partie, enregistrés, même ignorés tant que leur MJ mène (IN-4). */
+  get participantsWithoutGame(): readonly ParticipantWithoutGame[] {
+    return this.allSignUps.participantsWithoutGame;
+  }
+
   /**
    * Inscrit le participant à la partie (IN-2), tant que le tirage de son créneau n'est pas lancé.
    * Plusieurs inscriptions sur un même créneau sont permises. Une partie double compte sur ses deux
@@ -618,16 +628,31 @@ export class Convention {
   }
 
   /**
+   * Le participant sans partie se retire du tirage du créneau, tant que ses inscriptions sont
+   * ouvertes. Rend `false` s'il n'y était pas sans partie : rien ne change (comme IN-2).
+   */
+  withdrawFromDraw(participantId: string, timeSlotId: string): boolean {
+    const participant = this.allParticipants.findExistingParticipantById(participantId);
+    this.day.verifyTimeSlotExists(timeSlotId);
+    this.verifySignUpsOpen(timeSlotId);
+    const withdrawn = new ParticipantWithoutGame(participant.id, timeSlotId);
+    if (!this.allSignUps.hasParticipantWithoutGame(withdrawn)) return false;
+    this.allSignUps = this.allSignUps.getSignUpsAfterWithdrawingFromDraw(withdrawn);
+    return true;
+  }
+
+  /**
    * La situation du participant : ses inscriptions actives (IN-4), puis
-   * l'état de chaque créneau, dans l'ordre de la journée, avec la partie qu'y mène son MJ et le
-   * résultat de son tirage.
+   * l'état de chaque créneau, dans l'ordre de la journée, avec la partie qu'y mène son MJ, le
+   * résultat de son tirage, et s'il y est sans partie.
    */
   computeParticipantSituation(participantId: string): ParticipantSituation {
     const participant = this.allParticipants.findExistingParticipantById(participantId);
+    const collaborators = this.buildSignUpCollaborators(this.gameSchedule);
     return {
       signedUpGameIds: this.allSignUps.listActiveGameIdsOfParticipant(
         participant.id,
-        this.buildSignUpCollaborators(this.gameSchedule),
+        collaborators,
       ),
       timeSlots: this.day.timeSlots.map((slot) => ({
         timeSlotId: slot.id,
@@ -635,6 +660,11 @@ export class Convention {
         ledGameId: this.findGameLedByParticipantOnTimeSlot(participant.id, slot.id)?.id ?? null,
         // Le tirage n'existe pas encore : aucun résultat.
         drawResult: null,
+        withoutGame: this.allSignUps.isParticipantWithoutGameOnTimeSlot(
+          participant.id,
+          slot.id,
+          collaborators,
+        ),
       })),
     };
   }
@@ -692,11 +722,15 @@ export class Convention {
   private buildSignUpIfOpen(participantId: string, gameId: string): SignUp {
     const participant = this.allParticipants.findExistingParticipantById(participantId);
     const game = this.gameSchedule.findExistingGameById(gameId);
-    const firstTimeSlotId = game.timeSlotIds[0]!;
-    if (this.getTimeSlotState(firstTimeSlotId) !== 'sign-ups-open') {
-      throw new Refusal('sign-ups-closed', { rank: this.getTimeSlotRank(firstTimeSlotId) });
-    }
+    this.verifySignUpsOpen(game.timeSlotIds[0]!);
     return new SignUp(participant.id, game.id);
+  }
+
+  /** Refuse un geste du participant sur le créneau une fois son tirage lancé (IN-2). */
+  private verifySignUpsOpen(timeSlotId: string): void {
+    if (this.getTimeSlotState(timeSlotId) !== 'sign-ups-open') {
+      throw new Refusal('sign-ups-closed', { rank: this.getTimeSlotRank(timeSlotId) });
+    }
   }
 
   /** Le Programme après la programmation du scénario sur cette case, ou le refus de PR-5. */
@@ -754,20 +788,28 @@ export class Convention {
   /**
    * Remplace le Programme, et rend les notifications du changement (`ScheduleChange`). Une partie
    * déprogrammée, ou qui passe sur d'autres créneaux, perd ses inscriptions ; changer de table les
-   * garde (IN-6). Les notifications lisent les inscriptions d'avant, que le remplacement efface.
+   * garde (IN-6). Les notifications lisent les inscriptions d'avant, que le remplacement efface, et
+   * celles d'après, qui disent qui devient sans partie.
    */
   private replaceScheduleAndBuildNotifications(next: Schedule): Notification[] {
-    const previous = this.gameSchedule;
-    const notifications = new ScheduleChange(previous, next).buildNotifications({
+    const previousSignUpCollaborators = this.buildSignUpCollaborators(this.gameSchedule);
+    const nextSignUpCollaborators = this.buildSignUpCollaborators(next);
+    const nextSignUps = this.allSignUps.getSignUpsAfterChangingSchedule(
+      previousSignUpCollaborators,
+      nextSignUpCollaborators,
+    );
+    const notifications = new ScheduleChange(this.gameSchedule, next).buildNotifications({
       day: this.day,
       date: this.state.date,
       tables: this.allTables,
       participants: this.allParticipants,
       previousSignUps: this.allSignUps,
-      previousSignUpCollaborators: this.buildSignUpCollaborators(previous),
+      previousSignUpCollaborators,
+      nextSignUps,
+      nextSignUpCollaborators,
       getTimeSlotState: (timeSlotId) => this.getTimeSlotState(timeSlotId),
     });
-    this.allSignUps = this.allSignUps.getSignUpsAfterChangingSchedule(previous, next);
+    this.allSignUps = nextSignUps;
     this.gameSchedule = next;
     return notifications;
   }
@@ -841,6 +883,8 @@ export type ParticipantSituation = {
     /** La partie que mène son MJ sur ce créneau, les deux d'une partie double, ou `null` (IN-4). */
     ledGameId: string | null;
     drawResult: DrawResult;
+    /** Il y est sans partie : il reste dans son tirage, sans inscription active (IN-6). */
+    withoutGame: boolean;
   }[];
 };
 

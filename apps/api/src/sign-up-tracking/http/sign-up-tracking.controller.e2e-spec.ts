@@ -290,6 +290,40 @@ describe('Suivi des inscriptions', () => {
       ]);
     });
 
+    it('écrit l’avertissement des participants sans partie, avec une espace insécable devant « : »', async () => {
+      const elodie = await gameMaster('Élodie');
+      const kairos = await gameMaster('Kaïros');
+      const neons = await scheduled(elodie.id, 'Néons', { min: 1, max: 5 }, 'Table 10');
+      const brumes = await scheduled(kairos.id, 'Brumes', { min: 1, max: 5 }, 'Table 2');
+      await signUpAll(brumes, ['Lune']);
+      await signUpAll(neons, ['Sven']);
+      await server()
+        .delete(apiUrl(scheduleEndpoints.unschedule, { gameId: brumes }))
+        .expect(200);
+
+      const dto = (await server().get(apiUrl(signUpTrackingEndpoints.read)).expect(200))
+        .body as SignUpTrackingDto;
+
+      expect(dto.timeSlots[0]!.demand).toBe(2);
+      expect(dto.timeSlots[0]!.warnings[0]).toEqual({
+        code: 'participants-without-game',
+        level: 'danger',
+        title: '1\u00a0participant sans partie',
+        detail:
+          "Sa partie a été retirée du programme\u00a0: va le voir pour qu'il en choisisse une.",
+      });
+      expect(
+        dto.timeSlots[0]!.participants.map(({ nickname, gameIds, risk }) => [
+          nickname,
+          gameIds,
+          risk,
+        ]),
+      ).toEqual([
+        ['Lune', [], 'without-game'],
+        ['Sven', [neons], null],
+      ]);
+    });
+
     it('écrit « trop de parties » avec une espace insécable devant « : »', async () => {
       const elodie = await gameMaster('Élodie');
       const kairos = await gameMaster('Kaïros');

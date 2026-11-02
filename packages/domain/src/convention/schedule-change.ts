@@ -10,8 +10,9 @@ import type { UniquelyNamedCollection } from './uniquely-named-collection.js';
 
 /**
  * Ce que le changement du Programme lit hors des deux Programmes. Le geste ne change ni la journée,
- * ni la date, ni les tables, ni les participants : une seule valeur suffit. Les inscriptions sont celles
- * d'avant, avec ce qu'elles lisent dans le Programme d'avant : le geste efface celles qu'il retire.
+ * ni la date, ni les tables, ni les participants : une seule valeur suffit. Les inscriptions d'avant,
+ * avec ce qu'elles lisent dans le Programme d'avant, donnent les inscrits ; celles d'après, qui
+ * devient sans partie.
  */
 export type ScheduleChangeCollaborators = {
   day: Day;
@@ -21,6 +22,9 @@ export type ScheduleChangeCollaborators = {
   participants: Participants;
   previousSignUps: SignUps;
   previousSignUpCollaborators: SignUpCollaborators;
+  /** Les inscriptions d'après le geste, avec ce qu'elles lisent dans le Programme d'après. */
+  nextSignUps: SignUps;
+  nextSignUpCollaborators: SignUpCollaborators;
   getTimeSlotState(timeSlotId: string): TimeSlotState;
 };
 
@@ -62,29 +66,29 @@ export class ScheduleChange {
 
   /**
    * « Partie retirée du programme » aux inscrits actifs de chaque partie déprogrammée (IN-4, IN-6),
-   * jusqu'à la fin de son dernier créneau (NO-3). Rien sans inscrit.
+   * jusqu'à la fin de son dernier créneau (NO-3) : une pour ceux qui deviennent sans partie sur son
+   * premier créneau (`withoutGame`), une pour les autres. Rien sans inscrit.
    */
-  private buildGameUnscheduledNotifications({
-    day,
-    date,
-    previousSignUps,
-    previousSignUpCollaborators,
-  }: ScheduleChangeCollaborators): Notification[] {
-    return this.listUnscheduledGames().flatMap((game): Notification[] => {
-      const signedUp = previousSignUps.listActiveParticipantIdsOfGame(
+  private buildGameUnscheduledNotifications(
+    collaborators: ScheduleChangeCollaborators,
+  ): Notification[] {
+    const { day, date, previousSignUps, previousSignUpCollaborators } = collaborators;
+    return this.listUnscheduledGames().flatMap((game) =>
+      splitByWithoutGame(
         game,
-        previousSignUpCollaborators,
-      );
-      if (!signedUp.length) return [];
-      return [
-        {
-          code: 'game-unscheduled',
-          params: { scenarioId: game.scenarioId, ranks: day.getTimeSlotRanks(game.timeSlotIds) },
-          recipients: buildParticipantRecipients(signedUp),
-          deadline: day.computeEndOfTimeSlots(date, game.timeSlotIds),
+        previousSignUps.listActiveParticipantIdsOfGame(game, previousSignUpCollaborators),
+        collaborators,
+      ).map(({ participantIds, withoutGame }): Notification => ({
+        code: 'game-unscheduled',
+        params: {
+          scenarioId: game.scenarioId,
+          ranks: day.getTimeSlotRanks(game.timeSlotIds),
+          withoutGame,
         },
-      ];
-    });
+        recipients: buildParticipantRecipients(participantIds),
+        deadline: day.computeEndOfTimeSlots(date, game.timeSlotIds),
+      })),
+    );
   }
 
   /**
@@ -107,35 +111,30 @@ export class ScheduleChange {
 
   /**
    * « Partie déplacée » aux inscrits actifs de chaque partie passée sur d'autres créneaux (IN-4,
-   * IN-6), jusqu'à la fin du plus tardif de ses anciens et nouveaux créneaux (NO-3). Rien sans
-   * inscrit.
+   * IN-6), jusqu'à la fin du plus tardif de ses anciens et nouveaux créneaux (NO-3) : une pour ceux
+   * qui deviennent sans partie sur son ancien premier créneau (`withoutGame`), une pour les autres.
+   * Rien sans inscrit.
    */
-  private buildGameMovedNotifications({
-    day,
-    date,
-    previousSignUps,
-    previousSignUpCollaborators,
-  }: ScheduleChangeCollaborators): Notification[] {
-    return this.listGamesMovedToOtherTimeSlots().flatMap(({ previous, next }): Notification[] => {
-      const signedUp = previousSignUps.listActiveParticipantIdsOfGame(
+  private buildGameMovedNotifications(collaborators: ScheduleChangeCollaborators): Notification[] {
+    const { day, date, previousSignUps, previousSignUpCollaborators } = collaborators;
+    return this.listGamesMovedToOtherTimeSlots().flatMap(({ previous, next }) =>
+      splitByWithoutGame(
         previous,
-        previousSignUpCollaborators,
-      );
-      if (!signedUp.length) return [];
-      return [
-        {
-          code: 'game-moved',
-          params: {
-            gameId: previous.id,
-            scenarioId: previous.scenarioId,
-            fromRanks: day.getTimeSlotRanks(previous.timeSlotIds),
-            toRanks: day.getTimeSlotRanks(next.timeSlotIds),
-          },
-          recipients: buildParticipantRecipients(signedUp),
-          deadline: day.computeEndOfTimeSlots(date, [...previous.timeSlotIds, ...next.timeSlotIds]),
+        previousSignUps.listActiveParticipantIdsOfGame(previous, previousSignUpCollaborators),
+        collaborators,
+      ).map(({ participantIds, withoutGame }): Notification => ({
+        code: 'game-moved',
+        params: {
+          gameId: previous.id,
+          scenarioId: previous.scenarioId,
+          fromRanks: day.getTimeSlotRanks(previous.timeSlotIds),
+          toRanks: day.getTimeSlotRanks(next.timeSlotIds),
+          withoutGame,
         },
-      ];
-    });
+        recipients: buildParticipantRecipients(participantIds),
+        deadline: day.computeEndOfTimeSlots(date, [...previous.timeSlotIds, ...next.timeSlotIds]),
+      })),
+    );
   }
 
   /**
@@ -233,6 +232,28 @@ export class ScheduleChange {
       )
       .map((gameMaster) => gameMaster.participant.id);
   }
+}
+
+/**
+ * Les inscrits d'une partie qui perd ses inscriptions, en deux groupes : ceux qui restent avec une
+ * autre inscription, puis ceux qui deviennent sans partie sur son premier créneau, d'après les
+ * inscriptions d'après. Un groupe vide n'en est pas un.
+ */
+function splitByWithoutGame(
+  game: Game,
+  signedUp: readonly string[],
+  { nextSignUps, nextSignUpCollaborators }: ScheduleChangeCollaborators,
+): { participantIds: string[]; withoutGame: boolean }[] {
+  const isWithoutGame = (participantId: string) =>
+    nextSignUps.isParticipantWithoutGameOnTimeSlot(
+      participantId,
+      game.timeSlotIds[0]!,
+      nextSignUpCollaborators,
+    );
+  return [
+    { participantIds: signedUp.filter((id) => !isWithoutGame(id)), withoutGame: false },
+    { participantIds: signedUp.filter(isWithoutGame), withoutGame: true },
+  ].filter(({ participantIds }) => participantIds.length);
 }
 
 /** Le participant du MJ de la partie (ADR 0012). */

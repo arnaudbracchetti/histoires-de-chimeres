@@ -21,6 +21,7 @@ class FakeConventionRepository implements ConventionRepository {
       gameMasters: [],
       participants: [],
       signUps: [],
+      participantsWithoutGame: [],
       games: [],
       version: 0,
       presenceCode: PresenceCode.parse('K7M2'),

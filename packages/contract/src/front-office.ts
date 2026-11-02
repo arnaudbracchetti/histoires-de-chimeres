@@ -104,6 +104,11 @@ export type ParticipantSituationDto = {
      */
     ledGameId: string | null;
     drawResult: DrawResultDto;
+    /**
+     * Il y est sans partie : un Organisateur lui a retiré sa dernière inscription du créneau, et il
+     * reste dans son tirage (IN-6).
+     */
+    withoutGame: boolean;
   }[];
 };
 
@@ -121,8 +126,14 @@ export const frontOfficeEndpoints = {
 /**
  * L'inscription du pseudo du téléphone relié à une partie (IN-2) : une ressource, posée par
  * `signUp` et retirée par `withdraw`, sans effet si on les répète. 204, ou `phone-not-linked`.
+ * `withdrawFromDraw` : le pseudo sans partie se retire du tirage du créneau, sans effet si on le
+ * répète ; 204, `phone-not-linked`, ou `sign-ups-closed`.
  */
 export const signUpEndpoints = {
   signUp: endpoint<void, { gameId: string }>('PUT', 'front-office/games/:gameId/sign-up'),
   withdraw: endpoint<void, { gameId: string }>('DELETE', 'front-office/games/:gameId/sign-up'),
+  withdrawFromDraw: endpoint<void, { timeSlotId: string }>(
+    'DELETE',
+    'front-office/time-slots/:timeSlotId/draw-participation',
+  ),
 };

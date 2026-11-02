@@ -31,6 +31,7 @@ export {
 } from './sign-up-tracking/read-sign-up-tracking.js';
 export { ReadParticipantSituation } from './sign-up/read-participant-situation.js';
 export { SignUpForGame } from './sign-up/sign-up-for-game.js';
+export { WithdrawFromDraw } from './sign-up/withdraw-from-draw.js';
 export { WithdrawFromGame } from './sign-up/withdraw-from-game.js';
 export { ScheduleGame } from './game/schedule-game.js';
 export type { ScheduleReader } from './game/schedule-reader.js';

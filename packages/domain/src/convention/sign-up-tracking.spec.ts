@@ -57,6 +57,7 @@ function aConvention(): Convention {
     gameMasters: [],
     participants: [],
     signUps: [],
+    participantsWithoutGame: [],
     games: [],
     version: 0,
     presenceCode: PresenceCode.parse('K7M2'),
@@ -120,6 +121,16 @@ describe('Suivi des inscriptions de chaque créneau (§4.4)', () => {
       [1, 4, 6],
       [0, 0, 0],
     ]);
+  });
+
+  it('compte dans la demande les participants sans partie du créneau', () => {
+    const convention = aConvention();
+    signUp(convention, { p1: ['brumes'], p2: ['epice'] });
+
+    convention.unscheduleGame('brumes');
+
+    // Élodie (p1) est sans partie au créneau 1 ; il n'y reste que « epice » (2 à 4 places).
+    expect(listFiguresByTimeSlot(convention)[0]).toEqual([2, 2, 4]);
   });
 
   it('ne compte une partie double que sur son premier créneau', () => {
@@ -336,6 +347,20 @@ describe('Participants de chaque créneau (§4.4)', () => {
       ['p1', ['brumes', 'epice']],
       ['p2', ['brumes', 'epice']],
       ['Zoé', ['brumes', 'epice']],
+    ]);
+  });
+
+  it('rend les participants sans partie d’abord, sans partie et avec leur risque', () => {
+    const convention = aConvention();
+    signUp(convention, { p3: ['brumes'], p1: ['brumes', 'epice'], p2: ['epice'] });
+
+    convention.unscheduleGame('brumes');
+
+    // Sven (p3) est sans partie ; Élodie (p1) et Lune (p2) gardent « epice », sûre.
+    expect(describeParticipantsOfTimeSlot(convention, 1)).toEqual([
+      ['p3', [], 'without-game'],
+      ['p1', ['epice'], null],
+      ['p2', ['epice'], null],
     ]);
   });
 
@@ -592,6 +617,42 @@ describe('Avertissements de suivi de chaque créneau (§4.4)', () => {
     expect(describeWarningsOfTimeSlot(convention, 3).map(([code]) => code)).toEqual([
       'nearly-full',
       'too-many-games',
+    ]);
+  });
+
+  it('dit combien de participants sont sans partie, après les places qui manquent, sans les compter parmi ceux qui risquent de ne pas être placés', () => {
+    const convention = aConvention();
+    // Au créneau 3 : « eclat » (e, 1 place tout juste) ; « dune » est déprogrammée.
+    convention.scheduleScenario('eclat', aWarningScenario('e'), 's3', 't2');
+    convention.scheduleScenario('dune', aWarningScenario('d'), 's3', 't1');
+    signUpOthers(convention, 3, ['eclat']);
+    signUpOthers(convention, 1, ['dune'], 'y');
+    convention.unscheduleGame('dune');
+
+    expect(describeWarningsOfTimeSlot(convention, 3)).toEqual([
+      ['seats-missing', 'danger', { demand: 4, maxCapacity: 1, missingSeats: 3 }],
+      ['participants-without-game', 'danger', { participantCount: 1 }],
+      ['participants-may-not-be-placed', 'danger', { participantCount: 3 }],
+    ]);
+  });
+
+  it('n’en donne que trois quand les rouges sont trois', () => {
+    const convention = aConvention();
+    convention.addTable('t3', 'Table 3');
+    // Au créneau 3 : « eclat » (e, 1 place tout juste) et « dune » (d, 5 places tout juste).
+    convention.scheduleScenario('eclat', aWarningScenario('e'), 's3', 't2');
+    convention.scheduleScenario('dune', aWarningScenario('d'), 's3', 't1');
+    convention.scheduleScenario('aube', aScenario('c'), 's3', 't3');
+    signUpOthers(convention, 6, ['eclat']);
+    signUpOthers(convention, 1, ['dune'], 'z');
+    signUpOthers(convention, 1, ['aube'], 'y');
+    convention.unscheduleGame('aube');
+
+    // « dune » est aussi sous son minimum : son avertissement jaune ne tient plus.
+    expect(describeWarningsOfTimeSlot(convention, 3).map(([code]) => code)).toEqual([
+      'seats-missing',
+      'participants-without-game',
+      'participants-may-not-be-placed',
     ]);
   });
 

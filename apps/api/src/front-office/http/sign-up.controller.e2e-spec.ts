@@ -38,6 +38,8 @@ describe('Inscriptions du front office (IN-2)', () => {
     withCookie(server().put(apiUrl(signUpEndpoints.signUp, { gameId })), cookie);
   const withdraw = (gameId: string, cookie?: string) =>
     withCookie(server().delete(apiUrl(signUpEndpoints.withdraw, { gameId })), cookie);
+  const withdrawFromDraw = (timeSlotId: string, cookie?: string) =>
+    withCookie(server().delete(apiUrl(signUpEndpoints.withdrawFromDraw, { timeSlotId })), cookie);
   const readSituation = (cookie: string) =>
     withCookie(server().get(apiUrl(frontOfficeEndpoints.readSituation)), cookie);
   const signUpCountOf = async (gameId: string, cookie: string) => {
@@ -120,7 +122,15 @@ describe('Inscriptions du front office (IN-2)', () => {
     expect(await signUpCountOf(gameId, elodie)).toBe(1);
     expect((await readSituation(elodie).expect(200)).body).toEqual({
       signedUpGameIds: [gameId],
-      timeSlots: [{ timeSlotId, state: 'sign-ups-open', ledGameId: null, drawResult: null }],
+      timeSlots: [
+        {
+          timeSlotId,
+          state: 'sign-ups-open',
+          ledGameId: null,
+          drawResult: null,
+          withoutGame: false,
+        },
+      ],
     });
   });
 
@@ -137,7 +147,15 @@ describe('Inscriptions du front office (IN-2)', () => {
     expect(await signUpCountOf(gameId, brann)).toBe(0);
     expect((await readSituation(brann).expect(200)).body).toEqual({
       signedUpGameIds: [],
-      timeSlots: [{ timeSlotId, state: 'sign-ups-open', ledGameId: gameId, drawResult: null }],
+      timeSlots: [
+        {
+          timeSlotId,
+          state: 'sign-ups-open',
+          ledGameId: gameId,
+          drawResult: null,
+          withoutGame: false,
+        },
+      ],
     });
   });
 
@@ -184,11 +202,30 @@ describe('Inscriptions du front office (IN-2)', () => {
     expect(response.body).toMatchObject({ code: 'game-not-found' });
   });
 
+  it('garde le pseudo dans le tirage du créneau quand sa partie est déprogrammée, puis l’en retire (IN-6)', async () => {
+    const { gameId, timeSlotId } = await prepare();
+    const elodie = await linkedPhone('Élodie');
+    await signUp(gameId, elodie).expect(204);
+    await server().delete(apiUrl(scheduleEndpoints.unschedule, { gameId })).expect(200);
+    const withoutGameOf = async () =>
+      (await readSituation(elodie).expect(200)).body.timeSlots[0].withoutGame as boolean;
+    const withoutGameBefore = await withoutGameOf();
+
+    await withdrawFromDraw(timeSlotId, elodie).expect(204);
+
+    expect(withoutGameBefore).toBe(true);
+    expect(await withoutGameOf()).toBe(false);
+    await withdrawFromDraw(timeSlotId, elodie).expect(204);
+  });
+
   it('refuse un téléphone relié à aucun pseudo', async () => {
-    const { gameId } = await prepare();
+    const { gameId, timeSlotId } = await prepare();
 
     expect((await signUp(gameId).expect(401)).body).toMatchObject({ code: 'phone-not-linked' });
     expect((await withdraw(gameId).expect(401)).body).toMatchObject({ code: 'phone-not-linked' });
+    expect((await withdrawFromDraw(timeSlotId).expect(401)).body).toMatchObject({
+      code: 'phone-not-linked',
+    });
     const situation = await server().get(apiUrl(frontOfficeEndpoints.readSituation)).expect(401);
     expect(situation.body).toMatchObject({ code: 'phone-not-linked' });
   });

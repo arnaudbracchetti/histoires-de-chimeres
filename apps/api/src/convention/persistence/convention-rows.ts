@@ -45,6 +45,13 @@ export function rowsOf(convention: Convention) {
       convention.signUps.map(({ participantId, gameId }) => ({ participantId, gameId })),
       ({ participantId, gameId }) => `${participantId}:${gameId}`,
     ),
+    participantsWithoutGame: keyed(
+      convention.participantsWithoutGame.map(({ participantId, timeSlotId }) => ({
+        participantId,
+        timeSlotId,
+      })),
+      ({ participantId, timeSlotId }) => `${participantId}:${timeSlotId}`,
+    ),
     /** Une partie avec ses créneaux : ils changent ensemble, quand elle se déplace. */
     games: keyed(
       convention.games.map((game) => ({

@@ -110,7 +110,7 @@ function ledGames({ situation }: Reading): Map<string, string> {
 
 /**
  * Ses inscriptions retirées, sauf par lui : sa partie retirée du programme, ou déplacée sur
- * d'autres créneaux (IN-6). Une partie restée en place ne compte plus pour lui quand son MJ mène
+ * d'autres créneaux (IN-6). S'il est devenu sans partie sur son premier créneau, le texte le dit. Une partie restée en place ne compte plus pour lui quand son MJ mène
  * sur l'un de ses créneaux, mais l'inscription reste, suspendue (IN-4) : rien à signaler.
  */
 function removedSignUps(
@@ -128,10 +128,20 @@ function removedSignUps(
       if (!game) return [];
       const ranks = ranksOf(before.schedule, game);
       const see = frontOfficeUrls.timeSlotGames(ranks[0]!);
+      const withoutGame = !!after.situation.timeSlots.find(
+        ({ timeSlotId }) => timeSlotId === game.timeSlotIds[0],
+      )?.withoutGame;
       const moved = findGame(after.schedule, gameId);
-      if (!moved) return [buildChangeNotice(buildGameUnscheduledText(ranks, game.title), see)];
+      if (!moved) {
+        return [buildChangeNotice(buildGameUnscheduledText(ranks, game.title, withoutGame), see)];
+      }
       if (moved.timeSlotIds.join() === game.timeSlotIds.join()) return [];
-      const text = buildGameMovedText(ranks, ranksOf(after.schedule, moved), game.title);
+      const text = buildGameMovedText(
+        ranks,
+        ranksOf(after.schedule, moved),
+        game.title,
+        withoutGame,
+      );
       return [buildChangeNotice(text, see)];
     });
 }

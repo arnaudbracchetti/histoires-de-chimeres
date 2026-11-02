@@ -38,6 +38,7 @@ function aConvention(date: string | null = '2027-03-14'): Convention {
     gameMasters: [],
     participants: [],
     signUps: [],
+    participantsWithoutGame: [],
     games: [],
     version: 0,
     presenceCode: PresenceCode.parse('K7M2'),
@@ -86,6 +87,7 @@ function restoreWithGameMasterSignUps(convention: Convention, ...signUps: SignUp
     gameMasters: [...convention.gameMasters],
     participants: [...convention.participants],
     signUps: [...convention.signUps, ...signUps],
+    participantsWithoutGame: [...convention.participantsWithoutGame],
     games: [...convention.games],
     version: convention.version,
     presenceCode: convention.presenceCode,
@@ -167,15 +169,21 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
     const convention = aConvention();
     convention.signUpForGame('p1', 'brumes', CATALOGUE);
     convention.signUpForGame('p2', 'brumes', CATALOGUE);
-    convention.signUpForGame('p2', 'neons', CATALOGUE);
+    convention.signUpForGame('p2', 'epice', CATALOGUE);
 
     const notifications = convention.unscheduleGame('brumes');
 
     expect(notifications).toEqual([
       {
         code: 'game-unscheduled',
-        params: { scenarioId: 'a', ranks: [1] },
-        recipients: { kind: 'participants', participantIds: ['p1', 'p2'] },
+        params: { scenarioId: 'a', ranks: [1], withoutGame: false },
+        recipients: { kind: 'participants', participantIds: ['p2'] },
+        deadline: endOfDay('11:30'),
+      },
+      {
+        code: 'game-unscheduled',
+        params: { scenarioId: 'a', ranks: [1], withoutGame: true },
+        recipients: { kind: 'participants', participantIds: ['p1'] },
         deadline: endOfDay('11:30'),
       },
       {
@@ -193,8 +201,18 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
 
     const [toSignedUp] = convention.unscheduleGame('epice');
 
-    expect(toSignedUp?.params).toEqual({ scenarioId: 'b', ranks: [1, 2] });
+    expect(toSignedUp?.params).toEqual({ scenarioId: 'b', ranks: [1, 2], withoutGame: true });
     expect(toSignedUp?.deadline).toEqual(endOfDay('16:30'));
+  });
+
+  it('un inscrit qui garde une inscription sur le premier créneau d’une partie double ne devient pas sans partie', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+
+    const [toSignedUp] = convention.unscheduleGame('epice');
+
+    expect(toSignedUp?.params).toEqual({ scenarioId: 'b', ranks: [1, 2], withoutGame: false });
   });
 
   it('sans inscrit, seul le MJ est prévenu', () => {
@@ -240,7 +258,13 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
     expect(filterByCode(notifications, 'game-moved')).toEqual([
       {
         code: 'game-moved',
-        params: { gameId: 'brumes', scenarioId: 'a', fromRanks: [1], toRanks: [3] },
+        params: {
+          gameId: 'brumes',
+          scenarioId: 'a',
+          fromRanks: [1],
+          toRanks: [3],
+          withoutGame: true,
+        },
         recipients: { kind: 'participants', participantIds: ['p1'] },
         deadline: endOfDay('20:30'),
       },
@@ -259,6 +283,7 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
       scenarioId: 'c',
       fromRanks: [2],
       toRanks: [1],
+      withoutGame: true,
     });
     expect(moved?.deadline).toEqual(endOfDay('16:30'));
   });
@@ -338,12 +363,24 @@ describe('Notifications de deux parties échangées (NO-2)', () => {
     ).toEqual([
       {
         code: 'game-moved',
-        params: { gameId: 'brumes', scenarioId: 'a', fromRanks: [1], toRanks: [2] },
+        params: {
+          gameId: 'brumes',
+          scenarioId: 'a',
+          fromRanks: [1],
+          toRanks: [2],
+          withoutGame: true,
+        },
         recipients: { kind: 'participants', participantIds: ['p1'] },
       },
       {
         code: 'game-moved',
-        params: { gameId: 'neons', scenarioId: 'c', fromRanks: [2], toRanks: [1] },
+        params: {
+          gameId: 'neons',
+          scenarioId: 'c',
+          fromRanks: [2],
+          toRanks: [1],
+          withoutGame: true,
+        },
         recipients: { kind: 'participants', participantIds: ['p1', 'p2'] },
       },
     ]);

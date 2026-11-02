@@ -27,6 +27,7 @@ export { PresenceCode } from './convention/presence-code.js';
 export type { ReserveOfScenario, TimeSlotReserveEntry } from './convention/reserve.js';
 export { GameMaster } from './convention/game-master.js';
 export { Participant } from './convention/participant.js';
+export { ParticipantWithoutGame } from './convention/participant-without-game.js';
 export { SignUp } from './convention/sign-up.js';
 export { SignUps, type RemovedSignUps, type SignUpFigures } from './convention/sign-ups.js';
 export type {

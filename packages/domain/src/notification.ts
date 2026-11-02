@@ -6,15 +6,25 @@ import type { LocalMoment } from './convention/local-moment.js';
  * créneaux, deux pour une partie double.
  */
 export type NotificationParams = {
-  /** Aux inscrits d'une partie déprogrammée : leur inscription est supprimée (IN-6). */
-  'game-unscheduled': { scenarioId: string; ranks: number[] };
+  /**
+   * Aux inscrits d'une partie déprogrammée : leur inscription est supprimée (IN-6). `withoutGame` :
+   * ils deviennent sans partie sur son premier créneau.
+   */
+  'game-unscheduled': { scenarioId: string; ranks: number[]; withoutGame: boolean };
   /** Au MJ d'une partie déprogrammée : il peut s'inscrire sur ce créneau. */
   'own-game-unscheduled': { scenarioId: string; ranks: number[] };
   /**
    * Aux inscrits d'une partie passée à d'autres créneaux : leur inscription est retirée (IN-6).
-   * `fromRanks` : ses anciens créneaux ; `toRanks` : les nouveaux.
+   * `fromRanks` : ses anciens créneaux ; `toRanks` : les nouveaux. `withoutGame` : ils deviennent
+   * sans partie sur son ancien premier créneau.
    */
-  'game-moved': { gameId: string; scenarioId: string; fromRanks: number[]; toRanks: number[] };
+  'game-moved': {
+    gameId: string;
+    scenarioId: string;
+    fromRanks: number[];
+    toRanks: number[];
+    withoutGame: boolean;
+  };
   /**
    * Aux inscrits d'une partie passée au-dessus de ses places maximum, dont c'est la seule
    * inscription sur le créneau (IN-5). `rank` : le rang de son premier créneau.

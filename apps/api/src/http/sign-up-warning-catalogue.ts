@@ -30,6 +30,13 @@ export const signUpWarningCatalogue: {
     detail: ({ demand, maxCapacity }) =>
       fr`${participants(demand)} pour ${seats(maxCapacity)} au plus.`,
   },
+  'participants-without-game': {
+    title: ({ participantCount }) => fr`${participants(participantCount)} sans partie`,
+    detail: ({ participantCount }) =>
+      participantCount > 1
+        ? fr`Leur partie a été retirée du programme : va les voir pour qu'ils en choisissent une.`
+        : fr`Sa partie a été retirée du programme : va le voir pour qu'il en choisisse une.`,
+  },
   'participants-may-not-be-placed': {
     title: ({ participantCount }) =>
       fr`${participants(participantCount)} ${plural(participantCount, 'risque', 'risquent')} de ne pas être ${plural(participantCount, 'placé', 'placés')}`,

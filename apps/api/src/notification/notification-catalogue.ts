@@ -34,16 +34,16 @@ type Writer<P> = (params: P, scenario: NotifiedScenario) => NotificationText;
 export const notificationCatalogue: {
   [C in NotificationCode]: Writer<NotificationParams[C]>;
 } = {
-  'game-unscheduled': ({ ranks }, { title }) => ({
-    ...buildGameUnscheduledText(ranks, title),
+  'game-unscheduled': ({ ranks, withoutGame }, { title }) => ({
+    ...buildGameUnscheduledText(ranks, title, withoutGame),
     url: frontOfficeUrls.timeSlotGames(ranks[0]!),
   }),
   'own-game-unscheduled': ({ ranks }, { title }) => ({
     ...buildOwnGameUnscheduledText(ranks, title),
     url: frontOfficeUrls.timeSlotGames(ranks[0]!),
   }),
-  'game-moved': ({ gameId, fromRanks, toRanks }, { title }) => ({
-    ...buildGameMovedText(fromRanks, toRanks, title),
+  'game-moved': ({ gameId, fromRanks, toRanks, withoutGame }, { title }) => ({
+    ...buildGameMovedText(fromRanks, toRanks, title, withoutGame),
     url: frontOfficeUrls.game(gameId),
   }),
   'game-oversubscribed': ({ rank }, { title }) => ({

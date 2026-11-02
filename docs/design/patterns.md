@@ -184,7 +184,7 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 - **Le dialogue de confirmation** :
   - pose une question qui nomme l'objet : « Supprimer le créneau 2 ? » ;
   - dit ce qui part avec lui, en un ou plusieurs paragraphes : « Ses 4 disponibilités seront supprimées. » (PR-10, PR-12) ;
-  - pour un geste qui retire des inscriptions, pose le chiffre, puis la conséquence : « Il y a 12 inscrits à la partie. Ils perdront leur inscription et seront notifiés. », puis, à la ligne, « 3 d'entre eux n'ont pas d'autre inscription sur le créneau. » (absente à 0). Au singulier : « Il y a 1 inscrit à la partie. Il perdra son inscription et sera notifié. », puis « C'est sa seule inscription sur le créneau. ». Une partie double ajoute ses créneaux (« à la partie (créneaux 2 et 3) »). Un échange donne ces phrases pour chaque partie touchée, nommée : « Il y a 4 inscrits à « Néons » (créneau 2). ». Une déprogrammation ajoute « Le scénario revient en réserve, sans ses inscriptions. » ;
+  - pour un geste qui retire des inscriptions, pose le chiffre, puis la conséquence : « Il y a 12 inscrits à la partie. Ils perdront leur inscription et seront notifiés. », puis, à la ligne, « 3 d'entre eux n'ont pas d'autre inscription sur le créneau : ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie. » (absente à 0, IN-6). Au singulier : « Il y a 1 inscrit à la partie. Il perdra son inscription et sera notifié. », puis « C'est sa seule inscription sur le créneau : il reste dans le tirage du créneau, mais sans être inscrit à aucune partie. » Une partie double ajoute ses créneaux (« à la partie (créneaux 2 et 3) »). Un échange donne ces phrases pour chaque partie touchée, nommée : « Il y a 4 inscrits à « Néons » (créneau 2). ». Une déprogrammation ajoute « Le scénario revient en réserve, sans ses inscriptions. » ;
   - s'en tient aux chiffres de l'API (inscriptions actives, IN-4) : ni pseudos, ni places restantes. « Déplacer vers… » ne les annonce pas sur ses cases, qui gardent leur seul verdict PR-5 ;
   - sur la page de pilotage, reprend à chaque relecture les chiffres du suivi des mêmes parties, sans se fermer ; un nombre retombé à 0 donne « Aucun inscrit ne perd son inscription. » (« Aucun inscrit de « Néons » (créneau 2) ne perd son inscription. » dans un échange). Le Calendrier, qui ne se relit pas, garde les chiffres lus au geste. Le geste retire les inscriptions présentes au moment de l'écriture ;
   - propose « Annuler » (discret) et un bouton destructeur qui nomme l'action : « Supprimer le créneau » ;
@@ -218,7 +218,7 @@ Pensés pour le pilotage du jour J (demande / capacité, PRD §4.4) et les autre
 |---|---|---|---|
 | Vert | `--success` | `circle-check` | correct, complet |
 | Jaune | `--warning` | `triangle-alert` | attention : la demande atteint 80 % de la capacité maximum, trop de parties, une partie reste sous son minimum |
-| Rouge brique | `--danger` | `octagon-alert` | surcharge (il manque des places, des participants risquent de ne pas être placés), erreur |
+| Rouge brique | `--danger` | `octagon-alert` | surcharge (il manque des places, des participants sans partie, des participants risquent de ne pas être placés), erreur |
 | Neutre | `--text-muted` sur `--surface-3` | propre au sens : `clock` (à venir), `inbox` (en réserve) | information sans jugement : « double », « à venir », « en réserve » |
 
 - Une forme d'icône par couleur : aucune information ne passe par la couleur seule. Un statut a **toujours une icône et un libellé**.
@@ -321,6 +321,7 @@ La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque c
     | Code | Niveau | Titre (exemple) | Bouton |
     |---|---|---|---|
     | `seats-missing` | rouge | « Il manque 4 places » | « Voir la réserve » |
+    | `participants-without-game` | rouge | « 3 participants sans partie » | « Voir les participants » (onglet Inscrits, puce « Sans partie ») |
     | `participants-may-not-be-placed` | rouge | « 8 participants risquent de ne pas être placés » | « Voir les participants » (onglet Inscrits, puce « Risquent de ne pas être placés ») |
     | `nearly-full` | jaune | « Presque plein » | « Voir la réserve » |
     | `too-many-games` | jaune | « Trop de parties » | « Voir les parties » |
@@ -334,10 +335,10 @@ La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque c
   - Table libre : ligne en pointillés, « Table libre » et « Programmer ici… ». Ce bouton ouvre un dialogue « Programmer sur le créneau 2, table Dragon », lu à l'ouverture dans les verdicts de la case : les scénarios programmables avec « Choisir », puis « Pas programmables ici · N », chacun atténué avec son motif (la carte du bac de réserve). Vide : « Aucun scénario programmable ici. » « Choisir » programme la partie, puis onglet Parties, focus sur sa ligne et annonce ; un refus s'affiche dans le dialogue, comme dans le dialogue de placement.
   - Second créneau d'une partie double : ligne atténuée, « Partie double, comptée sur le créneau 3 », sans chiffres.
 - **Onglet Inscrits du créneau** : qui s'est inscrit où.
-  - Puces de filtre, comme celles du bac de réserve : « Tous · 26 », « Risquent de ne pas être placés · 16 », « Risquent de rester sans table · 2 ». Une puce à 0 n'apparaît pas ; si la puce choisie disparaît à une relecture, le filtre revient à « Tous ». Le filtre survit à la relecture et au changement d'onglet.
+  - Puces de filtre, comme celles du bac de réserve : « Tous · 26 », « Sans partie · 3 », « Risquent de ne pas être placés · 16 », « Risquent de rester sans table · 2 ». Une puce à 0 n'apparaît pas ; si la puce choisie disparaît à une relecture, le filtre revient à « Tous ». Le filtre survit à la relecture et au changement d'onglet.
   - Un tableau : un pseudo par ligne (en-tête de ligne), une partie par colonne, dans l'ordre des tables. L'en-tête de colonne donne le titre (bouton qui ouvre la fiche, `aria-expanded`), « 15 inscrits · 3–4 » et les badges. Une coche (`check`) par inscription, avec « inscrit » pour les lecteurs d'écran. Chaque colonne de partie est centrée et bordée, et une sur deux est teintée, pour la suivre de haut en bas.
-  - Deux groupes, dans l'ordre reçu de l'API : « Une seule inscription · N », puis « Plusieurs inscriptions · N ». Un groupe vide après filtre n'apparaît pas.
-  - La colonne « Avertissement » porte la pastille du risque : « Risque de ne pas être placé » (rouge, `octagon-alert`) quand toutes ses parties du créneau sont très demandées, ou « Risque de rester sans table » (jaune, `triangle-alert`) quand aucune n'est sûre et que l'une au moins est sous son minimum. Le MJ qui mène sur le créneau n'y figure pas (IN-4).
+  - Trois groupes, dans l'ordre reçu de l'API : « Sans partie · N », puis « Une seule inscription · N », puis « Plusieurs inscriptions · N ». Un groupe vide après filtre n'apparaît pas. La ligne d'un participant sans partie n'a aucune coche.
+  - La colonne « Avertissement » porte la pastille du risque : « Sans partie » (rouge, `octagon-alert`) quand un Organisateur lui a retiré sa dernière partie du créneau (IN-6), « Risque de ne pas être placé » (rouge, `octagon-alert`) quand toutes ses parties du créneau sont très demandées, ou « Risque de rester sans table » (jaune, `triangle-alert`) quand aucune n'est sûre et que l'une au moins est sous son minimum. Le MJ qui mène sur le créneau n'y figure pas (IN-4).
   - Sans inscription : « Aucune inscription sur ce créneau pour l'instant. »
 - **Onglet Réserve du créneau** : les scénarios dont le MJ est disponible sur le créneau, et qui n'y ont aucune partie qui commence, dans l'ordre reçu de l'API (programmables d'abord, puis l'ordre naturel des titres).
   - En tête : « 4 scénarios programmables sur ce créneau, 5 autres en réserve. »

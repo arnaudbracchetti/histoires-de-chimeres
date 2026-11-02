@@ -11,15 +11,15 @@ import type { TableDto } from './table.js';
 export type CapacityDto = { min: number; max: number };
 
 /**
- * Le risque d'un participant dont aucune partie du créneau n'est sûre (inscrits entre ses places
- * minimum et maximum) : toutes sont très demandées, il risque de ne pas être placé ; sinon, il
- * risque de rester sans table.
+ * Le risque d'un participant du créneau : sans partie (`without-game`) ; ou, quand aucune de ses
+ * parties du créneau n'est sûre (inscrits entre ses places minimum et maximum), toutes sont très
+ * demandées, il risque de ne pas être placé, sinon il risque de rester sans table.
  */
-export type ParticipantRiskDto = 'may-not-be-placed' | 'may-be-left-without-table';
+export type ParticipantRiskDto = 'without-game' | 'may-not-be-placed' | 'may-be-left-without-table';
 
 /**
  * Un participant du créneau : les parties qui y commencent où son inscription est active (IN-4),
- * dans l'ordre de leur programmation, et son risque, ou `null` (jamais sur un créneau sans
+ * dans l'ordre de leur programmation, aucune s'il y est sans partie, et son risque, ou `null` (jamais sur un créneau sans
  * inscription, ou fermé).
  */
 export type TrackedParticipantDto = {
@@ -55,6 +55,8 @@ type UnderDemandParams = {
 export type SignUpWarningParams = {
   /** La demande dépasse la capacité maximum : `missingSeats` places manquent. */
   'seats-missing': { demand: number; maxCapacity: number; missingSeats: number };
+  /** `participantCount` participants sont sans partie sur le créneau. */
+  'participants-without-game': { participantCount: number };
   /** `participantCount` participants risquent de ne pas être placés : toutes leurs parties du créneau sont très demandées. */
   'participants-may-not-be-placed': { participantCount: number };
   /** La demande atteint 80 % de la capacité maximum, sans la dépasser. */
@@ -84,7 +86,7 @@ export type SignUpWarningDto = {
 
 /**
  * Le suivi des inscriptions d'un créneau. `demand` : les participants distincts qui ont au moins
- * une inscription active sur une partie qui y commence (IN-4). Une partie double ne compte que sur
+ * une inscription active sur une partie qui y commence (IN-4), ou qui y sont sans partie. Une partie double ne compte que sur
  * son premier créneau.
  */
 export type TimeSlotTrackingDto = {
@@ -99,8 +101,8 @@ export type TimeSlotTrackingDto = {
   demand: number;
   capacity: CapacityDto;
   /**
-   * Ceux qui n'ont qu'une inscription sur le créneau d'abord, puis les autres, chaque groupe dans
-   * l'ordre naturel des pseudos : le front garde cet ordre. Le MJ qui mène sur le créneau n'y est
+   * Ceux qui sont sans partie sur le créneau d'abord, puis ceux qui n'y ont qu'une inscription,
+   * puis les autres, chaque groupe dans l'ordre naturel des pseudos : le front garde cet ordre. Le MJ qui mène sur le créneau n'y est
    * pas (IN-4).
    */
   participants: TrackedParticipantDto[];

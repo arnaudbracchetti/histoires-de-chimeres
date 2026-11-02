@@ -448,7 +448,14 @@ export class HomePage {
   }
 
   /** La ligne d'un créneau de « Ton programme » : son affectation, ou l'état de ses inscriptions. */
-  protected lineOf({ timeSlot, state, signedUpGames, assignment, led }: MyTimeSlot): ProgrammeLine {
+  protected lineOf({
+    timeSlot,
+    state,
+    signedUpGames,
+    withoutGame,
+    assignment,
+    led,
+  }: MyTimeSlot): ProgrammeLine {
     const titles = formatList(signedUpGames.map(({ title }) => title));
     const signUps = countOf(signedUpGames.length, 'inscription', 'inscriptions');
     if (led?.outcome.kind === 'cancelled') {
@@ -491,6 +498,14 @@ export class HomePage {
         tone: 'warning',
         label: 'Pas de place pour toi',
         detail: seatsLeftText(assignment.gamesWithSeats),
+      };
+    }
+    if (withoutGame) {
+      return {
+        icon: 'triangle-alert',
+        tone: 'warning',
+        label: 'Sans partie',
+        detail: fr`Inscris-toi à une autre partie`,
       };
     }
     if (state === 'drawing') {

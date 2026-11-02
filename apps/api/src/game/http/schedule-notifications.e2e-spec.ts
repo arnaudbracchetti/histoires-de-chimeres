@@ -212,7 +212,10 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
           web_push: 8030,
           notification: {
             title: 'Créneau 1\u00a0: partie retirée du programme',
-            body: 'Néons est retirée\u00a0: ton inscription est supprimée.',
+            // Lune n'avait que cette inscription au créneau 1 : elle reste dans son tirage (IN-6).
+            body:
+              'Néons est retirée\u00a0: ton inscription est supprimée. Tu restes dans le tirage du ' +
+              'créneau 1\u00a0: inscris-toi à une autre partie pour avoir une table.',
             navigate: `${PUBLIC_URL}${tap}`,
             lang: 'fr',
             icon: `${PUBLIC_URL}/icons/icon-192.png`,
@@ -282,7 +285,9 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
       expect(message).toMatchObject({
         notification: {
           title: 'Créneau 1\u00a0: partie déplacée',
-          body: "Néons passe au créneau 2\u00a0: ton inscription est retirée. Réinscris-toi si l'horaire te va.",
+          body:
+            "Néons passe au créneau 2\u00a0: ton inscription est retirée. Réinscris-toi si l'horaire te va. " +
+            'Tu restes dans le tirage du créneau 1\u00a0: inscris-toi à une autre partie pour y avoir une table.',
           navigate: `${PUBLIC_URL}/parties/${gameId}`,
           data: {
             onActionClick: {

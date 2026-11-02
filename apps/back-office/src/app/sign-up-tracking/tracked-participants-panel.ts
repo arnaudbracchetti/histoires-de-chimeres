@@ -16,6 +16,7 @@ export type ParticipantFilter = 'all' | ParticipantRiskDto;
 
 const FILTER_LABELS: Record<ParticipantFilter, string> = {
   all: 'Tous',
+  'without-game': 'Sans partie',
   'may-not-be-placed': 'Risquent de ne pas être placés',
   'may-be-left-without-table': 'Risquent de rester sans table',
 };
@@ -36,7 +37,8 @@ export function keepParticipantFilter(
 /**
  * L'onglet « Inscrits du créneau » (docs/design/patterns.md, Pilotage du jour J) : les puces de
  * filtre, puis un tableau, un pseudo par ligne et une partie par colonne, dans l'ordre des tables.
- * Les pseudos gardent l'ordre de l'API : une seule inscription d'abord, puis les autres. Le titre
+ * Les pseudos gardent l'ordre de l'API : sans partie d'abord, puis une seule inscription, puis les
+ * autres. Le titre
  * d'une colonne ouvre la fiche de sa partie.
  */
 @Component({
@@ -291,7 +293,7 @@ export class TrackedParticipantsPanel {
   /** « Tous », puis une puce par risque, sans celles à 0. */
   protected readonly chips = computed(() => {
     const participants = this.timeSlot().participants;
-    return (['all', 'may-not-be-placed', 'may-be-left-without-table'] as const)
+    return (['all', 'without-game', 'may-not-be-placed', 'may-be-left-without-table'] as const)
       .map((filter) => ({
         filter,
         label: FILTER_LABELS[filter],
@@ -303,13 +305,17 @@ export class TrackedParticipantsPanel {
       .filter(({ count }) => count > 0);
   });
 
-  /** Les deux groupes, dans l'ordre reçu, sans les pseudos filtrés ; un groupe vide n'apparaît pas. */
+  /** Les trois groupes, dans l'ordre reçu, sans les pseudos filtrés ; un groupe vide n'apparaît pas. */
   protected readonly groups = computed(() => {
     const filter = this.filter();
     const shown = this.timeSlot().participants.filter(
       ({ risk }) => filter === 'all' || risk === filter,
     );
     return [
+      {
+        label: 'Sans partie',
+        participants: shown.filter(({ gameIds }) => gameIds.length === 0),
+      },
       {
         label: 'Une seule inscription',
         participants: shown.filter(({ gameIds }) => gameIds.length === 1),

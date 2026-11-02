@@ -3,24 +3,27 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { TIME_SLOT_PARAM } from '@chimeres/contract';
-import { formatTimeRange } from '@chimeres/design';
+import { formatTimeRange, fr } from '@chimeres/design';
 import { doubleGameRanksOf, timeSlotsOf } from '../game/game-text';
 import { LedGameCard } from '../game/led-game-card';
 import { OversubscribedBadge } from '../game/oversubscribed-badge';
 import { OversubscribedReminder } from '../game/oversubscribed-reminder';
 import { ParticipantData } from '../participant-data/participant-data';
 import { ScenarioIllustration } from '../scenario-illustration';
+import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 
 /**
  * Mes parties, créneau par créneau à venir : le rappel d'IN-5, les inscriptions du pseudo, chacune
  * vers sa fiche, puis sa table ou « Pas de place pour toi » après la publication (story 86). Sur un
- * créneau où son MJ mène, la partie menée s'y déplie (§5.7). `?creneau=2` fait défiler jusqu'au
+ * créneau où son MJ mène, la partie menée s'y déplie (§5.7). Sur un créneau aux inscriptions
+ * ouvertes où il est sans partie, ce qu'il peut faire, et « Me retirer du tirage » (IN-6). `?creneau=2` fait défiler jusqu'au
  * créneau 2.
  */
 @Component({
   selector: 'app-my-games-page',
   imports: [
+    Button,
     Icon,
     LedGameCard,
     OversubscribedBadge,
@@ -71,6 +74,20 @@ import { Icon } from '../ui/icon';
                 </li>
               }
             </ul>
+          } @else if (slot.withoutGame) {
+            <div class="without-game">
+              <p>{{ withoutGameText(slot.timeSlot.rank) }}</p>
+              <div>
+                <button
+                  type="button"
+                  appButton="secondary"
+                  [attr.aria-disabled]="data.isWithdrawingFromDraw(slot.timeSlot.id) || null"
+                  (click)="data.withdrawFromDraw(slot.timeSlot.id)"
+                >
+                  Me retirer du tirage
+                </button>
+              </div>
+            </div>
           } @else {
             <p class="empty">Aucune inscription sur ce créneau.</p>
           }
@@ -181,6 +198,23 @@ import { Icon } from '../ui/icon';
         }
       }
 
+      .without-game {
+        display: grid;
+        gap: var(--space-m);
+        padding: var(--space-m);
+        border: 1px solid color-mix(in srgb, var(--warning) 50%, var(--border));
+        border-radius: var(--radius-card);
+        background: var(--surface-2);
+
+        p {
+          margin: 0;
+        }
+      }
+
+      [aria-disabled='true'] {
+        cursor: progress;
+      }
+
       .success app-icon {
         color: var(--success);
       }
@@ -201,6 +235,11 @@ export class MyGamesPage {
   protected readonly formatTimeRange = formatTimeRange;
   protected readonly doubleGameRanksOf = doubleGameRanksOf;
   protected readonly timeSlotsOf = timeSlotsOf;
+
+  /** Le pseudo sans partie sur le créneau : ce qui lui est arrivé, et ce qu'il peut faire (IN-6). */
+  protected withoutGameText(rank: number): string {
+    return fr`Toutes tes parties ont été retirées de ce créneau. Tu restes dans le tirage du créneau ${rank} : inscris-toi à une autre partie pour avoir une table.`;
+  }
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly rank = toSignal(

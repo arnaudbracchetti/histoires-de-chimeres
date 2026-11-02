@@ -128,8 +128,9 @@ function buildSwapConfirmation(
 
 /**
  * Deux paragraphes : « Il y a 12 inscrits à la partie. Ils perdront leur inscription et seront
- * notifiés. », puis « 3 d'entre eux n'ont pas d'autre inscription sur le créneau. », au singulier
- * pour un inscrit. `target` suit « à » : « la partie », « « Néons » (créneau 2) ». Un nombre nul ne
+ * notifiés. », puis « 3 d'entre eux n'ont pas d'autre inscription sur le créneau : ils restent
+ * dans le tirage du créneau, mais sans être inscrits à aucune partie. » (IN-6), au singulier pour
+ * un inscrit. `target` suit « à » : « la partie », « « Néons » (créneau 2) ». Un nombre nul ne
  * s'écrit pas : le second paragraphe manque. Le domaine ne liste pas une partie sans inscrit, mais
  * leur nombre peut retomber à 0 dans un dialogue ouvert : « Aucun inscrit ne perd son
  * inscription. ».
@@ -158,12 +159,16 @@ function describeSignUpsToRemove(
   if (signUpCount === 1) {
     return [
       fr`${signedUp} Il perdra son inscription et sera notifié.`,
-      ...(withoutOtherSignUpCount ? [fr`C'est sa seule inscription sur le créneau.`] : []),
+      ...(withoutOtherSignUpCount
+        ? [
+            fr`C'est sa seule inscription sur le créneau : il reste dans le tirage du créneau, mais sans être inscrit à aucune partie.`,
+          ]
+        : []),
     ];
   }
   const without = withoutOtherSignUpCount
     ? [
-        fr`${formatCount(withoutOtherSignUpCount)} d'entre eux ${plural(withoutOtherSignUpCount, "n'a", "n'ont")} pas d'autre inscription sur le créneau.`,
+        fr`${formatCount(withoutOtherSignUpCount)} d'entre eux ${plural(withoutOtherSignUpCount, "n'a", "n'ont")} pas d'autre inscription sur le créneau : ${plural(withoutOtherSignUpCount, 'il reste', 'ils restent')} dans le tirage du créneau, mais sans être ${plural(withoutOtherSignUpCount, 'inscrit', 'inscrits')} à aucune partie.`,
       ]
     : [];
   return [fr`${signedUp} Ils perdront leur inscription et seront notifiés.`, ...without];

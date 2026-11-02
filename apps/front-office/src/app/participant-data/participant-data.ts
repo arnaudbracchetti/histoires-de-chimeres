@@ -84,6 +84,11 @@ export type MyTimeSlot = {
   /** Les inscriptions du pseudo dont c'est le premier créneau : une partie double est sous son premier (IN-3). */
   signedUpGames: FrontOfficeGameDto[];
   /**
+   * Le pseudo y est sans partie, inscriptions ouvertes : un Organisateur lui a retiré sa dernière
+   * inscription du créneau, et il reste dans son tirage, dont il peut se retirer (IN-6).
+   */
+  withoutGame: boolean;
+  /**
    * Son affectation, après la publication : la partie où il joue, une partie double publiée comprise
    * sur son second créneau (TI-3), ou pas de place, avec les parties du créneau où il en reste ;
    * `null` avant.
@@ -149,7 +154,7 @@ export class ParticipantData {
   /** La dernière lecture réussie. */
   private readonly lastRead = signal<FrontOfficeScheduleDto | undefined>(undefined);
   private readonly lastSituation = signal<ParticipantSituationDto | undefined>(undefined);
-  /** Les parties dont un geste est en cours d'envoi. */
+  /** Les parties, ou les créneaux, dont un geste est en cours d'envoi. */
   private readonly pending = signal<ReadonlySet<string>>(new Set());
   /**
    * L'heure de cette lecture par le serveur : son en-tête `Date`, que le cache du service worker
@@ -222,13 +227,15 @@ export class ParticipantData {
         (game) =>
           game.timeSlotIds[0] === timeSlot.id && situation.signedUpGameIds.includes(game.id),
       );
-      const state = timeSlotSituationOf(situation, timeSlot.id)?.state ?? 'sign-ups-open';
+      const slotSituation = timeSlotSituationOf(situation, timeSlot.id);
+      const state = slotSituation?.state ?? 'sign-ups-open';
       const assignment = assignmentOf(timeSlot.id, fullSchedule, situation);
       const led = ledGameOf(timeSlot.id, fullSchedule, situation, this.now());
       return {
         timeSlot,
         state,
         signedUpGames,
+        withoutGame: state === 'sign-ups-open' && !!slotSituation?.withoutGame,
         assignment,
         // Une partie double où il joue occupe le créneau : ses inscriptions y sont ignorées (TI-3).
         onlySignUpOversubscribed:
@@ -341,6 +348,18 @@ export class ParticipantData {
     );
   }
 
+  /** Le pseudo sans partie se retire du tirage du créneau, d'un tap, sans confirmation. */
+  withdrawFromDraw(timeSlotId: string): Promise<void> {
+    return this.sendGesture(timeSlotId, () =>
+      this.apiCall(signUpEndpoints.withdrawFromDraw, { params: { timeSlotId } }),
+    );
+  }
+
+  /** Un geste sur ce créneau est en cours d'envoi. */
+  isWithdrawingFromDraw(timeSlotId: string): boolean {
+    return this.pending().has(timeSlotId);
+  }
+
   constructor() {
     void this.reread();
     this.rereadOnEachScreen();
@@ -392,13 +411,13 @@ export class ParticipantData {
   }
 
   /**
-   * Envoie un geste sur la partie, un seul à la fois : un second tap pendant l'envoi est sans
-   * effet. Un échec le dit en alerte, et après 10 s sans réponse, l'alerte dit de vérifier (§6).
+   * Envoie un geste sur la partie, ou sur le créneau (`key`), un seul à la fois : un second tap
+   * pendant l'envoi est sans effet. Un échec le dit en alerte, et après 10 s sans réponse, l'alerte dit de vérifier (§6).
    * Dans tous les cas, le module relit ensuite : le compteur et l'inscription changent aussitôt.
    */
-  private async sendGesture(gameId: string, send: () => Promise<unknown>): Promise<void> {
-    if (this.pending().has(gameId)) return;
-    this.pending.update((pending) => new Set(pending).add(gameId));
+  private async sendGesture(key: string, send: () => Promise<unknown>): Promise<void> {
+    if (this.pending().has(key)) return;
+    this.pending.update((pending) => new Set(pending).add(key));
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       const timedOut = new Promise<'timed-out'>((resolve) => {
@@ -422,7 +441,7 @@ export class ParticipantData {
     await this.reread();
     this.pending.update((pending) => {
       const next = new Set(pending);
-      next.delete(gameId);
+      next.delete(key);
       return next;
     });
   }

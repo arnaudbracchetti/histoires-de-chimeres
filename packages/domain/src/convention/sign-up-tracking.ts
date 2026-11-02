@@ -27,15 +27,15 @@ export type GameTracking = { gameId: string } & SignUpFigures & {
   };
 
 /**
- * Le risque d'un participant dont aucune partie du créneau n'est sûre (inscrits entre ses places
- * minimum et maximum) : toutes sont très demandées, il risque de ne pas être placé ; sinon, il
- * risque de rester sans table.
+ * Le risque d'un participant du créneau : sans partie (`without-game`) ; ou, quand aucune de ses
+ * parties du créneau n'est sûre (inscrits entre ses places minimum et maximum), toutes sont très
+ * demandées, il risque de ne pas être placé, sinon il risque de rester sans table.
  */
-export type ParticipantRisk = 'may-not-be-placed' | 'may-be-left-without-table';
+export type ParticipantRisk = 'without-game' | 'may-not-be-placed' | 'may-be-left-without-table';
 
 /**
  * Un participant du créneau : les parties qui y commencent où son inscription est active (IN-4),
- * dans l'ordre de leur programmation, et son risque, ou `null`.
+ * dans l'ordre de leur programmation, aucune s'il y est sans partie, et son risque, ou `null`.
  */
 export type ParticipantTracking = {
   participantId: string;
@@ -45,8 +45,9 @@ export type ParticipantTracking = {
 
 /**
  * Le suivi des inscriptions d'un créneau : son état, sa demande, sa capacité, ses parties, celles
- * qui y commencent, dans l'ordre de leur programmation, ses participants : ceux qui n'y ont
- * qu'une inscription d'abord, puis les autres, chaque groupe dans l'ordre naturel des pseudos, ses
+ * qui y commencent, dans l'ordre de leur programmation, ses participants : ceux qui y sont sans
+ * partie d'abord, puis ceux qui n'y ont qu'une inscription, puis les autres, chaque groupe dans
+ * l'ordre naturel des pseudos, ses
  * avertissements de suivi (aucun sur un créneau sans inscription, ou fermé), et sa réserve, vide sur
  * un créneau fermé.
  */
@@ -108,7 +109,7 @@ export function computeSignUpTracking(
       { min: 0, max: 0 },
     );
     const participants = listParticipantsOfTimeSlot(
-      { state, demand, games: tracked },
+      { timeSlotId: slot.id, state, demand, games: tracked },
       collaborators,
     );
     const countParticipantsAtRisk = (risk: ParticipantRisk) =>
@@ -125,6 +126,7 @@ export function computeSignUpTracking(
             demand,
             capacity,
             gamesBelowMinimum: tracked.filter((game) => game.belowMinimum).length,
+            participantsWithoutGame: countParticipantsAtRisk('without-game'),
             participantsMayNotBePlaced: countParticipantsAtRisk('may-not-be-placed'),
             participantsMayBeLeftWithoutTable: countParticipantsAtRisk('may-be-left-without-table'),
           })
@@ -148,9 +150,17 @@ function isTrackingShortfalls(state: TimeSlotState, demand: number): boolean {
  * demande et du suivi de ses parties.
  */
 function listParticipantsOfTimeSlot(
-  { state, demand, games }: Pick<TimeSlotTracking, 'state' | 'demand' | 'games'>,
+  {
+    timeSlotId,
+    state,
+    demand,
+    games,
+  }: Pick<TimeSlotTracking, 'timeSlotId' | 'state' | 'demand' | 'games'>,
   { signUps, signUpCollaborators, participants }: SignUpTrackingCollaborators,
 ): ParticipantTracking[] {
+  const withoutGame = new Set(
+    signUps.listParticipantIdsWithoutGameOnTimeSlot(timeSlotId, signUpCollaborators),
+  );
   const gamesByParticipant = new Map<string, GameTracking[]>();
   for (const tracked of games) {
     const game = signUpCollaborators.schedule.findExistingGameById(tracked.gameId);
@@ -162,6 +172,15 @@ function listParticipantsOfTimeSlot(
     }
   }
   const listed = participants.flatMap(({ id }): ParticipantTracking[] => {
+    if (withoutGame.has(id)) {
+      return [
+        {
+          participantId: id,
+          gameIds: [],
+          risk: isTrackingShortfalls(state, demand) ? 'without-game' : null,
+        },
+      ];
+    }
     const own = gamesByParticipant.get(id);
     if (!own) return [];
     return [
@@ -173,6 +192,7 @@ function listParticipantsOfTimeSlot(
     ];
   });
   return [
+    ...listed.filter(({ gameIds }) => gameIds.length === 0),
     ...listed.filter(({ gameIds }) => gameIds.length === 1),
     ...listed.filter(({ gameIds }) => gameIds.length > 1),
   ];

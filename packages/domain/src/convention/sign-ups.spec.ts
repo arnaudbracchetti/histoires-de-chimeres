@@ -38,6 +38,7 @@ function aConvention(): Convention {
     gameMasters: [],
     participants: [],
     signUps: [],
+    participantsWithoutGame: [],
     games: [],
     version: 0,
     presenceCode: PresenceCode.parse('K7M2'),
@@ -463,6 +464,186 @@ describe('Supprimer un MJ (PR-12)', () => {
   });
 });
 
+/** Les créneaux où le participant est sans partie, d'après sa situation. */
+const timeSlotsWithoutGameOf = (convention: Convention, participantId: string) =>
+  convention
+    .computeParticipantSituation(participantId)
+    .timeSlots.filter(({ withoutGame }) => withoutGame)
+    .map(({ timeSlotId }) => timeSlotId);
+
+/** Ajoute Mira (g3, p-g3), disponible sur les deux créneaux, et la table t3. */
+function addMira(convention: Convention): void {
+  convention.addTable('t3', 'Table 3');
+  convention.addGameMaster('g3', 'p-g3', 'Mira');
+  convention.declareGameMasterAvailability('g3', 's1');
+  convention.declareGameMasterAvailability('g3', 's2');
+}
+
+describe('Devenir participant sans partie (IN-6)', () => {
+  it('le devient sur le créneau quand sa dernière partie y est déprogrammée', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+
+    convention.unscheduleGame('brumes');
+
+    expect(timeSlotsWithoutGameOf(convention, 'p1')).toEqual(['s1']);
+  });
+
+  it('ne le devient pas s’il garde une autre inscription active sur le créneau', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+
+    convention.unscheduleGame('brumes');
+
+    expect(timeSlotsWithoutGameOf(convention, 'p1')).toEqual([]);
+  });
+
+  it('le devient sur l’ancien créneau d’une partie déplacée', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.unscheduleGame('neons');
+
+    convention.moveGame('brumes', 's2', 't1');
+
+    expect(timeSlotsWithoutGameOf(convention, 'p1')).toEqual(['s1']);
+  });
+
+  it('le devient sur l’ancien créneau de chacune de deux parties échangées', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'neons', CATALOGUE);
+
+    convention.swapGames('brumes', 'neons');
+
+    expect(timeSlotsWithoutGameOf(convention, 'p1')).toEqual(['s1']);
+    expect(timeSlotsWithoutGameOf(convention, 'p2')).toEqual(['s2']);
+  });
+
+  it('ne le devient pas quand sa partie change de table', () => {
+    const convention = aConvention();
+    convention.addTable('t3', 'Table 3');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+
+    convention.moveGame('brumes', 's1', 't3');
+
+    expect(timeSlotsWithoutGameOf(convention, 'p1')).toEqual([]);
+  });
+
+  it('le devient sur le seul premier créneau d’une partie double', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+
+    convention.unscheduleGame('epice');
+
+    expect(timeSlotsWithoutGameOf(convention, 'p1')).toEqual(['s1']);
+  });
+
+  it('un MJ qui mène sur le créneau ne le devient pas (IN-4)', () => {
+    const convention = aConvention();
+    addMira(convention);
+    convention.signUpForGame('p-g3', 'neons', CATALOGUE);
+    convention.scheduleScenario('ombres', aScenario('d', 'g3'), 's2', 't3');
+
+    convention.unscheduleGame('neons');
+    convention.unscheduleGame('ombres');
+
+    expect(timeSlotsWithoutGameOf(convention, 'p-g3')).toEqual([]);
+  });
+
+  it('l’état est ignoré tant que son MJ mène sur le créneau (IN-4)', () => {
+    const convention = aConvention();
+    addMira(convention);
+    convention.signUpForGame('p-g3', 'neons', CATALOGUE);
+    convention.unscheduleGame('neons');
+
+    convention.scheduleScenario('ombres', aScenario('d', 'g3'), 's2', 't3');
+    const whileLeading = timeSlotsWithoutGameOf(convention, 'p-g3');
+    convention.unscheduleGame('ombres');
+
+    expect(whileLeading).toEqual([]);
+    expect(timeSlotsWithoutGameOf(convention, 'p-g3')).toEqual(['s2']);
+  });
+});
+
+describe('Cesser d’être participant sans partie', () => {
+  /** Élodie (p1) est sans partie sur le créneau 1. */
+  function aConventionWithoutGameForElodie(): Convention {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.unscheduleGame('brumes');
+    return convention;
+  }
+
+  it('en s’inscrivant à une partie du créneau', () => {
+    const convention = aConventionWithoutGameForElodie();
+
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+
+    expect(timeSlotsWithoutGameOf(convention, 'p1')).toEqual([]);
+  });
+
+  it('pas en s’inscrivant à une partie d’un autre créneau', () => {
+    const convention = aConventionWithoutGameForElodie();
+
+    convention.signUpForGame('p1', 'neons', CATALOGUE);
+
+    expect(timeSlotsWithoutGameOf(convention, 'p1')).toEqual(['s1']);
+  });
+
+  it('en se retirant du tirage du créneau', () => {
+    const convention = aConventionWithoutGameForElodie();
+
+    const changed = convention.withdrawFromDraw('p1', 's1');
+
+    expect(changed).toBe(true);
+    expect(timeSlotsWithoutGameOf(convention, 'p1')).toEqual([]);
+  });
+
+  it('se retirer du tirage sans être sans partie ne change rien', () => {
+    const convention = aConventionWithoutGameForElodie();
+    convention.withdrawFromDraw('p1', 's1');
+
+    expect(convention.withdrawFromDraw('p1', 's1')).toBe(false);
+    expect(convention.withdrawFromDraw('p2', 's1')).toBe(false);
+  });
+
+  it('se retirer du tirage refuse un créneau ou un participant introuvable', () => {
+    const convention = aConventionWithoutGameForElodie();
+
+    expect(refusalOf(() => convention.withdrawFromDraw('p1', 'inconnu')).code).toBe(
+      'time-slot-not-found',
+    );
+    expect(refusalOf(() => convention.withdrawFromDraw('inconnu', 's1')).code).toBe(
+      'participant-not-found',
+    );
+  });
+
+  it('supprimer son MJ efface l’état (PR-12)', () => {
+    const convention = aConvention();
+    addMira(convention);
+    convention.signUpForGame('p-g3', 'neons', CATALOGUE);
+    convention.unscheduleGame('neons');
+
+    convention.removeGameMaster('g3', ScenarioCatalogue.restore([]));
+
+    expect(convention.participantsWithoutGame).toEqual([]);
+  });
+
+  it('supprimer le créneau efface l’état (PR-10)', () => {
+    const convention = aConvention();
+    convention.addTimeSlot('s3', at('17:00'), at('19:00'));
+    convention.declareGameMasterAvailability('g1', 's3');
+    convention.scheduleScenario('aube', aScenario('a', 'g1'), 's3', 't1');
+    convention.signUpForGame('p1', 'aube', CATALOGUE);
+    convention.unscheduleGame('aube');
+
+    convention.removeTimeSlot('s3');
+
+    expect(convention.participantsWithoutGame).toEqual([]);
+  });
+});
+
 describe('Situation d’un participant', () => {
   it('donne ses inscriptions, et chaque créneau aux inscriptions ouvertes, sans résultat de tirage', () => {
     const convention = aConvention();
@@ -472,8 +653,20 @@ describe('Situation d’un participant', () => {
     expect(convention.computeParticipantSituation('p1')).toEqual({
       signedUpGameIds: ['epice'],
       timeSlots: [
-        { timeSlotId: 's1', state: 'sign-ups-open', ledGameId: null, drawResult: null },
-        { timeSlotId: 's2', state: 'sign-ups-open', ledGameId: null, drawResult: null },
+        {
+          timeSlotId: 's1',
+          state: 'sign-ups-open',
+          ledGameId: null,
+          drawResult: null,
+          withoutGame: false,
+        },
+        {
+          timeSlotId: 's2',
+          state: 'sign-ups-open',
+          ledGameId: null,
+          drawResult: null,
+          withoutGame: false,
+        },
       ],
     });
   });

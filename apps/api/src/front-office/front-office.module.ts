@@ -9,6 +9,7 @@ import {
   SavePushSubscription,
   SignUpForGame,
   UnlinkPhone,
+  WithdrawFromDraw,
   WithdrawFromGame,
   VerifyPresenceCode,
   type Clock,
@@ -121,6 +122,15 @@ const newPhoneId = () => randomBytes(32).toString('base64url');
         phones: LinkedPhoneRepository,
         clock: Clock,
       ) => new WithdrawFromGame(conventions, phones, clock),
+      inject: [CONVENTION_REPOSITORY, LINKED_PHONE_REPOSITORY, CLOCK],
+    },
+    {
+      provide: WithdrawFromDraw,
+      useFactory: (
+        conventions: ConventionRepository,
+        phones: LinkedPhoneRepository,
+        clock: Clock,
+      ) => new WithdrawFromDraw(conventions, phones, clock),
       inject: [CONVENTION_REPOSITORY, LINKED_PHONE_REPOSITORY, CLOCK],
     },
     {

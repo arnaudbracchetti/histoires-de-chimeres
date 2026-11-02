@@ -58,8 +58,11 @@ const epice = game('Épice', ['s1', 's2']);
 const neons = game('Néons', ['s2']);
 
 type TimeSlotSituation = ParticipantSituationDto['timeSlots'][number];
-/** Un créneau de la situation, où le pseudo ne mène rien sauf `ledGameId`. */
-type GivenTimeSlot = Omit<TimeSlotSituation, 'ledGameId'> & { ledGameId?: string | null };
+/** Un créneau de la situation, où le pseudo ne mène rien sauf `ledGameId`, et n'est pas sans partie sauf `withoutGame`. */
+type GivenTimeSlot = Omit<TimeSlotSituation, 'ledGameId' | 'withoutGame'> & {
+  ledGameId?: string | null;
+  withoutGame?: boolean;
+};
 const open = (timeSlotId: string): GivenTimeSlot => ({
   timeSlotId,
   state: 'sign-ups-open',
@@ -73,6 +76,7 @@ const situation = (
   signedUpGameIds,
   timeSlots: ['s1', 's2'].map((id) => ({
     ledGameId: null,
+    withoutGame: false,
     ...(timeSlots.find(({ timeSlotId }) => timeSlotId === id) ?? open(id)),
   })),
 });
@@ -386,6 +390,27 @@ describe('ParticipantData', () => {
       expect(alerts()).toEqual([]);
     });
 
+    it('retire du tirage d’un créneau d’un tap, sans confirmation, puis relit', async () => {
+      const data = await opened(
+        schedule([neons]),
+        now,
+        situation([], { ...open('s1'), withoutGame: true }),
+      );
+
+      const gesture = data.withdrawFromDraw('s1');
+      const request = http().expectOne(
+        apiUrl(signUpEndpoints.withdrawFromDraw, { timeSlotId: 's1' }),
+      );
+      expect(request.request.method).toBe('DELETE');
+      request.flush(null, { status: 204, statusText: '' });
+      await vi.advanceTimersByTimeAsync(0);
+      await answer(schedule([neons]), now, situation());
+      await gesture;
+
+      expect(data.myTimeSlots()?.map(({ withoutGame }) => withoutGame)).toEqual([false, false]);
+      expect(alerts()).toEqual([]);
+    });
+
     it('ignore un second tap pendant l’envoi', async () => {
       const data = await opened();
 
@@ -618,6 +643,26 @@ describe('ParticipantData', () => {
         { kind: 'assigned', game: brumes },
         { kind: 'unassigned', gamesWithSeats: [] },
       ]);
+    });
+
+    it('dit sur quel créneau le pseudo est sans partie, inscriptions ouvertes (IN-6)', async () => {
+      const data = await opened(
+        schedule([neons]),
+        undefined,
+        situation([], { ...open('s1'), withoutGame: true }),
+      );
+
+      expect(data.myTimeSlots()?.map(({ withoutGame }) => withoutGame)).toEqual([true, false]);
+    });
+
+    it('ne le dit plus une fois les inscriptions du créneau fermées', async () => {
+      const data = await opened(
+        schedule([neons]),
+        undefined,
+        situation([], { ...open('s1'), state: 'drawing', withoutGame: true }),
+      );
+
+      expect(data.myTimeSlots()?.map(({ withoutGame }) => withoutGame)).toEqual([false, false]);
     });
 
     it('ne montre aucune affectation avant la publication (TI-5, story 86)', async () => {
@@ -1060,6 +1105,16 @@ describe('ParticipantData', () => {
           detail: `Brumes est retirée${NBSP}: ton inscription est supprimée.`,
           see: '/programme?creneau=1',
         },
+      ]);
+    });
+
+    it('dit au pseudo devenu sans partie qu’il reste dans le tirage du créneau (IN-6)', async () => {
+      await opened(schedule([brumes, neons]), now, situation(['Brumes']));
+
+      await rereadWith(schedule([neons]), situation([], { ...open('s1'), withoutGame: true }));
+
+      expect(changeAlerts().map(({ detail }) => detail)).toEqual([
+        `Brumes est retirée${NBSP}: ton inscription est supprimée. Tu restes dans le tirage du créneau 1${NBSP}: inscris-toi à une autre partie pour avoir une table.`,
       ]);
     });
 

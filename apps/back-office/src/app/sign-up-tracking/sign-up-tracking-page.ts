@@ -86,6 +86,12 @@ const WARNING_ACTIONS: Record<
   { label: string; tab: TabValue; participantFilter?: ParticipantFilter; shortfall: boolean }
 > = {
   'seats-missing': { label: 'Voir la réserve', tab: 'reserve', shortfall: false },
+  'participants-without-game': {
+    label: 'Voir les participants',
+    tab: 'participants',
+    participantFilter: 'without-game',
+    shortfall: false,
+  },
   'nearly-full': { label: 'Voir la réserve', tab: 'reserve', shortfall: true },
   'participants-may-not-be-placed': {
     label: 'Voir les participants',
@@ -642,7 +648,7 @@ export class SignUpTrackingPage {
 
   /**
    * Mène à l'onglet où agir sur l'avertissement, et y met le focus : « Voir les participants »
-   * filtre les inscrits sur la puce « Risquent de ne pas être placés ».
+   * filtre les inscrits sur la puce « Sans partie » ou « Risquent de ne pas être placés ».
    */
   protected follow(warning: SignUpWarningDto) {
     const { tab, participantFilter } = WARNING_ACTIONS[warning.code];

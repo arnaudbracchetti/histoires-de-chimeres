@@ -27,8 +27,14 @@ test('signale une inscription retirée par le back office, et « Voir » ouvre l
 
   const alert = page.getByRole('alert').filter({ hasText: 'partie retirée du programme' });
   await expect(alert.getByText(/^Créneau 1.: partie retirée du programme$/)).toBeVisible();
+  // C'était sa seule inscription du créneau : elle reste dans son tirage, sans partie (IN-6).
   await expect(
-    alert.getByText(new RegExp(`^${brumes.title} est retirée.: ton inscription est supprimée\\.$`)),
+    alert.getByText(
+      new RegExp(
+        `^${brumes.title} est retirée.: ton inscription est supprimée\\. ` +
+          `Tu restes dans le tirage du créneau 1.: inscris-toi à une autre partie pour avoir une table\\.$`,
+      ),
+    ),
   ).toBeVisible();
   // Elle reste à l'écran d'une relecture à l'autre.
   await page

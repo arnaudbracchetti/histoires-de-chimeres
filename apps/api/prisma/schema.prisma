@@ -10,14 +10,14 @@ datasource db {
 }
 
 model Convention {
-  id           String       @id @default(uuid()) @db.Uuid
+  id           String        @id @default(uuid()) @db.Uuid
   name         String
-  date         DateTime?    @db.Date
+  date         DateTime?     @db.Date
   /// Verrou optimiste : chaque sauvegarde de l'agrégat l'incrémente.
-  version      Int          @default(0)
+  version      Int           @default(0)
   /// Code de présence (ID-2) : tiré au hasard par la base à la création de la convention, il ne
   /// change plus. La fonction vient de la migration presence_code.
-  presenceCode String       @default(dbgenerated("random_presence_code()"))
+  presenceCode String        @default(dbgenerated("random_presence_code()"))
   timeSlots    TimeSlot[]
   tables       Table[]
   gameMasters  GameMaster[]
@@ -27,13 +27,14 @@ model Convention {
 
 /// Créneau de la convention. Ses heures sont en minutes depuis minuit, de 0 à 1439.
 model TimeSlot {
-  id             String         @id @db.Uuid
-  conventionId   String         @db.Uuid
-  convention     Convention     @relation(fields: [conventionId], references: [id], onDelete: Cascade)
-  startMinute    Int
-  endMinute      Int
-  availabilities Availability[]
-  games          GameTimeSlot[]
+  id                      String                   @id @db.Uuid
+  conventionId            String                   @db.Uuid
+  convention              Convention               @relation(fields: [conventionId], references: [id], onDelete: Cascade)
+  startMinute             Int
+  endMinute               Int
+  availabilities          Availability[]
+  games                   GameTimeSlot[]
+  participantsWithoutGame ParticipantWithoutGame[]
 
   @@index([conventionId])
 }
@@ -69,13 +70,14 @@ model GameMaster {
 /// convention, à la casse, aux accents et aux espaces près : le domaine le vérifie (ID-4, ID-7).
 /// Seul un Organisateur le modifie, en renommant son MJ (ID-9, PR-12).
 model Participant {
-  id           String        @id @db.Uuid
-  conventionId String        @db.Uuid
-  convention   Convention    @relation(fields: [conventionId], references: [id], onDelete: Cascade)
-  nickname     String
-  gameMaster   GameMaster?
-  linkedPhones LinkedPhone[]
-  signUps      SignUp[]
+  id                     String                   @id @db.Uuid
+  conventionId           String                   @db.Uuid
+  convention             Convention               @relation(fields: [conventionId], references: [id], onDelete: Cascade)
+  nickname               String
+  gameMaster             GameMaster?
+  linkedPhones           LinkedPhone[]
+  signUps                SignUp[]
+  withoutGameOnTimeSlots ParticipantWithoutGame[]
 
   @@index([conventionId])
 }
@@ -187,4 +189,16 @@ model SignUp {
 
   @@id([participantId, gameId])
   @@index([gameId])
+}
+
+/// Participant sans partie sur un créneau (IN-6) : il reste dans son tirage, sans inscription active.
+/// Il part avec son participant ou son créneau (PR-10, PR-12).
+model ParticipantWithoutGame {
+  participantId String      @db.Uuid
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  timeSlotId    String      @db.Uuid
+  timeSlot      TimeSlot    @relation(fields: [timeSlotId], references: [id], onDelete: Cascade)
+
+  @@id([participantId, timeSlotId])
+  @@index([timeSlotId])
 }

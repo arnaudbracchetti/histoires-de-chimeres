@@ -4,6 +4,7 @@ import { Icon } from '../ui/icon';
 
 /** La pastille de chaque risque : son libellé, son icône et sa couleur (docs/design/patterns.md, Statuts). */
 const RISKS: Record<ParticipantRiskDto, { label: string; icon: string; tone: string }> = {
+  'without-game': { label: 'Sans partie', icon: 'octagon-alert', tone: 'danger' },
   'may-not-be-placed': {
     label: 'Risque de ne pas être placé',
     icon: 'octagon-alert',
@@ -21,7 +22,9 @@ const RISKS: Record<ParticipantRiskDto, { label: string; icon: string; tone: str
   selector: 'app-participant-risk-pill',
   imports: [Icon],
   template: `
-    <span class="pill" [class]="pill().tone"><app-icon [name]="pill().icon" />{{ pill().label }}</span>
+    <span class="pill" [class]="pill().tone"
+      ><app-icon [name]="pill().icon" />{{ pill().label }}</span
+    >
   `,
   styles: `
     @layer components {

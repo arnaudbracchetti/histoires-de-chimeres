@@ -19,6 +19,8 @@ type UnderDemandParams = {
 export type SignUpWarningParams = {
   /** La demande dépasse la capacité maximum : `missingSeats` places manquent. */
   'seats-missing': { demand: number; maxCapacity: number; missingSeats: number };
+  /** `participantCount` participants sont sans partie sur le créneau. */
+  'participants-without-game': { participantCount: number };
   /** `participantCount` participants risquent de ne pas être placés : toutes leurs parties du créneau sont très demandées. */
   'participants-may-not-be-placed': { participantCount: number };
   /** La demande atteint 80 % de la capacité maximum, sans la dépasser. */
@@ -42,19 +44,24 @@ export type SignUpWarning = {
 /** Le seuil de « presque plein », en pourcentage de la capacité maximum. Sans réglage. */
 const NEARLY_FULL_PERCENT = 80;
 
+/** Le nombre d'avertissements d'un créneau, au plus. */
+const MAX_WARNINGS = 3;
+
 /** Ce que les avertissements de suivi lisent du suivi d'un créneau. */
 export type SignUpWarningFigures = {
   demand: number;
   capacity: Capacity;
   gamesBelowMinimum: number;
+  participantsWithoutGame: number;
   participantsMayNotBePlaced: number;
   participantsMayBeLeftWithoutTable: number;
 };
 
 /**
  * Les avertissements de suivi d'un créneau ouvert qui a des inscriptions, trois au plus : les rouges
- * d'abord, puis la ligne des places (`seats-missing` ou `nearly-full`), puis la ligne de
- * sous-demande (`too-many-games` ou `games-below-minimum`).
+ * d'abord (`seats-missing`, `participants-without-game`, `participants-may-not-be-placed`), puis la
+ * ligne des places (`nearly-full`), puis la ligne de sous-demande (`too-many-games` ou
+ * `games-below-minimum`).
  */
 export function computeSignUpWarnings(figures: SignUpWarningFigures): SignUpWarning[] {
   const { demand, capacity } = figures;
@@ -64,6 +71,13 @@ export function computeSignUpWarnings(figures: SignUpWarningFigures): SignUpWarn
       code: 'seats-missing',
       level: 'danger',
       params: { demand, maxCapacity: capacity.max, missingSeats: demand - capacity.max },
+    });
+  }
+  if (figures.participantsWithoutGame > 0) {
+    warnings.push({
+      code: 'participants-without-game',
+      level: 'danger',
+      params: { participantCount: figures.participantsWithoutGame },
     });
   }
   if (figures.participantsMayNotBePlaced > 0) {
@@ -91,5 +105,5 @@ export function computeSignUpWarnings(figures: SignUpWarningFigures): SignUpWarn
   } else if (figures.gamesBelowMinimum > 0) {
     warnings.push({ code: 'games-below-minimum', level: 'warning', params: underDemand });
   }
-  return warnings;
+  return warnings.slice(0, MAX_WARNINGS);
 }

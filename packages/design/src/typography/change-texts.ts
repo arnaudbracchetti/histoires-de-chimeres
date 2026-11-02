@@ -44,11 +44,21 @@ export function formatPlayerCount(count: number): string {
   return count ? `avec ${countOf(count, 'joueur', 'joueurs')}` : 'sans joueur';
 }
 
-/** Ses inscrits : la partie est retirée du programme avant le tirage de son créneau. */
-export function buildGameUnscheduledText(ranks: readonly number[], gameTitle: string): ChangeText {
+/**
+ * Ses inscrits : la partie est retirée du programme avant le tirage de son créneau. `withoutGame` :
+ * c'était sa dernière inscription sur son premier créneau, il reste dans son tirage (IN-6).
+ */
+export function buildGameUnscheduledText(
+  ranks: readonly number[],
+  gameTitle: string,
+  withoutGame: boolean,
+): ChangeText {
+  const removed = fr`${gameTitle} est retirée : ton inscription est supprimée.`;
   return {
     title: fr`${formatCapitalizedTimeSlotRanks(ranks)} : partie retirée du programme`,
-    body: fr`${gameTitle} est retirée : ton inscription est supprimée.`,
+    body: withoutGame
+      ? fr`${removed} Tu restes dans le tirage du ${formatTimeSlotRanks([ranks[0]!])} : inscris-toi à une autre partie pour avoir une table.`
+      : removed,
   };
 }
 
@@ -63,15 +73,22 @@ export function buildOwnGameUnscheduledText(
   };
 }
 
-/** Ses inscrits : la partie passe à d'autres créneaux avant le tirage (IN-6). */
+/**
+ * Ses inscrits : la partie passe à d'autres créneaux avant le tirage (IN-6). `withoutGame` : c'était
+ * sa dernière inscription sur son ancien premier créneau, il reste dans son tirage.
+ */
 export function buildGameMovedText(
   fromRanks: readonly number[],
   toRanks: readonly number[],
   gameTitle: string,
+  withoutGame: boolean,
 ): ChangeText {
+  const moved = fr`${gameTitle} passe ${toRanks.length > 1 ? 'aux' : 'au'} ${formatTimeSlotRanks(toRanks)} : ton inscription est retirée. Réinscris-toi si l'horaire te va.`;
   return {
     title: fr`${formatCapitalizedTimeSlotRanks(fromRanks)} : partie déplacée`,
-    body: fr`${gameTitle} passe ${toRanks.length > 1 ? 'aux' : 'au'} ${formatTimeSlotRanks(toRanks)} : ton inscription est retirée. Réinscris-toi si l'horaire te va.`,
+    body: withoutGame
+      ? fr`${moved} Tu restes dans le tirage du ${formatTimeSlotRanks([fromRanks[0]!])} : inscris-toi à une autre partie pour y avoir une table.`
+      : moved,
   };
 }
 

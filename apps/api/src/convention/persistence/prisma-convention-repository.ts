@@ -6,6 +6,7 @@ import {
   Game,
   GameMaster,
   Participant,
+  ParticipantWithoutGame,
   PresenceCode,
   SignUp,
   Table,
@@ -43,7 +44,7 @@ export class PrismaConventionRepository implements ConventionRepository {
         timeSlots: true,
         tables: true,
         gameMasters: { include: { availabilities: { select: { timeSlotId: true } } } },
-        participants: { include: { signUps: true } },
+        participants: { include: { signUps: true, withoutGameOnTimeSlots: true } },
         games: {
           include: { scenario: { select: { gameMasterId: true } }, timeSlots: true },
           orderBy: { scheduledAt: 'asc' },
@@ -82,6 +83,11 @@ export class PrismaConventionRepository implements ConventionRepository {
         .flatMap(({ signUps }) => signUps)
         .sort((a, b) => a.signedUpAt.getTime() - b.signedUpAt.getTime())
         .map(({ participantId, gameId }) => new SignUp(participantId, gameId)),
+      participantsWithoutGame: participants
+        .flatMap(({ withoutGameOnTimeSlots }) => withoutGameOnTimeSlots)
+        .map(
+          ({ participantId, timeSlotId }) => new ParticipantWithoutGame(participantId, timeSlotId),
+        ),
       games: games.map(
         (game) =>
           new Game(
@@ -119,6 +125,10 @@ export class PrismaConventionRepository implements ConventionRepository {
     const availabilities = changes(loaded.availabilities, current.availabilities);
     const participants = changes(loaded.participants, current.participants);
     const signUps = changes(loaded.signUps, current.signUps);
+    const participantsWithoutGame = changes(
+      loaded.participantsWithoutGame,
+      current.participantsWithoutGame,
+    );
     const {
       removed: unscheduled,
       added: scheduled,
@@ -140,6 +150,14 @@ export class PrismaConventionRepository implements ConventionRepository {
       await tx.signUp.deleteMany({
         where: {
           OR: signUps.removed.map(({ participantId, gameId }) => ({ participantId, gameId })),
+        },
+      });
+      await tx.participantWithoutGame.deleteMany({
+        where: {
+          OR: participantsWithoutGame.removed.map(({ participantId, timeSlotId }) => ({
+            participantId,
+            timeSlotId,
+          })),
         },
       });
       await tx.gameTimeSlot.deleteMany({ where: { gameId: ids(moved) } });
@@ -187,6 +205,7 @@ export class PrismaConventionRepository implements ConventionRepository {
         data: [...scheduled, ...moved].flatMap(({ timeSlots }) => timeSlots),
       });
       await tx.signUp.createMany({ data: signUps.added });
+      await tx.participantWithoutGame.createMany({ data: participantsWithoutGame.added });
     });
   }
 }

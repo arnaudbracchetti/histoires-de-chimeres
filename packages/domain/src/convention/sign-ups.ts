@@ -4,6 +4,7 @@ import type { Scenario } from '../scenario/scenario.js';
 import type { Seats } from '../scenario/seats.js';
 import type { Day } from './day.js';
 import type { Game } from './game.js';
+import { ParticipantWithoutGame } from './participant-without-game.js';
 import type { Schedule } from './schedule.js';
 import type { SignUp } from './sign-up.js';
 import type { Table } from './table.js';
@@ -31,16 +32,23 @@ export type RemovedSignUps = { gameId: string } & SignUpFigures;
 export type SignUpCollaborators = { schedule: Schedule; ledGames: LedGames };
 
 /**
- * Inscriptions : celles de la convention, dans l'ordre où elles ont été prises. Elles gardent les
- * règles IN-2 à IN-6. Immuables : chaque geste rend d'autres inscriptions. Le Programme et qui y
- * mène quoi leur sont passés à chaque appel : c'est la convention qui les détient.
+ * Inscriptions : celles de la convention, dans l'ordre où elles ont été prises, et les participants
+ * sans partie. Elles gardent les règles IN-2 à IN-6. Immuables : chaque geste rend d'autres
+ * inscriptions. Le Programme et qui y mène quoi leur sont passés à chaque appel : c'est la
+ * convention qui les détient.
  */
 export class SignUps {
-  private constructor(readonly signUps: readonly SignUp[]) {}
+  private constructor(
+    readonly signUps: readonly SignUp[],
+    readonly participantsWithoutGame: readonly ParticipantWithoutGame[],
+  ) {}
 
-  /** `signUps`, dans l'ordre où elles ont été prises. */
-  static createFromSignUps(signUps: Iterable<SignUp>): SignUps {
-    return new SignUps([...signUps]);
+  /** `signUps`, dans l'ordre où elles ont été prises, et les participants sans partie. */
+  static createFromSignUps(
+    signUps: Iterable<SignUp>,
+    participantsWithoutGame: Iterable<ParticipantWithoutGame>,
+  ): SignUps {
+    return new SignUps([...signUps], [...participantsWithoutGame]);
   }
 
   /**
@@ -61,9 +69,44 @@ export class SignUps {
   }
 
   /**
+   * Le participant est sans partie sur le créneau : son état est enregistré, et son MJ n'y mène pas.
+   * Tant qu'il y mène, l'état reste, ignoré (IN-4).
+   */
+  isParticipantWithoutGameOnTimeSlot(
+    participantId: string,
+    timeSlotId: string,
+    { ledGames }: SignUpCollaborators,
+  ): boolean {
+    return (
+      this.hasParticipantWithoutGame(new ParticipantWithoutGame(participantId, timeSlotId)) &&
+      !isLeadingOnTimeSlot(participantId, timeSlotId, ledGames)
+    );
+  }
+
+  /** L'état sans partie est enregistré, même ignoré tant que son MJ mène sur le créneau (IN-4). */
+  hasParticipantWithoutGame(candidate: ParticipantWithoutGame): boolean {
+    return this.participantsWithoutGame.some((recorded) => recorded.equals(candidate));
+  }
+
+  /** Les participants sans partie sur le créneau (voir `isParticipantWithoutGameOnTimeSlot()`). */
+  listParticipantIdsWithoutGameOnTimeSlot(
+    timeSlotId: string,
+    collaborators: SignUpCollaborators,
+  ): string[] {
+    return this.participantsWithoutGame
+      .filter(
+        (recorded) =>
+          recorded.timeSlotId === timeSlotId &&
+          !isLeadingOnTimeSlot(recorded.participantId, timeSlotId, collaborators.ledGames),
+      )
+      .map(({ participantId }) => participantId);
+  }
+
+  /**
    * Les inscriptions après celle-ci (IN-2). S'inscrire de nouveau ne change rien. Un MJ ne s'inscrit
    * pas sur un créneau où il mène, sa propre partie comprise (IN-4) : le refus donne le créneau et la
-   * table de sa partie.
+   * table de sa partie. S'inscrire à une partie du créneau, celui où elle commence, fait cesser
+   * d'être sans partie sur ce créneau.
    */
   getSignUpsAfterSigningUp(
     signUp: SignUp,
@@ -81,29 +124,86 @@ export class SignUps {
       });
     }
     if (this.hasSignUp(signUp)) return this;
-    return new SignUps([...this.signUps, signUp]);
+    const firstTimeSlotId = schedule.findExistingGameById(signUp.gameId).timeSlotIds[0]!;
+    return new SignUps(
+      [...this.signUps, signUp],
+      this.participantsWithoutGame.filter(
+        (recorded) =>
+          !recorded.equals(new ParticipantWithoutGame(signUp.participantId, firstTimeSlotId)),
+      ),
+    );
   }
 
   /** Les inscriptions sans celle-ci (IN-2). Retirer une absente ne change rien. */
   getSignUpsAfterWithdrawing(signUp: SignUp): SignUps {
-    return new SignUps(this.signUps.filter((existing) => !existing.equals(signUp)));
-  }
-
-  /** Les inscriptions sans celles du participant, qui disparaît (PR-12). */
-  getSignUpsAfterRemovingParticipant(participantId: string): SignUps {
-    return new SignUps(this.signUps.filter((signUp) => signUp.participantId !== participantId));
+    return new SignUps(
+      this.signUps.filter((existing) => !existing.equals(signUp)),
+      this.participantsWithoutGame,
+    );
   }
 
   /**
-   * Les inscriptions après le passage du Programme `previous` à `next`. Une partie déprogrammée, ou
-   * qui passe sur d'autres créneaux, perd ses inscriptions ; changer de table les garde (IN-6).
+   * Les inscriptions après que le participant s'est retiré du tirage du créneau : il n'y est plus
+   * sans partie. Sans cet état, rien ne change.
    */
-  getSignUpsAfterChangingSchedule(previous: Schedule, next: Schedule): SignUps {
+  getSignUpsAfterWithdrawingFromDraw(withdrawn: ParticipantWithoutGame): SignUps {
     return new SignUps(
-      this.signUps.filter(({ gameId }) =>
-        SignUps.isGameKeepingSignUps(previous.findExistingGameById(gameId), next),
-      ),
+      this.signUps,
+      this.participantsWithoutGame.filter((recorded) => !recorded.equals(withdrawn)),
     );
+  }
+
+  /** Les inscriptions sans celles du participant, qui disparaît, ni son état sans partie (PR-12). */
+  getSignUpsAfterRemovingParticipant(participantId: string): SignUps {
+    return new SignUps(
+      this.signUps.filter((signUp) => signUp.participantId !== participantId),
+      this.participantsWithoutGame.filter((recorded) => recorded.participantId !== participantId),
+    );
+  }
+
+  /** Les inscriptions sans les participants sans partie du créneau, qui disparaît (PR-10). */
+  getSignUpsAfterRemovingTimeSlot(timeSlotId: string): SignUps {
+    return new SignUps(
+      this.signUps,
+      this.participantsWithoutGame.filter((recorded) => recorded.timeSlotId !== timeSlotId),
+    );
+  }
+
+  /**
+   * Les inscriptions après le passage du Programme d'avant (`previous`) à celui d'après (`next`),
+   * chacun avec qui y mène quoi. Une partie déprogrammée, ou qui passe sur d'autres créneaux, perd
+   * ses inscriptions ; changer de table les garde (IN-6). Un inscrit actif qui y perd sa dernière
+   * inscription active sur le premier créneau de la partie devient sans partie sur ce créneau, sauf
+   * si son MJ y mène (IN-4).
+   */
+  getSignUpsAfterChangingSchedule(
+    previous: SignUpCollaborators,
+    next: SignUpCollaborators,
+  ): SignUps {
+    const isKept = ({ gameId }: SignUp) =>
+      SignUps.isGameKeepingSignUps(previous.schedule.findExistingGameById(gameId), next.schedule);
+    const remaining = new SignUps(this.signUps.filter(isKept), this.participantsWithoutGame);
+    const becomingWithoutGame = this.signUps
+      .filter((signUp) => !isKept(signUp) && this.isActive(signUp, previous))
+      .map(
+        ({ participantId, gameId }) =>
+          new ParticipantWithoutGame(
+            participantId,
+            previous.schedule.findExistingGameById(gameId).timeSlotIds[0]!,
+          ),
+      )
+      .filter(
+        ({ participantId, timeSlotId }) =>
+          !remaining.hasActiveSignUpOnTimeSlot(participantId, timeSlotId, next) &&
+          !isLeadingOnTimeSlot(participantId, timeSlotId, next.ledGames),
+      );
+    let result = remaining;
+    for (const candidate of becomingWithoutGame) {
+      if (!result.hasParticipantWithoutGame(candidate)) {
+        result = new SignUps(result.signUps, [...result.participantsWithoutGame, candidate]);
+      }
+    }
+    return result;
   }
 
   /**
@@ -156,14 +256,16 @@ export class SignUps {
 
   /**
    * La demande du créneau : le nombre de participants distincts qui ont au moins une inscription
-   * active sur une partie qui y commence. Une partie double ne compte que sur son premier créneau.
+   * active sur une partie qui y commence, ou qui y sont sans partie. Une partie double ne compte que
+   * sur son premier créneau.
    */
   countDemandOnTimeSlot(timeSlotId: string, collaborators: SignUpCollaborators): number {
-    return new Set(
-      collaborators.schedule
+    return new Set([
+      ...collaborators.schedule
         .listGamesStartingOnTimeSlot(timeSlotId)
         .flatMap((game) => this.listActiveParticipantIdsOfGame(game, collaborators)),
-    ).size;
+      ...this.listParticipantIdsWithoutGameOnTimeSlot(timeSlotId, collaborators),
+    ]).size;
   }
 
   /**
@@ -225,6 +327,20 @@ export class SignUps {
     );
   }
 
+  /** Le participant a une inscription active sur une partie qui commence sur le créneau (IN-4). */
+  private hasActiveSignUpOnTimeSlot(
+    participantId: string,
+    timeSlotId: string,
+    collaborators: SignUpCollaborators,
+  ): boolean {
+    return this.signUps.some(
+      (signUp) =>
+        signUp.participantId === participantId &&
+        collaborators.schedule.findExistingGameById(signUp.gameId).timeSlotIds[0] === timeSlotId &&
+        this.isActive(signUp, collaborators),
+    );
+  }
+
   /** La partie garde ses inscriptions dans le Programme `next` : elle y est, sur les mêmes créneaux (IN-6). */
   private static isGameKeepingSignUps(game: Game, next: Schedule): boolean {
     return next.hasGameOnSameTimeSlots(game);
@@ -237,4 +353,15 @@ export class SignUps {
       ledGames.listGamesLedByParticipant(signUp.participantId).flatMap((game) => game.timeSlotIds),
     );
   }
+}
+
+/** Le MJ du participant mène une partie sur le créneau (IN-4). */
+function isLeadingOnTimeSlot(
+  participantId: string,
+  timeSlotId: string,
+  ledGames: LedGames,
+): boolean {
+  return ledGames
+    .listGamesLedByParticipant(participantId)
+    .some((game) => game.isOnTimeSlot(timeSlotId));
 }
