@@ -45,15 +45,13 @@ test('le rail mène à chaque page de préparation, focus sur son h1', async ({ 
   }
 });
 
-test('les entrées du jour J sont grisées, « à venir »', async ({ page }) => {
+test('l’entrée « Participants » du jour J est grisée, « à venir »', async ({ page }) => {
   await page.goto('/gestion/');
   const rail = page.getByRole('navigation', { name: 'Navigation principale' });
 
-  for (const entry of ['Pilotage du jour J', 'Participants']) {
-    await expect(rail.getByText(entry)).toBeVisible();
-    await expect(rail.getByRole('link', { name: new RegExp(entry) })).toHaveCount(0);
-  }
-  await expect(rail.getByText('à venir')).toHaveCount(2);
+  await expect(rail.getByText('Participants')).toBeVisible();
+  await expect(rail.getByRole('link', { name: /Participants/ })).toHaveCount(0);
+  await expect(rail.getByText('à venir')).toHaveCount(1);
 });
 
 test('le rail replié le reste après un rechargement', async ({ page }) => {
