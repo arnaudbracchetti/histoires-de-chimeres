@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import {
+  CancelGame,
   LaunchDraw,
   ReopenSignUps,
   RerunDraw,
+  RestoreGame,
   type ConventionRepository,
   type ScenarioRepository,
 } from '@chimeres/application';
@@ -47,6 +49,17 @@ import { RANDOM_SOURCE } from './random-source.token.js';
     {
       provide: ReopenSignUps,
       useFactory: (conventions: ConventionRepository) => new ReopenSignUps(conventions),
+      inject: [CONVENTION_REPOSITORY],
+    },
+    {
+      provide: CancelGame,
+      useFactory: (conventions: ConventionRepository, scenarios: ScenarioRepository) =>
+        new CancelGame(conventions, scenarios),
+      inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY],
+    },
+    {
+      provide: RestoreGame,
+      useFactory: (conventions: ConventionRepository) => new RestoreGame(conventions),
       inject: [CONVENTION_REPOSITORY],
     },
   ],

@@ -29,6 +29,7 @@ import {
 import {
   countOf,
   formatCount,
+  formatList,
   formatSeatRange,
   formatTimeRange,
   fr,
@@ -56,7 +57,7 @@ import { Confirmation } from '../ui/confirmation';
 import { EmptyState } from '../ui/empty-state';
 import { Gauge } from '../ui/gauge';
 import { Icon } from '../ui/icon';
-import { DrawPlan } from './draw-plan';
+import { DrawPlan, type DrawnGame } from './draw-plan';
 import { TrackedGameSignUps } from './tracked-game-sign-ups';
 import { rowIdOf, TrackedGamesPanel } from './tracked-games-panel';
 import {
@@ -319,6 +320,8 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                     [timeSlots]="tracking.timeSlots"
                     [tables]="tracking.tables"
                     [games]="tracking.games"
+                    (cancelGame)="cancelGame(slot, $event)"
+                    (restoreGame)="restoreGame($event)"
                   />
                 } @else if (slot.state === 'sign-ups-open') {
                   <div ngTabs class="binder">
@@ -721,6 +724,8 @@ export class SignUpTrackingPage {
   protected readonly unscheduling = injectGesture({ alert: true, refreshes: true });
   /** La relance sans confirmation : son refus part en alerte. */
   private readonly rerunning = injectGesture({ alert: true, refreshes: true });
+  /** Le rétablissement d'une partie, sans confirmation : son refus part en alerte. */
+  private readonly restoring = injectGesture({ alert: true, refreshes: true });
   private readonly confirmation = inject(Confirmation);
   private readonly apiCall = injectApiCall();
   private readonly placements = inject(Placements);
@@ -833,13 +838,64 @@ export class SignUpTrackingPage {
         fr`Personne n'est notifié : chacun retrouve ses inscriptions, et peut en changer jusqu'au prochain tirage.`,
       ],
       confirmLabel: 'Rouvrir les inscriptions',
-      action: () =>
-        this.apiCall(drawEndpoints.reopenSignUps, { params: { timeSlotId: slot.id } }),
+      action: () => this.apiCall(drawEndpoints.reopenSignUps, { params: { timeSlotId: slot.id } }),
       onStale: () => this.tracking.reload(),
     });
     if (!reopened) return;
     this.announcer.announce(fr`Inscriptions du créneau ${slot.rank} rouvertes.`);
     this.focusAfterReading.set('summary-title');
+    this.tracking.reload();
+  }
+
+  /**
+   * Annule la partie, après une confirmation rouge : ses joueurs passent dans les non placés, et
+   * son MJ y entre, avec ses inscriptions du créneau. Le suivi se relit ensuite, et la région
+   * `aria-live` l'annonce.
+   */
+  protected async cancelGame(slot: TimeSlotTrackingDto, { game, figures }: DrawnGame) {
+    const title = game.scenario.title;
+    const gameMaster = game.scenario.gameMaster.nickname;
+    const titleOf = (gameId: string) =>
+      this.value()?.games.find(({ id }) => id === gameId)?.scenario.title;
+    const signedUpTitles = figures.gameMasterSignedUpGameIds
+      .map(titleOf)
+      .filter((signedUp) => signedUp !== undefined)
+      .map((signedUp) => fr`« ${signedUp} »`);
+    const players = figures.playerCount;
+    const cancelled = await this.confirmation.ask({
+      question: fr`Annuler « ${title} » ?`,
+      consequences: [
+        ...(players === 0
+          ? []
+          : players === 1
+            ? [fr`Son joueur passe dans les non placés, sans nouveau tirage.`]
+            : [
+                fr`Ses ${formatCount(players)} joueurs passent dans les non placés, sans nouveau tirage.`,
+              ]),
+        signedUpTitles.length
+          ? fr`${gameMaster}, son MJ, redevient participant sur ce créneau et rejoint les non placés, avec ${plural(signedUpTitles.length, 'son inscription', 'ses inscriptions')} à ${formatList(signedUpTitles)}.`
+          : fr`${gameMaster}, son MJ, redevient participant sur ce créneau et rejoint les non placés, sans partie.`,
+        fr`À la publication, son MJ reçoit la notification « partie annulée ».`,
+      ],
+      confirmLabel: 'Annuler la partie',
+      cancelLabel: 'Garder la partie',
+      action: () => this.apiCall(drawEndpoints.cancelGame, { params: { gameId: game.id } }),
+      onStale: () => this.tracking.reload(),
+    });
+    if (!cancelled) return;
+    this.announcer.announce(fr`Partie « ${title} » du créneau ${slot.rank} annulée.`);
+    this.tracking.reload();
+  }
+
+  /** Rétablit la partie annulée, sans confirmation : le suivi se relit, et l'annonce suit. */
+  protected async restoreGame({ game }: DrawnGame) {
+    const outcome = await this.restoring.run(
+      () => this.apiCall(drawEndpoints.restoreGame, { params: { gameId: game.id } }),
+      game.id,
+    );
+    if (outcome.status === 'refused' && outcome.refusal.stale) this.tracking.reload();
+    if (outcome.status !== 'done') return;
+    this.announcer.announce(fr`Partie « ${game.scenario.title} » rétablie.`);
     this.tracking.reload();
   }
 

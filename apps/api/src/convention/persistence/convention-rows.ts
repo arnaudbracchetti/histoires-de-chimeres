@@ -67,6 +67,12 @@ export function rowsOf(convention: Convention) {
       ),
       ({ timeSlotId, participantId }) => `${timeSlotId}:${participantId}`,
     ),
+    cancelledGames: keyed(
+      convention.draws.flatMap(({ timeSlotId, cancelledGameIds }) =>
+        cancelledGameIds.map((gameId) => ({ gameId, timeSlotId })),
+      ),
+      ({ gameId }) => gameId,
+    ),
     /** Une partie avec ses créneaux : ils changent ensemble, quand elle se déplace. */
     games: keyed(
       convention.games.map((game) => ({

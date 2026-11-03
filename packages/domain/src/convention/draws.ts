@@ -2,6 +2,7 @@ import { Refusal } from '../refusal.js';
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import type { TimeSlotState } from './convention.js';
 import type { Day } from './day.js';
+import type { Game } from './game.js';
 import { Assignment, Draw } from './draw.js';
 import type {
   DrawAlgorithm,
@@ -15,14 +16,27 @@ import type { SignUpCollaborators, SignUps } from './sign-ups.js';
 
 /**
  * Ce que le lancement lit hors des Tirages : la Journée, les Inscriptions et leurs collaborateurs,
- * et le catalogue, entier, qui donne les places des parties.
+ * le catalogue, entier, qui donne les places des parties, et le participant de chaque MJ, qui entre
+ * au tirage quand sa partie est annulée.
  */
 export type DrawCollaborators = {
   day: Day;
   signUps: SignUps;
   signUpCollaborators: SignUpCollaborators;
   catalogue: ScenarioCatalogue;
+  findExistingParticipantIdOfGameMaster(gameMasterId: string): string;
 };
+
+/** Ce que l'annulation d'une partie lit hors des Tirages : la Journée, le catalogue, entier, et le
+ * participant du MJ de la partie. */
+export type GameCancellationCollaborators = {
+  day: Day;
+  catalogue: ScenarioCatalogue;
+  gameMasterParticipantId: string;
+};
+
+/** Ce que le rétablissement d'une partie lit hors des Tirages. */
+export type GameRestorationCollaborators = Omit<GameCancellationCollaborators, 'catalogue'>;
 
 /**
  * La sortie de l'algorithme de tirage ne respecte pas son contrat : c'est une erreur interne, pas
@@ -71,14 +85,14 @@ export class Draws {
     collaborators: DrawCollaborators,
   ): Draws {
     this.verifyDrawLaunchable(timeSlotId, collaborators.day);
-    const draw = buildDraw(timeSlotId, algorithm, random, collaborators);
+    const draw = buildDraw(timeSlotId, [], algorithm, random, collaborators);
     return new Draws([...this.draws, draw]);
   }
 
   /**
    * Les Tirages après la relance du tirage provisoire du créneau (TI-6) : un nouveau tirage, comme
    * au lancement, qui relit les participants, leurs inscriptions actives et les places. Les
-   * déplacements à la main sont effacés.
+   * déplacements à la main sont effacés ; les parties annulées le restent.
    */
   getDrawsAfterRerunningDraw(
     timeSlotId: string,
@@ -86,9 +100,10 @@ export class Draws {
     random: RandomSource,
     collaborators: DrawCollaborators,
   ): Draws {
-    this.verifyDrawProvisional(timeSlotId, collaborators.day);
-    const rerun = buildDraw(timeSlotId, algorithm, random, collaborators);
-    return new Draws(this.draws.map((draw) => (draw.timeSlotId === timeSlotId ? rerun : draw)));
+    const draw = this.findExistingProvisionalDraw(timeSlotId, collaborators.day);
+    return this.getDrawsAfterReplacingDraw(
+      buildDraw(timeSlotId, draw.cancelledGameIds, algorithm, random, collaborators),
+    );
   }
 
   /**
@@ -111,6 +126,44 @@ export class Draws {
       .flatMap((draw) => draw.assignments)
       .filter((assignment) => assignment.participantId === participantId && assignment.gameId)
       .flatMap(({ gameId }) => schedule.findGameById(gameId!)?.timeSlotIds.slice(1) ?? []);
+  }
+
+  /**
+   * Les Tirages après l'annulation de la partie (TI-6), dans le tirage provisoire de son premier
+   * créneau : ses joueurs passent non placés, et le participant de son MJ entre au tirage, non
+   * placé. Refuse une partie déjà annulée, puis une partie qui a au moins le minimum de joueurs de
+   * son scénario, que le catalogue, entier, donne : une partie sans joueur s'annule.
+   */
+  getDrawsAfterCancellingGame(game: Game, collaborators: GameCancellationCollaborators): Draws {
+    const { day, catalogue, gameMasterParticipantId } = collaborators;
+    const draw = this.findExistingProvisionalDraw(game.timeSlotIds[0]!, day);
+    if (draw.isGameCancelled(game.id)) throw new Refusal('game-already-cancelled', {});
+    const { minSeats } = catalogue.findExistingEntryById(game.scenarioId);
+    if (!draw.hasGameBelowMinimum(game.id, minSeats)) {
+      const players = draw.countPlayersOfGame(game.id);
+      throw new Refusal('game-not-below-minimum', { players, min: minSeats });
+    }
+    return this.getDrawsAfterReplacingDraw(
+      draw.getDrawAfterCancellingGame(game.id, gameMasterParticipantId),
+    );
+  }
+
+  /**
+   * Les Tirages après le rétablissement de la partie annulée (TI-6) : elle revient sans joueur, et
+   * le participant de son MJ sort du tirage. Refuse une partie qui n'est pas annulée.
+   */
+  getDrawsAfterRestoringGame(game: Game, collaborators: GameRestorationCollaborators): Draws {
+    const { day, gameMasterParticipantId } = collaborators;
+    const draw = this.findExistingProvisionalDraw(game.timeSlotIds[0]!, day);
+    if (!draw.isGameCancelled(game.id)) throw new Refusal('game-not-cancelled', {});
+    return this.getDrawsAfterReplacingDraw(
+      draw.getDrawAfterRestoringGame(game.id, gameMasterParticipantId),
+    );
+  }
+
+  /** La partie est annulée dans un tirage : son MJ n'y mène plus (IN-4). */
+  isGameCancelled(gameId: string): boolean {
+    return this.draws.some((draw) => draw.isGameCancelled(gameId));
   }
 
   /** Les Tirages sans les affectations du participant, qui disparaît (PR-12). */
@@ -140,24 +193,42 @@ export class Draws {
 
   /** Refuse un créneau dont le tirage n'est pas lancé, puis un créneau dont le tirage est publié. */
   private verifyDrawProvisional(timeSlotId: string, day: Day): void {
+    this.findExistingProvisionalDraw(timeSlotId, day);
+  }
+
+  /**
+   * Le tirage provisoire du créneau. Refuse un créneau dont le tirage n'est pas lancé, puis un
+   * créneau dont le tirage est publié.
+   */
+  private findExistingProvisionalDraw(timeSlotId: string, day: Day): Draw {
     const rank = day.getTimeSlotRank(timeSlotId);
-    const state = this.getTimeSlotState(timeSlotId);
-    if (state === 'sign-ups-open') throw new Refusal('draw-not-launched', { rank });
-    if (state === 'published') throw new Refusal('draw-published', { rank });
+    const draw = this.findDrawOfTimeSlot(timeSlotId);
+    if (!draw) throw new Refusal('draw-not-launched', { rank });
+    if (draw.published) throw new Refusal('draw-published', { rank });
+    return draw;
+  }
+
+  /** Les Tirages, ce tirage à la place de celui de son créneau. */
+  private getDrawsAfterReplacingDraw(replacement: Draw): Draws {
+    return new Draws(
+      this.draws.map((draw) => (draw.timeSlotId === replacement.timeSlotId ? replacement : draw)),
+    );
   }
 }
 
 /**
- * Le tirage provisoire du créneau, tout frais : l'algorithme reçoit ses participants et ses
- * parties, avec leurs places ; sa sortie est vérifiée. Personne n'est déplacé à la main.
+ * Le tirage provisoire du créneau, tout frais, avec ces parties annulées : l'algorithme reçoit ses
+ * participants et ses parties, avec leurs places ; sa sortie est vérifiée. Personne n'est déplacé
+ * à la main.
  */
 function buildDraw(
   timeSlotId: string,
+  cancelledGameIds: readonly string[],
   algorithm: DrawAlgorithm,
   random: RandomSource,
   collaborators: DrawCollaborators,
 ): Draw {
-  const input = buildDrawInput(timeSlotId, collaborators);
+  const input = buildDrawInput(timeSlotId, cancelledGameIds, collaborators);
   const output = algorithm.computeAssignments(input, random);
   verifyDrawOutput(input, output);
   const gameOf = new Map(output.map(({ participantId, gameId }) => [participantId, gameId]));
@@ -165,22 +236,36 @@ function buildDraw(
     timeSlotId,
     false,
     input.participants.map(({ id }) => new Assignment(id, gameOf.get(id)!, false)),
+    cancelledGameIds,
   );
 }
 
 /**
- * L'entrée de l'algorithme : les parties qui commencent sur le créneau, avec leurs places, et ceux
- * qui y ont une inscription active, partie après partie, dans l'ordre de leur inscription.
+ * L'entrée de l'algorithme : les parties qui commencent sur le créneau, sans les annulées, avec
+ * leurs places ; ceux qui ont une inscription active sur une partie qui y commence, annulées
+ * comprises, partie après partie, dans l'ordre de leur inscription ; puis les MJ des parties
+ * annulées. Un participant qui n'a d'inscription qu'à des parties annulées y est, sans partie.
  */
 function buildDrawInput(
   timeSlotId: string,
-  { signUps, signUpCollaborators, catalogue }: DrawCollaborators,
+  cancelledGameIds: readonly string[],
+  {
+    signUps,
+    signUpCollaborators,
+    catalogue,
+    findExistingParticipantIdOfGameMaster,
+  }: DrawCollaborators,
 ): DrawInput {
-  const games = signUpCollaborators.schedule.listGamesStartingOnTimeSlot(timeSlotId);
+  const starting = signUpCollaborators.schedule.listGamesStartingOnTimeSlot(timeSlotId);
+  const cancelled = starting.filter((game) => cancelledGameIds.includes(game.id));
+  const games = starting.filter((game) => !cancelled.includes(game));
   const gameIds = new Set(games.map((game) => game.id));
-  const participantIds = new Set(
-    games.flatMap((game) => signUps.listActiveParticipantIdsOfGame(game, signUpCollaborators)),
-  );
+  const participantIds = new Set([
+    ...starting.flatMap((game) =>
+      signUps.listActiveParticipantIdsOfGame(game, signUpCollaborators),
+    ),
+    ...cancelled.map((game) => findExistingParticipantIdOfGameMaster(game.gameMasterId)),
+  ]);
   const participants = [...participantIds].map((id): DrawParticipant => ({
     id,
     gameIds: signUps

@@ -16,6 +16,7 @@ import {
   tableEndpoints,
   timeSlotEndpoints,
   type ConventionDto,
+  type FrontOfficeScheduleDto,
   type GameMasterDto,
   type ParticipantSituationDto,
   type ScenarioDto,
@@ -139,12 +140,15 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
       games: [
         {
           gameId: neons,
+          cancelled: false,
           playerCount: 2,
           belowMinimum: false,
           withoutPlayers: false,
           overMaximum: false,
           freeSeatCount: 2,
           surplusPlayerCount: 0,
+          cancellable: false,
+          gameMasterSignedUpGameIds: [],
         },
       ],
       assignments: [
@@ -295,5 +299,75 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
         detail: "Le tirage du créneau 1 n'est pas lancé.",
       });
     }
+  });
+  it('annule une partie : son MJ entre au tirage, et son inscription compte de nouveau (TI-6, IN-4)', async () => {
+    await start();
+    const elodie = await gameMaster('Élodie');
+    const ondine = await gameMaster('Ondine');
+    const neons = await scheduled(elodie.id, 'Néons', 'Table 10');
+    const lune = await linkedPhone('Lune');
+    await signUp(neons, lune);
+    // Ondine s'inscrit à « Néons », puis sa partie est programmée sur le même créneau.
+    await signUp(neons, await linkedPhone('Ondine', 'game-master'));
+    const marche = await scheduled(ondine.id, 'Le Marché', 'Table 2');
+    const signUpCountOfNeons = async () =>
+      (
+        (
+          await server()
+            .get(apiUrl(frontOfficeEndpoints.readSchedule))
+            .set('Cookie', lune)
+            .expect(200)
+        ).body as FrontOfficeScheduleDto
+      ).games.find(({ id }) => id === neons)!.signUpCount;
+    expect(await signUpCountOfNeons()).toBe(1);
+    await server()
+      .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+      .expect(204);
+
+    await server()
+      .put(apiUrl(drawEndpoints.cancelGame, { gameId: marche }))
+      .expect(204);
+
+    const cancelled = (await tracking()).timeSlots[0]!.draw!;
+    expect(cancelled.games.find(({ gameId }) => gameId === marche)).toMatchObject({
+      cancelled: true,
+      gameMasterSignedUpGameIds: [neons],
+    });
+    expect(cancelled.assignments).toContainEqual(
+      expect.objectContaining({ nickname: 'Ondine', gameId: null, signedUpGameIds: [neons] }),
+    );
+    expect(await signUpCountOfNeons()).toBe(2);
+
+    await server()
+      .delete(apiUrl(drawEndpoints.restoreGame, { gameId: marche }))
+      .expect(204);
+
+    const restored = (await tracking()).timeSlots[0]!.draw!;
+    expect(restored.games.find(({ gameId }) => gameId === marche)).toMatchObject({
+      cancelled: false,
+    });
+    expect(restored.assignments.map(({ nickname }) => nickname)).toEqual(['Lune']);
+    expect(await signUpCountOfNeons()).toBe(1);
+  });
+
+  it('refuse d’annuler une partie à son minimum, en français', async () => {
+    await start();
+    const elodie = await gameMaster('Élodie');
+    const neons = await scheduled(elodie.id, 'Néons', 'Table 10');
+    await signUp(neons, await linkedPhone('Lune'));
+    await signUp(neons, await linkedPhone('Sven'));
+    await server()
+      .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+      .expect(204);
+
+    const response = await server()
+      .put(apiUrl(drawEndpoints.cancelGame, { gameId: neons }))
+      .expect(422);
+
+    expect(response.body).toMatchObject({
+      code: 'game-not-below-minimum',
+      title: 'Partie au minimum',
+      detail: 'Cette partie a 2\u00a0joueurs pour 2\u00a0places au moins\u00a0: elle ne s\'annule pas.',
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import type {
   AssignmentDto,
   DrawGameDto,
@@ -8,6 +8,7 @@ import type {
   TrackedGameDto,
 } from '@chimeres/contract';
 import { countOf, formatCount, formatSeats } from '@chimeres/design';
+import { Button } from '../ui/button';
 import { Gauge } from '../ui/gauge';
 import { Icon } from '../ui/icon';
 import { TwoSlotBadge } from '../ui/two-slot-badge';
@@ -61,6 +62,9 @@ export class PlayerPill {
   readonly player = input.required<AssignmentDto>({ alias: 'appPlayerPill' });
 }
 
+/** Une partie du créneau et son tirage : ce qu'annuler et rétablir reçoivent. */
+export type DrawnGame = { game: TrackedGameDto; figures: DrawGameDto };
+
 /** Une carte du plan, après la carte « Non placés » : une partie du créneau, à sa table. */
 type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[] } & (
   | { kind: 'drawn'; figures: DrawGameDto }
@@ -72,11 +76,12 @@ type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[
  * Le plan de salle d'un créneau lancé (docs/design/patterns.md, Pilotage du jour J) : la carte
  * « Non placés » en tête, puis une carte par partie du créneau, dans l'ordre des tables. Les cartes
  * passent à la ligne, sans défilement horizontal. Il affiche les chiffres et les drapeaux reçus, sans
- * recalcul. En lecture seule pour l'instant.
+ * recalcul. Sur un tirage provisoire, une partie qui a moins de joueurs que son minimum offre
+ * « Annuler la partie », et une partie annulée « Rétablir la partie » : la page fait le geste.
  */
 @Component({
   selector: 'app-draw-plan',
-  imports: [Gauge, Icon, PlayerPill, TwoSlotBadge],
+  imports: [Button, Gauge, Icon, PlayerPill, TwoSlotBadge],
   template: `
     <ul class="plan" aria-label="Plan de salle">
       <li class="card unassigned">
@@ -92,7 +97,11 @@ type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[
         </ul>
       </li>
       @for (card of cards(); track card.game.id) {
-        <li class="card" [class.second-slot]="card.kind === 'second-slot'">
+        <li
+          class="card"
+          [class.second-slot]="card.kind === 'second-slot'"
+          [class.cancelled]="card.kind === 'drawn' && card.figures.cancelled"
+        >
           <p class="table">{{ card.table.name }}</p>
           <h3>{{ card.game.scenario.title }}</h3>
           <p class="meta">
@@ -100,27 +109,32 @@ type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[
           </p>
           @switch (card.kind) {
             @case ('drawn') {
-              <app-gauge
-                [count]="card.figures.playerCount"
-                [min]="card.game.seats.min"
-                [max]="card.game.seats.max"
-                [shortfall]="card.figures.belowMinimum"
-              />
-              <p>
-                {{ countOf(card.figures.playerCount, 'joueur', 'joueurs') }} ·
-                {{ formatSeats(card.game.seats) }}
-                @if (card.figures.surplusPlayerCount) {
-                  ·
-                  <strong class="warning"
-                    >{{ formatCount(card.figures.surplusPlayerCount) }}&nbsp;de trop</strong
-                  >
-                } @else {
-                  · {{ countOf(card.figures.freeSeatCount, 'place libre', 'places libres') }}
-                }
-              </p>
+              @if (!card.figures.cancelled) {
+                <app-gauge
+                  [count]="card.figures.playerCount"
+                  [min]="card.game.seats.min"
+                  [max]="card.game.seats.max"
+                  [shortfall]="card.figures.belowMinimum"
+                />
+                <p>
+                  {{ countOf(card.figures.playerCount, 'joueur', 'joueurs') }} ·
+                  {{ formatSeats(card.game.seats) }}
+                  @if (card.figures.surplusPlayerCount) {
+                    ·
+                    <strong class="warning"
+                      >{{ formatCount(card.figures.surplusPlayerCount) }}&nbsp;de trop</strong
+                    >
+                  } @else {
+                    · {{ countOf(card.figures.freeSeatCount, 'place libre', 'places libres') }}
+                  }
+                </p>
+              }
               <div class="badges">
                 @if (card.game.timeSlotIds.length > 1) {
                   <app-two-slot-badge />
+                }
+                @if (card.figures.cancelled) {
+                  <span class="badge cancelled-badge"><app-icon name="x" />Annulée</span>
                 }
                 @if (card.figures.belowMinimum) {
                   <span class="badge warning"
@@ -133,6 +147,9 @@ type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[
                   >
                 }
               </div>
+              @if (card.figures.cancelled) {
+                <p>Ses joueurs sont passés dans les non placés.</p>
+              }
             }
             @case ('second-slot') {
               <p class="meta">Partie double, tirée avec le créneau {{ card.rank }}</p>
@@ -143,6 +160,27 @@ type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[
               <li [appPlayerPill]="player"></li>
             }
           </ul>
+          @if (card.kind === 'drawn' && !draw().published) {
+            @if (card.figures.cancelled) {
+              <button
+                type="button"
+                appButton="quiet"
+                class="gesture"
+                (click)="restoreGame.emit({ game: card.game, figures: card.figures })"
+              >
+                Rétablir la partie
+              </button>
+            } @else if (card.figures.cancellable) {
+              <button
+                type="button"
+                appButton="quiet-danger"
+                class="gesture"
+                (click)="cancelGame.emit({ game: card.game, figures: card.figures })"
+              >
+                Annuler la partie
+              </button>
+            }
+          }
         </li>
       }
     </ul>
@@ -190,8 +228,15 @@ type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[
         background: color-mix(in srgb, var(--danger) 8%, var(--surface-2));
       }
 
-      .card.second-slot {
+      .card.second-slot,
+      .card.cancelled {
         opacity: 0.6;
+      }
+
+      /* Les gestes d'une carte, tout en bas : à la même hauteur d'une carte à l'autre. */
+      .gesture {
+        align-self: flex-start;
+        margin-top: auto;
       }
 
       .table {
@@ -230,6 +275,10 @@ type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[
         background: color-mix(in srgb, var(--warning) 14%, transparent);
       }
 
+      .cancelled-badge {
+        background: color-mix(in srgb, var(--danger) 14%, transparent);
+      }
+
       .players {
         display: flex;
         flex-wrap: wrap;
@@ -249,6 +298,10 @@ export class DrawPlan {
   /** Dans l'ordre des tables. */
   readonly tables = input.required<readonly TableDto[]>();
   readonly games = input.required<readonly TrackedGameDto[]>();
+  /** « Annuler la partie » : la page demande confirmation, puis fait le geste. */
+  readonly cancelGame = output<DrawnGame>();
+  /** « Rétablir la partie » : sans confirmation. */
+  readonly restoreGame = output<DrawnGame>();
 
   protected readonly countOf = countOf;
   protected readonly formatCount = formatCount;

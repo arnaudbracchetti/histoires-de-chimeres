@@ -5,18 +5,24 @@ import type { SignUpCollaborators, SignUps } from './sign-ups.js';
 import type { Table } from './table.js';
 
 /**
- * Le tirage d'une partie qui commence sur le créneau : ses joueurs, « sous son minimum » (1 joueur
- * au moins, sous ses places minimum), « sans joueur », « au-delà de son maximum », et son écart :
- * les places libres sous son maximum, ou les joueurs de trop au-delà.
+ * Le tirage d'une partie qui commence sur le créneau : annulée (TI-6), ses joueurs, « sous son
+ * minimum » (1 joueur au moins, sous ses places minimum), « sans joueur », « au-delà de son
+ * maximum », et son écart : les places libres sous son maximum, ou les joueurs de trop au-delà. Une
+ * partie annulée n'a ni joueur, ni drapeau, ni place libre. « Annulable » : non annulée, avec
+ * moins de joueurs que son minimum, aucun compris. Enfin, les parties du créneau où son MJ est
+ * inscrit, actives ou non (IN-4), dans l'ordre de son inscription.
  */
 export type DrawGameTracking = {
   gameId: string;
+  cancelled: boolean;
   playerCount: number;
   belowMinimum: boolean;
   withoutPlayers: boolean;
   overMaximum: boolean;
   freeSeatCount: number;
   surplusPlayerCount: number;
+  cancellable: boolean;
+  gameMasterSignedUpGameIds: string[];
 };
 
 /**
@@ -61,6 +67,7 @@ export type DrawTrackingCollaborators = {
   participants: readonly Participant[];
   /** Dans l'ordre naturel. */
   tables: readonly Table[];
+  findExistingParticipantIdOfGameMaster(gameMasterId: string): string;
 };
 
 /**
@@ -70,26 +77,39 @@ export type DrawTrackingCollaborators = {
 export function computeDrawTracking(
   draw: Draw,
   catalogue: ScenarioCatalogue,
-  { signUps, signUpCollaborators, participants, tables }: DrawTrackingCollaborators,
+  collaborators: DrawTrackingCollaborators,
 ): DrawTracking {
+  const { signUps, signUpCollaborators, participants, tables } = collaborators;
   const starting = signUpCollaborators.schedule.listGamesStartingOnTimeSlot(draw.timeSlotId);
+  const startingIds = new Set(starting.map((game) => game.id));
   // Chaque partie avec sa table et si elle est à son minimum, que le suivi ne garde pas.
   const measured = starting.map((game) => {
     const { minSeats, maxSeats } = catalogue.findExistingEntryById(game.scenarioId);
-    const playerCount = draw.assignments.filter(({ gameId }) => gameId === game.id).length;
+    const cancelled = draw.isGameCancelled(game.id);
+    const playerCount = draw.countPlayersOfGame(game.id);
+    const gameMasterParticipantId = collaborators.findExistingParticipantIdOfGameMaster(
+      game.gameMasterId,
+    );
     const tracking: DrawGameTracking = {
       gameId: game.id,
+      cancelled,
       playerCount,
-      belowMinimum: playerCount > 0 && playerCount < minSeats,
-      withoutPlayers: playerCount === 0,
-      overMaximum: playerCount > maxSeats,
-      freeSeatCount: Math.max(maxSeats - playerCount, 0),
+      belowMinimum: !cancelled && playerCount > 0 && playerCount < minSeats,
+      withoutPlayers: !cancelled && playerCount === 0,
+      overMaximum: !cancelled && playerCount > maxSeats,
+      freeSeatCount: cancelled ? 0 : Math.max(maxSeats - playerCount, 0),
       surplusPlayerCount: Math.max(playerCount - maxSeats, 0),
+      cancellable: !cancelled && draw.hasGameBelowMinimum(game.id, minSeats),
+      gameMasterSignedUpGameIds: signUps.signUps
+        .filter(
+          ({ participantId, gameId }) =>
+            participantId === gameMasterParticipantId && startingIds.has(gameId),
+        )
+        .map(({ gameId }) => gameId),
     };
-    return { tableId: game.tableId, atMinimum: playerCount >= minSeats, tracking };
+    return { tableId: game.tableId, atMinimum: !cancelled && playerCount >= minSeats, tracking };
   });
   const games = measured.map(({ tracking }) => tracking);
-  const startingIds = new Set(starting.map((game) => game.id));
   const assignmentOf = new Map(
     draw.assignments.map((assignment) => [assignment.participantId, assignment]),
   );
@@ -119,7 +139,7 @@ export function computeDrawTracking(
     participantCount: draw.assignments.length,
     assignedCount,
     unassignedCount: draw.assignments.length - assignedCount,
-    gameCount: games.length,
+    gameCount: games.filter(({ cancelled }) => !cancelled).length,
     gamesAtMinimumCount: measured.filter(({ atMinimum }) => atMinimum).length,
     freeSeatCount: games.reduce((sum, game) => sum + game.freeSeatCount, 0),
     tablesWithSeats: tables.flatMap((table): TableWithSeats[] => {

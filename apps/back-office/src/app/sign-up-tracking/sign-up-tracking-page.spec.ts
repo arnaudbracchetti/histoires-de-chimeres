@@ -12,6 +12,7 @@ import {
   type ReserveScenarioDto,
   type ScheduleDto,
   type DrawTrackingDto,
+  type DrawGameDto,
   type SignUpTrackingDto,
   type TimeSlotTrackingDto,
   type TrackedGameDto,
@@ -196,21 +197,27 @@ const DRAW_OF_SLOT_2: DrawTrackingDto = {
   games: [
     {
       gameId: 'p1',
+      cancelled: false,
       playerCount: 5,
       belowMinimum: false,
       withoutPlayers: false,
       overMaximum: true,
       freeSeatCount: 0,
       surplusPlayerCount: 1,
+      cancellable: false,
+      gameMasterSignedUpGameIds: [],
     },
     {
       gameId: 'p3',
+      cancelled: false,
       playerCount: 0,
       belowMinimum: false,
       withoutPlayers: true,
       overMaximum: false,
       freeSeatCount: 4,
       surplusPlayerCount: 0,
+      cancellable: true,
+      gameMasterSignedUpGameIds: ['p1'],
     },
   ],
   assignments: [
@@ -768,6 +775,132 @@ describe('Pilotage du jour J', () => {
         expect(button('Relancer le tirage')).toBeUndefined();
         expect(button('Rouvrir les inscriptions')).toBeUndefined();
       }
+    });
+  });
+
+  describe('annuler et rétablir une partie', () => {
+    /** Le suivi, le créneau 2 en tirage provisoire, avec ce tirage pour « Néons ». */
+    const withNeons = (figures: Partial<DrawGameDto>): SignUpTrackingDto => ({
+      ...DRAWING,
+      timeSlots: DRAWING.timeSlots.map((slot) =>
+        slot.draw
+          ? {
+              ...slot,
+              draw: {
+                ...slot.draw,
+                games: slot.draw.games.map((drawn) =>
+                  drawn.gameId === 'p3' ? { ...drawn, ...figures } : drawn,
+                ),
+              },
+            }
+          : slot,
+      ),
+    });
+    const cards = (host: HTMLElement) => [...host.querySelectorAll('app-draw-plan .plan > li')];
+    const dialogButton = (dialog: HTMLElement | null, name: string) =>
+      [...dialog!.querySelectorAll('button')].find((candidate) => text(candidate) === name)!;
+
+    it('offre « Annuler la partie », discret et rouge, sur la seule partie sous son minimum', async () => {
+      const { host } = await render(DRAWING);
+      const [, brumes, , neons] = cards(host);
+
+      expect(text(brumes)).not.toContain('Annuler la partie');
+      const cancel = neons!.querySelector('button')!;
+      expect(text(cancel)).toBe('Annuler la partie');
+      expect(cancel.classList).toContain('quiet-danger');
+    });
+
+    it('annule après une confirmation rouge, qui garde la partie par défaut, puis relit le suivi et l’annonce', async () => {
+      const { host, http, dialog, settle, reread } = await render(DRAWING);
+      const announce = vi.spyOn(TestBed.inject(Announcer), 'announce');
+      cards(host)[3]!.querySelector('button')!.click();
+      await settle();
+
+      expect(text(dialog()?.querySelector('h2'))).toBe('Annuler « Néons » ?');
+      expect([...dialog()!.querySelectorAll('p')].map((paragraph) => text(paragraph))).toEqual([
+        'Kaïros, son MJ, redevient participant sur ce créneau et rejoint les non placés, avec son inscription à « Brumes ».',
+        'À la publication, son MJ reçoit la notification « partie annulée ».',
+      ]);
+      expect(document.activeElement?.textContent?.trim()).toBe('Garder la partie');
+      const confirm = dialogButton(dialog(), 'Annuler la partie');
+      expect(confirm.classList).toContain('danger');
+      confirm.click();
+      http
+        .expectOne({ method: 'PUT', url: apiUrl(drawEndpoints.cancelGame, { gameId: 'p3' }) })
+        .flush(null, { status: 204, statusText: 'No Content' });
+      await reread(
+        withNeons({
+          cancelled: true,
+          cancellable: false,
+          withoutPlayers: false,
+          freeSeatCount: 0,
+        }),
+      );
+
+      expect(dialog()).toBeNull();
+      expect(announce).toHaveBeenCalledWith(`Partie «${NBSP}Néons${NBSP}» du créneau 2 annulée.`);
+    });
+
+    it('compte les joueurs de la partie, et dit un MJ sans autre inscription « sans partie »', async () => {
+      const { host, dialog, settle } = await render(
+        withNeons({
+          playerCount: 2,
+          belowMinimum: true,
+          withoutPlayers: false,
+          gameMasterSignedUpGameIds: [],
+        }),
+      );
+      cards(host)[3]!.querySelector('button')!.click();
+      await settle();
+
+      expect([...dialog()!.querySelectorAll('p')].map((paragraph) => text(paragraph))).toEqual([
+        'Ses 2 joueurs passent dans les non placés, sans nouveau tirage.',
+        'Kaïros, son MJ, redevient participant sur ce créneau et rejoint les non placés, sans partie.',
+        'À la publication, son MJ reçoit la notification « partie annulée ».',
+      ]);
+    });
+
+    it('atténue une partie annulée, et la rétablit sans confirmation, puis relit le suivi et l’annonce', async () => {
+      const cancelled = withNeons({
+        cancelled: true,
+        cancellable: false,
+        withoutPlayers: false,
+        freeSeatCount: 0,
+      });
+      const { host, http, dialog, settle, reread } = await render(cancelled);
+      const announce = vi.spyOn(TestBed.inject(Announcer), 'announce');
+      const neons = cards(host)[3]!;
+
+      expect(neons.classList).toContain('cancelled');
+      expect(text(neons)).toContain('Annulée Ses joueurs sont passés dans les non placés.');
+      expect(text(neons)).not.toContain('joueur ·');
+      const restore = neons.querySelector('button')!;
+      expect(text(restore)).toBe('Rétablir la partie');
+      expect(restore.classList).toContain('quiet');
+      restore.click();
+      await settle();
+
+      expect(dialog()).toBeNull();
+      http
+        .expectOne({ method: 'DELETE', url: apiUrl(drawEndpoints.restoreGame, { gameId: 'p3' }) })
+        .flush(null, { status: 204, statusText: 'No Content' });
+      await reread(DRAWING);
+      expect(announce).toHaveBeenCalledWith(`Partie «${NBSP}Néons${NBSP}» rétablie.`);
+    });
+
+    it('n’offre aucun geste sur un tirage publié', async () => {
+      const { host, fixture, tiles } = await render({
+        ...DRAWING,
+        timeSlots: DRAWING.timeSlots.map((slot) =>
+          slot.draw
+            ? { ...slot, state: 'published', draw: { ...slot.draw, published: true } }
+            : slot,
+        ),
+      });
+      tiles()[1]!.click();
+      fixture.detectChanges();
+
+      expect(cards(host)[3]!.querySelector('button')).toBeNull();
     });
   });
 

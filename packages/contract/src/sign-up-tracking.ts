@@ -121,19 +121,25 @@ export type TimeSlotTrackingDto = {
 };
 
 /**
- * Le tirage d'une partie qui commence sur le créneau : ses joueurs, « sous son minimum » (1 joueur
- * au moins, sous ses places minimum), « sans joueur », « au-delà de son maximum », et son écart :
- * les places libres sous son maximum (`freeSeatCount`), ou les joueurs de trop au-delà
- * (`surplusPlayerCount`).
+ * Le tirage d'une partie qui commence sur le créneau : annulée (TI-6), ses joueurs, « sous son
+ * minimum » (1 joueur au moins, sous ses places minimum), « sans joueur », « au-delà de son
+ * maximum », et son écart : les places libres sous son maximum (`freeSeatCount`), ou les joueurs de
+ * trop au-delà (`surplusPlayerCount`). Une partie annulée n'a ni joueur, ni drapeau, ni place
+ * libre. `cancellable` : non annulée, avec moins de joueurs que son minimum, aucun compris (TI-6).
+ * Enfin, les parties du créneau où son MJ est inscrit, actives ou non (IN-4), dans l'ordre de son
+ * inscription : la confirmation de l'annulation les nomme.
  */
 export type DrawGameDto = {
   gameId: string;
+  cancelled: boolean;
   playerCount: number;
   belowMinimum: boolean;
   withoutPlayers: boolean;
   overMaximum: boolean;
   freeSeatCount: number;
   surplusPlayerCount: number;
+  cancellable: boolean;
+  gameMasterSignedUpGameIds: string[];
 };
 
 /**

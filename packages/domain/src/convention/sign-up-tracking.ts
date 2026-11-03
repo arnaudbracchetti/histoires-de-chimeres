@@ -78,6 +78,8 @@ export type SignUpTrackingCollaborators = {
   getTimeSlotState(timeSlotId: string): TimeSlotState;
   /** Le tirage du créneau, ou `undefined` tant qu'il n'est pas lancé. */
   findDrawOfTimeSlot(timeSlotId: string): Draw | undefined;
+  /** Le participant du MJ, que le tirage d'une partie nomme. */
+  findExistingParticipantIdOfGameMaster(gameMasterId: string): string;
   /** La réserve du créneau : voir `computeReserveOfTimeSlot()`. */
   computeReserveOfTimeSlot(timeSlotId: string): TimeSlotReserveEntry[];
 };

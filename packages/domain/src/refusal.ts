@@ -72,6 +72,13 @@ export type RefusalParams = {
    * n'est pas publié. Les tirages se lancent dans l'ordre de la journée.
    */
   'previous-draw-not-published': { rank: number; previousRank: number };
+  'game-already-cancelled': Record<string, never>;
+  /**
+   * `players` : les joueurs actuels de la partie ; `min` : les places minimum de son scénario,
+   * qu'elle atteint : elle se joue (TI-6).
+   */
+  'game-not-below-minimum': { players: number; min: number };
+  'game-not-cancelled': Record<string, never>;
   /** `rank` : le rang du créneau où le MJ mène ; `table` : la table de sa partie (IN-4). */
   'leads-game-on-time-slot': { rank: number; table: string };
   /** Une partie ne s'échange pas avec elle-même (PR-17). */

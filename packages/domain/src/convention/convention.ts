@@ -551,6 +551,8 @@ export class Convention {
       tables: this.tables,
       getTimeSlotState: (timeSlotId) => this.getTimeSlotState(timeSlotId),
       findDrawOfTimeSlot: (timeSlotId) => this.allDraws.findDrawOfTimeSlot(timeSlotId),
+      findExistingParticipantIdOfGameMaster: (gameMasterId) =>
+        this.findExistingParticipantIdOfGameMaster(gameMasterId),
       computeReserveOfTimeSlot: (timeSlotId) =>
         computeReserveOfTimeSlot(timeSlotId, catalogue, {
           day: this.day,
@@ -711,6 +713,33 @@ export class Convention {
     this.allDraws = this.allDraws.getDrawsAfterReopeningSignUps(timeSlotId, this.day);
   }
 
+  /**
+   * Annule la partie dans le tirage provisoire de son premier créneau (TI-6) : ses joueurs passent
+   * non placés, et son MJ entre au tirage, non placé, comme participant. Il n'y mène plus : ses
+   * inscriptions sur ses créneaux redeviennent actives (IN-4). Le catalogue, entier, donne le
+   * minimum de la partie. Aucune notification : elles partent à la publication.
+   */
+  cancelGame(gameId: string, catalogue: ScenarioCatalogue): void {
+    const game = this.gameSchedule.findExistingGameById(gameId);
+    this.allDraws = this.allDraws.getDrawsAfterCancellingGame(game, {
+      day: this.day,
+      catalogue,
+      gameMasterParticipantId: this.findExistingParticipantIdOfGameMaster(game.gameMasterId),
+    });
+  }
+
+  /**
+   * Rétablit la partie annulée (TI-6) : elle revient sans joueur, et son MJ sort du tirage, où
+   * qu'il soit placé, pour la mener de nouveau. Aucune notification.
+   */
+  restoreGame(gameId: string): void {
+    const game = this.gameSchedule.findExistingGameById(gameId);
+    this.allDraws = this.allDraws.getDrawsAfterRestoringGame(game, {
+      day: this.day,
+      gameMasterParticipantId: this.findExistingParticipantIdOfGameMaster(game.gameMasterId),
+    });
+  }
+
   /** Ce que le tirage lit hors des Tirages, avec ce catalogue, entier. */
   private buildDrawCollaborators(catalogue: ScenarioCatalogue): DrawCollaborators {
     return {
@@ -718,7 +747,13 @@ export class Convention {
       signUps: this.allSignUps,
       signUpCollaborators: this.buildSignUpCollaborators(this.gameSchedule),
       catalogue,
+      findExistingParticipantIdOfGameMaster: (gameMasterId) =>
+        this.findExistingParticipantIdOfGameMaster(gameMasterId),
     };
+  }
+
+  private findExistingParticipantIdOfGameMaster(gameMasterId: string): string {
+    return this.allParticipants.findExistingGameMasterById(gameMasterId).participant.id;
   }
 
   /**
@@ -729,11 +764,18 @@ export class Convention {
   computeParticipantSituation(participantId: string): ParticipantSituation {
     const participant = this.allParticipants.findExistingParticipantById(participantId);
     const collaborators = this.buildSignUpCollaborators(this.gameSchedule);
+    // Le MJ ne voit rien de l'annulation de sa partie avant la publication (§5.7) : sur ses
+    // créneaux, ses inscriptions restent cachées tant que sa partie est au programme.
+    const isHiddenByLedGame = (gameId: string) =>
+      this.gameSchedule
+        .findExistingGameById(gameId)
+        .timeSlotIds.some((slotId) =>
+          this.findGameLedByParticipantOnTimeSlot(participant.id, slotId),
+        );
     return {
-      signedUpGameIds: this.allSignUps.listActiveGameIdsOfParticipant(
-        participant.id,
-        collaborators,
-      ),
+      signedUpGameIds: this.allSignUps
+        .listActiveGameIdsOfParticipant(participant.id, collaborators)
+        .filter((gameId) => !isHiddenByLedGame(gameId)),
       timeSlots: this.day.timeSlots.map((slot) => ({
         timeSlotId: slot.id,
         state: this.getTimeSlotState(slot.id),
@@ -778,14 +820,18 @@ export class Convention {
 
   /**
    * Ce que lisent les règles des inscriptions : ce Programme, les parties que mène chaque
-   * participant par son MJ (ADR 0012), tirées du même Programme, et les créneaux qu'il occupe comme
-   * joueur d'une partie double publiée, tirés des Tirages (TI-3).
+   * participant par son MJ (ADR 0012), tirées du même Programme, sans celles qu'un tirage annule
+   * (TI-6), et les créneaux qu'il occupe comme joueur d'une partie double publiée, tirés des
+   * Tirages (TI-3).
    */
   private buildSignUpCollaborators(schedule: Schedule): SignUpCollaborators {
     const ledGames: LedGames = {
       listGamesLedByParticipant: (participantId) => {
         const gameMaster = this.allParticipants.findGameMasterOfParticipant(participantId);
-        return gameMaster ? schedule.listGamesLedByGameMaster(gameMaster.id) : [];
+        if (!gameMaster) return [];
+        return schedule
+          .listGamesLedByGameMaster(gameMaster.id)
+          .filter((game) => !this.allDraws.isGameCancelled(game.id));
       },
     };
     const playedTimeSlots: PlayedTimeSlots = {

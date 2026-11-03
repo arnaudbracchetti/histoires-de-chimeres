@@ -157,6 +157,7 @@ model Game {
   timeSlots    GameTimeSlot[]
   signUps      SignUp[]
   assignments  DrawAssignment[]
+  cancellation CancelledGame?
 
   @@index([conventionId])
   @@index([scenarioId])
@@ -209,10 +210,22 @@ model ParticipantWithoutGame {
 /// Tirage d'un créneau lancé (TI-1) : provisoire jusqu'à sa publication. Il retient son créneau
 /// (RESTRICT) : un créneau tiré ne se supprime pas.
 model Draw {
-  timeSlotId  String           @id @db.Uuid
-  timeSlot    TimeSlot         @relation(fields: [timeSlotId], references: [id], onDelete: Restrict)
-  published   Boolean          @default(false)
-  assignments DrawAssignment[]
+  timeSlotId     String           @id @db.Uuid
+  timeSlot       TimeSlot         @relation(fields: [timeSlotId], references: [id], onDelete: Restrict)
+  published      Boolean          @default(false)
+  assignments    DrawAssignment[]
+  cancelledGames CancelledGame[]
+}
+
+/// Partie annulée dans le tirage provisoire de son premier créneau (TI-6). Elle part avec son
+/// tirage, ou avec sa partie.
+model CancelledGame {
+  gameId     String @id @db.Uuid
+  game       Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  timeSlotId String @db.Uuid
+  draw       Draw   @relation(fields: [timeSlotId], references: [timeSlotId], onDelete: Cascade)
+
+  @@index([timeSlotId])
 }
 
 /// Affectation d'un participant du tirage : sa partie, ou aucune s'il n'est pas placé. Elle part

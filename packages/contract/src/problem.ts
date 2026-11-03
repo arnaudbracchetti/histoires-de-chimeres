@@ -74,6 +74,13 @@ export type RefusalParams = {
   'previous-draw-not-published': { rank: number; previousRank: number };
   /** `rank` : le rang du créneau où le MJ mène ; `table` : la table de sa partie (IN-4). */
   'leads-game-on-time-slot': { rank: number; table: string };
+  'game-already-cancelled': Record<string, never>;
+  /**
+   * `players` : les joueurs actuels de la partie ; `min` : les places minimum de son scénario,
+   * qu'elle atteint : elle se joue (TI-6).
+   */
+  'game-not-below-minimum': { players: number; min: number };
+  'game-not-cancelled': Record<string, never>;
   /** Une partie ne s'échange pas avec elle-même (PR-17). */
   'game-swapped-with-itself': Record<string, never>;
   'scenario-not-found': Record<string, never>;

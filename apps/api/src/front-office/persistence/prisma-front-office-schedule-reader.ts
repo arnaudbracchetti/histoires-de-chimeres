@@ -25,7 +25,17 @@ export class PrismaFrontOfficeScheduleReader implements FrontOfficeScheduleReade
             signUps: {
               select: {
                 participant: {
-                  select: { gameMaster: { select: { games: { select: { timeSlotId: true } } } } },
+                  select: {
+                    gameMaster: {
+                      select: {
+                        // Le MJ ne mène pas une partie annulée par un tirage (TI-6).
+                        games: {
+                          where: { game: { cancellation: null } },
+                          select: { timeSlotId: true },
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },

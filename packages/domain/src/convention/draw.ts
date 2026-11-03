@@ -13,15 +13,30 @@ export class Assignment {
 
 /**
  * Tirage d'un créneau, lancé : provisoire jusqu'à sa publication. Une affectation par participant
- * du tirage, enregistrés au lancement. Entité de l'agrégat Convention, rangée dans les Tirages, qui
- * en gardent les règles.
+ * du tirage, enregistrés au lancement, et les parties annulées (TI-6). Entité de l'agrégat
+ * Convention, rangée dans les Tirages, qui en gardent les règles.
  */
 export class Draw {
   constructor(
     readonly timeSlotId: string,
     readonly published: boolean,
     readonly assignments: readonly Assignment[],
+    readonly cancelledGameIds: readonly string[] = [],
   ) {}
+
+  isGameCancelled(gameId: string): boolean {
+    return this.cancelledGameIds.includes(gameId);
+  }
+
+  /** La partie a moins de joueurs que ce minimum, aucun compris : elle peut être annulée (TI-6). */
+  hasGameBelowMinimum(gameId: string, minSeats: number): boolean {
+    return this.countPlayersOfGame(gameId) < minSeats;
+  }
+
+  /** Le nombre de joueurs de la partie : ses affectations, déplacements compris. */
+  countPlayersOfGame(gameId: string): number {
+    return this.assignments.filter((assignment) => assignment.gameId === gameId).length;
+  }
 
   /** Le même tirage, sans l'affectation du participant, qui disparaît (PR-12). */
   getDrawAfterRemovingParticipant(participantId: string): Draw {
@@ -29,6 +44,40 @@ export class Draw {
       this.timeSlotId,
       this.published,
       this.assignments.filter((assignment) => assignment.participantId !== participantId),
+      this.cancelledGameIds,
+    );
+  }
+
+  /**
+   * Le même tirage, la partie annulée : ses joueurs passent non placés, sans la marque « déplacé à
+   * la main », et le participant de son MJ entre au tirage, non placé.
+   */
+  getDrawAfterCancellingGame(gameId: string, gameMasterParticipantId: string): Draw {
+    return new Draw(
+      this.timeSlotId,
+      this.published,
+      [
+        ...this.assignments.map((assignment) =>
+          assignment.gameId === gameId
+            ? new Assignment(assignment.participantId, null, false)
+            : assignment,
+        ),
+        new Assignment(gameMasterParticipantId, null, false),
+      ],
+      [...this.cancelledGameIds, gameId],
+    );
+  }
+
+  /**
+   * Le même tirage, la partie rétablie : elle revient sans joueur, et le participant de son MJ sort
+   * du tirage, où qu'il soit placé.
+   */
+  getDrawAfterRestoringGame(gameId: string, gameMasterParticipantId: string): Draw {
+    return new Draw(
+      this.timeSlotId,
+      this.published,
+      this.assignments.filter((assignment) => assignment.participantId !== gameMasterParticipantId),
+      this.cancelledGameIds.filter((cancelled) => cancelled !== gameId),
     );
   }
 }

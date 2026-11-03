@@ -16,7 +16,7 @@ Seuls les termes de [GLOSSARY.md](../../GLOSSARY.md) apparaissent à l'écran, e
 « Annuler » est réservé, dans le domaine, à la partie sous son minimum après le tirage. À l'écran :
 
 - « Annuler » **seul** ferme un dialogue ou une saisie sans rien faire ;
-- « Annuler la partie » est l'action du domaine, toujours avec son objet.
+- « Annuler la partie » est l'action du domaine, toujours avec son objet. Son dialogue de confirmation ferme par « Garder la partie », la réponse qui reprend la question, et jamais par « Annuler », qui se lirait à l'envers.
 
 ## Micro-rédaction
 

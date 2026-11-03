@@ -5,7 +5,7 @@ import type {
   VerdictRefusalDto,
 } from '@chimeres/contract';
 import type { Refusal } from '@chimeres/domain';
-import { formatCount, fr } from '@chimeres/design';
+import { countOf, formatCount, fr } from '@chimeres/design';
 
 type ParamsOf<C extends ProblemCode> = C extends RefusalCode
   ? RefusalParams[C]
@@ -204,6 +204,19 @@ export const problemCatalogue: Catalogue = {
     detail: ({ rank }) =>
       fr`Ce créneau tomberait entre les créneaux ${rank} et ${rank + 1}, qu'occupe une partie double : choisis d'autres heures.`,
     field: 'start',
+  },
+  'game-already-cancelled': {
+    title: 'Partie déjà annulée',
+    detail: () => fr`Cette partie est déjà annulée.`,
+  },
+  'game-not-below-minimum': {
+    title: 'Partie au minimum',
+    detail: ({ players, min }) =>
+      fr`Cette partie a ${countOf(players, 'joueur', 'joueurs')} pour ${countOf(min, 'place', 'places')} au moins : elle ne s'annule pas.`,
+  },
+  'game-not-cancelled': {
+    title: 'Partie maintenue',
+    detail: () => fr`Cette partie n'est pas annulée.`,
   },
   'game-not-found': {
     title: 'Partie introuvable',

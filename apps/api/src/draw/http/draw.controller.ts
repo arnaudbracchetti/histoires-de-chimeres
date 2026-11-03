@@ -1,5 +1,11 @@
-import { Controller, Delete, HttpCode, HttpStatus, Inject, Param, Post } from '@nestjs/common';
-import { LaunchDraw, ReopenSignUps, RerunDraw } from '@chimeres/application';
+import { Controller, Delete, HttpCode, HttpStatus, Inject, Param, Post, Put } from '@nestjs/common';
+import {
+  CancelGame,
+  LaunchDraw,
+  ReopenSignUps,
+  RerunDraw,
+  RestoreGame,
+} from '@chimeres/application';
 import { drawEndpoints } from '@chimeres/contract';
 
 /** Les gestes du tirage rendent 204 : la page relit le suivi. */
@@ -9,6 +15,8 @@ export class DrawController {
     @Inject(LaunchDraw) private readonly launchDraw: LaunchDraw,
     @Inject(RerunDraw) private readonly rerunDraw: RerunDraw,
     @Inject(ReopenSignUps) private readonly reopenSignUps: ReopenSignUps,
+    @Inject(CancelGame) private readonly cancelGame: CancelGame,
+    @Inject(RestoreGame) private readonly restoreGame: RestoreGame,
   ) {}
 
   @Post(drawEndpoints.launch.path)
@@ -27,5 +35,17 @@ export class DrawController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async reopen(@Param('timeSlotId') timeSlotId: string): Promise<void> {
     await this.reopenSignUps.execute(timeSlotId);
+  }
+
+  @Put(drawEndpoints.cancelGame.path)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async cancel(@Param('gameId') gameId: string): Promise<void> {
+    await this.cancelGame.execute(gameId);
+  }
+
+  @Delete(drawEndpoints.restoreGame.path)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async restore(@Param('gameId') gameId: string): Promise<void> {
+    await this.restoreGame.execute(gameId);
   }
 }

@@ -439,21 +439,27 @@ describe('Suivi d’un créneau lancé', () => {
       games: [
         {
           gameId: 'brumes',
+          cancelled: false,
           playerCount: 1,
           belowMinimum: true,
           withoutPlayers: false,
           overMaximum: false,
           freeSeatCount: 4,
           surplusPlayerCount: 0,
+          cancellable: true,
+          gameMasterSignedUpGameIds: [],
         },
         {
           gameId: 'epice',
+          cancelled: false,
           playerCount: 1,
           belowMinimum: true,
           withoutPlayers: false,
           overMaximum: false,
           freeSeatCount: 3,
           surplusPlayerCount: 0,
+          cancellable: true,
+          gameMasterSignedUpGameIds: [],
         },
       ],
       // Dans l'ordre naturel des pseudos.
@@ -528,6 +534,51 @@ describe('Suivi d’un créneau lancé', () => {
       movedByHand: true,
       signedUpGameIds: [],
       playsWithoutSignUp: true,
+    });
+  });
+
+  it('montre une partie annulée, hors des chiffres, avec les inscriptions de son MJ', () => {
+    const convention = aConvention();
+    convention.unscheduleGame('epice');
+    convention.signUpForGame('p-g2', 'brumes', CATALOGUE);
+    convention.scheduleScenario('epice', aScenario('b', 'g2', 2), 's1', 't2');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    // Avant l'annulation, l'inscription du MJ ne compte pas (IN-4), mais la confirmation la nomme.
+    expect(trackingOf(convention, 's1').draw!.games[1]).toMatchObject({
+      gameId: 'epice',
+      cancelled: false,
+      gameMasterSignedUpGameIds: ['brumes'],
+    });
+
+    convention.cancelGame('epice', CATALOGUE);
+
+    const draw = trackingOf(convention, 's1').draw!;
+    expect(draw).toMatchObject({
+      participantCount: 2,
+      gameCount: 1,
+      gamesAtMinimumCount: 0,
+      freeSeatCount: 4,
+      tablesWithSeats: [{ tableId: 't1', freeSeatCount: 4 }],
+    });
+    expect(draw.games[1]).toEqual({
+      gameId: 'epice',
+      cancelled: true,
+      playerCount: 0,
+      belowMinimum: false,
+      withoutPlayers: false,
+      overMaximum: false,
+      freeSeatCount: 0,
+      surplusPlayerCount: 0,
+      cancellable: false,
+      gameMasterSignedUpGameIds: ['brumes'],
+    });
+    expect(draw.assignments.find(({ participantId }) => participantId === 'p-g2')).toEqual({
+      participantId: 'p-g2',
+      gameId: null,
+      movedByHand: false,
+      signedUpGameIds: ['brumes'],
+      playsWithoutSignUp: false,
     });
   });
 });
@@ -654,9 +705,9 @@ describe('Rouvrir les inscriptions (TI-6)', () => {
     convention.reopenSignUps('s1');
 
     expect(
-      convention.computeParticipantSituation('p1').timeSlots.find(
-        ({ timeSlotId }) => timeSlotId === 's1',
-      )?.withoutGame,
+      convention
+        .computeParticipantSituation('p1')
+        .timeSlots.find(({ timeSlotId }) => timeSlotId === 's1')?.withoutGame,
     ).toBe(true);
   });
 });
@@ -687,10 +738,196 @@ describe('Relancer et rouvrir : refus, dans l’ordre', () => {
       });
 
       it('refuse un créneau introuvable', () => {
-        expect(refusalOf(() => gesture(aConvention(), 'inconnu')).code).toBe(
-          'time-slot-not-found',
-        );
+        expect(refusalOf(() => gesture(aConvention(), 'inconnu')).code).toBe('time-slot-not-found');
       });
     });
   }
+});
+
+describe('Annuler une partie (TI-6)', () => {
+  /** Élodie et Lune placées à « épice », Zéphyr à « brumes ». Le tirage du créneau 1 est lancé. */
+  function aLaunchedConvention(): Convention {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+    convention.signUpForGame('p2', 'epice', CATALOGUE);
+    convention.signUpForGame('p3', 'brumes', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    return convention;
+  }
+
+  it('fait passer ses joueurs dans les non placés, sans marque, et y fait entrer son MJ', () => {
+    const convention = aLaunchedConvention();
+
+    convention.cancelGame('brumes', CATALOGUE);
+
+    expect(assignmentsOf(convention, 's1')).toEqual(['p3 -', 'p1 epice', 'p2 epice', 'p-g1 -']);
+    expect(convention.draws[0]!.assignments.some(({ movedByHand }) => movedByHand)).toBe(false);
+    expect(convention.draws[0]!.cancelledGameIds).toEqual(['brumes']);
+  });
+
+  it('annule une partie sans joueur', () => {
+    const convention = aLaunchedConvention();
+    convention.rerunDraw('s1', CATALOGUE, new FakeDrawAlgorithm(), RANDOM);
+
+    convention.cancelGame('epice', CATALOGUE);
+
+    expect(convention.draws[0]!.cancelledGameIds).toEqual(['epice']);
+  });
+
+  it('rend actives les inscriptions de son MJ, sur les deux créneaux d’une partie double, jusqu’au rétablissement (IN-4)', () => {
+    const convention = aConvention();
+    convention.unscheduleGame('epice');
+    convention.signUpForGame('p-g2', 'brumes', CATALOGUE);
+    convention.signUpForGame('p-g2', 'neons', CATALOGUE);
+    convention.scheduleScenario('epice', aScenario('b', 'g2', 2), 's1', 't2');
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    const signUpCounts = () =>
+      convention
+        .computeSignUpTracking(CATALOGUE)
+        .flatMap(({ games }) => games)
+        .filter(({ gameId }) => gameId !== 'epice')
+        .map(({ gameId, signUpCount }) => `${gameId} ${signUpCount}`);
+    expect(signUpCounts()).toEqual(['brumes 0', 'neons 0']);
+
+    convention.cancelGame('epice', CATALOGUE);
+    expect(signUpCounts()).toEqual(['brumes 1', 'neons 1']);
+
+    convention.restoreGame('epice');
+    expect(signUpCounts()).toEqual(['brumes 0', 'neons 0']);
+    expect(assignmentsOf(convention, 's1')).toEqual([]);
+  });
+
+  it('ne montre rien de l’annulation au téléphone du MJ avant la publication (§5.7)', () => {
+    const convention = aConvention();
+    convention.unscheduleGame('epice');
+    convention.signUpForGame('p-g2', 'brumes', CATALOGUE);
+    convention.scheduleScenario('epice', aScenario('b', 'g2', 2), 's1', 't2');
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+
+    convention.cancelGame('epice', CATALOGUE);
+
+    const situation = convention.computeParticipantSituation('p-g2');
+    expect(situation.signedUpGameIds).toEqual([]);
+    expect(situation.timeSlots[0]).toMatchObject({ ledGameId: 'epice', drawResult: null });
+  });
+
+  it('se garde à la relance, qui ne la donne pas à l’algorithme et y reprend son MJ', () => {
+    const convention = aConvention();
+    convention.unscheduleGame('epice');
+    convention.signUpForGame('p-g2', 'brumes', CATALOGUE);
+    convention.scheduleScenario('epice', aScenario('b', 'g2', 2), 's1', 't2');
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    convention.cancelGame('epice', CATALOGUE);
+    const algorithm = new FakeDrawAlgorithm();
+
+    convention.rerunDraw('s1', CATALOGUE, algorithm, RANDOM);
+
+    expect(algorithm.received).toEqual({
+      games: [{ id: 'brumes', minSeats: 3, maxSeats: 5 }],
+      // Élodie n'est inscrite qu'à la partie annulée : elle reste au tirage, sans partie.
+      participants: [
+        { id: 'p-g2', gameIds: ['brumes'] },
+        { id: 'p1', gameIds: [] },
+      ],
+    });
+    expect(convention.draws[0]!.cancelledGameIds).toEqual(['epice']);
+  });
+});
+
+describe('Annuler une partie : refus, dans l’ordre', () => {
+  /** Élodie, Lune et Zéphyr placés à « brumes », de 3 à 5 places. */
+  function aFullConvention(): Convention {
+    const convention = aConvention();
+    for (const participantId of ['p1', 'p2', 'p3']) {
+      convention.signUpForGame(participantId, 'brumes', CATALOGUE);
+    }
+    return convention;
+  }
+
+  it('refuse une partie dont le tirage n’est pas lancé', () => {
+    expect(refusalOf(() => aConvention().cancelGame('epice', CATALOGUE))).toMatchObject({
+      code: 'draw-not-launched',
+      params: { rank: 1 },
+    });
+  });
+
+  it('refuse une partie dont le tirage est publié', () => {
+    const convention = restoreWithDraws(aConvention(), [new Draw('s1', true, [])]);
+
+    expect(refusalOf(() => convention.cancelGame('epice', CATALOGUE))).toMatchObject({
+      code: 'draw-published',
+      params: { rank: 1 },
+    });
+  });
+
+  it('refuse une partie déjà annulée', () => {
+    const convention = restoreWithDraws(aConvention(), [
+      new Draw('s1', false, [new Assignment('p-g2', null, false)], ['epice']),
+    ]);
+
+    expect(refusalOf(() => convention.cancelGame('epice', CATALOGUE)).code).toBe(
+      'game-already-cancelled',
+    );
+  });
+
+  it('refuse une partie qui a son minimum de joueurs', () => {
+    const convention = aFullConvention();
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+
+    expect(refusalOf(() => convention.cancelGame('brumes', CATALOGUE))).toMatchObject({
+      code: 'game-not-below-minimum',
+      params: { players: 3, min: 3 },
+    });
+  });
+
+  it('relit le minimum dans le catalogue : la même partie s’annule si le minimum monte (PR-4)', () => {
+    const convention = aFullConvention();
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    const catalogue = ScenarioCatalogue.restore([
+      { id: 'a', gameMasterId: 'g1', duration: 1, minSeats: 4, maxSeats: 5 },
+      { id: 'b', gameMasterId: 'g2', duration: 2, minSeats: 2, maxSeats: 4 },
+      { id: 'c', gameMasterId: 'g1', duration: 1, minSeats: 3, maxSeats: 5 },
+    ]);
+
+    convention.cancelGame('brumes', catalogue);
+
+    expect(convention.draws[0]!.cancelledGameIds).toEqual(['brumes']);
+  });
+
+  it('refuse une partie introuvable', () => {
+    expect(refusalOf(() => aConvention().cancelGame('inconnue', CATALOGUE)).code).toBe(
+      'game-not-found',
+    );
+  });
+});
+
+describe('Rétablir une partie (TI-6)', () => {
+  it('la fait revenir sans joueur, et fait sortir son MJ du tirage, même placé ailleurs', () => {
+    const convention = restoreWithDraws(aConvention(), [
+      new Draw(
+        's1',
+        false,
+        [new Assignment('p1', null, false), new Assignment('p-g1', 'epice', true)],
+        ['brumes'],
+      ),
+    ]);
+
+    convention.restoreGame('brumes');
+
+    expect(assignmentsOf(convention, 's1')).toEqual(['p1 -']);
+    expect(convention.draws[0]!.cancelledGameIds).toEqual([]);
+  });
+
+  it('refuse une partie qui n’est pas annulée', () => {
+    const convention = restoreWithDraws(aConvention(), [new Draw('s1', false, [])]);
+
+    expect(refusalOf(() => convention.restoreGame('brumes')).code).toBe('game-not-cancelled');
+  });
+
+  it('refuse une partie dont le tirage n’est pas lancé, puis publié', () => {
+    expect(refusalOf(() => aConvention().restoreGame('brumes')).code).toBe('draw-not-launched');
+    const published = restoreWithDraws(aConvention(), [new Draw('s1', true, [], ['brumes'])]);
+    expect(refusalOf(() => published.restoreGame('brumes')).code).toBe('draw-published');
+  });
 });

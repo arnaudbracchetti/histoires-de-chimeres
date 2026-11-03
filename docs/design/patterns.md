@@ -181,6 +181,8 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 | Lancer le tirage | oui, en orange (principal) : le geste n'efface rien, mais ferme les inscriptions |
 | Relancer le tirage | oui, s'il a des déplacements à la main, qu'elle efface ; sans déplacement, non |
 | Rouvrir les inscriptions d'un créneau en tirage | oui : le résultat provisoire est effacé |
+| Annuler une partie dans le tirage | oui : ses joueurs passent dans les non placés ; « Garder la partie » ferme |
+| Rétablir une partie annulée | non : elle revient sans joueur, rien d'autre ne part |
 | Retirer une disponibilité | non : c'est une case à cocher |
 | Revenir aux places du scénario | non |
 
@@ -190,8 +192,8 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
   - pour un geste qui retire des inscriptions, pose le chiffre, puis la conséquence : « Il y a 12 inscrits à la partie. Ils perdront leur inscription et seront notifiés. », puis, à la ligne, « 3 d'entre eux n'ont pas d'autre inscription sur le créneau : ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie. » (absente à 0, IN-6). Au singulier : « Il y a 1 inscrit à la partie. Il perdra son inscription et sera notifié. », puis « C'est sa seule inscription sur le créneau : il reste dans le tirage du créneau, mais sans être inscrit à aucune partie. » Une partie double ajoute ses créneaux (« à la partie (créneaux 2 et 3) »). Un échange donne ces phrases pour chaque partie touchée, nommée : « Il y a 4 inscrits à « Néons » (créneau 2). ». Une déprogrammation ajoute « Le scénario revient en réserve, sans ses inscriptions. » ;
   - s'en tient aux chiffres de l'API (inscriptions actives, IN-4) : ni pseudos, ni places restantes. « Déplacer vers… » ne les annonce pas sur ses cases, qui gardent leur seul verdict PR-5 ;
   - sur la page de pilotage, reprend à chaque relecture les chiffres du suivi des mêmes parties, sans se fermer ; un nombre retombé à 0 donne « Aucun inscrit ne perd son inscription. » (« Aucun inscrit de « Néons » (créneau 2) ne perd son inscription. » dans un échange). Le Calendrier, qui ne se relit pas, garde les chiffres lus au geste. Le geste retire les inscriptions présentes au moment de l'écriture ;
-  - propose « Annuler » (discret) et un bouton destructeur qui nomme l'action : « Supprimer le créneau » ;
-  - met le focus initial sur « Annuler ».
+  - propose « Annuler » (discret) et un bouton destructeur qui nomme l'action : « Supprimer le créneau ». Quand l'action elle-même commence par « Annuler », le bouton qui ferme reprend la question à l'inverse : « Garder la partie » face à « Annuler la partie » ;
+  - met le focus initial sur le bouton qui ferme.
 - **Aucune annulation après coup**, nulle part.
 - **Refus du domaine** (PR-10, PR-12, PR-14 : un objet qui porte des parties) : l'action reste proposée, le front ne devine pas la règle. Le refus arrive de l'API et s'affiche **dans le dialogue de confirmation lui-même**, avec son `detail` : « Le créneau 2 porte 3 parties : déprogramme-les d'abord. » Le bouton destructeur disparaît, il ne reste que « Fermer ».
 
@@ -341,7 +343,9 @@ La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque c
   - Carte d'une partie : table, titre, « jeu · MJ », jauge, « 5 joueurs · 3 à 5 places · 1 place libre » (ou « · 1 de trop », en jaune), badges « double », « Sous son minimum » et « Au-delà du maximum » (jaunes, `triangle-alert`), puis ses joueurs en pastilles, dans l'ordre naturel des pseudos.
   - Pastille d'un joueur : crayon (`pencil`) et bordure en pointillés s'il a été déplacé à la main ; pseudo en jaune s'il joue à une partie où il n'est pas inscrit. Le lecteur d'écran entend les deux marques.
   - Second créneau d'une partie double : carte atténuée, « Partie double, tirée avec le créneau 3 », ses joueurs, en lecture seule.
-  - Le plan est en lecture seule pour l'instant. La carte d'une partie n'ouvre pas sa fiche.
+  - **Annuler la partie** : sur un tirage provisoire, une partie qui a moins de joueurs que son minimum (sans joueur compris) porte « Annuler la partie » (discret, rouge), tout en bas de la carte. Pas de mention « Maintenue » : c'est le cas par défaut. Une confirmation rouge : « Annuler « Néons » ? », « Ses 2 joueurs passent dans les non placés, sans nouveau tirage. » (« Son joueur passe… » au singulier, rien sans joueur), « Kaïros, son MJ, redevient participant sur ce créneau et rejoint les non placés, avec son inscription à « Brumes ». » (« … sans partie. » sans inscription sur le créneau), « À la publication, son MJ reçoit la notification « partie annulée ». » ; **Garder la partie** · **Annuler la partie**. Le geste réussi est annoncé, et la page relit le suivi.
+  - Partie annulée : carte atténuée, badge « Annulée » (`x`, rouge), « Ses joueurs sont passés dans les non placés. », sans jauge ni chiffres, et « Rétablir la partie » (discret), sans confirmation : la partie revient sans joueur et son MJ quitte le tirage. Un refus part en alerte. Le geste réussi est annoncé, et la page relit le suivi.
+  - Sur un tirage publié, le plan est en lecture seule : aucun bouton. La carte d'une partie n'ouvre pas sa fiche.
 - **Onglets du créneau**, sous le résumé, en [onglets de classeur](#onglets-de-classeur) : « Parties du créneau » (`dices`, nombre de parties qui commencent sur le créneau), « Inscrits du créneau » (`users`, la demande) et « Réserve du créneau » (`inbox`, nombre de scénarios programmables). Aucun onglet sur un créneau lancé.
 - **Onglet Parties du créneau** : « 1 table libre » en tête, puis une ligne par table, dans l'ordre des tables.
   - Partie : nom de la table, vignette, titre (bouton qui ouvre la fiche, `aria-expanded` ; un clic n'importe où sur la ligne l'ouvre aussi), « jeu · MJ », jauge, « 15 inscrits · 3 à 4 places », suivi de son écart (« · 11 de trop », « · 1 manquant »), « dont 8 sans autre inscription sur le créneau » (absent à 0), puis les badges « double », « Très demandée » (neutre, `users`) et « Sous son minimum » (jaune, `triangle-alert`).

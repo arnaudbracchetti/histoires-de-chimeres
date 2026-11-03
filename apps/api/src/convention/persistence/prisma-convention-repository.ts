@@ -43,7 +43,9 @@ export class PrismaConventionRepository implements ConventionRepository {
       games,
     } = await this.prisma.convention.findFirstOrThrow({
       include: {
-        timeSlots: { include: { draw: { include: { assignments: true } } } },
+        timeSlots: {
+          include: { draw: { include: { assignments: true, cancelledGames: true } } },
+        },
         tables: true,
         gameMasters: { include: { availabilities: { select: { timeSlotId: true } } } },
         participants: { include: { signUps: true, withoutGameOnTimeSlots: true } },
@@ -100,6 +102,7 @@ export class PrismaConventionRepository implements ConventionRepository {
                   ({ participantId, gameId, movedByHand }) =>
                     new Assignment(participantId, gameId, movedByHand),
                 ),
+                draw.cancelledGames.map(({ gameId }) => gameId),
               ),
             ]
           : [],
@@ -147,6 +150,7 @@ export class PrismaConventionRepository implements ConventionRepository {
     );
     const draws = changes(loaded.draws, current.draws);
     const drawAssignments = changes(loaded.drawAssignments, current.drawAssignments);
+    const cancelledGames = changes(loaded.cancelledGames, current.cancelledGames);
     const {
       removed: unscheduled,
       added: scheduled,
@@ -186,6 +190,9 @@ export class PrismaConventionRepository implements ConventionRepository {
             participantId,
           })),
         },
+      });
+      await tx.cancelledGame.deleteMany({
+        where: { gameId: { in: cancelledGames.removed.map(({ gameId }) => gameId) } },
       });
       await tx.draw.deleteMany({
         where: { timeSlotId: { in: draws.removed.map(({ timeSlotId }) => timeSlotId) } },
@@ -247,6 +254,7 @@ export class PrismaConventionRepository implements ConventionRepository {
           data: assignment,
         });
       }
+      await tx.cancelledGame.createMany({ data: cancelledGames.added });
     });
   }
 }

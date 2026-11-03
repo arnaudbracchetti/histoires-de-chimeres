@@ -15,6 +15,11 @@ export type ConfirmationRequest = {
   /** Bouton destructeur, qui nomme l'action : « Supprimer le créneau ». */
   confirmLabel: string;
   /**
+   * Le bouton qui ferme, « Annuler » par défaut. Il reprend la question quand « Annuler » prêterait
+   * à confusion : « Garder la partie » face à « Annuler la partie ».
+   */
+  cancelLabel?: string;
+  /**
    * Le dessin du bouton qui confirme : rouge (destructeur, par défaut) pour ce qui efface, orange
    * (principal) pour un geste qui n'efface rien, comme lancer le tirage.
    */
@@ -48,7 +53,7 @@ let nextId = 0;
     }
     <div class="actions">
       <button type="button" appButton="quiet" class="cancel" (click)="ref.close(false)">
-        {{ refusal() ? 'Fermer' : 'Annuler' }}
+        {{ refusal() ? 'Fermer' : (request.cancelLabel ?? 'Annuler') }}
       </button>
       @if (!refusal()) {
         <button type="button" [appButton]="request.tone ?? 'danger'" (click)="confirm()">
