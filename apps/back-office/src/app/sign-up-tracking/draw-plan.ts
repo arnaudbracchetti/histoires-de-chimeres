@@ -1,4 +1,5 @@
-import { Component, computed, input, output } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, computed, input, linkedSignal, output } from '@angular/core';
 import type {
   AssignmentDto,
   DrawGameDto,
@@ -7,7 +8,7 @@ import type {
   TimeSlotTrackingDto,
   TrackedGameDto,
 } from '@chimeres/contract';
-import { countOf, formatCount, formatSeats } from '@chimeres/design';
+import { countOf, formatCount, formatSeats, fr } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { Gauge } from '../ui/gauge';
 import { Icon } from '../ui/icon';
@@ -15,25 +16,36 @@ import { TwoSlotBadge } from '../ui/two-slot-badge';
 
 /**
  * La pastille d'un joueur : crayon et pointillés s'il a été déplacé à la main, pseudo en jaune s'il
- * joue à une partie où il n'est pas inscrit. Le lecteur d'écran l'entend aussi.
+ * joue à une partie où il n'est pas inscrit. Le lecteur d'écran l'entend aussi. Sur un tirage
+ * provisoire, elle est un bouton qui choisit le joueur (`aria-pressed`, bordure orange).
  */
 @Component({
   selector: 'li[appPlayerPill]',
-  imports: [Icon],
+  imports: [Icon, NgTemplateOutlet],
   host: {
     '[class.moved]': 'player().movedByHand',
     '[class.unregistered]': 'player().playsWithoutSignUp',
+    '[class.chosen]': 'chosen()',
   },
   template: `
-    @if (player().movedByHand) {
-      <app-icon name="pencil" />
-    }
-    <span class="nickname">{{ player().nickname }}</span>
-    @if (player().movedByHand) {
-      <span class="visually-hidden">, déplacé à la main</span>
-    }
-    @if (player().playsWithoutSignUp) {
-      <span class="visually-hidden">, pas inscrit à cette partie</span>
+    <ng-template #content>
+      @if (player().movedByHand) {
+        <app-icon name="pencil" />
+      }
+      <span class="nickname">{{ player().nickname }}</span>
+      @if (player().movedByHand) {
+        <span class="visually-hidden">, déplacé à la main</span>
+      }
+      @if (player().playsWithoutSignUp) {
+        <span class="visually-hidden">, pas inscrit à cette partie</span>
+      }
+    </ng-template>
+    @if (choosable()) {
+      <button type="button" [attr.aria-pressed]="chosen()" (click)="choose.emit()">
+        <ng-container *ngTemplateOutlet="content" />
+      </button>
+    } @else {
+      <ng-container *ngTemplateOutlet="content" />
     }
   `,
   styles: `
@@ -55,12 +67,42 @@ import { TwoSlotBadge } from '../ui/two-slot-badge';
       :host(.unregistered) .nickname {
         color: var(--warning);
       }
+
+      /* Un anneau hors de la bordure : la pastille garde ses pointillés et ne grandit pas. */
+      :host(.chosen) {
+        box-shadow: 0 0 0 2px var(--accent);
+      }
+
+      button {
+        display: inline-flex;
+        gap: var(--space-xxs);
+        align-items: center;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+      }
     }
   `,
 })
 export class PlayerPill {
   readonly player = input.required<AssignmentDto>({ alias: 'appPlayerPill' });
+  /** Sur un tirage provisoire : un clic choisit le joueur. */
+  readonly choosable = input(false);
+  readonly chosen = input(false);
+  readonly choose = output<void>();
 }
+
+/**
+ * Un déplacement : le joueur choisi, et sa nouvelle partie, à sa table, ou `null` pour le retirer
+ * de sa table.
+ */
+export type ParticipantMove = {
+  participant: AssignmentDto;
+  target: { game: TrackedGameDto; table: TableDto } | null;
+};
 
 /** Une partie du créneau et son tirage : ce qu'annuler et rétablir reçoivent. */
 export type DrawnGame = { game: TrackedGameDto; figures: DrawGameDto };
@@ -78,11 +120,30 @@ type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[
  * passent à la ligne, sans défilement horizontal. Il affiche les chiffres et les drapeaux reçus, sans
  * recalcul. Sur un tirage provisoire, une partie qui a moins de joueurs que son minimum offre
  * « Annuler la partie », et une partie annulée « Rétablir la partie » : la page fait le geste.
+ *
+ * On y déplace un participant en deux clics : le joueur, puis sa nouvelle table, ou « Retirer de sa
+ * table » sur la carte « Non placés ». Le choix survit à une relecture tant que le joueur reste
+ * dans le tirage ; « Annuler » et Échap le défont.
  */
 @Component({
   selector: 'app-draw-plan',
   imports: [Button, Gauge, Icon, PlayerPill, TwoSlotBadge],
+  host: { '(keydown.escape)': 'dropChoice()' },
   template: `
+    @if (!draw().published) {
+      <div class="banner">
+        @if (chosen()) {
+          <p>{{ chosenSummary() }}</p>
+          <button type="button" appButton="quiet" (click)="dropChoice()">Annuler</button>
+        } @else {
+          <p>Choisis un joueur, puis sa nouvelle table.</p>
+          <p class="legend">
+            <span><app-icon name="pencil" />déplacé à la main</span>
+            <span><span class="warning">Pseudo</span> en jaune&nbsp;: joue sans inscription</span>
+          </p>
+        }
+      </div>
+    }
     <ul class="plan" aria-label="Plan de salle">
       <li class="card unassigned">
         <h3>Non placés</h3>
@@ -92,9 +153,28 @@ type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[
         </p>
         <ul class="players">
           @for (player of unassigned(); track player.participantId) {
-            <li [appPlayerPill]="player"></li>
+            <li
+              [appPlayerPill]="player"
+              [choosable]="!draw().published"
+              [chosen]="player.participantId === chosen()?.participantId"
+              (choose)="toggleChoice(player)"
+            ></li>
           }
         </ul>
+        @if (chosen(); as player) {
+          @if (player.gameId !== null) {
+            <div class="gesture">
+              <button
+                type="button"
+                appButton="secondary"
+                class="target"
+                (click)="move(player, null)"
+              >
+                Retirer de sa table
+              </button>
+            </div>
+          }
+        }
       </li>
       @for (card of cards(); track card.game.id) {
         <li
@@ -157,29 +237,54 @@ type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[
           }
           <ul class="players">
             @for (player of card.players; track player.participantId) {
-              <li [appPlayerPill]="player"></li>
+              <li
+                [appPlayerPill]="player"
+                [choosable]="card.kind === 'drawn' && !draw().published"
+                [chosen]="player.participantId === chosen()?.participantId"
+                (choose)="toggleChoice(player)"
+              ></li>
             }
           </ul>
           @if (card.kind === 'drawn' && !draw().published) {
-            @if (card.figures.cancelled) {
-              <button
-                type="button"
-                appButton="quiet"
-                class="gesture"
-                (click)="restoreGame.emit({ game: card.game, figures: card.figures })"
-              >
-                Rétablir la partie
-              </button>
-            } @else if (card.figures.cancellable) {
-              <button
-                type="button"
-                appButton="quiet-danger"
-                class="gesture"
-                (click)="cancelGame.emit({ game: card.game, figures: card.figures })"
-              >
-                Annuler la partie
-              </button>
-            }
+            <div class="gesture">
+              @if (card.figures.cancelled) {
+                <button
+                  type="button"
+                  appButton="quiet"
+                  (click)="restoreGame.emit({ game: card.game, figures: card.figures })"
+                >
+                  Rétablir la partie
+                </button>
+              } @else if (card.figures.cancellable) {
+                <button
+                  type="button"
+                  appButton="quiet-danger"
+                  (click)="cancelGame.emit({ game: card.game, figures: card.figures })"
+                >
+                  Annuler la partie
+                </button>
+              }
+              @if (chosen(); as player) {
+                @if (!card.figures.cancelled && player.gameId !== card.game.id) {
+                  @if (card.figures.playerCount + 1 > card.game.seats.max) {
+                    <p class="warning">
+                      {{ countOf(card.figures.playerCount + 1, 'joueur', 'joueurs') }} pour
+                      {{ countOf(card.game.seats.max, 'place', 'places') }}
+                    </p>
+                  }
+                  @let signedUp = player.signedUpGameIds.includes(card.game.id);
+                  <button
+                    type="button"
+                    appButton="secondary"
+                    class="target"
+                    [class.signed-up]="signedUp"
+                    (click)="move(player, { game: card.game, table: card.table })"
+                  >
+                    Déplacer ici · {{ signedUp ? 'inscrit' : 'pas inscrit' }}
+                  </button>
+                }
+              }
+            </div>
           }
         </li>
       }
@@ -233,10 +338,53 @@ type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[
         opacity: 0.6;
       }
 
-      /* Les gestes d'une carte, tout en bas : à la même hauteur d'une carte à l'autre. */
+      .banner {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs) var(--space-m);
+        align-items: center;
+        margin-bottom: var(--space-m);
+
+        p {
+          margin: 0;
+        }
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-m);
+        color: var(--text-muted);
+        font-size: var(--font-size-meta);
+
+        span {
+          display: inline-flex;
+          gap: var(--space-xxs);
+          align-items: center;
+        }
+      }
+
+      /*
+       * Les gestes d'une carte, tout en bas : à la même hauteur d'une carte à l'autre. « Annuler la
+       * partie » ou « Rétablir la partie » au-dessus de la cible de déplacement.
+       */
       .gesture {
-        align-self: flex-start;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+        align-items: flex-start;
         margin-top: auto;
+      }
+
+      /* Une cible de déplacement : toute la largeur, de la même taille d'une carte à l'autre. */
+      .target {
+        align-self: stretch;
+        border-style: dashed;
+      }
+
+      .target.signed-up {
+        border-style: solid;
+        border-color: var(--accent);
       }
 
       .table {
@@ -302,12 +450,53 @@ export class DrawPlan {
   readonly cancelGame = output<DrawnGame>();
   /** « Rétablir la partie » : sans confirmation. */
   readonly restoreGame = output<DrawnGame>();
+  /**
+   * « Déplacer ici » ou « Retirer de sa table » : la page fait le geste, sans confirmation, puis
+   * défait le choix s'il réussit.
+   */
+  readonly moveParticipant = output<ParticipantMove>();
 
   protected readonly countOf = countOf;
   protected readonly formatCount = formatCount;
   protected readonly formatSeats = formatSeats;
 
   protected readonly draw = computed(() => this.timeSlot().draw as DrawTrackingDto);
+
+  /** Le joueur choisi, gardé d'une relecture à l'autre, oublié d'un créneau à l'autre. */
+  private readonly chosenId = linkedSignal<string, string | null>({
+    source: () => this.timeSlot().id,
+    computation: () => null,
+  });
+  /** Le joueur choisi, tant qu'il reste dans le tirage. */
+  protected readonly chosen = computed(() =>
+    this.draw().assignments.find(({ participantId }) => participantId === this.chosenId()),
+  );
+  /** « Bastou · inscriptions : « Néons ». Choisis sa nouvelle table. », ou « · sans partie. ». */
+  protected readonly chosenSummary = computed(() => {
+    const player = this.chosen();
+    if (!player) return '';
+    const titles = player.signedUpGameIds
+      .map((gameId) => this.games().find(({ id }) => id === gameId)?.scenario.title)
+      .filter((title) => title !== undefined)
+      .map((title) => fr`« ${title} »`);
+    return titles.length
+      ? fr`${player.nickname} · inscriptions : ${titles.join(', ')}. Choisis sa nouvelle table.`
+      : fr`${player.nickname} · sans partie. Choisis sa nouvelle table.`;
+  });
+
+  protected toggleChoice(player: AssignmentDto) {
+    this.chosenId.update((id) => (id === player.participantId ? null : player.participantId));
+  }
+
+  /** Défait le choix : « Annuler », Échap, ou le déplacement réussi, que la page fait. */
+  dropChoice() {
+    this.chosenId.set(null);
+  }
+
+  /** Le choix reste jusqu'au déplacement réussi : un refus le garde. */
+  protected move(participant: AssignmentDto, target: ParticipantMove['target']) {
+    this.moveParticipant.emit({ participant, target });
+  }
 
   /** Les non placés, dans l'ordre reçu : l'ordre naturel des pseudos. */
   protected readonly unassigned = computed(() =>

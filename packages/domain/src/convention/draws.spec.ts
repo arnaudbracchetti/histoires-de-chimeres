@@ -931,3 +931,127 @@ describe('Rétablir une partie (TI-6)', () => {
     expect(refusalOf(() => published.restoreGame('brumes')).code).toBe('draw-published');
   });
 });
+
+describe('Déplacer un participant (TI-6)', () => {
+  /** Élodie et Lune placées à « épice », Zéphyr à « brumes ». Le tirage du créneau 1 est lancé. */
+  function aLaunchedConvention(): Convention {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+    convention.signUpForGame('p2', 'epice', CATALOGUE);
+    convention.signUpForGame('p3', 'brumes', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    return convention;
+  }
+
+  it('le place sur une partie où il n’est pas inscrit, marqué « déplacé à la main »', () => {
+    const convention = aLaunchedConvention();
+
+    convention.moveParticipant('s1', 'p1', 'brumes');
+
+    expect(assignmentsOf(convention, 's1')).toEqual(['p3 brumes', 'p1 brumes', 'p2 epice']);
+    const assignment = convention
+      .computeSignUpTracking(CATALOGUE)
+      .find((slot) => slot.timeSlotId === 's1')!
+      .draw!.assignments.find(({ participantId }) => participantId === 'p1');
+    expect(assignment).toMatchObject({ movedByHand: true, playsWithoutSignUp: true });
+  });
+
+  it('le place au-delà du maximum de la partie', () => {
+    const convention = aLaunchedConvention();
+    const catalogue = ScenarioCatalogue.restore([
+      { id: 'a', gameMasterId: 'g1', duration: 1, minSeats: 1, maxSeats: 1 },
+      { id: 'b', gameMasterId: 'g2', duration: 2, minSeats: 2, maxSeats: 4 },
+      { id: 'c', gameMasterId: 'g1', duration: 1, minSeats: 3, maxSeats: 5 },
+    ]);
+
+    convention.moveParticipant('s1', 'p2', 'brumes');
+
+    const brumes = convention
+      .computeSignUpTracking(catalogue)
+      .find((slot) => slot.timeSlotId === 's1')!
+      .draw!.games.find(({ gameId }) => gameId === 'brumes');
+    expect(brumes).toMatchObject({ playerCount: 2, overMaximum: true, surplusPlayerCount: 1 });
+  });
+
+  it('le retire de sa table : il passe dans les non placés, marqué', () => {
+    const convention = aLaunchedConvention();
+
+    convention.moveParticipant('s1', 'p3', null);
+
+    expect(assignmentsOf(convention, 's1')).toEqual(['p3 -', 'p1 epice', 'p2 epice']);
+    expect(convention.draws[0]!.assignments[0]!.movedByHand).toBe(true);
+  });
+
+  it('ne change rien vers sa partie actuelle : il n’est pas marqué', () => {
+    const convention = aLaunchedConvention();
+
+    convention.moveParticipant('s1', 'p1', 'epice');
+
+    expect(assignmentsOf(convention, 's1')).toEqual(['p3 brumes', 'p1 epice', 'p2 epice']);
+    expect(convention.draws[0]!.assignments.some(({ movedByHand }) => movedByHand)).toBe(false);
+  });
+});
+
+describe('Déplacer un participant : refus, dans l’ordre', () => {
+  function aLaunchedConvention(): Convention {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    return convention;
+  }
+
+  it('refuse un créneau dont le tirage n’est pas lancé, puis publié', () => {
+    expect(refusalOf(() => aConvention().moveParticipant('s1', 'p1', 'brumes'))).toMatchObject({
+      code: 'draw-not-launched',
+      params: { rank: 1 },
+    });
+    const published = restoreWithDraws(aConvention(), [
+      new Draw('s1', true, [new Assignment('p1', null, false)]),
+    ]);
+    expect(refusalOf(() => published.moveParticipant('s1', 'p1', 'brumes')).code).toBe(
+      'draw-published',
+    );
+  });
+
+  it('refuse un participant hors du tirage, en le nommant', () => {
+    const convention = aLaunchedConvention();
+
+    expect(refusalOf(() => convention.moveParticipant('s1', 'p2', 'brumes'))).toMatchObject({
+      code: 'participant-not-in-draw',
+      params: { nickname: 'Lune', rank: 1 },
+    });
+  });
+
+  it('refuse une partie qui ne commence pas sur le créneau, seconde moitié d’une partie double comprise', () => {
+    const convention = aLaunchedConvention();
+
+    expect(refusalOf(() => convention.moveParticipant('s1', 'p1', 'neons'))).toMatchObject({
+      code: 'game-not-on-time-slot',
+      params: { rank: 1 },
+    });
+    const second = restoreWithDraws(aConvention(), [
+      new Draw('s1', true, []),
+      new Draw('s2', false, [new Assignment('p1', null, false)]),
+    ]);
+    expect(refusalOf(() => second.moveParticipant('s2', 'p1', 'epice')).code).toBe(
+      'game-not-on-time-slot',
+    );
+  });
+
+  it('refuse une partie annulée', () => {
+    const convention = aLaunchedConvention();
+    convention.cancelGame('epice', CATALOGUE);
+
+    expect(refusalOf(() => convention.moveParticipant('s1', 'p1', 'epice')).code).toBe(
+      'game-cancelled',
+    );
+  });
+
+  it('refuse une partie introuvable', () => {
+    const convention = aLaunchedConvention();
+
+    expect(refusalOf(() => convention.moveParticipant('s1', 'p1', 'inconnue')).code).toBe(
+      'game-not-found',
+    );
+  });
+});

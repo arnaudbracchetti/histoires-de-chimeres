@@ -90,7 +90,12 @@ export {
   type SwapGamesBody,
   type UnscheduleVerdictDto,
 } from './schedule.js';
-export { drawEndpoints, type DrawParams } from './draw.js';
+export {
+  drawEndpoints,
+  type DrawParams,
+  type DrawParticipantParams,
+  type MoveParticipantBody,
+} from './draw.js';
 export {
   signUpTrackingEndpoints,
   type AssignmentDto,

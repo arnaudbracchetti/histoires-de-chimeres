@@ -79,6 +79,11 @@ export type RefusalParams = {
    */
   'game-not-below-minimum': { players: number; min: number };
   'game-not-cancelled': Record<string, never>;
+  /** `nickname` : le pseudo du participant, tel qu'il s'affiche ; `rank` : le rang du créneau. */
+  'participant-not-in-draw': { nickname: string; rank: number };
+  /** `rank` : le rang du créneau du tirage, où la partie ne commence pas. */
+  'game-not-on-time-slot': { rank: number };
+  'game-cancelled': Record<string, never>;
   /** `rank` : le rang du créneau où le MJ mène ; `table` : la table de sa partie (IN-4). */
   'leads-game-on-time-slot': { rank: number; table: string };
   /** Une partie ne s'échange pas avec elle-même (PR-17). */

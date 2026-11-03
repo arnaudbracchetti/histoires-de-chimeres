@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import {
   CancelGame,
   LaunchDraw,
+  MoveParticipant,
   ReopenSignUps,
   RerunDraw,
   RestoreGame,
@@ -49,6 +50,11 @@ import { RANDOM_SOURCE } from './random-source.token.js';
     {
       provide: ReopenSignUps,
       useFactory: (conventions: ConventionRepository) => new ReopenSignUps(conventions),
+      inject: [CONVENTION_REPOSITORY],
+    },
+    {
+      provide: MoveParticipant,
+      useFactory: (conventions: ConventionRepository) => new MoveParticipant(conventions),
       inject: [CONVENTION_REPOSITORY],
     },
     {

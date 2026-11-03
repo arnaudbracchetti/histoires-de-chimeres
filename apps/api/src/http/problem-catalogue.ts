@@ -246,6 +246,19 @@ export const problemCatalogue: Catalogue = {
     detail: ({ rank, previousRank }) =>
       fr`Le tirage du créneau ${rank} se lance après la publication du créneau ${previousRank}.`,
   },
+  'game-cancelled': {
+    title: 'Partie annulée',
+    detail: () => fr`Cette partie est annulée : rétablis-la d'abord.`,
+  },
+  'game-not-on-time-slot': {
+    title: "Partie d'un autre créneau",
+    detail: ({ rank }) => fr`Cette partie ne commence pas sur le créneau ${rank}.`,
+  },
+  'participant-not-in-draw': {
+    title: 'Hors du tirage',
+    detail: ({ nickname, rank }) =>
+      fr`${nickname} ne fait pas partie du tirage du créneau ${rank}.`,
+  },
   'leads-game-on-time-slot': {
     title: 'Tu mènes sur ce créneau',
     detail: ({ rank, table }) =>

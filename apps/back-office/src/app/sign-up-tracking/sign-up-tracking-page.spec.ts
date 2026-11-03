@@ -904,6 +904,248 @@ describe('Pilotage du jour J', () => {
     });
   });
 
+  describe('déplacer un participant', () => {
+    const cards = (host: HTMLElement) => [...host.querySelectorAll('app-draw-plan .plan > li')];
+    const banner = (host: HTMLElement) => host.querySelector('app-draw-plan .banner');
+    const pill = (host: HTMLElement, nickname: string) =>
+      [...host.querySelectorAll<HTMLElement>('app-draw-plan .players > li')].find(
+        (candidate) => text(candidate.querySelector('.nickname')) === nickname,
+      )!;
+    const choose = async (host: HTMLElement, settle: () => Promise<void>, nickname: string) => {
+      pill(host, nickname).querySelector('button')!.click();
+      await settle();
+    };
+    const targets = (card: Element) =>
+      [...card.querySelectorAll<HTMLButtonElement>('.target')].map((target) => text(target));
+
+    it('dit au repos comment déplacer, avec la légende des marques', async () => {
+      const { host } = await render(DRAWING);
+
+      expect(text(banner(host))).toBe(
+        'Choisis un joueur, puis sa nouvelle table. déplacé à la main Pseudo en jaune : joue sans inscription',
+      );
+      expect(banner(host)!.textContent).toContain(`jaune${NBSP}: joue`);
+      expect(pill(host, 'Bastou').querySelector('button')!.getAttribute('aria-pressed')).toBe(
+        'false',
+      );
+      expect(host.querySelectorAll('app-draw-plan .target')).toHaveLength(0);
+    });
+
+    it('choisit un joueur d’un clic : bordure orange, aria-pressed, et ses inscriptions dans le bandeau', async () => {
+      const { host, settle } = await render(DRAWING);
+
+      await choose(host, settle, 'Bastou');
+
+      expect(pill(host, 'Bastou').classList).toContain('chosen');
+      expect(pill(host, 'Bastou').querySelector('button')!.getAttribute('aria-pressed')).toBe(
+        'true',
+      );
+      expect(text(banner(host))).toBe(
+        'Bastou · inscriptions : « Néons ». Choisis sa nouvelle table. Annuler',
+      );
+    });
+
+    it('dit « sans partie » pour un joueur sans inscription sur le créneau', async () => {
+      const { host, settle } = await render({
+        ...DRAWING,
+        timeSlots: DRAWING.timeSlots.map((slot) =>
+          slot.draw
+            ? {
+                ...slot,
+                draw: {
+                  ...slot.draw,
+                  assignments: slot.draw.assignments.map((assignment) =>
+                    assignment.nickname === 'Bastou'
+                      ? { ...assignment, signedUpGameIds: [] }
+                      : assignment,
+                  ),
+                },
+              }
+            : slot,
+        ),
+      });
+
+      await choose(host, settle, 'Bastou');
+
+      expect(text(banner(host))).toBe('Bastou · sans partie. Choisis sa nouvelle table. Annuler');
+      expect(targets(cards(host)[3]!)).toEqual(['Déplacer ici · pas inscrit']);
+    });
+
+    it('offre en bas des autres cartes « inscrit » ou « pas inscrit », et le dépassement en jaune', async () => {
+      const { host, settle } = await render(DRAWING);
+
+      await choose(host, settle, 'Bastou');
+
+      const [unassigned, brumes, epice, neons] = cards(host);
+      expect(targets(unassigned!)).toEqual([]);
+      expect(targets(brumes!)).toEqual(['Déplacer ici · pas inscrit']);
+      expect(text(brumes!.querySelector('div.gesture p.warning'))).toBe('6 joueurs pour 4 places');
+      expect(brumes!.querySelector('.target')!.classList).not.toContain('signed-up');
+      expect(targets(epice!)).toEqual([]);
+      expect(targets(neons!)).toEqual(['Déplacer ici · inscrit']);
+      expect(neons!.querySelector('.target')!.classList).toContain('signed-up');
+      expect(neons!.querySelector('p.warning')).toBeNull();
+      expect(text(neons)).toContain('Annuler la partie Déplacer ici · inscrit');
+    });
+
+    it('n’offre aucune cible sur une partie annulée, ni sur la carte actuelle du joueur', async () => {
+      const { host, settle } = await render({
+        ...DRAWING,
+        timeSlots: DRAWING.timeSlots.map((slot) =>
+          slot.draw
+            ? {
+                ...slot,
+                draw: {
+                  ...slot.draw,
+                  games: slot.draw.games.map((drawn) =>
+                    drawn.gameId === 'p3'
+                      ? { ...drawn, cancelled: true, cancellable: false, withoutPlayers: false }
+                      : drawn,
+                  ),
+                },
+              }
+            : slot,
+        ),
+      });
+
+      await choose(host, settle, 'Anna');
+
+      const [unassigned, brumes, , neons] = cards(host);
+      expect(targets(unassigned!)).toEqual(['Retirer de sa table']);
+      expect(targets(brumes!)).toEqual([]);
+      expect(targets(neons!)).toEqual([]);
+      expect(text(neons)).toContain('Rétablir la partie');
+    });
+
+    it('déplace vers la nouvelle table, puis relit le suivi et l’annonce', async () => {
+      const { host, http, settle, reread } = await render(DRAWING);
+      const announce = vi.spyOn(TestBed.inject(Announcer), 'announce');
+      await choose(host, settle, 'Bastou');
+
+      cards(host)[3]!.querySelector<HTMLButtonElement>('.target')!.click();
+      await settle();
+
+      const request = http.expectOne({
+        method: 'PUT',
+        url: apiUrl(drawEndpoints.moveParticipant, { timeSlotId: 's2', participantId: 'u4' }),
+      });
+      expect(request.request.body).toEqual({ gameId: 'p3' });
+      request.flush(null, { status: 204, statusText: 'No Content' });
+      await reread(DRAWING);
+      expect(announce).toHaveBeenCalledWith(
+        `Bastou déplacé${NBSP}: table Sphinx, «${NBSP}Néons${NBSP}».`,
+      );
+      expect(host.querySelectorAll('app-draw-plan .target')).toHaveLength(0);
+    });
+
+    it('retire un joueur de sa table par la carte « Non placés »', async () => {
+      const { host, http, settle, reread } = await render(DRAWING);
+      const announce = vi.spyOn(TestBed.inject(Announcer), 'announce');
+      await choose(host, settle, 'Lune');
+
+      cards(host)[0]!.querySelector<HTMLButtonElement>('.target')!.click();
+      await settle();
+
+      const request = http.expectOne({
+        method: 'PUT',
+        url: apiUrl(drawEndpoints.moveParticipant, { timeSlotId: 's2', participantId: 'u3' }),
+      });
+      expect(request.request.body).toEqual({ gameId: null });
+      request.flush(null, { status: 204, statusText: 'No Content' });
+      await reread(DRAWING);
+      expect(announce).toHaveBeenCalledWith('Lune retiré de sa table.');
+    });
+
+    it('défait le choix par Échap, par « Annuler » et par un second clic', async () => {
+      const { host, settle, button } = await render(DRAWING);
+      await choose(host, settle, 'Bastou');
+
+      pill(host, 'Bastou')
+        .querySelector('button')!
+        .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle();
+      expect(pill(host, 'Bastou').classList).not.toContain('chosen');
+
+      await choose(host, settle, 'Bastou');
+      button('Annuler')!.click();
+      await settle();
+      expect(pill(host, 'Bastou').classList).not.toContain('chosen');
+
+      await choose(host, settle, 'Bastou');
+      await choose(host, settle, 'Bastou');
+      expect(pill(host, 'Bastou').classList).not.toContain('chosen');
+    });
+
+    it('garde le choix à la relecture, tant que le joueur reste dans le tirage', async () => {
+      const { host, fixture, settle, reread } = await render(DRAWING);
+      const reload = () =>
+        (
+          fixture.componentInstance as unknown as { tracking: { reload(): void } }
+        ).tracking.reload();
+      await choose(host, settle, 'Bastou');
+
+      reload();
+      await reread(DRAWING);
+      expect(pill(host, 'Bastou').classList).toContain('chosen');
+
+      reload();
+      await reread({
+        ...DRAWING,
+        timeSlots: DRAWING.timeSlots.map((slot) =>
+          slot.draw
+            ? {
+                ...slot,
+                draw: {
+                  ...slot.draw,
+                  assignments: slot.draw.assignments.filter(
+                    ({ nickname }) => nickname !== 'Bastou',
+                  ),
+                },
+              }
+            : slot,
+        ),
+      });
+      expect(text(banner(host))).toContain('Choisis un joueur, puis sa nouvelle table.');
+      expect(host.querySelectorAll('app-draw-plan .target')).toHaveLength(0);
+    });
+
+    it('montre un refus en alerte, puis relit le suivi', async () => {
+      const { host, http, settle, reread } = await render(DRAWING);
+      await choose(host, settle, 'Bastou');
+      cards(host)[3]!.querySelector<HTMLButtonElement>('.target')!.click();
+      await settle();
+
+      http
+        .expectOne(apiUrl(drawEndpoints.moveParticipant, { timeSlotId: 's2', participantId: 'u4' }))
+        .flush(
+          { status: 422, code: 'game-cancelled', title: 'Partie annulée' },
+          { status: 422, statusText: 'Unprocessable Entity' },
+        );
+      await reread(DRAWING);
+
+      expect(TestBed.inject(Alerts).notices()).toEqual([
+        expect.objectContaining({ title: 'Partie annulée' }),
+      ]);
+      expect(pill(host, 'Bastou').classList).toContain('chosen');
+    });
+
+    it('n’offre ni choix ni cible sur un tirage publié', async () => {
+      const { host, fixture, tiles } = await render({
+        ...DRAWING,
+        timeSlots: DRAWING.timeSlots.map((slot) =>
+          slot.draw
+            ? { ...slot, state: 'published', draw: { ...slot.draw, published: true } }
+            : slot,
+        ),
+      });
+      tiles()[1]!.click();
+      fixture.detectChanges();
+
+      expect(host.querySelector('app-draw-plan .players button')).toBeNull();
+      expect(banner(host)).toBeNull();
+    });
+  });
+
   describe('avertissements de suivi', () => {
     /** Les avertissements du créneau 2, dans l'ordre de l'API. */
     const WARNINGS: TimeSlotTrackingDto['warnings'] = [

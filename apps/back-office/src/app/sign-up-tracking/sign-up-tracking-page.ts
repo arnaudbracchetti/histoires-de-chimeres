@@ -57,7 +57,7 @@ import { Confirmation } from '../ui/confirmation';
 import { EmptyState } from '../ui/empty-state';
 import { Gauge } from '../ui/gauge';
 import { Icon } from '../ui/icon';
-import { DrawPlan, type DrawnGame } from './draw-plan';
+import { DrawPlan, type DrawnGame, type ParticipantMove } from './draw-plan';
 import { TrackedGameSignUps } from './tracked-game-sign-ups';
 import { rowIdOf, TrackedGamesPanel } from './tracked-games-panel';
 import {
@@ -322,6 +322,7 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                     [games]="tracking.games"
                     (cancelGame)="cancelGame(slot, $event)"
                     (restoreGame)="restoreGame($event)"
+                    (moveParticipant)="moveParticipant(slot, $event)"
                   />
                 } @else if (slot.state === 'sign-ups-open') {
                   <div ngTabs class="binder">
@@ -726,6 +727,8 @@ export class SignUpTrackingPage {
   private readonly rerunning = injectGesture({ alert: true, refreshes: true });
   /** Le rétablissement d'une partie, sans confirmation : son refus part en alerte. */
   private readonly restoring = injectGesture({ alert: true, refreshes: true });
+  /** Le déplacement d'un participant, sans confirmation : son refus part en alerte. */
+  private readonly moving = injectGesture({ alert: true, refreshes: true });
   private readonly confirmation = inject(Confirmation);
   private readonly apiCall = injectApiCall();
   private readonly placements = inject(Placements);
@@ -736,6 +739,7 @@ export class SignUpTrackingPage {
   /** L'élément qui reçoit le focus une fois le suivi relu. */
   private readonly focusAfterReading = signal<string | undefined>(undefined);
   private readonly sheet = viewChild(GameSheet);
+  private readonly drawPlan = viewChild(DrawPlan);
 
   constructor() {
     effect(() => {
@@ -884,6 +888,33 @@ export class SignUpTrackingPage {
     });
     if (!cancelled) return;
     this.announcer.announce(fr`Partie « ${title} » du créneau ${slot.rank} annulée.`);
+    this.tracking.reload();
+  }
+
+  /**
+   * Déplace le participant choisi vers sa nouvelle partie, ou le retire de sa table, sans
+   * confirmation : le suivi se relit, et la région `aria-live` l'annonce.
+   */
+  protected async moveParticipant(
+    slot: TimeSlotTrackingDto,
+    { participant, target }: ParticipantMove,
+  ) {
+    const outcome = await this.moving.run(
+      () =>
+        this.apiCall(drawEndpoints.moveParticipant, {
+          params: { timeSlotId: slot.id, participantId: participant.participantId },
+          body: { gameId: target?.game.id ?? null },
+        }),
+      participant.participantId,
+    );
+    if (outcome.status === 'refused' && outcome.refusal.stale) this.tracking.reload();
+    if (outcome.status !== 'done') return;
+    this.drawPlan()?.dropChoice();
+    this.announcer.announce(
+      target
+        ? fr`${participant.nickname} déplacé : table ${target.table.name}, « ${target.game.scenario.title} ».`
+        : fr`${participant.nickname} retiré de sa table.`,
+    );
     this.tracking.reload();
   }
 

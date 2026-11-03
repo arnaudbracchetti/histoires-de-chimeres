@@ -19,6 +19,7 @@ export { SavePushSubscription } from './linked-phone/save-push-subscription.js';
 export { UnlinkPhone } from './linked-phone/unlink-phone.js';
 export { CancelGame } from './draw/cancel-game.js';
 export { LaunchDraw } from './draw/launch-draw.js';
+export { MoveParticipant } from './draw/move-participant.js';
 export { ReopenSignUps } from './draw/reopen-sign-ups.js';
 export { RerunDraw } from './draw/rerun-draw.js';
 export { RestoreGame } from './draw/restore-game.js';

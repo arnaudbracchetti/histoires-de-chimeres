@@ -367,7 +367,88 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
     expect(response.body).toMatchObject({
       code: 'game-not-below-minimum',
       title: 'Partie au minimum',
-      detail: 'Cette partie a 2\u00a0joueurs pour 2\u00a0places au moins\u00a0: elle ne s\'annule pas.',
+      detail:
+        "Cette partie a 2\u00a0joueurs pour 2\u00a0places au moins\u00a0: elle ne s'annule pas.",
+    });
+  });
+
+  it('déplace un participant vers une partie où il n’est pas inscrit, puis le retire de sa table', async () => {
+    await start();
+    const elodie = await gameMaster('Élodie');
+    const ondine = await gameMaster('Ondine');
+    const neons = await scheduled(elodie.id, 'Néons', 'Table 10');
+    const marche = await scheduled(ondine.id, 'Le Marché', 'Table 2');
+    await signUp(neons, await linkedPhone('Lune'));
+    await server()
+      .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+      .expect(204);
+    const lune = (await tracking()).timeSlots[0]!.draw!.assignments[0]!;
+
+    await server()
+      .put(
+        apiUrl(drawEndpoints.moveParticipant, {
+          timeSlotId: slot(1),
+          participantId: lune.participantId,
+        }),
+      )
+      .send({ gameId: marche })
+      .expect(204);
+
+    expect((await tracking()).timeSlots[0]!.draw!.assignments).toEqual([
+      expect.objectContaining({
+        nickname: 'Lune',
+        gameId: marche,
+        movedByHand: true,
+        playsWithoutSignUp: true,
+      }),
+    ]);
+
+    await server()
+      .put(
+        apiUrl(drawEndpoints.moveParticipant, {
+          timeSlotId: slot(1),
+          participantId: lune.participantId,
+        }),
+      )
+      .send({ gameId: null })
+      .expect(204);
+
+    expect((await tracking()).timeSlots[0]!.draw!.assignments).toEqual([
+      expect.objectContaining({ nickname: 'Lune', gameId: null, movedByHand: true }),
+    ]);
+  });
+
+  it('refuse de déplacer un participant vers une partie annulée, en français', async () => {
+    await start();
+    const elodie = await gameMaster('Élodie');
+    const ondine = await gameMaster('Ondine');
+    const neons = await scheduled(elodie.id, 'Néons', 'Table 10');
+    const marche = await scheduled(ondine.id, 'Le Marché', 'Table 2');
+    await signUp(neons, await linkedPhone('Lune'));
+    await server()
+      .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+      .expect(204);
+    await server()
+      .put(apiUrl(drawEndpoints.cancelGame, { gameId: marche }))
+      .expect(204);
+    const lune = (await tracking()).timeSlots[0]!.draw!.assignments.find(
+      ({ nickname }) => nickname === 'Lune',
+    )!;
+
+    const response = await server()
+      .put(
+        apiUrl(drawEndpoints.moveParticipant, {
+          timeSlotId: slot(1),
+          participantId: lune.participantId,
+        }),
+      )
+      .send({ gameId: marche })
+      .expect(422);
+
+    expect(response.body).toMatchObject({
+      code: 'game-cancelled',
+      title: 'Partie annulée',
+      detail: "Cette partie est annulée\u00a0: rétablis-la d'abord.",
     });
   });
 });

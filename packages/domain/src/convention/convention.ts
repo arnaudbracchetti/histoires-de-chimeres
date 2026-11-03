@@ -740,6 +740,22 @@ export class Convention {
     });
   }
 
+  /**
+   * Déplace le participant dans le tirage provisoire du créneau (TI-6) : vers une partie qui y
+   * commence, même sans inscription ou au-delà de son maximum, ou vers les non placés pour `null`.
+   * Il est marqué « déplacé à la main ». Aucune notification.
+   */
+  moveParticipant(timeSlotId: string, participantId: string, gameId: string | null): void {
+    const participant = this.allParticipants.findExistingParticipantById(participantId);
+    const game = gameId === null ? null : this.gameSchedule.findExistingGameById(gameId);
+    this.allDraws = this.allDraws.getDrawsAfterMovingParticipant(
+      timeSlotId,
+      participant,
+      game,
+      this.day,
+    );
+  }
+
   /** Ce que le tirage lit hors des Tirages, avec ce catalogue, entier. */
   private buildDrawCollaborators(catalogue: ScenarioCatalogue): DrawCollaborators {
     return {

@@ -188,7 +188,7 @@ Une barre fixée en bas de l'écran porte le geste : « S'inscrire » ou, une fo
   6. départager le reste au hasard.
 - **TI-5** Le résultat est provisoire. L'Organisateur voit, par partie, ses joueurs et si elle est sous son minimum, ainsi que la liste des non placés.
 - **TI-6** Ajustements possibles avant publication :
-  - déplacer n'importe quel participant, y compris vers une partie où il n'est pas inscrit ;
+  - déplacer n'importe quel participant du tirage vers une partie qui commence sur le créneau, non annulée, y compris une partie où il n'est pas inscrit et au-delà de son maximum, ou le retirer de sa table, vers les non placés. Il est marqué « déplacé à la main » ;
   - maintenir ou annuler une partie sous son minimum, sans joueur compris (ses joueurs actuels, face aux places actuelles de son scénario) : ses joueurs passent dans les non placés, sans nouveau tirage, et son MJ entre dans le tirage, non placé. Une partie annulée libère son MJ sur ses créneaux (IN-4), et ses inscriptions comptent dans le tirage relancé ;
   - rétablir une partie annulée : elle revient sans joueur, et son MJ quitte le tirage, où qu'il soit placé ;
   - relancer le tirage autant de fois que souhaité : chaque relance est un nouveau tirage, qui reprend les inscriptions actives et les places actuelles, efface les déplacements faits à la main et garde les parties annulées ;

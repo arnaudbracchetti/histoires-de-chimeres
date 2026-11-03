@@ -38,6 +38,32 @@ export class Draw {
     return this.assignments.filter((assignment) => assignment.gameId === gameId).length;
   }
 
+  /** Le participant a une affectation dans ce tirage. */
+  hasParticipant(participantId: string): boolean {
+    return this.assignments.some((assignment) => assignment.participantId === participantId);
+  }
+
+  /**
+   * Le même tirage, le participant sur cette partie, ou non placé pour `null`, marqué « déplacé à
+   * la main ». Vers sa partie actuelle, rien ne change.
+   */
+  getDrawAfterMovingParticipant(participantId: string, gameId: string | null): Draw {
+    const current = this.assignments.find(
+      (assignment) => assignment.participantId === participantId,
+    );
+    if (current?.gameId === gameId) return this;
+    return new Draw(
+      this.timeSlotId,
+      this.published,
+      this.assignments.map((assignment) =>
+        assignment.participantId === participantId
+          ? new Assignment(participantId, gameId, true)
+          : assignment,
+      ),
+      this.cancelledGameIds,
+    );
+  }
+
   /** Le même tirage, sans l'affectation du participant, qui disparaît (PR-12). */
   getDrawAfterRemovingParticipant(participantId: string): Draw {
     return new Draw(

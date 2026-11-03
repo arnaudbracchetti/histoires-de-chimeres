@@ -3,6 +3,7 @@ import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import type { TimeSlotState } from './convention.js';
 import type { Day } from './day.js';
 import type { Game } from './game.js';
+import type { Participant } from './participant.js';
 import { Assignment, Draw } from './draw.js';
 import type {
   DrawAlgorithm,
@@ -158,6 +159,33 @@ export class Draws {
     if (!draw.isGameCancelled(game.id)) throw new Refusal('game-not-cancelled', {});
     return this.getDrawsAfterReplacingDraw(
       draw.getDrawAfterRestoringGame(game.id, gameMasterParticipantId),
+    );
+  }
+
+  /**
+   * Les Tirages après le déplacement du participant dans le tirage provisoire du créneau (TI-6) :
+   * vers une partie qui commence sur le créneau, ou vers les non placés pour `null`. Il est marqué
+   * « déplacé à la main ». Une partie où il n'est pas inscrit, ou au-delà de son maximum, est
+   * permise. Refuse un participant hors du tirage, puis une partie d'un autre créneau, puis une
+   * partie annulée.
+   */
+  getDrawsAfterMovingParticipant(
+    timeSlotId: string,
+    participant: Participant,
+    game: Game | null,
+    day: Day,
+  ): Draws {
+    const draw = this.findExistingProvisionalDraw(timeSlotId, day);
+    const rank = day.getTimeSlotRank(timeSlotId);
+    if (!draw.hasParticipant(participant.id)) {
+      throw new Refusal('participant-not-in-draw', { nickname: participant.nickname.text, rank });
+    }
+    if (game) {
+      if (game.timeSlotIds[0] !== timeSlotId) throw new Refusal('game-not-on-time-slot', { rank });
+      if (draw.isGameCancelled(game.id)) throw new Refusal('game-cancelled', {});
+    }
+    return this.getDrawsAfterReplacingDraw(
+      draw.getDrawAfterMovingParticipant(participant.id, game?.id ?? null),
     );
   }
 
