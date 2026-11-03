@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { StaleConventionError, type ConventionRepository } from '@chimeres/application';
 import {
+  Assignment,
   ComparableName,
   Convention,
+  Draw,
   Game,
   GameMaster,
   Participant,
@@ -41,7 +43,7 @@ export class PrismaConventionRepository implements ConventionRepository {
       games,
     } = await this.prisma.convention.findFirstOrThrow({
       include: {
-        timeSlots: true,
+        timeSlots: { include: { draw: { include: { assignments: true } } } },
         tables: true,
         gameMasters: { include: { availabilities: { select: { timeSlotId: true } } } },
         participants: { include: { signUps: true, withoutGameOnTimeSlots: true } },
@@ -88,6 +90,20 @@ export class PrismaConventionRepository implements ConventionRepository {
         .map(
           ({ participantId, timeSlotId }) => new ParticipantWithoutGame(participantId, timeSlotId),
         ),
+      draws: timeSlots.flatMap(({ draw }) =>
+        draw
+          ? [
+              new Draw(
+                draw.timeSlotId,
+                draw.published,
+                draw.assignments.map(
+                  ({ participantId, gameId, movedByHand }) =>
+                    new Assignment(participantId, gameId, movedByHand),
+                ),
+              ),
+            ]
+          : [],
+      ),
       games: games.map(
         (game) =>
           new Game(
@@ -129,6 +145,8 @@ export class PrismaConventionRepository implements ConventionRepository {
       loaded.participantsWithoutGame,
       current.participantsWithoutGame,
     );
+    const draws = changes(loaded.draws, current.draws);
+    const drawAssignments = changes(loaded.drawAssignments, current.drawAssignments);
     const {
       removed: unscheduled,
       added: scheduled,
@@ -159,6 +177,18 @@ export class PrismaConventionRepository implements ConventionRepository {
             timeSlotId,
           })),
         },
+      });
+      // Une affectation retient sa partie (RESTRICT), et un tirage son créneau : ils partent avant.
+      await tx.drawAssignment.deleteMany({
+        where: {
+          OR: drawAssignments.removed.map(({ timeSlotId, participantId }) => ({
+            timeSlotId,
+            participantId,
+          })),
+        },
+      });
+      await tx.draw.deleteMany({
+        where: { timeSlotId: { in: draws.removed.map(({ timeSlotId }) => timeSlotId) } },
       });
       await tx.gameTimeSlot.deleteMany({ where: { gameId: ids(moved) } });
       await tx.game.deleteMany({ where: { id: ids(unscheduled) } });
@@ -206,6 +236,17 @@ export class PrismaConventionRepository implements ConventionRepository {
       });
       await tx.signUp.createMany({ data: signUps.added });
       await tx.participantWithoutGame.createMany({ data: participantsWithoutGame.added });
+      await tx.draw.createMany({ data: draws.added });
+      for (const { timeSlotId, published } of draws.changed) {
+        await tx.draw.update({ where: { timeSlotId }, data: { published } });
+      }
+      await tx.drawAssignment.createMany({ data: drawAssignments.added });
+      for (const { timeSlotId, participantId, ...assignment } of drawAssignments.changed) {
+        await tx.drawAssignment.update({
+          where: { timeSlotId_participantId: { timeSlotId, participantId } },
+          data: assignment,
+        });
+      }
     });
   }
 }

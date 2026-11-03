@@ -5,6 +5,9 @@ import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Scenario, type ScenarioDetails } from '../scenario/scenario.js';
 import type { Seats } from '../scenario/seats.js';
 import { Day } from './day.js';
+import type { Draw } from './draw.js';
+import type { DrawAlgorithm, RandomSource } from './draw-algorithm.js';
+import { Draws } from './draws.js';
 import type { Game } from './game.js';
 import type { GameMaster } from './game-master.js';
 import { computeLatestEnd, type LocalMoment } from './local-moment.js';
@@ -26,6 +29,7 @@ import { computeSignUpTracking, type TimeSlotTracking } from './sign-up-tracking
 import {
   SignUps,
   type LedGames,
+  type PlayedTimeSlots,
   type RemovedSignUps,
   type SignUpCollaborators,
 } from './sign-ups.js';
@@ -50,6 +54,8 @@ export type ConventionState = {
   signUps: SignUp[];
   /** Dans n'importe quel ordre. */
   participantsWithoutGame: ParticipantWithoutGame[];
+  /** Les tirages lancés, un par créneau, dans n'importe quel ordre. */
+  draws: Draw[];
   /** Les parties programmées, dans l'ordre de leur programmation. */
   games: Game[];
   /** Numéro de version, pour le verrou optimiste : seul le repository le fait avancer. */
@@ -84,6 +90,7 @@ export class Convention {
     private allParticipants: Participants,
     private gameSchedule: Schedule,
     private allSignUps: SignUps,
+    private allDraws: Draws,
   ) {}
 
   static restore({
@@ -93,6 +100,7 @@ export class Convention {
     participants,
     signUps,
     participantsWithoutGame,
+    draws,
     games,
     ...state
   }: ConventionState): Convention {
@@ -103,6 +111,7 @@ export class Convention {
       Participants.createFromParticipantsAndGameMasters(participants, gameMasters),
       Schedule.createFromGames(games),
       SignUps.createFromSignUps(signUps, participantsWithoutGame),
+      Draws.createFromDraws(draws),
     );
   }
 
@@ -318,7 +327,8 @@ export class Convention {
 
   /**
    * Supprime un MJ, et avec lui ses disponibilités et son participant, donc ses téléphones reliés,
-   * ses inscriptions et son état sans partie. Un MJ qui a au moins un scénario reste (PR-12) : le catalogue, entier, le dit.
+   * ses inscriptions, son état sans partie et ses affectations de tous les tirages. Un MJ qui a au
+   * moins un scénario reste (PR-12) : le catalogue, entier, le dit.
    */
   removeGameMaster(id: string, catalogue: ScenarioCatalogue): void {
     const participantId = this.allParticipants.findExistingGameMasterById(id).participant.id;
@@ -327,6 +337,7 @@ export class Convention {
       catalogue,
     );
     this.allSignUps = this.allSignUps.getSignUpsAfterRemovingParticipant(participantId);
+    this.allDraws = this.allDraws.getDrawsAfterRemovingParticipant(participantId);
   }
 
   /** Le MJ se déclare disponible sur un créneau existant (PR-2). Déclarer deux fois ne change rien. */
@@ -528,8 +539,8 @@ export class Convention {
 
   /**
    * Le suivi des inscriptions de chaque créneau, dans l'ordre de la journée : son état, sa demande et
-   * sa capacité, que le catalogue, entier, donne, ses parties, ses participants (§4.4) et sa réserve
-   * (§4.4 étape 2). Voir `computeSignUpTracking()`.
+   * sa capacité, que le catalogue, entier, donne, ses parties, ses participants (§4.4), sa réserve
+   * (§4.4 étape 2) et son tirage. Voir `computeSignUpTracking()`.
    */
   computeSignUpTracking(catalogue: ScenarioCatalogue): TimeSlotTracking[] {
     return computeSignUpTracking(catalogue, {
@@ -537,7 +548,9 @@ export class Convention {
       signUps: this.allSignUps,
       signUpCollaborators: this.buildSignUpCollaborators(this.gameSchedule),
       participants: this.allParticipants.participants,
+      tables: this.tables,
       getTimeSlotState: (timeSlotId) => this.getTimeSlotState(timeSlotId),
+      findDrawOfTimeSlot: (timeSlotId) => this.allDraws.findDrawOfTimeSlot(timeSlotId),
       computeReserveOfTimeSlot: (timeSlotId) =>
         computeReserveOfTimeSlot(timeSlotId, catalogue, {
           day: this.day,
@@ -641,6 +654,33 @@ export class Convention {
     return true;
   }
 
+  /** Les tirages lancés, un par créneau. */
+  get draws(): readonly Draw[] {
+    return this.allDraws.draws;
+  }
+
+  /**
+   * Lance le tirage du créneau (TI-1) : ferme ses inscriptions, puis enregistre l'affectation que
+   * l'algorithme rend à chacun de ses participants, avec cette source de hasard. Seul le premier
+   * créneau dont le tirage n'est pas publié se lance. Le catalogue, entier, donne les places des
+   * parties. Une sortie fautive de l'algorithme lève `FaultyDrawOutputError` : rien ne change.
+   * Aucune notification (NO-4).
+   */
+  launchDraw(
+    timeSlotId: string,
+    catalogue: ScenarioCatalogue,
+    algorithm: DrawAlgorithm,
+    random: RandomSource,
+  ): void {
+    this.day.verifyTimeSlotExists(timeSlotId);
+    this.allDraws = this.allDraws.getDrawsAfterLaunchingDraw(timeSlotId, algorithm, random, {
+      day: this.day,
+      signUps: this.allSignUps,
+      signUpCollaborators: this.buildSignUpCollaborators(this.gameSchedule),
+      catalogue,
+    });
+  }
+
   /**
    * La situation du participant : ses inscriptions actives (IN-4), puis
    * l'état de chaque créneau, dans l'ordre de la journée, avec la partie qu'y mène son MJ, le
@@ -697,8 +737,9 @@ export class Convention {
   }
 
   /**
-   * Ce que lisent les règles des inscriptions : ce Programme, et les parties que mène chaque
-   * participant par son MJ (ADR 0012), tirées du même Programme.
+   * Ce que lisent les règles des inscriptions : ce Programme, les parties que mène chaque
+   * participant par son MJ (ADR 0012), tirées du même Programme, et les créneaux qu'il occupe comme
+   * joueur d'une partie double publiée, tirés des Tirages (TI-3).
    */
   private buildSignUpCollaborators(schedule: Schedule): SignUpCollaborators {
     const ledGames: LedGames = {
@@ -707,12 +748,16 @@ export class Convention {
         return gameMaster ? schedule.listGamesLedByGameMaster(gameMaster.id) : [];
       },
     };
-    return { schedule, ledGames };
+    const playedTimeSlots: PlayedTimeSlots = {
+      listTimeSlotIdsPlayedByParticipant: (participantId) =>
+        this.allDraws.listTimeSlotIdsPlayedByParticipant(participantId, schedule),
+    };
+    return { schedule, ledGames, playedTimeSlots };
   }
 
-  /** L'état du créneau. Le tirage n'existant pas encore, ses inscriptions restent ouvertes. */
-  private getTimeSlotState(_timeSlotId: string): TimeSlotState {
-    return 'sign-ups-open';
+  /** L'état du créneau, que donnent les Tirages. */
+  private getTimeSlotState(timeSlotId: string): TimeSlotState {
+    return this.allDraws.getTimeSlotState(timeSlotId);
   }
 
   /**

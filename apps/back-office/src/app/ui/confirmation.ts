@@ -14,6 +14,11 @@ export type ConfirmationRequest = {
   consequences?: readonly string[] | Signal<readonly string[]>;
   /** Bouton destructeur, qui nomme l'action : « Supprimer le créneau ». */
   confirmLabel: string;
+  /**
+   * Le dessin du bouton qui confirme : rouge (destructeur, par défaut) pour ce qui efface, orange
+   * (principal) pour un geste qui n'efface rien, comme lancer le tirage.
+   */
+  tone?: 'danger' | 'primary';
   /** L'écriture, lancée par le bouton destructeur. Un refus s'affiche dans le dialogue. */
   action: () => Promise<unknown>;
   /** Le refus dit que l'écran est périmé : appelé à la fermeture du dialogue, pour le relire. */
@@ -25,8 +30,8 @@ type DialogData = ConfirmationRequest & { titleId: string; markStale: () => void
 let nextId = 0;
 
 /**
- * Dialogue de confirmation d'une action destructrice (docs/design/patterns.md, Actions
- * destructrices) : focus initial sur « Annuler ». Un refus de l'API s'affiche dans le dialogue
+ * Dialogue de confirmation d'une action destructrice, ou d'un geste qui engage (docs/design/patterns.md,
+ * Actions destructrices) : focus initial sur « Annuler ». Un refus de l'API s'affiche dans le dialogue
  * lui-même ; le bouton destructeur disparaît, il ne reste que « Fermer ».
  */
 @Component({
@@ -46,7 +51,7 @@ let nextId = 0;
         {{ refusal() ? 'Fermer' : 'Annuler' }}
       </button>
       @if (!refusal()) {
-        <button type="button" appButton="danger" (click)="confirm()">
+        <button type="button" [appButton]="request.tone ?? 'danger'" (click)="confirm()">
           {{ request.confirmLabel }}
         </button>
       }

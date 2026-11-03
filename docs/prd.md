@@ -81,8 +81,8 @@ Les inscriptions sont déjà ouvertes : il n'y a pas d'état où l'on lit le pro
 
 1. **Surveiller la surcharge** : l'écran de suivi affiche, à jour, la situation de chaque créneau : *demande / capacité*, et ses avertissements de suivi. Rouges : il manque des places (la demande dépasse la capacité maximum), des participants sont sans partie (IN-6), des participants risquent de ne pas être placés (toutes leurs parties du créneau sont très demandées). Jaunes : le créneau est presque plein (la demande atteint 80 % de la capacité maximum), il y a trop de parties (la demande est sous la capacité minimum), ou des parties sont sous leur minimum. Trois avertissements au plus par créneau, les rouges d'abord, et aucun sur un créneau sans inscription. La demande compte des participants distincts : un participant inscrit à plusieurs parties du créneau compte pour un, et un participant sans partie compte aussi. La capacité est une fourchette, de la somme des places minimum à la somme des places maximum des parties qui commencent sur le créneau.
 2. **Soulager un créneau** : l'Organisateur programme une partie depuis la réserve. Tous ceux qui peuvent s'inscrire sur ce créneau reçoivent une notification « Créneau *N* : nouvelle partie » (NO-2).
-3. **Lancer le tirage** : les inscriptions du créneau se ferment ; le tirage produit un résultat **provisoire**.
-4. **Examiner et ajuster** : l'Organisateur voit les parties, leurs joueurs, les parties sous leur minimum et les **non placés**, et peut faire des **ajustements** (§5.5).
+3. **Lancer le tirage** : depuis « Pilotage du jour J », sur le premier créneau dont le tirage n'est pas publié, après une confirmation qui rappelle ses inscrits, ses places et ses avertissements de suivi rouges. Les inscriptions du créneau se ferment ; le tirage produit un résultat **provisoire**, que personne ne voit sur son téléphone avant la publication.
+4. **Examiner et ajuster** : l'Organisateur voit le résultat dans un plan de salle : une carte « Non placés » en tête, puis une carte par partie du créneau, avec ses joueurs, ses places et ses badges (sous son minimum, au-delà de son maximum). Le résumé du créneau donne les placés, les non placés et les parties à leur minimum. L'Organisateur peut ensuite faire des **ajustements** (§5.5).
 5. **Publier** : le résultat devient définitif et les notifications partent (§5.6).
 
 ### 4.5 Après la publication
@@ -176,8 +176,8 @@ Une barre fixée en bas de l'écran porte le geste : « S'inscrire » ou, une fo
 
 ### 5.5 Tirage
 
-- **TI-1** Le tirage se fait par créneau, lancé manuellement par un Organisateur. Le lancement ferme les inscriptions du créneau.
-- **TI-2** Participants concernés : les inscrits du créneau, hors MJ qui y mènent une partie, dont les inscriptions sur ce créneau sont ignorées (IN-4).
+- **TI-1** Le tirage se fait par créneau, lancé manuellement par un Organisateur, dans l'ordre de la journée : seul le premier créneau dont le tirage n'est pas publié se lance. Le lancement ferme les inscriptions du créneau. Un créneau sans partie se tire aussi, avec un résultat vide, pour passer au suivant.
+- **TI-2** Participants concernés : ceux qui ont une inscription active sur une partie qui commence sur le créneau, hors MJ qui y mènent une partie, dont les inscriptions sur ce créneau sont ignorées (IN-4), et hors joueurs placés dans une partie double tirée au créneau précédent et publiée (TI-3). Ils sont enregistrés au lancement.
 - **TI-3** Partie double : elle est tirée avec son premier créneau. Ses joueurs ne participent pas au tirage du créneau suivant, et leurs inscriptions sur ce créneau suivant sont ignorées.
 - **TI-4** Priorités, dans l'ordre :
   1. ne jamais dépasser le maximum d'une partie et ne placer un participant que sur une partie où il est inscrit ;

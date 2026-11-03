@@ -52,6 +52,21 @@ export function rowsOf(convention: Convention) {
       })),
       ({ participantId, timeSlotId }) => `${participantId}:${timeSlotId}`,
     ),
+    draws: keyed(
+      convention.draws.map(({ timeSlotId, published }) => ({ timeSlotId, published })),
+      ({ timeSlotId }) => timeSlotId,
+    ),
+    drawAssignments: keyed(
+      convention.draws.flatMap(({ timeSlotId, assignments }) =>
+        assignments.map(({ participantId, gameId, movedByHand }) => ({
+          timeSlotId,
+          participantId,
+          gameId,
+          movedByHand,
+        })),
+      ),
+      ({ timeSlotId, participantId }) => `${timeSlotId}:${participantId}`,
+    ),
     /** Une partie avec ses créneaux : ils changent ensemble, quand elle se déplace. */
     games: keyed(
       convention.games.map((game) => ({

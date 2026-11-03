@@ -81,6 +81,8 @@ export class PrismaFrontOfficeScheduleReader implements FrontOfficeScheduleReade
             SignUps.isSignUpActive(
               timeSlotIds,
               participant.gameMaster?.games.map(({ timeSlotId }) => timeSlotId) ?? [],
+              // Aucun tirage ne se publie encore : personne n'occupe de partie double publiée (TI-3).
+              [],
             ),
           ).length;
           return {

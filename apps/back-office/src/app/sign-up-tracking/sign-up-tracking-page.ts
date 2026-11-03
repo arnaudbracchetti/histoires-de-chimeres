@@ -13,6 +13,7 @@ import {
 import { Tab, TabContent, TabList, TabPanel, Tabs } from '@angular/aria/tabs';
 import { RouterLink } from '@angular/router';
 import {
+  drawEndpoints,
   signUpTrackingEndpoints,
   type ScheduleDto,
   type ScheduleScenarioDto,
@@ -34,6 +35,7 @@ import {
   plural,
   timeSlotLabel,
 } from '@chimeres/design';
+import { injectApiCall } from '../api-call';
 import { apiResource } from '../api-resource';
 import { injectGesture } from '../gesture';
 import { liveResource } from '../live-resource';
@@ -50,9 +52,11 @@ import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
 import { Button } from '../ui/button';
+import { Confirmation } from '../ui/confirmation';
 import { EmptyState } from '../ui/empty-state';
 import { Gauge } from '../ui/gauge';
 import { Icon } from '../ui/icon';
+import { DrawPlan } from './draw-plan';
 import { TrackedGameSignUps } from './tracked-game-sign-ups';
 import { rowIdOf, TrackedGamesPanel } from './tracked-games-panel';
 import {
@@ -65,10 +69,13 @@ import { TrackedReservePanel } from './tracked-reserve-panel';
 /** Les onglets du créneau : « Parties du créneau », « Inscrits du créneau » et « Réserve du créneau ». */
 type TabValue = 'games' | 'participants' | 'reserve';
 
-/** L'état d'un créneau fermé, sur sa tuile : les termes du front office. */
-const CLOSED_STATE: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string> = {
-  drawing: 'Tirage en cours',
-  published: 'Tirage publié',
+/** L'état d'un créneau lancé, sur sa tuile et dans son résumé, avec son icône. */
+const CLOSED_STATE: Record<
+  Exclude<TimeSlotStateDto, 'sign-ups-open'>,
+  { label: string; icon: string }
+> = {
+  drawing: { label: 'Tirage provisoire', icon: 'hourglass' },
+  published: { label: 'Tirage publié', icon: 'lock' },
 };
 
 /** L'icône de chaque niveau d'avertissement de suivi (docs/design/patterns.md, Statuts). */
@@ -103,9 +110,9 @@ const WARNING_ACTIONS: Record<
   'games-below-minimum': { label: 'Voir les parties', tab: 'games', shortfall: false },
 };
 
-/** Ce que dit le résumé d'un créneau fermé. */
+/** Ce que dit le résumé d'un créneau lancé. */
 const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string> = {
-  drawing: fr`Tirage en cours : les inscriptions sont fermées.`,
+  drawing: fr`Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication.`,
   published: fr`Tirage publié : les inscriptions sont fermées et le programme du créneau ne change plus.`,
 };
 
@@ -119,6 +126,7 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
   selector: 'app-sign-up-tracking-page',
   imports: [
     Button,
+    DrawPlan,
     EmptyState,
     GameSheet,
     Gauge,
@@ -160,7 +168,7 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
               <button
                 type="button"
                 class="tile"
-                [class.closed]="slot.state !== 'sign-ups-open'"
+                [class.closed]="slot.state === 'published'"
                 [attr.aria-pressed]="slot.id === selected()?.id"
                 (click)="selectedId.set(slot.id)"
               >
@@ -188,7 +196,19 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                     >
                   }
                 } @else {
-                  <span class="state"><app-icon name="lock" />{{ closedState[slot.state] }}</span>
+                  @if (slot.draw; as draw) {
+                    <span class="ratio"
+                      >{{ formatCount(draw.assignedCount) }}&nbsp;/&nbsp;{{
+                        formatCount(draw.participantCount)
+                      }}</span
+                    >
+                    <span class="legend">placés / participants</span>
+                  }
+                  <span class="state" [class]="slot.state"
+                    ><app-icon [name]="closedState[slot.state].icon" />{{
+                      closedState[slot.state].label
+                    }}</span
+                  >
                 }
               </button>
             }
@@ -220,6 +240,18 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                     @if (!slot.demand) {
                       <p class="quiet">Aucune inscription sur ce créneau pour l'instant.</p>
                     }
+                    @if (slot.id === drawableSlot()?.id) {
+                      <p>
+                        <button type="button" appButton="primary" (click)="launch(slot)">
+                          Lancer le tirage
+                        </button>
+                      </p>
+                    } @else if (drawableSlot(); as drawable) {
+                      <p class="quiet">
+                        Le tirage de ce créneau se lance après la publication du créneau
+                        {{ drawable.rank }}.
+                      </p>
+                    }
                     @if (slot.warnings.length) {
                       <ul class="warnings" aria-label="Avertissements de suivi">
                         @for (warning of slot.warnings; track warning.code) {
@@ -237,10 +269,46 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                       </ul>
                     }
                   } @else {
+                    @if (slot.state === 'drawing') {
+                      <p class="state drawing">
+                        <app-icon [name]="closedState.drawing.icon" />{{
+                          closedState.drawing.label
+                        }}
+                      </p>
+                    }
+                    @if (slot.draw; as draw) {
+                      <p class="figures">
+                        <span
+                          ><span class="figure"
+                            >{{ formatCount(draw.assignedCount) }}&nbsp;/&nbsp;{{
+                              formatCount(draw.participantCount)
+                            }}</span
+                          >&nbsp;{{ plural(draw.assignedCount, 'placé', 'placés') }}</span
+                        >
+                        <span
+                          ><span class="figure">{{ formatCount(draw.unassignedCount) }}</span
+                          >&nbsp;{{ plural(draw.unassignedCount, 'non placé', 'non placés') }}</span
+                        >
+                        <span
+                          ><span class="figure"
+                            >{{ formatCount(draw.gamesAtMinimumCount) }}&nbsp;/&nbsp;{{
+                              formatCount(draw.gameCount)
+                            }}</span
+                          >&nbsp;{{ plural(draw.gameCount, 'partie', 'parties') }} au minimum</span
+                        >
+                      </p>
+                    }
                     <p class="quiet">{{ closedSummary[slot.state] }}</p>
                   }
                 </section>
-                @if (slot.state === 'sign-ups-open') {
+                @if (slot.draw) {
+                  <app-draw-plan
+                    [timeSlot]="slot"
+                    [timeSlots]="tracking.timeSlots"
+                    [tables]="tracking.tables"
+                    [games]="tracking.games"
+                  />
+                } @else if (slot.state === 'sign-ups-open') {
                   <div ngTabs class="binder">
                     <div ngTabList aria-label="Vues du créneau" [(selectedTab)]="selectedTab">
                       <button ngTab id="tab-games" type="button" value="games">
@@ -461,6 +529,10 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
         align-items: center;
         margin-top: var(--space-xs);
         color: var(--text-muted);
+
+        &.drawing {
+          color: var(--accent);
+        }
       }
 
       /* La fiche ouverte rétrécit le créneau. */
@@ -583,15 +655,22 @@ export class SignUpTrackingPage {
   protected readonly warningActions = WARNING_ACTIONS;
   protected readonly formatSeatRange = formatSeatRange;
   protected readonly timeSlotLabel = timeSlotLabel;
+  protected readonly plural = plural;
 
-  /** Le créneau choisi d'un clic ; avant, le premier dont les inscriptions sont ouvertes. */
+  /**
+   * Le premier créneau dont le tirage n'est pas publié : le seul qui se lance, s'il est ouvert. Les
+   * tirages se font dans l'ordre de la journée.
+   */
+  protected readonly drawableSlot = computed(() =>
+    this.value()?.timeSlots.find(({ state }) => state !== 'published'),
+  );
+
+  /** Le créneau choisi d'un clic ; avant, le premier dont le tirage n'est pas publié. */
   protected readonly selectedId = signal<string | undefined>(undefined);
   protected readonly selected = computed(() => {
     const timeSlots = this.value()?.timeSlots ?? [];
     return (
-      timeSlots.find(({ id }) => id === this.selectedId()) ??
-      timeSlots.find(({ state }) => state === 'sign-ups-open') ??
-      timeSlots[0]
+      timeSlots.find(({ id }) => id === this.selectedId()) ?? this.drawableSlot() ?? timeSlots[0]
     );
   });
 
@@ -614,6 +693,8 @@ export class SignUpTrackingPage {
   );
   /** Un refus part en alerte : la fiche n'a pas de place pour lui. */
   protected readonly unscheduling = injectGesture({ alert: true, refreshes: true });
+  private readonly confirmation = inject(Confirmation);
+  private readonly apiCall = injectApiCall();
   private readonly placements = inject(Placements);
   private readonly cellPlacements = inject(CellPlacements);
   private readonly announcer = inject(Announcer);
@@ -655,6 +736,30 @@ export class SignUpTrackingPage {
     if (participantFilter) this.participantFilter.set(participantFilter);
     this.selectedTab.set(tab);
     this.focusById(`tab-${tab}`);
+  }
+
+  /**
+   * Lance le tirage du créneau, après une confirmation qui rappelle ses inscrits, ses places et ses
+   * avertissements de suivi rouges. Le suivi se relit ensuite, et la région `aria-live` l'annonce.
+   */
+  protected async launch(slot: TimeSlotTrackingDto) {
+    const launched = await this.confirmation.ask({
+      question: fr`Lancer le tirage du créneau ${slot.rank} ?`,
+      consequences: [
+        fr`${countOf(slot.demand, 'participant', 'participants')} ${plural(slot.demand, 'est inscrit', 'sont inscrits')} sur ce créneau, pour ${formatSeatRange(slot.capacity)} ${this.places(slot.capacity.max)}.`,
+        ...slot.warnings
+          .filter(({ level }) => level === 'danger')
+          .map(({ title, detail }) => fr`${title}. ${detail}`),
+        fr`Les inscriptions du créneau seront fermées. Personne n'est notifié avant la publication.`,
+      ],
+      confirmLabel: 'Lancer le tirage',
+      tone: 'primary',
+      action: () => this.apiCall(drawEndpoints.launch, { params: { timeSlotId: slot.id } }),
+      onStale: () => this.tracking.reload(),
+    });
+    if (!launched) return;
+    this.announcer.announce(`Tirage du créneau ${slot.rank} lancé.`);
+    this.tracking.reload();
   }
 
   /** Les scénarios programmables sur le créneau : le compteur de l'onglet Réserve. */

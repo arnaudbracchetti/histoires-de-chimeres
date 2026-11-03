@@ -21,6 +21,7 @@
     "@chimeres/contract": "workspace:*",
     "@chimeres/design": "workspace:*",
     "@chimeres/domain": "workspace:*",
+    "@chimeres/draw": "workspace:*",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
     "@nestjs/platform-express": "^12.0.1",

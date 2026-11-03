@@ -17,6 +17,7 @@ export { PhoneNotLinkedError } from './linked-phone/phone-not-linked.error.js';
 export { ReadLinkedPhone } from './linked-phone/read-linked-phone.js';
 export { SavePushSubscription } from './linked-phone/save-push-subscription.js';
 export { UnlinkPhone } from './linked-phone/unlink-phone.js';
+export { LaunchDraw } from './draw/launch-draw.js';
 export { MoveGame } from './game/move-game.js';
 export { ReadCellPlacements, type ScenarioCellPlacement } from './game/read-cell-placements.js';
 export type { NotificationSender } from './notification/notification-sender.js';

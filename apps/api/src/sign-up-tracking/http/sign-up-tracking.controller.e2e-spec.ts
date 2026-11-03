@@ -153,6 +153,7 @@ describe('Suivi des inscriptions', () => {
           participants: expect.any(Array),
           warnings: expect.any(Array),
           reserve: expect.any(Array),
+          draw: null,
         },
         {
           id: slot(2),
@@ -165,6 +166,7 @@ describe('Suivi des inscriptions', () => {
           participants: [],
           warnings: [],
           reserve: [],
+          draw: null,
         },
       ],
       tables: [

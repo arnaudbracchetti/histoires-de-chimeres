@@ -1,10 +1,13 @@
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import type { TimeSlotState } from './convention.js';
 import type { Day } from './day.js';
+import type { Draw } from './draw.js';
+import { computeDrawTracking, type DrawTracking } from './draw-tracking.js';
 import type { Participant } from './participant.js';
 import type { TimeSlotReserveEntry } from './reserve.js';
 import { computeSignUpWarnings, type SignUpWarning } from './sign-up-warning.js';
 import type { SignUpCollaborators, SignUpFigures, SignUps } from './sign-ups.js';
+import type { Table } from './table.js';
 
 /**
  * La capacité d'un créneau : de la somme des places minimum à la somme des places maximum des
@@ -48,8 +51,8 @@ export type ParticipantTracking = {
  * qui y commencent, dans l'ordre de leur programmation, ses participants : ceux qui y sont sans
  * partie d'abord, puis ceux qui n'y ont qu'une inscription, puis les autres, chaque groupe dans
  * l'ordre naturel des pseudos, ses
- * avertissements de suivi (aucun sur un créneau sans inscription, ou fermé), et sa réserve, vide sur
- * un créneau fermé.
+ * avertissements de suivi (aucun sur un créneau sans inscription, ou fermé), sa réserve, vide sur
+ * un créneau fermé, et son tirage, `null` tant qu'il n'est pas lancé.
  */
 export type TimeSlotTracking = {
   timeSlotId: string;
@@ -60,6 +63,7 @@ export type TimeSlotTracking = {
   participants: ParticipantTracking[];
   warnings: SignUpWarning[];
   reserve: TimeSlotReserveEntry[];
+  draw: DrawTracking | null;
 };
 
 /** Ce que le suivi lit de la convention, tiré de son état. */
@@ -69,7 +73,11 @@ export type SignUpTrackingCollaborators = {
   signUpCollaborators: SignUpCollaborators;
   /** Dans l'ordre naturel de leur pseudo. */
   participants: readonly Participant[];
+  /** Dans l'ordre naturel. */
+  tables: readonly Table[];
   getTimeSlotState(timeSlotId: string): TimeSlotState;
+  /** Le tirage du créneau, ou `undefined` tant qu'il n'est pas lancé. */
+  findDrawOfTimeSlot(timeSlotId: string): Draw | undefined;
   /** La réserve du créneau : voir `computeReserveOfTimeSlot()`. */
   computeReserveOfTimeSlot(timeSlotId: string): TimeSlotReserveEntry[];
 };
@@ -88,6 +96,7 @@ export function computeSignUpTracking(
     collaborators;
   return day.timeSlots.map((slot) => {
     const state = getTimeSlotState(slot.id);
+    const draw = collaborators.findDrawOfTimeSlot(slot.id);
     const demand = signUps.countDemandOnTimeSlot(slot.id, signUpCollaborators);
     const games = signUpCollaborators.schedule.listGamesStartingOnTimeSlot(slot.id);
     const seats = games.map((game) => catalogue.findExistingEntryById(game.scenarioId));
@@ -132,6 +141,7 @@ export function computeSignUpTracking(
           })
         : [],
       reserve: state === 'sign-ups-open' ? computeReserveOfTimeSlot(slot.id) : [],
+      draw: draw ? computeDrawTracking(draw, catalogue, collaborators) : null,
     };
   });
 }

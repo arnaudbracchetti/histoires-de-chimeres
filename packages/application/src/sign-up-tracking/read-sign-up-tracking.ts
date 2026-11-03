@@ -22,7 +22,8 @@ export type SignUpTracking = Omit<SignUpTrackingDto, 'timeSlots' | 'reserve'> & 
 
 /**
  * Le suivi des inscriptions de chaque créneau, que la convention calcule avec le catalogue entier
- * (§4.4), les tables de la convention, les parties du programme avec leur suivi, et la réserve.
+ * (§4.4), avec son tirage, les tables de la convention, les parties du programme avec leur suivi, et
+ * la réserve.
  */
 export class ReadSignUpTracking {
   constructor(
@@ -41,6 +42,7 @@ export class ReadSignUpTracking {
     const nicknames = new Map(
       convention.participants.map((participant) => [participant.id, participant.nickname.text]),
     );
+    const tableNames = new Map(convention.tables.map((table) => [table.id, table.name.text]));
     const tracking = convention.computeSignUpTracking(catalogue);
     const reserve = await readReserve(convention, catalogue, this.reader);
     // L'ordre naturel des titres, que la réserve suit.
@@ -50,7 +52,7 @@ export class ReadSignUpTracking {
     );
     return {
       timeSlots: tracking.map(
-        ({ timeSlotId, state, demand, capacity, participants, warnings, ...slot }) => ({
+        ({ timeSlotId, state, demand, capacity, participants, warnings, draw, ...slot }) => ({
           id: timeSlotId,
           rank: convention.getTimeSlotRank(timeSlotId),
           start: slots.get(timeSlotId)!.start.toString(),
@@ -71,6 +73,18 @@ export class ReadSignUpTracking {
               Number(a.refusal !== null) - Number(b.refusal !== null) ||
               titleOrder.get(a.scenarioId)! - titleOrder.get(b.scenarioId)!,
           ),
+          draw: draw && {
+            ...draw,
+            tablesWithSeats: draw.tablesWithSeats.map(({ tableId, freeSeatCount }) => ({
+              tableId,
+              name: tableNames.get(tableId)!,
+              freeSeatCount,
+            })),
+            assignments: draw.assignments.map((assignment) => ({
+              ...assignment,
+              nickname: nicknames.get(assignment.participantId)!,
+            })),
+          },
         }),
       ),
       tables: convention.tables.map((table) => ({ id: table.id, name: table.name.text })),

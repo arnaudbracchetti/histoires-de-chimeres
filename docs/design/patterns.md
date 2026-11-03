@@ -178,6 +178,7 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 | Déprogrammer une partie | oui, si elle a des inscrits ; sans inscrit, non |
 | Déplacer une partie vers un autre créneau | oui, si elle a des inscrits ; vers une autre table du même créneau, non (IN-6) |
 | Échanger deux parties de créneaux différents | oui, si l'une a des inscrits ; sur le même créneau, non (IN-6) |
+| Lancer le tirage | oui, en orange (principal) : le geste n'efface rien, mais ferme les inscriptions |
 | Retirer une disponibilité | non : c'est une case à cocher |
 | Revenir aux places du scénario | non |
 
@@ -308,13 +309,14 @@ Sur la fiche du MJ, la **frise de la journée** : un bloc par créneau, à sa pl
 
 ## Pilotage du jour J
 
-La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque créneau avant le tirage (PRD §4.4, étape 1). Elle est disponible avant le jour J, sans condition de date. Le Calendrier reste l'écran d'accueil. Elle affiche ce que l'API calcule, sans recalcul.
+La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque créneau avant le tirage, lance le tirage et en montre le résultat (PRD §4.4, étapes 1, 3 et 4). Elle est disponible avant le jour J, sans condition de date. Le Calendrier reste l'écran d'accueil. Elle affiche ce que l'API calcule, sans recalcul.
 
 - **En-tête** : h1 « Pilotage du jour J », et dessous une ligne réservée à l'âge des chiffres. Elle garde sa hauteur même vide : son texte, quand il vient, ne décale rien.
 - **Bande des créneaux** : une tuile par créneau, dans l'ordre de la journée. C'est un bouton à `aria-pressed`, bordé d'orange quand le créneau est choisi.
   - Créneau dont les inscriptions sont ouvertes : « Créneau 2 », la plage, le ratio demande / capacité maximum en grand (« 26 / 22 »), la légende « participants / places », la [jauge](#jauge), puis le nombre d'avertissements de suivi avec l'icône du plus grave (« 2 avertissements »). Rien sans avertissement. Le nombre est la longueur de la liste reçue.
-  - Créneau dont le tirage est lancé ou publié : tuile atténuée, cadenas (`lock`), « Tirage en cours » ou « Tirage publié », sans chiffres.
-  - À l'ouverture, la page choisit le premier créneau dont les inscriptions sont ouvertes.
+  - Créneau en tirage provisoire : les placés face aux participants du tirage en grand (« 19 / 26 »), la légende « placés / participants », et « Tirage provisoire » (`hourglass`, orange), sans jauge ni compteur d'avertissements.
+  - Créneau publié : tuile atténuée, cadenas (`lock`), « Tirage publié ».
+  - À l'ouverture, la page choisit le premier créneau dont le tirage n'est pas publié. « Tirage en cours » ne s'emploie pas dans le back office : c'est le terme du front office.
 - **Résumé du créneau choisi**, dans une carte : « Créneau 2 · 13 h 00 – 15 h 30 », la demande (« 26 participants ») et la capacité (« 14 à 22 places », ou « 22 places » quand les deux bornes sont égales) en grand, et une jauge large.
   - Les **avertissements de suivi**, dans l'ordre reçu de l'API (trois au plus, les rouges d'abord), un par ligne : l'icône de son niveau, le titre en couleur, le détail en gris, et un bouton secondaire choisi selon le code, qui ouvre l'onglet où agir et y met le focus. L'API écrit le titre et le détail ; le front ne lit le code que pour choisir le bouton.
 
@@ -328,8 +330,15 @@ La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque c
     | `games-below-minimum` | jaune | « 3 parties sous leur minimum » | « Voir les parties » |
 
   - Sans inscription : aucun avertissement, et « Aucune inscription sur ce créneau pour l'instant. » Les chiffres restent affichés, même à 0.
+  - **Lancer le tirage** : sur le premier créneau dont le tirage n'est pas publié, le bouton principal « Lancer le tirage », sous la jauge. Sur les autres créneaux ouverts : « Le tirage de ce créneau se lance après la publication du créneau 2. » Le bouton ouvre une confirmation, en orange (principal) : « Lancer le tirage du créneau 2 ? », « 26 participants sont inscrits sur ce créneau, pour 14 à 22 places. », chaque avertissement de suivi rouge (titre et détail), puis « Les inscriptions du créneau seront fermées. Personne n'est notifié avant la publication. » ; Annuler · **Lancer le tirage**. Le geste réussi est annoncé, et la page relit le suivi.
+  - Créneau en tirage provisoire : le badge « Tirage provisoire » (`hourglass`, orange), « 19 / 26 placés », « 7 non placés » et « 4 / 5 parties au minimum » en grand, puis « Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication. » Aucun avertissement de suivi.
   - Créneau publié : « Tirage publié : les inscriptions sont fermées et le programme du créneau ne change plus. », sans chiffres ni action.
-- **Onglets du créneau**, sous le résumé, en [onglets de classeur](#onglets-de-classeur) : « Parties du créneau » (`dices`, nombre de parties qui commencent sur le créneau), « Inscrits du créneau » (`users`, la demande) et « Réserve du créneau » (`inbox`, nombre de scénarios programmables). Aucun onglet sur un créneau fermé.
+- **Plan de salle**, sous le résumé d'un créneau lancé, à la place des onglets : une carte « Non placés » en tête (fond teinté de rouge, « 7 participants · 3 places libres dans le créneau », les pseudos), puis une carte par partie du créneau, dans l'ordre des tables. Pas de carte pour une table libre. Les cartes ont 12 rem au moins et passent à la ligne, sans défilement horizontal.
+  - Carte d'une partie : table, titre, « jeu · MJ », jauge, « 5 joueurs · 3 à 5 places · 1 place libre » (ou « · 1 de trop », en jaune), badges « double », « Sous son minimum » et « Au-delà du maximum » (jaunes, `triangle-alert`), puis ses joueurs en pastilles, dans l'ordre naturel des pseudos.
+  - Pastille d'un joueur : crayon (`pencil`) et bordure en pointillés s'il a été déplacé à la main ; pseudo en jaune s'il joue à une partie où il n'est pas inscrit. Le lecteur d'écran entend les deux marques.
+  - Second créneau d'une partie double : carte atténuée, « Partie double, tirée avec le créneau 3 », ses joueurs, en lecture seule.
+  - Le plan est en lecture seule pour l'instant. La carte d'une partie n'ouvre pas sa fiche.
+- **Onglets du créneau**, sous le résumé, en [onglets de classeur](#onglets-de-classeur) : « Parties du créneau » (`dices`, nombre de parties qui commencent sur le créneau), « Inscrits du créneau » (`users`, la demande) et « Réserve du créneau » (`inbox`, nombre de scénarios programmables). Aucun onglet sur un créneau lancé.
 - **Onglet Parties du créneau** : « 1 table libre » en tête, puis une ligne par table, dans l'ordre des tables.
   - Partie : nom de la table, vignette, titre (bouton qui ouvre la fiche, `aria-expanded` ; un clic n'importe où sur la ligne l'ouvre aussi), « jeu · MJ », jauge, « 15 inscrits · 3 à 4 places », suivi de son écart (« · 11 de trop », « · 1 manquant »), « dont 8 sans autre inscription sur le créneau » (absent à 0), puis les badges « double », « Très demandée » (neutre, `users`) et « Sous son minimum » (jaune, `triangle-alert`).
   - Table libre : ligne en pointillés, « Table libre » et « Programmer ici… ». Ce bouton ouvre un dialogue « Programmer sur le créneau 2, table Dragon », lu à l'ouverture dans les verdicts de la case : les scénarios programmables avec « Choisir », puis « Pas programmables ici · N », chacun atténué avec son motif (la carte du bac de réserve). Vide : « Aucun scénario programmable ici. » « Choisir » programme la partie, puis onglet Parties, focus sur sa ligne et annonce ; un refus s'affiche dans le dialogue, comme dans le dialogue de placement.

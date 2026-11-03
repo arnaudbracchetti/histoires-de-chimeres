@@ -90,15 +90,20 @@ export {
   type SwapGamesBody,
   type UnscheduleVerdictDto,
 } from './schedule.js';
+export { drawEndpoints, type DrawParams } from './draw.js';
 export {
   signUpTrackingEndpoints,
+  type AssignmentDto,
   type CapacityDto,
+  type DrawGameDto,
+  type DrawTrackingDto,
   type ParticipantRiskDto,
   type SignUpTrackingDto,
   type SignUpWarningCode,
   type SignUpWarningDto,
   type SignUpWarningLevel,
   type SignUpWarningParams,
+  type TableWithSeatsDto,
   type TimeSlotReserveEntryDto,
   type TimeSlotTrackingDto,
   type TrackedGameDto,

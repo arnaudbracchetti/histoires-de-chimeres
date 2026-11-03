@@ -116,6 +116,60 @@ export type TimeSlotTrackingDto = {
    * front garde cet ordre. Vide sur un créneau fermé.
    */
   reserve: TimeSlotReserveEntryDto[];
+  /** Le tirage du créneau, `null` tant qu'il n'est pas lancé. */
+  draw: DrawTrackingDto | null;
+};
+
+/**
+ * Le tirage d'une partie qui commence sur le créneau : ses joueurs, « sous son minimum » (1 joueur
+ * au moins, sous ses places minimum), « sans joueur », « au-delà de son maximum », et son écart :
+ * les places libres sous son maximum (`freeSeatCount`), ou les joueurs de trop au-delà
+ * (`surplusPlayerCount`).
+ */
+export type DrawGameDto = {
+  gameId: string;
+  playerCount: number;
+  belowMinimum: boolean;
+  withoutPlayers: boolean;
+  overMaximum: boolean;
+  freeSeatCount: number;
+  surplusPlayerCount: number;
+};
+
+/**
+ * Une affectation du tirage : la partie du participant, ou `null` s'il n'est pas placé ; déplacé à
+ * la main ; les parties du créneau où son inscription est active (IN-4) ; et s'il joue à une partie
+ * qui n'est pas de ses inscriptions.
+ */
+export type AssignmentDto = {
+  participantId: string;
+  nickname: string;
+  gameId: string | null;
+  movedByHand: boolean;
+  signedUpGameIds: string[];
+  playsWithoutSignUp: boolean;
+};
+
+/** Une table où il reste de la place, avec son nom et ses places libres. */
+export type TableWithSeatsDto = { tableId: string; name: string; freeSeatCount: number };
+
+/**
+ * Le tirage d'un créneau lancé, provisoire ou publié : ses chiffres (participants du tirage,
+ * placés, non placés, parties qui commencent sur le créneau, parties à leur minimum, places libres),
+ * les tables où il reste de la place, dans l'ordre naturel, ses parties, dans l'ordre de leur
+ * programmation, et ses affectations, dans l'ordre naturel des pseudos : le front garde ces ordres.
+ */
+export type DrawTrackingDto = {
+  published: boolean;
+  participantCount: number;
+  assignedCount: number;
+  unassignedCount: number;
+  gameCount: number;
+  gamesAtMinimumCount: number;
+  freeSeatCount: number;
+  tablesWithSeats: TableWithSeatsDto[];
+  games: DrawGameDto[];
+  assignments: AssignmentDto[];
 };
 
 /**

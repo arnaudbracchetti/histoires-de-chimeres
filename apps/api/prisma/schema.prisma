@@ -35,6 +35,7 @@ model TimeSlot {
   availabilities          Availability[]
   games                   GameTimeSlot[]
   participantsWithoutGame ParticipantWithoutGame[]
+  draw                    Draw?
 
   @@index([conventionId])
 }
@@ -78,6 +79,7 @@ model Participant {
   linkedPhones           LinkedPhone[]
   signUps                SignUp[]
   withoutGameOnTimeSlots ParticipantWithoutGame[]
+  drawAssignments        DrawAssignment[]
 
   @@index([conventionId])
 }
@@ -145,15 +147,16 @@ model ScenarioImage {
 /// Partie de la convention : un scénario programmé (PR-3). Un scénario qui a des parties ne se
 /// supprime pas : la clé étrangère le refuse (RESTRICT).
 model Game {
-  id           String         @id @db.Uuid
-  conventionId String         @db.Uuid
-  convention   Convention     @relation(fields: [conventionId], references: [id], onDelete: Cascade)
-  scenarioId   String         @db.Uuid
-  scenario     Scenario       @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
+  id           String           @id @db.Uuid
+  conventionId String           @db.Uuid
+  convention   Convention       @relation(fields: [conventionId], references: [id], onDelete: Cascade)
+  scenarioId   String           @db.Uuid
+  scenario     Scenario         @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
   /// L'ordre de programmation.
-  scheduledAt  DateTime       @default(now())
+  scheduledAt  DateTime         @default(now())
   timeSlots    GameTimeSlot[]
   signUps      SignUp[]
+  assignments  DrawAssignment[]
 
   @@index([conventionId])
   @@index([scenarioId])
@@ -201,4 +204,29 @@ model ParticipantWithoutGame {
 
   @@id([participantId, timeSlotId])
   @@index([timeSlotId])
+}
+
+/// Tirage d'un créneau lancé (TI-1) : provisoire jusqu'à sa publication. Il retient son créneau
+/// (RESTRICT) : un créneau tiré ne se supprime pas.
+model Draw {
+  timeSlotId  String           @id @db.Uuid
+  timeSlot    TimeSlot         @relation(fields: [timeSlotId], references: [id], onDelete: Restrict)
+  published   Boolean          @default(false)
+  assignments DrawAssignment[]
+}
+
+/// Affectation d'un participant du tirage : sa partie, ou aucune s'il n'est pas placé. Elle part
+/// avec son tirage ou son participant (PR-12), et retient sa partie (RESTRICT).
+model DrawAssignment {
+  timeSlotId    String      @db.Uuid
+  draw          Draw        @relation(fields: [timeSlotId], references: [timeSlotId], onDelete: Cascade)
+  participantId String      @db.Uuid
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  gameId        String?     @db.Uuid
+  game          Game?       @relation(fields: [gameId], references: [id], onDelete: Restrict)
+  movedByHand   Boolean     @default(false)
+
+  @@id([timeSlotId, participantId])
+  @@index([participantId])
+  @@index([gameId])
 }

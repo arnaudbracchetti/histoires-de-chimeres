@@ -215,6 +215,20 @@ export const problemCatalogue: Catalogue = {
     detail: ({ rank }) =>
       fr`Le tirage du créneau ${rank} est lancé : ses inscriptions sont fermées.`,
   },
+  'draw-already-launched': {
+    title: 'Tirage déjà lancé',
+    detail: ({ rank }) => fr`Le tirage du créneau ${rank} est déjà lancé.`,
+  },
+  'draw-published': {
+    title: 'Tirage publié',
+    detail: ({ rank }) =>
+      fr`Le tirage du créneau ${rank} est publié : son résultat ne change plus.`,
+  },
+  'previous-draw-not-published': {
+    title: 'Tirage précédent à publier',
+    detail: ({ rank, previousRank }) =>
+      fr`Le tirage du créneau ${rank} se lance après la publication du créneau ${previousRank}.`,
+  },
   'leads-game-on-time-slot': {
     title: 'Tu mènes sur ce créneau',
     detail: ({ rank, table }) =>

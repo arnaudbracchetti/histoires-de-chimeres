@@ -16,6 +16,14 @@ export type LedGames = {
 };
 
 /**
+ * Les créneaux que chaque participant occupe comme joueur d'une partie double, placé par un tirage
+ * publié : ceux qui suivent le premier créneau de la partie (TI-3).
+ */
+export type PlayedTimeSlots = {
+  listTimeSlotIdsPlayedByParticipant(participantId: string): readonly string[];
+};
+
+/**
  * Les chiffres des inscriptions d'une partie : ses inscriptions actives (`signUpCount`, IN-4), et
  * combien de ses inscrits n'ont pas d'autre inscription active sur son premier créneau
  * (`withoutOtherSignUpCount`).
@@ -26,10 +34,14 @@ export type SignUpFigures = { signUpCount: number; withoutOtherSignUpCount: numb
 export type RemovedSignUps = { gameId: string } & SignUpFigures;
 
 /**
- * Ce que les règles des inscriptions lisent hors d'elles : le Programme, et qui y mène quoi. La
- * convention les fournit ensemble, tirés du même état.
+ * Ce que les règles des inscriptions lisent hors d'elles : le Programme, qui y mène quoi, et qui
+ * joue une partie double publiée. La convention les fournit ensemble, tirés du même état.
  */
-export type SignUpCollaborators = { schedule: Schedule; ledGames: LedGames };
+export type SignUpCollaborators = {
+  schedule: Schedule;
+  ledGames: LedGames;
+  playedTimeSlots: PlayedTimeSlots;
+};
 
 /**
  * Inscriptions : celles de la convention, dans l'ordre où elles ont été prises, et les participants
@@ -53,15 +65,21 @@ export class SignUps {
 
   /**
    * L'inscription est active, sauf si son participant mène une partie sur l'un des créneaux de la
-   * partie (IN-4) : elle n'entre alors ni dans le nombre d'inscrits, ni dans « très demandée », ni
-   * dans le tirage. Elle reste en place, et redevient active quand il n'y mène plus. Statique pour
-   * que la lecture compte les inscrits sans charger l'agrégat.
+   * partie (IN-4), ou s'il joue, sur le premier créneau de la partie, une partie double commencée
+   * au créneau d'avant, où un tirage publié l'a placé (TI-3). Elle n'entre alors ni dans le nombre
+   * d'inscrits, ni dans « très demandée », ni dans le tirage. Elle reste en place, et redevient
+   * active quand il n'y mène plus. Statique pour que la lecture compte les inscrits sans charger
+   * l'agrégat.
    */
   static isSignUpActive(
     gameTimeSlotIds: readonly string[],
     timeSlotIdsLedByParticipant: readonly string[],
+    timeSlotIdsPlayedByParticipant: readonly string[],
   ): boolean {
-    return !gameTimeSlotIds.some((slotId) => timeSlotIdsLedByParticipant.includes(slotId));
+    return (
+      !gameTimeSlotIds.some((slotId) => timeSlotIdsLedByParticipant.includes(slotId)) &&
+      !timeSlotIdsPlayedByParticipant.includes(gameTimeSlotIds[0]!)
+    );
   }
 
   hasSignUp(signUp: SignUp): boolean {
@@ -347,10 +365,14 @@ export class SignUps {
   }
 
   /** L'inscription est active : voir `SignUps.isSignUpActive()`. */
-  private isActive(signUp: SignUp, { schedule, ledGames }: SignUpCollaborators): boolean {
+  private isActive(
+    signUp: SignUp,
+    { schedule, ledGames, playedTimeSlots }: SignUpCollaborators,
+  ): boolean {
     return SignUps.isSignUpActive(
       schedule.findExistingGameById(signUp.gameId).timeSlotIds,
       ledGames.listGamesLedByParticipant(signUp.participantId).flatMap((game) => game.timeSlotIds),
+      playedTimeSlots.listTimeSlotIdsPlayedByParticipant(signUp.participantId),
     );
   }
 }

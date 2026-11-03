@@ -4,12 +4,14 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import {
   apiUrl,
+  drawEndpoints,
   scheduleEndpoints,
   signUpTrackingEndpoints,
   type ProblemDto,
   type RemovedSignUpsDto,
   type ReserveScenarioDto,
   type ScheduleDto,
+  type DrawTrackingDto,
   type SignUpTrackingDto,
   type TimeSlotTrackingDto,
   type TrackedGameDto,
@@ -43,6 +45,7 @@ const timeSlot = (
   participants: [],
   warnings: [],
   reserve: [],
+  draw: null,
   ...figures,
 });
 
@@ -177,6 +180,85 @@ const TRACKING: SignUpTrackingDto = {
   reserve: [ABYSSES, AUBE, CENDRES],
 };
 
+/**
+ * Le tirage provisoire du créneau 2 : Anna et Lune à « Brumes », Lune déplacée à la main ; Sven
+ * à « Brumes » sans y être inscrit ; Bastou non placé. Chiffres d'un tirage plus grand, pour la tuile.
+ */
+const DRAW_OF_SLOT_2: DrawTrackingDto = {
+  published: false,
+  participantCount: 26,
+  assignedCount: 19,
+  unassignedCount: 7,
+  gameCount: 5,
+  gamesAtMinimumCount: 4,
+  freeSeatCount: 3,
+  tablesWithSeats: [{ tableId: 't4', name: 'Sphinx', freeSeatCount: 3 }],
+  games: [
+    {
+      gameId: 'p1',
+      playerCount: 5,
+      belowMinimum: false,
+      withoutPlayers: false,
+      overMaximum: true,
+      freeSeatCount: 0,
+      surplusPlayerCount: 1,
+    },
+    {
+      gameId: 'p3',
+      playerCount: 0,
+      belowMinimum: false,
+      withoutPlayers: true,
+      overMaximum: false,
+      freeSeatCount: 4,
+      surplusPlayerCount: 0,
+    },
+  ],
+  assignments: [
+    {
+      participantId: 'u1',
+      nickname: 'Anna',
+      gameId: 'p1',
+      movedByHand: false,
+      signedUpGameIds: ['p1'],
+      playsWithoutSignUp: false,
+    },
+    {
+      participantId: 'u4',
+      nickname: 'Bastou',
+      gameId: null,
+      movedByHand: false,
+      signedUpGameIds: ['p3'],
+      playsWithoutSignUp: false,
+    },
+    {
+      participantId: 'u3',
+      nickname: 'Lune',
+      gameId: 'p1',
+      movedByHand: true,
+      signedUpGameIds: ['p1', 'p3'],
+      playsWithoutSignUp: false,
+    },
+    {
+      participantId: 'u2',
+      nickname: 'Sven',
+      gameId: 'p1',
+      movedByHand: false,
+      signedUpGameIds: ['p3'],
+      playsWithoutSignUp: true,
+    },
+  ],
+};
+
+/** Le suivi, le créneau 2 en tirage provisoire. */
+const DRAWING: SignUpTrackingDto = {
+  ...TRACKING,
+  timeSlots: TRACKING.timeSlots.map((slot) =>
+    slot.id === 's2'
+      ? { ...slot, state: 'drawing', warnings: [], reserve: [], draw: DRAW_OF_SLOT_2 }
+      : slot,
+  ),
+};
+
 /** Le texte, un blanc entre deux nœuds, espaces normalisées : pour comparer sans les insécables. */
 const text = (element: Element | null | undefined) => {
   const parts: string[] = [];
@@ -303,7 +385,7 @@ describe('Pilotage du jour J', () => {
     expect(tiles()[1]!.querySelectorAll('app-gauge .cell.over')).toHaveLength(4);
   });
 
-  it('choisit à l’ouverture le premier créneau dont les inscriptions sont ouvertes', async () => {
+  it('choisit à l’ouverture le premier créneau dont le tirage n’est pas publié', async () => {
     const { tiles, summary } = await render();
 
     expect(tiles().map((tile) => tile.getAttribute('aria-pressed'))).toEqual([
@@ -314,22 +396,21 @@ describe('Pilotage du jour J', () => {
     expect(text(summary()?.querySelector('h2'))).toBe('Créneau 2 · 13 h 00 – 15 h 30');
   });
 
-  it('atténue la tuile d’un créneau fermé, avec son état et sans chiffres', async () => {
-    const { tiles } = await render({
-      ...TRACKING,
-      timeSlots: [
-        ...TRACKING.timeSlots,
-        timeSlot(4, '19:00', '21:30', {
-          state: 'drawing',
-          demand: 3,
-          capacity: { min: 3, max: 5 },
-        }),
-      ],
-    });
+  it('atténue la tuile d’un créneau publié, avec son état', async () => {
+    const { tiles } = await render();
 
     expect(tiles()[0]!.classList).toContain('closed');
     expect(text(tiles()[0])).toBe('Créneau 1 9 h 00 – 11 h 30 Tirage publié');
-    expect(text(tiles()[3])).toBe('Créneau 4 19 h 00 – 21 h 30 Tirage en cours');
+  });
+
+  it('montre sur la tuile d’un créneau en tirage les placés face aux participants, sans jauge', async () => {
+    const { tiles } = await render(DRAWING);
+
+    expect(tiles()[1]!.classList).not.toContain('closed');
+    expect(text(tiles()[1])).toBe(
+      'Créneau 2 13 h 00 – 15 h 30 19 / 26 placés / participants Tirage provisoire',
+    );
+    expect(tiles()[1]!.querySelector('app-gauge')).toBeNull();
   });
 
   it('résume la demande et la capacité du créneau choisi', async () => {
@@ -360,6 +441,190 @@ describe('Pilotage du jour J', () => {
     expect(text(summary())).toBe(
       'Créneau 1 · 9 h 00 – 11 h 30 Tirage publié : les inscriptions sont fermées et le programme du créneau ne change plus.',
     );
+  });
+
+  describe('lancer le tirage', () => {
+    it('offre « Lancer le tirage » sur le seul premier créneau dont le tirage n’est pas publié', async () => {
+      const { fixture, tiles, summary, button } = await render();
+
+      expect(button('Lancer le tirage')).toBeDefined();
+      tiles()[2]!.click();
+      fixture.detectChanges();
+
+      expect(button('Lancer le tirage')).toBeUndefined();
+      expect(text(summary())).toContain(
+        'Le tirage de ce créneau se lance après la publication du créneau 2.',
+      );
+    });
+
+    it('demande une confirmation qui rappelle les inscrits, les places et les avertissements rouges', async () => {
+      const { button, dialog, settle } = await render({
+        ...TRACKING,
+        timeSlots: TRACKING.timeSlots.map((slot) =>
+          slot.id === 's2'
+            ? {
+                ...slot,
+                warnings: [
+                  {
+                    code: 'seats-missing',
+                    level: 'danger',
+                    title: 'Il manque 4 places',
+                    detail: '26 participants pour 22 places au plus.',
+                  },
+                  {
+                    code: 'nearly-full',
+                    level: 'warning',
+                    title: 'Presque plein',
+                    detail: 'Rien de grave.',
+                  },
+                ],
+              }
+            : slot,
+        ),
+      });
+
+      button('Lancer le tirage')!.click();
+      await settle();
+
+      expect(text(dialog()?.querySelector('h2'))).toBe('Lancer le tirage du créneau 2 ?');
+      expect([...dialog()!.querySelectorAll('p')].map((paragraph) => text(paragraph))).toEqual([
+        '26 participants sont inscrits sur ce créneau, pour 14 à 22 places.',
+        'Il manque 4 places. 26 participants pour 22 places au plus.',
+        "Les inscriptions du créneau seront fermées. Personne n'est notifié avant la publication.",
+      ]);
+      expect(document.activeElement?.textContent?.trim()).toBe('Annuler');
+      expect(
+        [...dialog()!.querySelectorAll('button')].find(
+          (candidate) => text(candidate) === 'Lancer le tirage',
+        )?.classList,
+      ).toContain('primary');
+    });
+
+    it('lance le tirage, puis relit le suivi et l’annonce', async () => {
+      const { http, button, dialog, settle, reread } = await render();
+      const announce = vi.spyOn(TestBed.inject(Announcer), 'announce');
+      button('Lancer le tirage')!.click();
+      await settle();
+
+      [...dialog()!.querySelectorAll('button')]
+        .find((candidate) => text(candidate) === 'Lancer le tirage')!
+        .click();
+      http
+        .expectOne({
+          method: 'POST',
+          url: apiUrl(drawEndpoints.launch, { timeSlotId: 's2' }),
+        })
+        .flush(null, { status: 204, statusText: 'No Content' });
+      await reread(DRAWING);
+
+      expect(announce).toHaveBeenCalledWith('Tirage du créneau 2 lancé.');
+      expect(dialog()).toBeNull();
+    });
+
+    it('affiche un refus dans le dialogue, puis relit le suivi à sa fermeture', async () => {
+      const { http, button, dialog, settle, reread } = await render();
+      button('Lancer le tirage')!.click();
+      await settle();
+      [...dialog()!.querySelectorAll('button')]
+        .find((candidate) => text(candidate) === 'Lancer le tirage')!
+        .click();
+      const problem: Partial<ProblemDto> = {
+        status: 422,
+        code: 'draw-already-launched',
+        title: 'Tirage déjà lancé',
+        detail: 'Le tirage du créneau 2 est déjà lancé.',
+      };
+
+      http
+        .expectOne(apiUrl(drawEndpoints.launch, { timeSlotId: 's2' }))
+        .flush(problem, { status: 422, statusText: 'Refus' });
+      await settle();
+      expect(text(dialog()?.querySelector('[role="alert"]'))).toBe(
+        'Le tirage du créneau 2 est déjà lancé.',
+      );
+      [...dialog()!.querySelectorAll('button')]
+        .find((candidate) => text(candidate) === 'Fermer')!
+        .click();
+      await reread(DRAWING);
+    });
+  });
+
+  describe('créneau en tirage provisoire', () => {
+    it('résume le tirage, sans avertissement de suivi ni bouton de lancement', async () => {
+      const { summary, button } = await render(DRAWING);
+
+      expect(text(summary())).toBe(
+        "Créneau 2 · 13 h 00 – 15 h 30 Tirage provisoire 19 / 26 placés 7 non placés 4 / 5 parties au minimum Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication.",
+      );
+      expect(button('Lancer le tirage')).toBeUndefined();
+    });
+
+    it('remplace les onglets par le plan de salle : « Non placés » en tête, puis une carte par partie, dans l’ordre des tables', async () => {
+      const { host, tabs } = await render(DRAWING);
+      const cards = [...host.querySelectorAll('app-draw-plan .plan > li')];
+
+      expect(tabs()).toEqual([]);
+      expect(cards.map((card) => text(card.querySelector('h3')))).toEqual([
+        'Non placés',
+        'Brumes',
+        'Épice',
+        'Néons',
+      ]);
+      expect(text(cards[0])).toBe(
+        'Non placés 7 participants · 3 places libres dans le créneau Bastou',
+      );
+      expect(cards[0]!.classList).toContain('unassigned');
+    });
+
+    it('montre sur la carte d’une partie ses joueurs, ses places, son écart et ses badges', async () => {
+      const { host } = await render(DRAWING);
+      const [, brumes, , neons] = [...host.querySelectorAll('app-draw-plan .plan > li')];
+
+      expect(text(brumes)).toBe(
+        'Dragon Brumes Cthulhu · Kaïros 5 joueurs · 3 à 4 places · 1 de trop Au-delà du maximum Anna Lune , déplacé à la main Sven , pas inscrit à cette partie',
+      );
+      expect(text(neons)).toContain('0 joueur · 3 à 4 places · 4 places libres');
+      expect(neons!.querySelector('app-two-slot-badge')).not.toBeNull();
+    });
+
+    it('marque un joueur déplacé à la main, et celui qui joue sans inscription', async () => {
+      const { host } = await render(DRAWING);
+      const pills = [...host.querySelectorAll<HTMLElement>('app-draw-plan .players > li')];
+      const pill = (nickname: string) =>
+        pills.find((candidate) => text(candidate.querySelector('.nickname')) === nickname)!;
+
+      expect(pill('Lune').classList).toContain('moved');
+      expect(pill('Lune').querySelector('app-icon')).not.toBeNull();
+      expect(pill('Sven').classList).toContain('unregistered');
+      expect(pill('Anna').className).toBe('');
+    });
+
+    it('atténue le second créneau d’une partie double, tirée avec son premier, avec ses joueurs', async () => {
+      const { host } = await render({
+        ...TRACKING,
+        timeSlots: TRACKING.timeSlots.map((slot) =>
+          slot.id === 's1'
+            ? {
+                ...slot,
+                draw: {
+                  ...DRAW_OF_SLOT_2,
+                  published: true,
+                  games: [],
+                  assignments: [{ ...DRAW_OF_SLOT_2.assignments[0]!, gameId: 'p2' }],
+                },
+              }
+            : slot.id === 's2'
+              ? { ...slot, state: 'drawing', draw: DRAW_OF_SLOT_2 }
+              : slot,
+        ),
+      });
+      const epice = [...host.querySelectorAll('app-draw-plan .plan > li')][2]!;
+
+      expect(epice.classList).toContain('second-slot');
+      expect(text(epice)).toBe(
+        'Licorne Épice Cthulhu · Kaïros Partie double, tirée avec le créneau 1 Anna',
+      );
+    });
   });
 
   describe('avertissements de suivi', () => {

@@ -21,6 +21,14 @@ export type {
   DrawParticipant,
   RandomSource,
 } from './convention/draw-algorithm.js';
+export { Assignment, Draw } from './convention/draw.js';
+export { FaultyDrawOutputError } from './convention/draws.js';
+export type {
+  AssignmentTracking,
+  DrawGameTracking,
+  DrawTracking,
+  TableWithSeats,
+} from './convention/draw-tracking.js';
 export { Game } from './convention/game.js';
 export type { LocalMoment } from './convention/local-moment.js';
 export { PresenceCode } from './convention/presence-code.js';

@@ -19,6 +19,7 @@ function aConvention(): Convention {
     participants: [],
     signUps: [],
     participantsWithoutGame: [],
+    draws: [],
     games: [],
     version: 0,
     presenceCode: PresenceCode.parse('K7M2'),

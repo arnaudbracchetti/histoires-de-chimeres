@@ -61,6 +61,15 @@ export type RefusalParams = {
   'game-not-found': Record<string, never>;
   /** `rank` : le rang du créneau, dont le tirage est lancé (IN-2). */
   'sign-ups-closed': { rank: number };
+  /** `rank` : le rang du créneau, dont le tirage est déjà lancé. */
+  'draw-already-launched': { rank: number };
+  /** `rank` : le rang du créneau, dont le tirage est publié : son résultat ne change plus. */
+  'draw-published': { rank: number };
+  /**
+   * `rank` : le rang du créneau ; `previousRank` : celui du premier créneau d'avant dont le tirage
+   * n'est pas publié. Les tirages se lancent dans l'ordre de la journée.
+   */
+  'previous-draw-not-published': { rank: number; previousRank: number };
   /** `rank` : le rang du créneau où le MJ mène ; `table` : la table de sa partie (IN-4). */
   'leads-game-on-time-slot': { rank: number; table: string };
   /** Une partie ne s'échange pas avec elle-même (PR-17). */
