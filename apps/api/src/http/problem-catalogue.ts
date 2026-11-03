@@ -224,6 +224,10 @@ export const problemCatalogue: Catalogue = {
     detail: ({ rank }) =>
       fr`Le tirage du créneau ${rank} est publié : son résultat ne change plus.`,
   },
+  'draw-not-launched': {
+    title: 'Tirage pas lancé',
+    detail: ({ rank }) => fr`Le tirage du créneau ${rank} n'est pas lancé.`,
+  },
   'previous-draw-not-published': {
     title: 'Tirage précédent à publier',
     detail: ({ rank, previousRank }) =>

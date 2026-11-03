@@ -71,16 +71,33 @@ export class Draws {
     collaborators: DrawCollaborators,
   ): Draws {
     this.verifyDrawLaunchable(timeSlotId, collaborators.day);
-    const input = this.buildDrawInput(timeSlotId, collaborators);
-    const output = algorithm.computeAssignments(input, random);
-    verifyDrawOutput(input, output);
-    const gameOf = new Map(output.map(({ participantId, gameId }) => [participantId, gameId]));
-    const draw = new Draw(
-      timeSlotId,
-      false,
-      input.participants.map(({ id }) => new Assignment(id, gameOf.get(id)!, false)),
-    );
+    const draw = buildDraw(timeSlotId, algorithm, random, collaborators);
     return new Draws([...this.draws, draw]);
+  }
+
+  /**
+   * Les Tirages après la relance du tirage provisoire du créneau (TI-6) : un nouveau tirage, comme
+   * au lancement, qui relit les participants, leurs inscriptions actives et les places. Les
+   * déplacements à la main sont effacés.
+   */
+  getDrawsAfterRerunningDraw(
+    timeSlotId: string,
+    algorithm: DrawAlgorithm,
+    random: RandomSource,
+    collaborators: DrawCollaborators,
+  ): Draws {
+    this.verifyDrawProvisional(timeSlotId, collaborators.day);
+    const rerun = buildDraw(timeSlotId, algorithm, random, collaborators);
+    return new Draws(this.draws.map((draw) => (draw.timeSlotId === timeSlotId ? rerun : draw)));
+  }
+
+  /**
+   * Les Tirages sans le tirage provisoire du créneau, dont les inscriptions rouvrent (TI-6). Les
+   * participants sans partie, rangés dans les Inscriptions, restent.
+   */
+  getDrawsAfterReopeningSignUps(timeSlotId: string, day: Day): Draws {
+    this.verifyDrawProvisional(timeSlotId, day);
+    return new Draws(this.draws.filter((draw) => draw.timeSlotId !== timeSlotId));
   }
 
   /**
@@ -121,33 +138,62 @@ export class Draws {
     }
   }
 
-  /**
-   * L'entrée de l'algorithme : les parties qui commencent sur le créneau, avec leurs places, et ceux
-   * qui y ont une inscription active, partie après partie, dans l'ordre de leur inscription.
-   */
-  private buildDrawInput(
-    timeSlotId: string,
-    { signUps, signUpCollaborators, catalogue }: DrawCollaborators,
-  ): DrawInput {
-    const games = signUpCollaborators.schedule.listGamesStartingOnTimeSlot(timeSlotId);
-    const gameIds = new Set(games.map((game) => game.id));
-    const participantIds = new Set(
-      games.flatMap((game) => signUps.listActiveParticipantIdsOfGame(game, signUpCollaborators)),
-    );
-    const participants = [...participantIds].map((id): DrawParticipant => ({
-      id,
-      gameIds: signUps
-        .listActiveGameIdsOfParticipant(id, signUpCollaborators)
-        .filter((gameId) => gameIds.has(gameId)),
-    }));
-    return {
-      games: games.map((game) => {
-        const { minSeats, maxSeats } = catalogue.findExistingEntryById(game.scenarioId);
-        return { id: game.id, minSeats, maxSeats };
-      }),
-      participants,
-    };
+  /** Refuse un créneau dont le tirage n'est pas lancé, puis un créneau dont le tirage est publié. */
+  private verifyDrawProvisional(timeSlotId: string, day: Day): void {
+    const rank = day.getTimeSlotRank(timeSlotId);
+    const state = this.getTimeSlotState(timeSlotId);
+    if (state === 'sign-ups-open') throw new Refusal('draw-not-launched', { rank });
+    if (state === 'published') throw new Refusal('draw-published', { rank });
   }
+}
+
+/**
+ * Le tirage provisoire du créneau, tout frais : l'algorithme reçoit ses participants et ses
+ * parties, avec leurs places ; sa sortie est vérifiée. Personne n'est déplacé à la main.
+ */
+function buildDraw(
+  timeSlotId: string,
+  algorithm: DrawAlgorithm,
+  random: RandomSource,
+  collaborators: DrawCollaborators,
+): Draw {
+  const input = buildDrawInput(timeSlotId, collaborators);
+  const output = algorithm.computeAssignments(input, random);
+  verifyDrawOutput(input, output);
+  const gameOf = new Map(output.map(({ participantId, gameId }) => [participantId, gameId]));
+  return new Draw(
+    timeSlotId,
+    false,
+    input.participants.map(({ id }) => new Assignment(id, gameOf.get(id)!, false)),
+  );
+}
+
+/**
+ * L'entrée de l'algorithme : les parties qui commencent sur le créneau, avec leurs places, et ceux
+ * qui y ont une inscription active, partie après partie, dans l'ordre de leur inscription.
+ */
+function buildDrawInput(
+  timeSlotId: string,
+  { signUps, signUpCollaborators, catalogue }: DrawCollaborators,
+): DrawInput {
+  const games = signUpCollaborators.schedule.listGamesStartingOnTimeSlot(timeSlotId);
+  const gameIds = new Set(games.map((game) => game.id));
+  const participantIds = new Set(
+    games.flatMap((game) => signUps.listActiveParticipantIdsOfGame(game, signUpCollaborators)),
+  );
+  const participants = [...participantIds].map((id): DrawParticipant => ({
+    id,
+    gameIds: signUps
+      .listActiveGameIdsOfParticipant(id, signUpCollaborators)
+      .filter((gameId) => gameIds.has(gameId)),
+  }));
+  return {
+    games: games.map((game) => {
+      const { minSeats, maxSeats } = catalogue.findExistingEntryById(game.scenarioId);
+      return { id: game.id, minSeats, maxSeats };
+    }),
+    participants,
+  };
 }
 
 /**

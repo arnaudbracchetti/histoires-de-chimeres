@@ -217,7 +217,19 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
             @if (selected(); as slot) {
               <div class="slot">
                 <section class="summary" aria-labelledby="summary-title">
-                  <h2 id="summary-title" tabindex="-1">{{ timeSlotLabel(slot) }}</h2>
+                  <div class="summary-head">
+                    <h2 id="summary-title" tabindex="-1">{{ timeSlotLabel(slot) }}</h2>
+                    @if (slot.state === 'drawing') {
+                      <div class="actions">
+                        <button type="button" appButton="secondary" (click)="rerun(slot)">
+                          <app-icon name="rotate-ccw" />Relancer le tirage
+                        </button>
+                        <button type="button" appButton="secondary" (click)="reopenSignUps(slot)">
+                          <app-icon name="lock-open" />Rouvrir les inscriptions
+                        </button>
+                      </div>
+                    }
+                  </div>
                   @if (slot.state === 'sign-ups-open') {
                     <p class="figures">
                       <span
@@ -574,6 +586,20 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
         }
       }
 
+      /* Le titre du résumé, et à droite les gestes du tirage provisoire. */
+      .summary-head {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-s) var(--space-m);
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .actions {
+        display: flex;
+        gap: var(--space-s);
+      }
+
       .figures {
         display: flex;
         gap: var(--space-xl);
@@ -693,6 +719,8 @@ export class SignUpTrackingPage {
   );
   /** Un refus part en alerte : la fiche n'a pas de place pour lui. */
   protected readonly unscheduling = injectGesture({ alert: true, refreshes: true });
+  /** La relance sans confirmation : son refus part en alerte. */
+  private readonly rerunning = injectGesture({ alert: true, refreshes: true });
   private readonly confirmation = inject(Confirmation);
   private readonly apiCall = injectApiCall();
   private readonly placements = inject(Placements);
@@ -759,6 +787,59 @@ export class SignUpTrackingPage {
     });
     if (!launched) return;
     this.announcer.announce(`Tirage du créneau ${slot.rank} lancé.`);
+    this.tracking.reload();
+  }
+
+  /**
+   * Relance le tirage du créneau : aussitôt, ou après une confirmation rouge s'il a des
+   * déplacements à la main, qu'elle efface. Le suivi se relit ensuite, et la région `aria-live`
+   * l'annonce. Sans dialogue, un refus part en alerte, et un refus périmé relit le suivi.
+   */
+  protected async rerun(slot: TimeSlotTrackingDto) {
+    const action = () => this.apiCall(drawEndpoints.rerun, { params: { timeSlotId: slot.id } });
+    const moves = slot.draw?.assignments.filter(({ movedByHand }) => movedByHand).length ?? 0;
+    if (moves) {
+      const rerun = await this.confirmation.ask({
+        question: fr`Relancer le tirage du créneau ${slot.rank} ?`,
+        consequences: [
+          moves === 1
+            ? fr`Ton déplacement sera effacé : le tirage repart des inscriptions.`
+            : fr`Tes ${formatCount(moves)} déplacements seront effacés : le tirage repart des inscriptions.`,
+        ],
+        confirmLabel: 'Relancer le tirage',
+        action,
+        onStale: () => this.tracking.reload(),
+      });
+      if (!rerun) return;
+    } else {
+      const outcome = await this.rerunning.run(action, slot.id);
+      if (outcome.status === 'refused' && outcome.refusal.stale) this.tracking.reload();
+      if (outcome.status !== 'done') return;
+    }
+    this.announcer.announce(fr`Tirage du créneau ${slot.rank} relancé.`);
+    this.tracking.reload();
+  }
+
+  /**
+   * Rouvre les inscriptions du créneau, après une confirmation rouge : le tirage provisoire est
+   * effacé. Le résumé et les onglets du suivi reviennent, le focus va au titre du résumé, et la
+   * région `aria-live` l'annonce.
+   */
+  protected async reopenSignUps(slot: TimeSlotTrackingDto) {
+    const reopened = await this.confirmation.ask({
+      question: fr`Rouvrir les inscriptions du créneau ${slot.rank} ?`,
+      consequences: [
+        fr`Le résultat provisoire sera effacé, avec ses déplacements et ses parties annulées.`,
+        fr`Personne n'est notifié : chacun retrouve ses inscriptions, et peut en changer jusqu'au prochain tirage.`,
+      ],
+      confirmLabel: 'Rouvrir les inscriptions',
+      action: () =>
+        this.apiCall(drawEndpoints.reopenSignUps, { params: { timeSlotId: slot.id } }),
+      onStale: () => this.tracking.reload(),
+    });
+    if (!reopened) return;
+    this.announcer.announce(fr`Inscriptions du créneau ${slot.rank} rouvertes.`);
+    this.focusAfterReading.set('summary-title');
     this.tracking.reload();
   }
 

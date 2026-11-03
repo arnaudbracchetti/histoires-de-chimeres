@@ -38,11 +38,13 @@ export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'quiet-danger' |
         }
       }
 
+      /* Un fond éclairci et un filet gris clair : il se détache d'une carte en Anthracite 2. */
       :host(.secondary) {
-        border-color: var(--border);
+        border-color: color-mix(in srgb, var(--text-muted) 60%, var(--border));
+        background: color-mix(in srgb, var(--text) 12%, var(--surface-2));
 
         &:hover {
-          background: var(--surface-3);
+          background: color-mix(in srgb, var(--text) 20%, var(--surface-2));
         }
       }
 

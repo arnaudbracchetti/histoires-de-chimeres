@@ -7,6 +7,7 @@ import { Assignment, Draw } from './draw.js';
 import { FaultyDrawOutputError } from './draws.js';
 import type { DrawAlgorithm, DrawInput, DrawOutput } from './draw-algorithm.js';
 import type { LocalMoment } from './local-moment.js';
+import { ParticipantWithoutGame } from './participant-without-game.js';
 import { PresenceCode } from './presence-code.js';
 import { TimeOfDay } from './time-of-day.js';
 
@@ -529,4 +530,167 @@ describe('Suivi d’un créneau lancé', () => {
       playsWithoutSignUp: true,
     });
   });
+});
+
+describe('Relancer le tirage (TI-6)', () => {
+  /** Élodie inscrite à « brumes » et à « épice », Lune à « épice ». Le tirage du créneau 1 est lancé. */
+  function aLaunchedConvention(): Convention {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+    convention.signUpForGame('p2', 'epice', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, new FakeDrawAlgorithm(), RANDOM);
+    return convention;
+  }
+
+  it('enregistre un nouveau tirage, que l’algorithme rend, et garde les inscriptions fermées', () => {
+    const convention = aLaunchedConvention();
+
+    convention.rerunDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+
+    expect(assignmentsOf(convention, 's1')).toEqual(['p1 brumes', 'p2 epice']);
+    expect(stateOf(convention, 's1')).toBe('drawing');
+  });
+
+  it('efface les déplacements à la main', () => {
+    const moved = restoreWithDraws(aLaunchedConvention(), [
+      new Draw('s1', false, [
+        new Assignment('p1', 'epice', true),
+        new Assignment('p2', null, true),
+      ]),
+    ]);
+
+    moved.rerunDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+
+    expect(moved.draws[0]!.assignments.some(({ movedByHand }) => movedByHand)).toBe(false);
+  });
+
+  it('relit les places du catalogue et les participants, avec la source de hasard', () => {
+    const convention = aLaunchedConvention();
+    const catalogue = ScenarioCatalogue.restore([
+      { id: 'a', gameMasterId: 'g1', duration: 1, minSeats: 4, maxSeats: 6 },
+      { id: 'b', gameMasterId: 'g2', duration: 2, minSeats: 2, maxSeats: 3 },
+      { id: 'c', gameMasterId: 'g1', duration: 1, minSeats: 3, maxSeats: 5 },
+    ]);
+    let received: { input: DrawInput; random: () => number } | null = null;
+    const algorithm: DrawAlgorithm = {
+      computeAssignments(input, random) {
+        received = { input, random };
+        return input.participants.map(({ id }) => ({ participantId: id, gameId: null }));
+      },
+    };
+
+    convention.rerunDraw('s1', catalogue, algorithm, RANDOM);
+
+    expect(received).toEqual({
+      input: {
+        games: [
+          { id: 'brumes', minSeats: 4, maxSeats: 6 },
+          { id: 'epice', minSeats: 2, maxSeats: 3 },
+        ],
+        participants: [
+          { id: 'p1', gameIds: ['brumes', 'epice'] },
+          { id: 'p2', gameIds: ['epice'] },
+        ],
+      },
+      random: RANDOM,
+    });
+  });
+
+  it('lève une erreur interne sur une sortie fautive, et garde le tirage d’avant', () => {
+    const convention = aLaunchedConvention();
+    const faulty = new FakeDrawAlgorithm(() => [{ participantId: 'p1', gameId: 'neons' }]);
+
+    expect(() => convention.rerunDraw('s1', CATALOGUE, faulty, RANDOM)).toThrow(
+      FaultyDrawOutputError,
+    );
+    expect(assignmentsOf(convention, 's1')).toEqual(['p1 -', 'p2 -']);
+  });
+});
+
+describe('Rouvrir les inscriptions (TI-6)', () => {
+  it('efface le tirage : les inscriptions du créneau sont rouvertes', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+
+    convention.reopenSignUps('s1');
+
+    expect(convention.draws).toEqual([]);
+    expect(stateOf(convention, 's1')).toBe('sign-ups-open');
+    convention.signUpForGame('p2', 'brumes', CATALOGUE);
+    expect(convention.computeParticipantSituation('p2').signedUpGameIds).toEqual(['brumes']);
+  });
+
+  it('garde les tirages des autres créneaux', () => {
+    const convention = restoreWithDraws(aConvention(), [
+      new Draw('s1', true, []),
+      new Draw('s2', false, []),
+    ]);
+
+    convention.reopenSignUps('s2');
+
+    expect(convention.draws.map(({ timeSlotId }) => timeSlotId)).toEqual(['s1']);
+  });
+
+  it('garde les participants sans partie du créneau', () => {
+    const base = aConvention();
+    const convention = Convention.restore({
+      id: base.id,
+      name: base.name,
+      date: base.date,
+      timeSlots: [...base.timeSlots],
+      tables: [...base.tables],
+      gameMasters: [...base.gameMasters],
+      participants: [...base.participants],
+      signUps: [],
+      participantsWithoutGame: [new ParticipantWithoutGame('p1', 's1')],
+      draws: [new Draw('s1', false, [new Assignment('p1', null, false)])],
+      games: [...base.games],
+      version: base.version,
+      presenceCode: base.presenceCode,
+    });
+
+    convention.reopenSignUps('s1');
+
+    expect(
+      convention.computeParticipantSituation('p1').timeSlots.find(
+        ({ timeSlotId }) => timeSlotId === 's1',
+      )?.withoutGame,
+    ).toBe(true);
+  });
+});
+
+describe('Relancer et rouvrir : refus, dans l’ordre', () => {
+  const gestures = {
+    relancer: (convention: Convention, timeSlotId: string) =>
+      convention.rerunDraw(timeSlotId, CATALOGUE, new FakeDrawAlgorithm(), RANDOM),
+    rouvrir: (convention: Convention, timeSlotId: string) => convention.reopenSignUps(timeSlotId),
+  };
+
+  for (const [name, gesture] of Object.entries(gestures)) {
+    describe(name, () => {
+      it('refuse un créneau dont le tirage n’est pas lancé', () => {
+        expect(refusalOf(() => gesture(aConvention(), 's1'))).toMatchObject({
+          code: 'draw-not-launched',
+          params: { rank: 1 },
+        });
+      });
+
+      it('refuse un créneau dont le tirage est publié', () => {
+        const convention = restoreWithDraws(aConvention(), [new Draw('s1', true, [])]);
+
+        expect(refusalOf(() => gesture(convention, 's1'))).toMatchObject({
+          code: 'draw-published',
+          params: { rank: 1 },
+        });
+      });
+
+      it('refuse un créneau introuvable', () => {
+        expect(refusalOf(() => gesture(aConvention(), 'inconnu')).code).toBe(
+          'time-slot-not-found',
+        );
+      });
+    });
+  }
 });

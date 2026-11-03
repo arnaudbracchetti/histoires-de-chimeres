@@ -65,6 +65,8 @@ export type RefusalParams = {
   'draw-already-launched': { rank: number };
   /** `rank` : le rang du créneau, dont le tirage est publié : son résultat ne change plus. */
   'draw-published': { rank: number };
+  /** `rank` : le rang du créneau, dont le tirage n'est pas lancé. */
+  'draw-not-launched': { rank: number };
   /**
    * `rank` : le rang du créneau ; `previousRank` : celui du premier créneau d'avant dont le tirage
    * n'est pas publié. Les tirages se lancent dans l'ordre de la journée.

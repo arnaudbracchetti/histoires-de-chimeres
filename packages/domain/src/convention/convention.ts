@@ -7,7 +7,7 @@ import type { Seats } from '../scenario/seats.js';
 import { Day } from './day.js';
 import type { Draw } from './draw.js';
 import type { DrawAlgorithm, RandomSource } from './draw-algorithm.js';
-import { Draws } from './draws.js';
+import { Draws, type DrawCollaborators } from './draws.js';
 import type { Game } from './game.js';
 import type { GameMaster } from './game-master.js';
 import { computeLatestEnd, type LocalMoment } from './local-moment.js';
@@ -673,12 +673,52 @@ export class Convention {
     random: RandomSource,
   ): void {
     this.day.verifyTimeSlotExists(timeSlotId);
-    this.allDraws = this.allDraws.getDrawsAfterLaunchingDraw(timeSlotId, algorithm, random, {
+    this.allDraws = this.allDraws.getDrawsAfterLaunchingDraw(
+      timeSlotId,
+      algorithm,
+      random,
+      this.buildDrawCollaborators(catalogue),
+    );
+  }
+
+  /**
+   * Relance le tirage provisoire du créneau (TI-6) : un nouveau tirage, que l'algorithme rend avec
+   * cette source de hasard, à partir des inscriptions actives et des places actuelles. Les
+   * déplacements à la main sont effacés. Une sortie fautive lève `FaultyDrawOutputError` : rien ne
+   * change. Aucune notification.
+   */
+  rerunDraw(
+    timeSlotId: string,
+    catalogue: ScenarioCatalogue,
+    algorithm: DrawAlgorithm,
+    random: RandomSource,
+  ): void {
+    this.day.verifyTimeSlotExists(timeSlotId);
+    this.allDraws = this.allDraws.getDrawsAfterRerunningDraw(
+      timeSlotId,
+      algorithm,
+      random,
+      this.buildDrawCollaborators(catalogue),
+    );
+  }
+
+  /**
+   * Rouvre les inscriptions du créneau (TI-6) : son tirage provisoire est effacé. Les participants
+   * sans partie restent. Aucune notification.
+   */
+  reopenSignUps(timeSlotId: string): void {
+    this.day.verifyTimeSlotExists(timeSlotId);
+    this.allDraws = this.allDraws.getDrawsAfterReopeningSignUps(timeSlotId, this.day);
+  }
+
+  /** Ce que le tirage lit hors des Tirages, avec ce catalogue, entier. */
+  private buildDrawCollaborators(catalogue: ScenarioCatalogue): DrawCollaborators {
+    return {
       day: this.day,
       signUps: this.allSignUps,
       signUpCollaborators: this.buildSignUpCollaborators(this.gameSchedule),
       catalogue,
-    });
+    };
   }
 
   /**

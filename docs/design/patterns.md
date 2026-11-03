@@ -38,7 +38,7 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 | Bouton | Dessin | Usage |
 |---|---|---|
 | **Principal** | orange plein, texte charbon | l'action principale, une seule par vue |
-| **Secondaire** | contour en filet, texte clair | les autres actions visibles |
+| **Secondaire** | fond gris éclairci, filet gris clair, texte clair | les autres actions visibles |
 | **Discret** | texte seul | « Annuler », « Effacer le filtre » |
 | **Destructeur** | rouge plein, texte clair | **uniquement** dans un dialogue de confirmation |
 
@@ -179,6 +179,8 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 | Déplacer une partie vers un autre créneau | oui, si elle a des inscrits ; vers une autre table du même créneau, non (IN-6) |
 | Échanger deux parties de créneaux différents | oui, si l'une a des inscrits ; sur le même créneau, non (IN-6) |
 | Lancer le tirage | oui, en orange (principal) : le geste n'efface rien, mais ferme les inscriptions |
+| Relancer le tirage | oui, s'il a des déplacements à la main, qu'elle efface ; sans déplacement, non |
+| Rouvrir les inscriptions d'un créneau en tirage | oui : le résultat provisoire est effacé |
 | Retirer une disponibilité | non : c'est une case à cocher |
 | Revenir aux places du scénario | non |
 
@@ -331,7 +333,9 @@ La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque c
 
   - Sans inscription : aucun avertissement, et « Aucune inscription sur ce créneau pour l'instant. » Les chiffres restent affichés, même à 0.
   - **Lancer le tirage** : sur le premier créneau dont le tirage n'est pas publié, le bouton principal « Lancer le tirage », sous la jauge. Sur les autres créneaux ouverts : « Le tirage de ce créneau se lance après la publication du créneau 2. » Le bouton ouvre une confirmation, en orange (principal) : « Lancer le tirage du créneau 2 ? », « 26 participants sont inscrits sur ce créneau, pour 14 à 22 places. », chaque avertissement de suivi rouge (titre et détail), puis « Les inscriptions du créneau seront fermées. Personne n'est notifié avant la publication. » ; Annuler · **Lancer le tirage**. Le geste réussi est annoncé, et la page relit le suivi.
-  - Créneau en tirage provisoire : le badge « Tirage provisoire » (`hourglass`, orange), « 19 / 26 placés », « 7 non placés » et « 4 / 5 parties au minimum » en grand, puis « Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication. » Aucun avertissement de suivi.
+  - Créneau en tirage provisoire : le badge « Tirage provisoire » (`hourglass`, orange), « 19 / 26 placés », « 7 non placés » et « 4 / 5 parties au minimum » en grand, puis « Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication. » Aucun avertissement de suivi. Ses gestes sont à droite du titre du résumé, en boutons secondaires avec icône : « Relancer le tirage » (`rotate-ccw`) et « Rouvrir les inscriptions » (`lock-open`). Pas de menu « ⋯ » : chacun reste visible le jour J.
+  - **Relancer le tirage** : aussitôt, sans dialogue, s'il n'y a aucun déplacement à la main ; un refus part en alerte. Sinon, une confirmation rouge : « Relancer le tirage du créneau 2 ? », « Tes 3 déplacements seront effacés : le tirage repart des inscriptions. » (« Ton déplacement sera effacé : … » au singulier) ; Annuler · **Relancer le tirage**. Le geste réussi est annoncé, et la page relit le suivi.
+  - **Rouvrir les inscriptions** : une confirmation rouge : « Rouvrir les inscriptions du créneau 2 ? », « Le résultat provisoire sera effacé, avec ses déplacements et ses parties annulées. », « Personne n'est notifié : chacun retrouve ses inscriptions, et peut en changer jusqu'au prochain tirage. » ; Annuler · **Rouvrir les inscriptions**. Le geste réussi est annoncé, la page relit le suivi : le résumé du créneau ouvert et ses onglets reviennent, et le focus va au titre du résumé.
   - Créneau publié : « Tirage publié : les inscriptions sont fermées et le programme du créneau ne change plus. », sans chiffres ni action.
 - **Plan de salle**, sous le résumé d'un créneau lancé, à la place des onglets : une carte « Non placés » en tête (fond teinté de rouge, « 7 participants · 3 places libres dans le créneau », les pseudos), puis une carte par partie du créneau, dans l'ordre des tables. Pas de carte pour une table libre. Les cartes ont 12 rem au moins et passent à la ligne, sans défilement horizontal.
   - Carte d'une partie : table, titre, « jeu · MJ », jauge, « 5 joueurs · 3 à 5 places · 1 place libre » (ou « · 1 de trop », en jaune), badges « double », « Sous son minimum » et « Au-delà du maximum » (jaunes, `triangle-alert`), puis ses joueurs en pastilles, dans l'ordre naturel des pseudos.

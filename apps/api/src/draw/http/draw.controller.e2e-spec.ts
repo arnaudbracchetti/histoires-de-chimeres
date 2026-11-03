@@ -26,7 +26,7 @@ import type { DrawAlgorithm } from '@chimeres/domain';
 import { startApp } from '../../../test/app.js';
 import { DRAW_ALGORITHM } from '../draw-algorithm.token.js';
 
-describe('Lancer le tirage (TI-1)', () => {
+describe('Les gestes du tirage (TI-1, TI-6)', () => {
   let app: INestApplication<App>;
   /** Créneaux 1 (9 h – 11 h 30) et 2 (14 h – 16 h 30), tables « Table 10 » et « Table 2 ». */
   let convention: ConventionDto;
@@ -228,5 +228,72 @@ describe('Lancer le tirage (TI-1)', () => {
     expect(
       (await tracking()).timeSlots[0]!.draw!.assignments.map(({ nickname }) => nickname),
     ).toEqual(['Lune']);
+  });
+  /** Un algorithme qui ne place personne au premier appel, puis chacun sur sa première partie. */
+  const placesOnRerun = (): DrawAlgorithm => {
+    let calls = 0;
+    return {
+      computeAssignments: ({ participants }) =>
+        participants.map(({ id, gameIds }) => ({
+          participantId: id,
+          gameId: calls++ < participants.length ? null : (gameIds[0] ?? null),
+        })),
+    };
+  };
+
+  it('relance le tirage : un nouveau tirage, inscriptions toujours fermées', async () => {
+    await start(placesOnRerun());
+    const elodie = await gameMaster('Élodie');
+    const neons = await scheduled(elodie.id, 'Néons', 'Table 10');
+    await signUp(neons, await linkedPhone('Lune'));
+    await signUp(neons, await linkedPhone('Sven'));
+    await server()
+      .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+      .expect(204);
+
+    await server()
+      .post(apiUrl(drawEndpoints.rerun, { timeSlotId: slot(1) }))
+      .expect(204);
+
+    expect((await tracking()).timeSlots[0]).toMatchObject({
+      state: 'drawing',
+      draw: { participantCount: 2, assignedCount: 2 },
+    });
+  });
+
+  it('rouvre les inscriptions : le tirage est effacé, on s’inscrit de nouveau', async () => {
+    await start();
+    const elodie = await gameMaster('Élodie');
+    const neons = await scheduled(elodie.id, 'Néons', 'Table 10');
+    await signUp(neons, await linkedPhone('Lune'));
+    await server()
+      .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+      .expect(204);
+
+    await server()
+      .delete(apiUrl(drawEndpoints.reopenSignUps, { timeSlotId: slot(1) }))
+      .expect(204);
+
+    expect((await tracking()).timeSlots[0]).toMatchObject({ state: 'sign-ups-open', draw: null });
+    await signUp(neons, await linkedPhone('Sven'));
+  });
+
+  it('refuse de relancer ou de rouvrir un tirage pas lancé, en français', async () => {
+    await start();
+
+    const rerun = await server()
+      .post(apiUrl(drawEndpoints.rerun, { timeSlotId: slot(1) }))
+      .expect(422);
+    const reopen = await server()
+      .delete(apiUrl(drawEndpoints.reopenSignUps, { timeSlotId: slot(1) }))
+      .expect(422);
+
+    for (const response of [rerun, reopen]) {
+      expect(response.body).toMatchObject({
+        code: 'draw-not-launched',
+        title: 'Tirage pas lancé',
+        detail: "Le tirage du créneau 1 n'est pas lancé.",
+      });
+    }
   });
 });

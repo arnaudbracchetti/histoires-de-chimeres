@@ -554,7 +554,7 @@ describe('Pilotage du jour J', () => {
       const { summary, button } = await render(DRAWING);
 
       expect(text(summary())).toBe(
-        "Créneau 2 · 13 h 00 – 15 h 30 Tirage provisoire 19 / 26 placés 7 non placés 4 / 5 parties au minimum Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication.",
+        "Créneau 2 · 13 h 00 – 15 h 30 Relancer le tirage Rouvrir les inscriptions Tirage provisoire 19 / 26 placés 7 non placés 4 / 5 parties au minimum Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication.",
       );
       expect(button('Lancer le tirage')).toBeUndefined();
     });
@@ -624,6 +624,150 @@ describe('Pilotage du jour J', () => {
       expect(text(epice)).toBe(
         'Licorne Épice Cthulhu · Kaïros Partie double, tirée avec le créneau 1 Anna',
       );
+    });
+  });
+
+  describe('relancer le tirage et rouvrir les inscriptions', () => {
+    /** Le suivi, le créneau 2 en tirage provisoire, sans déplacement à la main. */
+    const WITHOUT_MOVES: SignUpTrackingDto = {
+      ...DRAWING,
+      timeSlots: DRAWING.timeSlots.map((slot) =>
+        slot.draw
+          ? {
+              ...slot,
+              draw: {
+                ...slot.draw,
+                assignments: slot.draw.assignments.map((assignment) => ({
+                  ...assignment,
+                  movedByHand: false,
+                })),
+              },
+            }
+          : slot,
+      ),
+    };
+    const dialogButton = (dialog: HTMLElement | null, name: string) =>
+      [...dialog!.querySelectorAll('button')].find((candidate) => text(candidate) === name)!;
+
+    it('relance sans confirmation un tirage sans déplacement, puis relit le suivi et l’annonce', async () => {
+      const { http, button, dialog, settle, reread } = await render(WITHOUT_MOVES);
+      const announce = vi.spyOn(TestBed.inject(Announcer), 'announce');
+
+      expect(button('Relancer le tirage')!.classList).toContain('secondary');
+      button('Relancer le tirage')!.click();
+      await settle();
+
+      expect(dialog()).toBeNull();
+      http
+        .expectOne({ method: 'POST', url: apiUrl(drawEndpoints.rerun, { timeSlotId: 's2' }) })
+        .flush(null, { status: 204, statusText: 'No Content' });
+      await reread(WITHOUT_MOVES);
+      expect(announce).toHaveBeenCalledWith('Tirage du créneau 2 relancé.');
+    });
+
+    it('relance sans confirmation : un refus part en alerte, puis le suivi se relit', async () => {
+      const { http, button, settle, reread } = await render(WITHOUT_MOVES);
+      const error = vi.spyOn(TestBed.inject(Alerts), 'error');
+      button('Relancer le tirage')!.click();
+      await settle();
+
+      http
+        .expectOne(apiUrl(drawEndpoints.rerun, { timeSlotId: 's2' }))
+        .flush(
+          { status: 422, code: 'draw-published', title: 'Tirage publié', detail: 'Publié.' },
+          { status: 422, statusText: 'Refus' },
+        );
+      await reread(WITHOUT_MOVES);
+
+      expect(error).toHaveBeenCalledWith({ title: 'Tirage publié', detail: 'Publié.' });
+    });
+
+    it('demande une confirmation rouge quand la relance efface des déplacements à la main', async () => {
+      const { http, button, dialog, settle, reread } = await render(DRAWING);
+      button('Relancer le tirage')!.click();
+      await settle();
+
+      expect(text(dialog()?.querySelector('h2'))).toBe('Relancer le tirage du créneau 2 ?');
+      expect([...dialog()!.querySelectorAll('p')].map((paragraph) => text(paragraph))).toEqual([
+        'Ton déplacement sera effacé : le tirage repart des inscriptions.',
+      ]);
+      expect(document.activeElement?.textContent?.trim()).toBe('Annuler');
+      const confirm = dialogButton(dialog(), 'Relancer le tirage');
+      expect(confirm.classList).toContain('danger');
+      confirm.click();
+      http
+        .expectOne({ method: 'POST', url: apiUrl(drawEndpoints.rerun, { timeSlotId: 's2' }) })
+        .flush(null, { status: 204, statusText: 'No Content' });
+      await reread(WITHOUT_MOVES);
+      expect(dialog()).toBeNull();
+    });
+
+    it('compte les déplacements au pluriel', async () => {
+      const { button, dialog, settle } = await render({
+        ...DRAWING,
+        timeSlots: DRAWING.timeSlots.map((slot) =>
+          slot.draw
+            ? {
+                ...slot,
+                draw: {
+                  ...slot.draw,
+                  assignments: slot.draw.assignments.map((assignment) => ({
+                    ...assignment,
+                    movedByHand: true,
+                  })),
+                },
+              }
+            : slot,
+        ),
+      });
+      button('Relancer le tirage')!.click();
+      await settle();
+
+      expect(text(dialog()?.querySelector('p'))).toBe(
+        'Tes 4 déplacements seront effacés : le tirage repart des inscriptions.',
+      );
+    });
+
+    it('« Rouvrir les inscriptions » : confirmation rouge, puis le résumé et les onglets reviennent', async () => {
+      const { http, button, dialog, settle, reread, tabs } = await render(DRAWING);
+      const announce = vi.spyOn(TestBed.inject(Announcer), 'announce');
+
+      expect(button('Rouvrir les inscriptions')!.classList).toContain('secondary');
+      button('Rouvrir les inscriptions')!.click();
+      await settle();
+
+      expect(text(dialog()?.querySelector('h2'))).toBe('Rouvrir les inscriptions du créneau 2 ?');
+      expect([...dialog()!.querySelectorAll('p')].map((paragraph) => text(paragraph))).toEqual([
+        'Le résultat provisoire sera effacé, avec ses déplacements et ses parties annulées.',
+        "Personne n'est notifié : chacun retrouve ses inscriptions, et peut en changer jusqu'au prochain tirage.",
+      ]);
+      const confirm = dialogButton(dialog(), 'Rouvrir les inscriptions');
+      expect(confirm.classList).toContain('danger');
+      confirm.click();
+      http
+        .expectOne({
+          method: 'DELETE',
+          url: apiUrl(drawEndpoints.reopenSignUps, { timeSlotId: 's2' }),
+        })
+        .flush(null, { status: 204, statusText: 'No Content' });
+      await reread(TRACKING);
+
+      expect(announce).toHaveBeenCalledWith('Inscriptions du créneau 2 rouvertes.');
+      expect(tabs()).toHaveLength(3);
+      expect(button('Lancer le tirage')).toBeDefined();
+      expect(document.activeElement?.id).toBe('summary-title');
+    });
+
+    it('n’offre ni relance ni réouverture sur un créneau ouvert ou publié', async () => {
+      const { fixture, tiles, button } = await render(DRAWING);
+
+      for (const tile of [0, 2]) {
+        tiles()[tile]!.click();
+        fixture.detectChanges();
+
+        expect(button('Relancer le tirage')).toBeUndefined();
+        expect(button('Rouvrir les inscriptions')).toBeUndefined();
+      }
     });
   });
 

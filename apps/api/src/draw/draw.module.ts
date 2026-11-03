@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import {
   LaunchDraw,
+  ReopenSignUps,
+  RerunDraw,
   type ConventionRepository,
   type ScenarioRepository,
 } from '@chimeres/application';
@@ -31,6 +33,21 @@ import { RANDOM_SOURCE } from './random-source.token.js';
         random: RandomSource,
       ) => new LaunchDraw(conventions, scenarios, algorithm, random),
       inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY, DRAW_ALGORITHM, RANDOM_SOURCE],
+    },
+    {
+      provide: RerunDraw,
+      useFactory: (
+        conventions: ConventionRepository,
+        scenarios: ScenarioRepository,
+        algorithm: DrawAlgorithm,
+        random: RandomSource,
+      ) => new RerunDraw(conventions, scenarios, algorithm, random),
+      inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY, DRAW_ALGORITHM, RANDOM_SOURCE],
+    },
+    {
+      provide: ReopenSignUps,
+      useFactory: (conventions: ConventionRepository) => new ReopenSignUps(conventions),
+      inject: [CONVENTION_REPOSITORY],
     },
   ],
 })
