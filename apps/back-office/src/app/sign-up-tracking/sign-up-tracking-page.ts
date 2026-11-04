@@ -15,6 +15,7 @@ import { RouterLink } from '@angular/router';
 import {
   drawEndpoints,
   signUpTrackingEndpoints,
+  type DrawTrackingDto,
   type ScheduleDto,
   type ScheduleScenarioDto,
   type SignUpWarningCode,
@@ -53,7 +54,7 @@ import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
 import { Button } from '../ui/button';
-import { Confirmation } from '../ui/confirmation';
+import { Confirmation, type Consequence } from '../ui/confirmation';
 import { EmptyState } from '../ui/empty-state';
 import { Gauge } from '../ui/gauge';
 import { Icon } from '../ui/icon';
@@ -114,7 +115,7 @@ const WARNING_ACTIONS: Record<
 /** Ce que dit le résumé d'un créneau lancé. */
 const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string> = {
   drawing: fr`Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication.`,
-  published: fr`Tirage publié : les inscriptions sont fermées et le programme du créneau ne change plus.`,
+  published: fr`Tirage publié : les participants et les MJ ont reçu leur notification, et le résultat ne change plus.`,
 };
 
 /**
@@ -228,6 +229,9 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                         <button type="button" appButton="secondary" (click)="reopenSignUps(slot)">
                           <app-icon name="lock-open" />Rouvrir les inscriptions
                         </button>
+                        <button type="button" appButton="primary" (click)="publish(slot)">
+                          Publier le tirage
+                        </button>
                       </div>
                     }
                   </div>
@@ -282,13 +286,11 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                       </ul>
                     }
                   } @else {
-                    @if (slot.state === 'drawing') {
-                      <p class="state drawing">
-                        <app-icon [name]="closedState.drawing.icon" />{{
-                          closedState.drawing.label
-                        }}
-                      </p>
-                    }
+                    <p class="state" [class]="slot.state">
+                      <app-icon [name]="closedState[slot.state].icon" />{{
+                        closedState[slot.state].label
+                      }}
+                    </p>
                     @if (slot.draw; as draw) {
                       <p class="figures">
                         <span
@@ -312,6 +314,9 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                       </p>
                     }
                     <p class="quiet">{{ closedSummary[slot.state] }}</p>
+                    @if (slot.state === 'published' && slot.draw?.tablesWithSeats?.length) {
+                      <p>{{ formatSeatsLeft(slot.draw!) }}</p>
+                    }
                   }
                 </section>
                 @if (slot.draw) {
@@ -797,6 +802,67 @@ export class SignUpTrackingPage {
     if (!launched) return;
     this.announcer.announce(`Tirage du créneau ${slot.rank} lancé.`);
     this.tracking.reload();
+  }
+
+  /**
+   * Publie le tirage du créneau, après une confirmation orange qui rappelle les placés et les non
+   * placés, puis, en jaune, les parties jouées au-delà de leur maximum ou sous leur minimum. Le
+   * bouton reste actif : un refus s'affiche dans le dialogue. Le suivi se relit ensuite, et la
+   * région `aria-live` l'annonce.
+   */
+  protected async publish(slot: TimeSlotTrackingDto) {
+    const draw = slot.draw!;
+    const findGame = (gameId: string) => this.value()?.games.find(({ id }) => id === gameId);
+    const playedOutsideSeats = draw.games.flatMap((figures): Consequence[] => {
+      const game = findGame(figures.gameId);
+      if (!game) return [];
+      const { title, seats } = game.scenario;
+      const players = countOf(figures.playerCount, 'joueur', 'joueurs');
+      if (figures.overMaximum) {
+        return [
+          {
+            text: fr`« ${title} » est jouée au-delà de son maximum : ${players} pour ${countOf(seats.max, 'place', 'places')}.`,
+            level: 'warning',
+          },
+        ];
+      }
+      if (figures.belowMinimum) {
+        return [
+          {
+            text: fr`« ${title} » est jouée sous son minimum : ${players} pour ${countOf(seats.min, 'place', 'places')} au moins.`,
+            level: 'warning',
+          },
+        ];
+      }
+      return [];
+    });
+    const assigned = fr`${countOf(draw.assignedCount, 'participant', 'participants')} ${plural(draw.assignedCount, 'est placé', 'sont placés')}`;
+    const unassigned = draw.unassignedCount
+      ? fr`, ${formatCount(draw.unassignedCount)} ${plural(draw.unassignedCount, "ne l'est pas", 'ne le sont pas')}`
+      : '';
+    const published = await this.confirmation.ask({
+      question: fr`Publier le tirage du créneau ${slot.rank} ?`,
+      consequences: [
+        fr`${assigned}${unassigned}. Chacun reçoit sa notification, ainsi que les MJ.`,
+        ...playedOutsideSeats,
+        fr`Le résultat ne pourra plus être modifié.`,
+      ],
+      confirmLabel: 'Publier le tirage',
+      tone: 'primary',
+      action: () => this.apiCall(drawEndpoints.publish, { params: { timeSlotId: slot.id } }),
+      onStale: () => this.tracking.reload(),
+    });
+    if (!published) return;
+    this.announcer.announce(fr`Tirage du créneau ${slot.rank} publié.`);
+    this.tracking.reload();
+  }
+
+  /** « Il reste de la place : Dragon (3 places). Les non placés vont voir leur MJ. » (§4.5) */
+  protected formatSeatsLeft(draw: DrawTrackingDto): string {
+    const tables = draw.tablesWithSeats.map(
+      ({ name, freeSeatCount }) => fr`${name} (${countOf(freeSeatCount, 'place', 'places')})`,
+    );
+    return fr`Il reste de la place : ${formatList(tables)}. Les non placés vont voir leur MJ.`;
   }
 
   /**

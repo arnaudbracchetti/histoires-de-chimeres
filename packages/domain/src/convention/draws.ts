@@ -189,6 +189,31 @@ export class Draws {
     );
   }
 
+  /**
+   * Les Tirages après la publication du tirage provisoire du créneau (TI-7) : son résultat est
+   * figé. Refuse un tirage dont une partie non annulée qui commence sur le créneau, dans le
+   * Programme, n'a aucun joueur : son MJ resterait seul à sa table.
+   */
+  getDrawsAfterPublishingDraw(timeSlotId: string, day: Day, schedule: Schedule): Draws {
+    const draw = this.findExistingProvisionalDraw(timeSlotId, day);
+    const withoutPlayers = schedule
+      .listGamesStartingOnTimeSlot(timeSlotId)
+      .filter((game) => !draw.isGameCancelled(game.id) && draw.countPlayersOfGame(game.id) === 0);
+    if (withoutPlayers.length) {
+      throw new Refusal('games-without-players', {
+        rank: day.getTimeSlotRank(timeSlotId),
+        games: withoutPlayers.length,
+      });
+    }
+    return this.getDrawsAfterReplacingDraw(draw.getDrawAfterPublishing());
+  }
+
+  /** Le tirage publié du créneau, ou `undefined` tant qu'il ne l'est pas : son résultat se montre (§5.7). */
+  findPublishedDrawOfTimeSlot(timeSlotId: string): Draw | undefined {
+    const draw = this.findDrawOfTimeSlot(timeSlotId);
+    return draw?.published ? draw : undefined;
+  }
+
   /** La partie est annulée dans un tirage : son MJ n'y mène plus (IN-4). */
   isGameCancelled(gameId: string): boolean {
     return this.draws.some((draw) => draw.isGameCancelled(gameId));

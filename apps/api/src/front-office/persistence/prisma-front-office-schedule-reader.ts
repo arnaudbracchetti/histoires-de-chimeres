@@ -26,6 +26,20 @@ export class PrismaFrontOfficeScheduleReader implements FrontOfficeScheduleReade
               select: {
                 participant: {
                   select: {
+                    // Ses parties doubles, où un tirage publié l'a placé (TI-3).
+                    drawAssignments: {
+                      where: { draw: { published: true }, gameId: { not: null } },
+                      select: {
+                        game: {
+                          select: {
+                            timeSlots: {
+                              select: { timeSlotId: true },
+                              orderBy: { timeSlot: { startMinute: 'asc' } },
+                            },
+                          },
+                        },
+                      },
+                    },
                     gameMaster: {
                       select: {
                         // Le MJ ne mène pas une partie annulée par un tirage (TI-6).
@@ -52,10 +66,13 @@ export class PrismaFrontOfficeScheduleReader implements FrontOfficeScheduleReade
                 gameMaster: { select: { participant: { select: { nickname: true } } } },
               },
             },
+            // Ses joueurs, dans un tirage publié de son premier créneau.
+            assignments: { where: { draw: { published: true } }, select: { timeSlotId: true } },
+            cancellation: { select: { gameId: true } },
             timeSlots: {
               select: {
                 timeSlotId: true,
-                timeSlot: { select: { startMinute: true } },
+                timeSlot: { select: { startMinute: true, draw: { select: { published: true } } } },
                 table: { select: { name: true } },
               },
               orderBy: { timeSlot: { startMinute: 'asc' } },
@@ -85,38 +102,49 @@ export class PrismaFrontOfficeScheduleReader implements FrontOfficeScheduleReade
               ComparableName.createFromText(b.timeSlots[0]!.table.name),
             ) || a.timeSlots[0]!.timeSlot.startMinute - b.timeSlots[0]!.timeSlot.startMinute,
         )
-        .map(({ id, signUps, scenario, timeSlots: gameSlots }): FrontOfficeGameDto => {
-          const timeSlotIds = gameSlots.map(({ timeSlotId }) => timeSlotId);
-          const signUpCount = signUps.filter(({ participant }) =>
-            SignUps.isSignUpActive(
-              timeSlotIds,
-              participant.gameMaster?.games.map(({ timeSlotId }) => timeSlotId) ?? [],
-              // Aucun tirage ne se publie encore : personne n'occupe de partie double publiée (TI-3).
-              [],
-            ),
-          ).length;
-          return {
+        .map(
+          ({
             id,
-            timeSlotIds,
-            tableName: gameSlots[0]!.table.name,
-            title: scenario.title,
-            system: scenario.system,
-            gameMasterNickname: scenario.gameMaster.participant.nickname,
-            imageUrl:
-              scenario.imageId &&
-              apiUrl(scenarioEndpoints.readImage, {
-                scenarioId: scenario.id,
-                imageId: scenario.imageId,
-              }),
-            presentation: scenario.presentation,
-            contentWarnings: scenario.contentWarnings,
-            seats: { min: scenario.seatsMin, max: scenario.seatsMax },
-            signUpCount,
-            // Le tirage n'existe pas encore : aucun créneau n'est publié.
-            playerCount: null,
-            oversubscribed: signUpCount > scenario.seatsMax,
-          };
-        }),
+            signUps,
+            assignments,
+            cancellation,
+            scenario,
+            timeSlots: gameSlots,
+          }): FrontOfficeGameDto => {
+            const timeSlotIds = gameSlots.map(({ timeSlotId }) => timeSlotId);
+            const signUpCount = signUps.filter(({ participant }) =>
+              SignUps.isSignUpActive(
+                timeSlotIds,
+                participant.gameMaster?.games.map(({ timeSlotId }) => timeSlotId) ?? [],
+                participant.drawAssignments.flatMap(({ game }) =>
+                  (game?.timeSlots ?? []).slice(1).map(({ timeSlotId }) => timeSlotId),
+                ),
+              ),
+            ).length;
+            return {
+              id,
+              timeSlotIds,
+              tableName: gameSlots[0]!.table.name,
+              title: scenario.title,
+              system: scenario.system,
+              gameMasterNickname: scenario.gameMaster.participant.nickname,
+              imageUrl:
+                scenario.imageId &&
+                apiUrl(scenarioEndpoints.readImage, {
+                  scenarioId: scenario.id,
+                  imageId: scenario.imageId,
+                }),
+              presentation: scenario.presentation,
+              contentWarnings: scenario.contentWarnings,
+              seats: { min: scenario.seatsMin, max: scenario.seatsMax },
+              signUpCount,
+              // Une partie annulée n'a pas de place (TI-6).
+              playerCount:
+                gameSlots[0]!.timeSlot.draw?.published && !cancellation ? assignments.length : null,
+              oversubscribed: signUpCount > scenario.seatsMax,
+            };
+          },
+        ),
       end: end && { date: end.date, time: end.time.toString() },
     };
   }

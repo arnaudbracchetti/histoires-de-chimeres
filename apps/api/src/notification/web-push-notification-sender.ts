@@ -58,8 +58,12 @@ export class WebPushNotificationSender implements NotificationSender {
       const expiresAt = notification.deadline
         ? instantOfParisMoment(notification.deadline).getTime()
         : null;
-      const scenario = scenarios.get(notification.params.scenarioId);
-      if ((expiresAt !== null && expiresAt <= Date.now()) || scenario === undefined) continue;
+      if (expiresAt !== null && expiresAt <= Date.now()) continue;
+      // Une notification dont le scénario a disparu ne part pas ; une notification sans scénario,
+      // comme « pas de place », part.
+      const scenarioId = extractScenarioId(notification);
+      const scenario = scenarioId === null ? null : scenarios.get(scenarioId);
+      if (scenario === undefined) continue;
       const text = writeNotificationText(notification, scenario);
       const payload = JSON.stringify(this.buildPushMessage(text));
       const topic = text.replacement?.tag ?? null;
@@ -106,21 +110,34 @@ export class WebPushNotificationSender implements NotificationSender {
     notifications: readonly Notification[],
   ): Promise<Map<string, NotifiedScenario>> {
     const scenarios = await this.prisma.scenario.findMany({
-      where: { id: { in: [...new Set(notifications.map(({ params }) => params.scenarioId))] } },
+      where: {
+        id: {
+          in: [
+            ...new Set(
+              notifications.flatMap((notification) => extractScenarioId(notification) ?? []),
+            ),
+          ],
+        },
+      },
       select: { id: true, title: true, system: true },
     });
     return new Map(scenarios.map(({ id, ...scenario }) => [id, scenario]));
   }
 }
 
-/** Le texte de la notification, par le catalogue de son code. */
+/** Le scénario que nomment les paramètres de la notification, ou `null` pour un code qui n'en a pas. */
+function extractScenarioId({ params }: Notification): string | null {
+  return 'scenarioId' in params ? params.scenarioId : null;
+}
+
+/** Le texte de la notification, par le catalogue de son code ; `scenario`, s'il en a un. */
 function writeNotificationText(
   notification: Notification,
-  scenario: NotifiedScenario,
+  scenario: NotifiedScenario | null,
 ): NotificationText {
   const write = notificationCatalogue[notification.code] as (
     params: Notification['params'],
-    scenario: NotifiedScenario,
+    scenario: NotifiedScenario | null,
   ) => NotificationText;
   return write(notification.params, scenario);
 }

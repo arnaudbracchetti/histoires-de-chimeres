@@ -84,6 +84,11 @@ export type RefusalParams = {
   /** `rank` : le rang du créneau du tirage, où la partie ne commence pas. */
   'game-not-on-time-slot': { rank: number };
   'game-cancelled': Record<string, never>;
+  /**
+   * `rank` : le rang du créneau ; `games` : le nombre de ses parties non annulées sans joueur. Le
+   * tirage ne se publie pas : aucun MJ ne reste seul à sa table (TI-7).
+   */
+  'games-without-players': { rank: number; games: number };
   /** `rank` : le rang du créneau où le MJ mène ; `table` : la table de sa partie (IN-4). */
   'leads-game-on-time-slot': { rank: number; table: string };
   /** Une partie ne s'échange pas avec elle-même (PR-17). */

@@ -119,7 +119,7 @@ Le fait, pour un participant, de se déclarer intéressé par une partie. Un par
 _Avoid_: Vœu, choix, réservation, Registration
 
 **Inscription active** · `ActiveSignUp`:
-Inscription prise en compte dans le nombre d'inscrits, « très demandée » et le tirage. Celle d'un MJ sur un créneau où il mène une partie ne l'est pas tant qu'il y mène ; elle reste en place et redevient active quand il n'y mène plus (IN-4).
+Inscription prise en compte dans le nombre d'inscrits, la demande, « très demandée », le suivi et le tirage. Celle d'un MJ sur un créneau où il mène une partie ne l'est pas tant qu'il y mène ; elle reste en place et redevient active quand il n'y mène plus (IN-4). Celle d'un joueur placé dans une partie double, une fois son tirage publié, ne l'est plus sur une partie qui commence sur le second créneau de la partie double (TI-3) ; son inscription à la partie double elle-même reste active.
 _Avoid_: Inscription qui compte, inscription suspendue
 
 **Partie très demandée** · `OversubscribedGame`:

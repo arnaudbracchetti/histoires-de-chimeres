@@ -46,7 +46,7 @@ export type FrontOfficeGameDto = {
   signUpCount: number;
   /**
    * Le nombre de joueurs, une fois le tirage de son créneau publié : il reste de la place sous ses
-   * places maximum. `null` avant.
+   * places maximum. `null` avant, ou pour une partie annulée (TI-6).
    */
   playerCount: number | null;
   /** Partie très demandée : ses inscrits dépassent ses places maximum (IN-5). */

@@ -87,17 +87,18 @@ export class SignUps {
   }
 
   /**
-   * Le participant est sans partie sur le créneau : son état est enregistré, et son MJ n'y mène pas.
-   * Tant qu'il y mène, l'état reste, ignoré (IN-4).
+   * Le participant est sans partie sur le créneau : son état est enregistré, son MJ n'y mène pas
+   * (IN-4), et il n'y joue pas une partie double où un tirage publié l'a placé (TI-3). Sinon,
+   * l'état reste, ignoré.
    */
   isParticipantWithoutGameOnTimeSlot(
     participantId: string,
     timeSlotId: string,
-    { ledGames }: SignUpCollaborators,
+    collaborators: SignUpCollaborators,
   ): boolean {
     return (
       this.hasParticipantWithoutGame(new ParticipantWithoutGame(participantId, timeSlotId)) &&
-      !isLeadingOnTimeSlot(participantId, timeSlotId, ledGames)
+      !isTakenOnTimeSlot(participantId, timeSlotId, collaborators)
     );
   }
 
@@ -115,7 +116,7 @@ export class SignUps {
       .filter(
         (recorded) =>
           recorded.timeSlotId === timeSlotId &&
-          !isLeadingOnTimeSlot(recorded.participantId, timeSlotId, collaborators.ledGames),
+          !isTakenOnTimeSlot(recorded.participantId, timeSlotId, collaborators),
       )
       .map(({ participantId }) => participantId);
   }
@@ -386,4 +387,19 @@ function isLeadingOnTimeSlot(
   return ledGames
     .listGamesLedByParticipant(participantId)
     .some((game) => game.isOnTimeSlot(timeSlotId));
+}
+
+/**
+ * Le participant est pris sur le créneau : son MJ y mène (IN-4), ou il y joue une partie double où
+ * un tirage publié l'a placé (TI-3). Son état sans partie y est ignoré.
+ */
+function isTakenOnTimeSlot(
+  participantId: string,
+  timeSlotId: string,
+  { ledGames, playedTimeSlots }: SignUpCollaborators,
+): boolean {
+  return (
+    isLeadingOnTimeSlot(participantId, timeSlotId, ledGames) ||
+    playedTimeSlots.listTimeSlotIdsPlayedByParticipant(participantId).includes(timeSlotId)
+  );
 }

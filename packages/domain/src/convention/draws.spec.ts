@@ -1055,3 +1055,375 @@ describe('Déplacer un participant : refus, dans l’ordre', () => {
     );
   });
 });
+
+describe('Publier le tirage (TI-7)', () => {
+  /**
+   * Élodie et Lune inscrites à « brumes », Zéphyr à « épice ». Au tirage du créneau 1, Élodie joue
+   * à « brumes », Zéphyr à « épice », Lune n'est pas placée.
+   */
+  function aLaunchedConvention(): Convention {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'brumes', CATALOGUE);
+    convention.signUpForGame('p3', 'epice', CATALOGUE);
+    const algorithm = new FakeDrawAlgorithm(() => [
+      { participantId: 'p1', gameId: 'brumes' },
+      { participantId: 'p2', gameId: null },
+      { participantId: 'p3', gameId: 'epice' },
+    ]);
+    convention.launchDraw('s1', CATALOGUE, algorithm, RANDOM);
+    return convention;
+  }
+
+  it('fige le tirage : le créneau est publié, ses affectations restent', () => {
+    const convention = aLaunchedConvention();
+
+    convention.publishDraw('s1', CATALOGUE);
+
+    expect(stateOf(convention, 's1')).toBe('published');
+    expect(assignmentsOf(convention, 's1')).toEqual(['p1 brumes', 'p2 -', 'p3 epice']);
+    expect(refusalOf(() => convention.moveParticipant('s1', 'p2', 'brumes')).code).toBe(
+      'draw-published',
+    );
+  });
+
+  it('prévient les joueurs de chaque partie, les non placés, puis les MJ', () => {
+    const convention = aLaunchedConvention();
+
+    const notifications = convention.publishDraw('s1', CATALOGUE);
+
+    expect(
+      notifications.map(({ code, params, recipients }) => ({ code, params, recipients })),
+    ).toEqual([
+      {
+        code: 'draw-assigned',
+        params: {
+          gameId: 'brumes',
+          scenarioId: 'a',
+          ranks: [1],
+          tableName: 'Table 1',
+          gameMasterNickname: 'Brann',
+        },
+        recipients: { kind: 'participants', participantIds: ['p1'] },
+      },
+      {
+        code: 'draw-assigned',
+        params: {
+          gameId: 'epice',
+          scenarioId: 'b',
+          ranks: [1, 2],
+          tableName: 'Table 2',
+          gameMasterNickname: 'Kaïros',
+        },
+        recipients: { kind: 'participants', participantIds: ['p3'] },
+      },
+      {
+        code: 'draw-unassigned',
+        params: { rank: 1, tablesWithSeats: ['Table 1', 'Table 2'] },
+        recipients: { kind: 'participants', participantIds: ['p2'] },
+      },
+      {
+        code: 'draw-leading',
+        params: { scenarioId: 'a', ranks: [1], tableName: 'Table 1', playerCount: 1 },
+        recipients: { kind: 'participants', participantIds: ['p-g1'] },
+      },
+      {
+        code: 'draw-leading',
+        params: { scenarioId: 'b', ranks: [1, 2], tableName: 'Table 2', playerCount: 1 },
+        recipients: { kind: 'participants', participantIds: ['p-g2'] },
+      },
+    ]);
+  });
+
+  it('donne à chaque notification la fin du créneau pour échéance, le second d’une partie double (NO-3)', () => {
+    const convention = aLaunchedConvention();
+    convention.changeDate('2027-03-14');
+
+    const deadlines = convention
+      .publishDraw('s1', CATALOGUE)
+      .map(({ code, deadline }) => `${code} ${deadline?.date} ${deadline?.time.toString()}`);
+
+    expect(deadlines).toEqual([
+      'draw-assigned 2027-03-14 11:30',
+      'draw-assigned 2027-03-14 16:30',
+      'draw-unassigned 2027-03-14 11:30',
+      'draw-leading 2027-03-14 11:30',
+      'draw-leading 2027-03-14 16:30',
+    ]);
+  });
+
+  it('n’annonce pas de place libre à une table pleine', () => {
+    const convention = aConvention();
+    for (const participantId of ['p1', 'p2', 'p3']) {
+      convention.signUpForGame(participantId, 'brumes', CATALOGUE);
+    }
+    const full = ScenarioCatalogue.restore([
+      { id: 'a', gameMasterId: 'g1', duration: 1, minSeats: 1, maxSeats: 2 },
+      { id: 'b', gameMasterId: 'g2', duration: 2, minSeats: 0, maxSeats: 1 },
+      { id: 'c', gameMasterId: 'g1', duration: 1, minSeats: 3, maxSeats: 5 },
+    ]);
+    convention.identifyByNickname('p4', 'K7M2', 'Ysé', null, NOW);
+    convention.signUpForGame('p4', 'epice', full);
+    const algorithm = new FakeDrawAlgorithm(() => [
+      { participantId: 'p1', gameId: 'brumes' },
+      { participantId: 'p2', gameId: 'brumes' },
+      { participantId: 'p3', gameId: null },
+      { participantId: 'p4', gameId: 'epice' },
+    ]);
+    convention.launchDraw('s1', full, algorithm, RANDOM);
+
+    const unassigned = convention
+      .publishDraw('s1', full)
+      .find(({ code }) => code === 'draw-unassigned');
+
+    expect(unassigned?.params).toEqual({ rank: 1, tablesWithSeats: [] });
+  });
+
+  it('n’annonce pas les places de la partie double commencée au créneau d’avant', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+    convention.signUpForGame('p2', 'neons', CATALOGUE);
+    convention.signUpForGame('p3', 'neons', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    convention.cancelGame('brumes', CATALOGUE);
+    convention.publishDraw('s1', CATALOGUE);
+    const algorithm = new FakeDrawAlgorithm(() => [
+      { participantId: 'p2', gameId: 'neons' },
+      { participantId: 'p3', gameId: null },
+    ]);
+    convention.launchDraw('s2', CATALOGUE, algorithm, RANDOM);
+
+    const unassigned = convention
+      .publishDraw('s2', CATALOGUE)
+      .find(({ code }) => code === 'draw-unassigned');
+
+    expect(unassigned?.params).toEqual({ rank: 2, tablesWithSeats: ['Table 1'] });
+  });
+
+  it('publie un créneau sans partie, sans notification', () => {
+    const convention = restoreWithDraws(aConvention(), [
+      new Draw('s1', true, []),
+      new Draw('s2', true, []),
+    ]);
+    convention.launchDraw('s3', CATALOGUE, FIRST_GAME, RANDOM);
+
+    expect(convention.publishDraw('s3', CATALOGUE)).toEqual([]);
+    expect(stateOf(convention, 's3')).toBe('published');
+  });
+
+  it('permet ensuite de lancer le créneau suivant', () => {
+    const convention = aLaunchedConvention();
+    convention.publishDraw('s1', CATALOGUE);
+
+    convention.launchDraw('s2', CATALOGUE, FIRST_GAME, RANDOM);
+
+    expect(stateOf(convention, 's2')).toBe('drawing');
+  });
+});
+
+describe('Publier le tirage : refus, dans l’ordre', () => {
+  it('refuse un créneau dont le tirage n’est pas lancé', () => {
+    const refusal = refusalOf(() => aConvention().publishDraw('s1', CATALOGUE));
+
+    expect(refusal.code).toBe('draw-not-launched');
+    expect(refusal.params).toEqual({ rank: 1 });
+  });
+
+  it('refuse un créneau dont le tirage est publié', () => {
+    const convention = restoreWithDraws(aConvention(), [new Draw('s1', true, [])]);
+
+    expect(refusalOf(() => convention.publishDraw('s1', CATALOGUE)).code).toBe('draw-published');
+  });
+
+  it('refuse un tirage dont une partie non annulée n’a aucun joueur', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+
+    const refusal = refusalOf(() => convention.publishDraw('s1', CATALOGUE));
+
+    expect(refusal.code).toBe('games-without-players');
+    expect(refusal.params).toEqual({ rank: 1, games: 1 });
+    expect(stateOf(convention, 's1')).toBe('drawing');
+  });
+
+  it('publie un tirage dont la partie sans joueur est annulée', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    convention.cancelGame('epice', CATALOGUE);
+
+    convention.publishDraw('s1', CATALOGUE);
+
+    expect(stateOf(convention, 's1')).toBe('published');
+  });
+
+  it('refuse un créneau introuvable', () => {
+    expect(refusalOf(() => aConvention().publishDraw('inconnu', CATALOGUE)).code).toBe(
+      'time-slot-not-found',
+    );
+  });
+});
+
+describe('Résultat du tirage sur le téléphone (§5.3, §5.7)', () => {
+  /**
+   * Lune et Élodie jouent à « brumes », Zéphyr à « épice » ; Ysé, inscrite à « brumes », n'est pas
+   * placée.
+   */
+  function aLaunchedConvention(): Convention {
+    const convention = aConvention();
+    convention.identifyByNickname('p4', 'K7M2', 'Ysé', null, NOW);
+    convention.signUpForGame('p2', 'brumes', CATALOGUE);
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p4', 'brumes', CATALOGUE);
+    convention.signUpForGame('p3', 'epice', CATALOGUE);
+    const algorithm = new FakeDrawAlgorithm(() => [
+      { participantId: 'p2', gameId: 'brumes' },
+      { participantId: 'p1', gameId: 'brumes' },
+      { participantId: 'p4', gameId: null },
+      { participantId: 'p3', gameId: 'epice' },
+    ]);
+    convention.launchDraw('s1', CATALOGUE, algorithm, RANDOM);
+    return convention;
+  }
+
+  const resultOf = (convention: Convention, participantId: string, timeSlotId: string) =>
+    convention
+      .computeParticipantSituation(participantId)
+      .timeSlots.find((slot) => slot.timeSlotId === timeSlotId)?.drawResult;
+
+  it('reste caché tant que le tirage est provisoire', () => {
+    const convention = aLaunchedConvention();
+
+    expect(resultOf(convention, 'p1', 's1')).toBeNull();
+    expect(resultOf(convention, 'p4', 's1')).toBeNull();
+    expect(resultOf(convention, 'p-g1', 's1')).toBeNull();
+  });
+
+  it('donne au participant placé sa partie, au non placé « pas de place »', () => {
+    const convention = aLaunchedConvention();
+    convention.publishDraw('s1', CATALOGUE);
+
+    expect(resultOf(convention, 'p1', 's1')).toEqual({ kind: 'assigned', gameId: 'brumes' });
+    expect(resultOf(convention, 'p4', 's1')).toEqual({ kind: 'unassigned' });
+  });
+
+  it('donne au MJ ses joueurs, dans l’ordre naturel de leur pseudo, sur le créneau où commence sa partie', () => {
+    const convention = aLaunchedConvention();
+    convention.publishDraw('s1', CATALOGUE);
+
+    expect(resultOf(convention, 'p-g1', 's1')).toEqual({
+      kind: 'leading',
+      players: ['Élodie', 'Lune'],
+    });
+    expect(resultOf(convention, 'p-g2', 's1')).toEqual({ kind: 'leading', players: ['Zéphyr'] });
+    expect(resultOf(convention, 'p-g2', 's2')).toBeNull();
+  });
+
+  it('ne donne rien à qui n’est pas du tirage', () => {
+    const convention = aLaunchedConvention();
+    convention.identifyByNickname('p5', 'K7M2', 'Anouk', null, NOW);
+    convention.publishDraw('s1', CATALOGUE);
+
+    expect(resultOf(convention, 'p5', 's1')).toBeNull();
+  });
+});
+
+describe('Inscription active après la publication d’une partie double (TI-3, IN-4)', () => {
+  /**
+   * Élodie et Lune inscrites à « épice », partie double des créneaux 1 et 2, et à « néons », au
+   * créneau 2. Au tirage du créneau 1, Élodie est placée à « épice », Lune ne l'est pas. Zéphyr
+   * joue à « brumes ».
+   */
+  function aConventionWithFirstDraw(): Convention {
+    const convention = aConvention();
+    for (const participantId of ['p1', 'p2']) {
+      convention.signUpForGame(participantId, 'epice', CATALOGUE);
+      convention.signUpForGame(participantId, 'neons', CATALOGUE);
+    }
+    convention.signUpForGame('p3', 'brumes', CATALOGUE);
+    const algorithm = new FakeDrawAlgorithm(() => [
+      { participantId: 'p1', gameId: 'epice' },
+      { participantId: 'p2', gameId: null },
+      { participantId: 'p3', gameId: 'brumes' },
+    ]);
+    convention.launchDraw('s1', CATALOGUE, algorithm, RANDOM);
+    return convention;
+  }
+
+  const trackingOf = (convention: Convention, timeSlotId: string) =>
+    convention.computeSignUpTracking(CATALOGUE).find((slot) => slot.timeSlotId === timeSlotId)!;
+
+  it('compte, avant la publication, l’inscription du joueur au créneau suivant', () => {
+    const tracking = trackingOf(aConventionWithFirstDraw(), 's2');
+
+    expect(tracking.demand).toBe(2);
+    expect(tracking.games[0]).toMatchObject({ gameId: 'neons', signUpCount: 2 });
+  });
+
+  it('ne la compte plus après : ni dans la demande, ni dans les inscrits, ni dans les participants', () => {
+    const convention = aConventionWithFirstDraw();
+    convention.publishDraw('s1', CATALOGUE);
+
+    const tracking = trackingOf(convention, 's2');
+
+    expect(tracking.demand).toBe(1);
+    expect(tracking.games[0]).toMatchObject({ gameId: 'neons', signUpCount: 1 });
+    expect(tracking.participants.map(({ participantId }) => participantId)).toEqual(['p2']);
+    expect(
+      convention.signUps.map(({ participantId, gameId }) => `${participantId} ${gameId}`),
+    ).toContain('p1 neons');
+  });
+
+  it('garde active celle du joueur non placé', () => {
+    const convention = aConventionWithFirstDraw();
+    convention.publishDraw('s1', CATALOGUE);
+
+    expect(convention.computeParticipantSituation('p2').signedUpGameIds).toEqual([
+      'epice',
+      'neons',
+    ]);
+  });
+
+  it('ignore l’état sans partie du joueur sur le second créneau, après la publication seulement', () => {
+    const base = aConvention();
+    base.signUpForGame('p1', 'epice', CATALOGUE);
+    base.signUpForGame('p3', 'brumes', CATALOGUE);
+    const convention = restoreWithDraws(base, [
+      new Draw('s1', false, [
+        new Assignment('p1', 'epice', false),
+        new Assignment('p3', 'brumes', false),
+      ]),
+    ]);
+    const withoutGame = Convention.restore({
+      ...stateOfConvention(convention),
+      participantsWithoutGame: [new ParticipantWithoutGame('p1', 's2')],
+    });
+    const isWithoutGame = (candidate: Convention) =>
+      candidate.computeParticipantSituation('p1').timeSlots[1]!.withoutGame;
+
+    expect(isWithoutGame(withoutGame)).toBe(true);
+    withoutGame.publishDraw('s1', CATALOGUE);
+    expect(isWithoutGame(withoutGame)).toBe(false);
+    expect(trackingOf(withoutGame, 's2').demand).toBe(0);
+  });
+});
+
+/** L'état de la convention, pour la restaurer autrement. */
+function stateOfConvention(convention: Convention) {
+  return {
+    id: convention.id,
+    name: convention.name,
+    date: convention.date,
+    timeSlots: [...convention.timeSlots],
+    tables: [...convention.tables],
+    gameMasters: [...convention.gameMasters],
+    participants: [...convention.participants],
+    signUps: [...convention.signUps],
+    participantsWithoutGame: [...convention.participantsWithoutGame],
+    draws: [...convention.draws],
+    games: [...convention.games],
+    version: convention.version,
+    presenceCode: convention.presenceCode,
+  };
+}

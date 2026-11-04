@@ -3,6 +3,13 @@ import { Component, computed, inject, Injectable, isSignal, type Signal } from '
 import { firstValueFrom } from 'rxjs';
 import { injectGesture } from '../gesture';
 import { Button } from './button';
+import { Icon } from './icon';
+
+/**
+ * Une conséquence, un paragraphe : son texte, ou un avertissement jaune, avec son icône
+ * (docs/design/patterns.md, Statuts).
+ */
+export type Consequence = string | { text: string; level: 'warning' };
 
 export type ConfirmationRequest = {
   /** Question qui nomme l'objet : « Supprimer le créneau 2 ? ». */
@@ -11,7 +18,7 @@ export type ConfirmationRequest = {
    * Ce qui part avec lui, un paragraphe chacun : « Ses 4 disponibilités seront supprimées. ». Un
    * signal tient le dialogue ouvert à jour.
    */
-  consequences?: readonly string[] | Signal<readonly string[]>;
+  consequences?: readonly Consequence[] | Signal<readonly Consequence[]>;
   /** Bouton destructeur, qui nomme l'action : « Supprimer le créneau ». */
   confirmLabel: string;
   /**
@@ -41,12 +48,16 @@ let nextId = 0;
  */
 @Component({
   selector: 'app-confirm-dialog',
-  imports: [Button],
+  imports: [Button, Icon],
   host: { '[attr.aria-busy]': 'gesture.running()' },
   template: `
     <h2 [id]="request.titleId">{{ request.question }}</h2>
     @for (consequence of consequences(); track $index) {
-      <p>{{ consequence }}</p>
+      @if (typeof consequence === 'string') {
+        <p>{{ consequence }}</p>
+      } @else {
+        <p class="warning"><app-icon name="triangle-alert" />{{ consequence.text }}</p>
+      }
     }
     @if (refusal(); as message) {
       <p role="alert" class="refusal">{{ message }}</p>
@@ -84,6 +95,13 @@ let nextId = 0;
 
       .refusal {
         color: var(--danger);
+      }
+
+      .warning {
+        display: flex;
+        gap: var(--space-xs);
+        align-items: baseline;
+        color: var(--warning);
       }
 
       .actions {

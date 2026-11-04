@@ -46,6 +46,24 @@ export type NotificationParams = {
     start: string;
     end: string;
   };
+  /**
+   * Publication (TI-7) : aux joueurs d'une partie. `tableName` : le nom de sa table ;
+   * `gameMasterNickname` : le pseudo de son MJ.
+   */
+  'draw-assigned': {
+    gameId: string;
+    scenarioId: string;
+    ranks: number[];
+    tableName: string;
+    gameMasterNickname: string;
+  };
+  /**
+   * Publication (TI-7) : aux non placés du créneau de rang `rank`. `tablesWithSeats` : les noms des
+   * tables où il reste de la place, dans l'ordre naturel.
+   */
+  'draw-unassigned': { rank: number; tablesWithSeats: string[] };
+  /** Publication (TI-7) : au MJ d'une partie, qu'il mène avec `playerCount` joueurs. */
+  'draw-leading': { scenarioId: string; ranks: number[]; tableName: string; playerCount: number };
 };
 
 export type NotificationCode = keyof NotificationParams;

@@ -1,11 +1,14 @@
 import { frontOfficeUrls } from '@chimeres/contract';
 import {
+  buildAssignedText,
   buildGameMovedText,
   buildGameOversubscribedText,
   buildGameUnscheduledText,
   buildNewGameText,
   buildOwnGameScheduledText,
   buildOwnGameUnscheduledText,
+  buildUnassignedText,
+  buildLeadingText,
   type ChangeText,
 } from '@chimeres/design';
 import type { NotificationCode, NotificationParams } from '@chimeres/domain';
@@ -24,7 +27,10 @@ export type NotificationText = ChangeText & {
 /** Le scénario d'une notification, tel que le nomment ses textes : son titre et son jeu. */
 export type NotifiedScenario = { title: string; system: string };
 
-type Writer<P> = (params: P, scenario: NotifiedScenario) => NotificationText;
+/** Un code dont les paramètres nomment un scénario reçoit ce scénario ; les autres, rien. */
+type Writer<P> = P extends { scenarioId: string }
+  ? (params: P, scenario: NotifiedScenario) => NotificationText
+  : (params: P) => NotificationText;
 
 /**
  * Les textes des notifications, en français, un par code (ADR 0010), ceux de NO-2. Un code sans
@@ -59,6 +65,18 @@ export const notificationCatalogue: {
   }),
   'own-game-scheduled': ({ ranks, tableName, start, end }, { title }) => ({
     ...buildOwnGameScheduledText(ranks, { title, tableName }, start, end),
+    url: frontOfficeUrls.myGamesOnTimeSlot(ranks[0]!),
+  }),
+  'draw-assigned': ({ gameId, ranks, tableName, gameMasterNickname }, { title }) => ({
+    ...buildAssignedText(ranks, { title, tableName, gameMasterNickname }),
+    url: frontOfficeUrls.game(gameId),
+  }),
+  'draw-unassigned': ({ rank, tablesWithSeats }) => ({
+    ...buildUnassignedText(rank, tablesWithSeats),
+    url: frontOfficeUrls.timeSlotGames(rank),
+  }),
+  'draw-leading': ({ ranks, tableName, playerCount }, { title }) => ({
+    ...buildLeadingText(ranks, { title, tableName }, playerCount),
     url: frontOfficeUrls.myGamesOnTimeSlot(ranks[0]!),
   }),
 };

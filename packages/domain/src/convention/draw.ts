@@ -38,6 +38,30 @@ export class Draw {
     return this.assignments.filter((assignment) => assignment.gameId === gameId).length;
   }
 
+  /** Les joueurs de la partie, dans l'ordre des affectations. */
+  listPlayerIdsOfGame(gameId: string): string[] {
+    return this.assignments
+      .filter((assignment) => assignment.gameId === gameId)
+      .map(({ participantId }) => participantId);
+  }
+
+  /** Les participants du tirage qui ne sont pas placés, dans l'ordre des affectations. */
+  listUnassignedParticipantIds(): string[] {
+    return this.assignments
+      .filter((assignment) => assignment.gameId === null)
+      .map(({ participantId }) => participantId);
+  }
+
+  /** L'affectation du participant, ou `undefined` s'il n'est pas du tirage. */
+  findAssignmentOfParticipant(participantId: string): Assignment | undefined {
+    return this.assignments.find((assignment) => assignment.participantId === participantId);
+  }
+
+  /** Le même tirage, publié : son résultat est figé (TI-7). */
+  getDrawAfterPublishing(): Draw {
+    return new Draw(this.timeSlotId, true, this.assignments, this.cancelledGameIds);
+  }
+
   /** Le participant a une affectation dans ce tirage. */
   hasParticipant(participantId: string): boolean {
     return this.assignments.some((assignment) => assignment.participantId === participantId);

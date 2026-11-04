@@ -3,10 +3,12 @@ import {
   CancelGame,
   LaunchDraw,
   MoveParticipant,
+  PublishDraw,
   ReopenSignUps,
   RerunDraw,
   RestoreGame,
   type ConventionRepository,
+  type NotificationSender,
   type ScenarioRepository,
 } from '@chimeres/application';
 import type { DrawAlgorithm, RandomSource } from '@chimeres/domain';
@@ -17,12 +19,14 @@ import { SCENARIO_REPOSITORY } from '../scenario/scenario-repository.token.js';
 import { ScenarioModule } from '../scenario/scenario.module.js';
 import { cryptoRandom } from './crypto-random.js';
 import { DRAW_ALGORITHM } from './draw-algorithm.token.js';
+import { NOTIFICATION_SENDER } from '../notification/notification-sender.token.js';
+import { NotificationModule } from '../notification/notification.module.js';
 import { DrawController } from './http/draw.controller.js';
 import { RANDOM_SOURCE } from './random-source.token.js';
 
 /** Les gestes du tirage. Un seul algorithme est actif, choisi ici (ADR 0014). */
 @Module({
-  imports: [ConventionModule, ScenarioModule],
+  imports: [ConventionModule, NotificationModule, ScenarioModule],
   controllers: [DrawController],
   providers: [
     { provide: DRAW_ALGORITHM, useValue: new ExhaustiveDrawAlgorithm() },
@@ -56,6 +60,15 @@ import { RANDOM_SOURCE } from './random-source.token.js';
       provide: MoveParticipant,
       useFactory: (conventions: ConventionRepository) => new MoveParticipant(conventions),
       inject: [CONVENTION_REPOSITORY],
+    },
+    {
+      provide: PublishDraw,
+      useFactory: (
+        conventions: ConventionRepository,
+        scenarios: ScenarioRepository,
+        notifications: NotificationSender,
+      ) => new PublishDraw(conventions, scenarios, notifications),
+      inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY, NOTIFICATION_SENDER],
     },
     {
       provide: CancelGame,

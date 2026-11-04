@@ -451,4 +451,189 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
       detail: "Cette partie est annulée\u00a0: rétablis-la d'abord.",
     });
   });
+
+  describe('Publier le tirage (TI-7)', () => {
+    const publish = (rank: number) =>
+      server().post(apiUrl(drawEndpoints.publish, { timeSlotId: slot(rank) }));
+
+    const situationOf = async (cookie: string) =>
+      (
+        await server()
+          .get(apiUrl(frontOfficeEndpoints.readSituation))
+          .set('Cookie', cookie)
+          .expect(200)
+      ).body as ParticipantSituationDto;
+
+    const scheduleOf = async (cookie: string) =>
+      (
+        await server()
+          .get(apiUrl(frontOfficeEndpoints.readSchedule))
+          .set('Cookie', cookie)
+          .expect(200)
+      ).body as FrontOfficeScheduleDto;
+
+    it('fige le tirage, puis le téléphone lit sa table, « pas de place », ses joueurs et le nombre de joueurs', async () => {
+      await start();
+      const elodie = await gameMaster('Élodie');
+      const neons = await scheduled(elodie.id, 'Néons', 'Table 10');
+      const lune = await linkedPhone('Lune');
+      const sven = await linkedPhone('Sven');
+      const elodiePhone = await linkedPhone('Élodie', 'game-master');
+      await signUp(neons, lune);
+      await signUp(neons, sven);
+      await server()
+        .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+        .expect(204);
+      const svenId = (await tracking()).timeSlots[0]!.draw!.assignments.find(
+        ({ nickname }) => nickname === 'Sven',
+      )!.participantId;
+      await server()
+        .put(apiUrl(drawEndpoints.moveParticipant, { timeSlotId: slot(1), participantId: svenId }))
+        .send({ gameId: null })
+        .expect(204);
+      expect((await scheduleOf(lune)).games[0]!.playerCount).toBeNull();
+
+      await publish(1).expect(204);
+
+      const first = (await tracking()).timeSlots[0]!;
+      expect(first.state).toBe('published');
+      expect(first.draw).toMatchObject({ published: true, assignedCount: 1, unassignedCount: 1 });
+      expect((await situationOf(lune)).timeSlots[0]).toMatchObject({
+        state: 'published',
+        drawResult: { kind: 'assigned', gameId: neons },
+      });
+      expect((await situationOf(sven)).timeSlots[0]!.drawResult).toEqual({ kind: 'unassigned' });
+      expect((await situationOf(elodiePhone)).timeSlots[0]!.drawResult).toEqual({
+        kind: 'leading',
+        players: ['Lune'],
+      });
+      expect((await scheduleOf(lune)).games[0]!.playerCount).toBe(1);
+      const refused = await publish(1).expect(422);
+      expect(refused.body).toMatchObject({ code: 'draw-published' });
+    });
+
+    it('ne donne au téléphone aucun nombre de joueurs pour une partie annulée : elle n’a pas de place (TI-6)', async () => {
+      await start();
+      const elodie = await gameMaster('Élodie');
+      const ondine = await gameMaster('Ondine');
+      const neons = await scheduled(elodie.id, 'Néons', 'Table 10');
+      const marche = await scheduled(ondine.id, 'Le Marché', 'Table 2');
+      const lune = await linkedPhone('Lune');
+      await signUp(neons, lune);
+      await server()
+        .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+        .expect(204);
+      await server()
+        .put(apiUrl(drawEndpoints.cancelGame, { gameId: marche }))
+        .expect(204);
+
+      await publish(1).expect(204);
+
+      const games = (await scheduleOf(lune)).games;
+      expect(games.find(({ id }) => id === marche)!.playerCount).toBeNull();
+      expect(games.find(({ id }) => id === neons)!.playerCount).toBe(1);
+    });
+
+    it('refuse un tirage dont une partie n’a aucun joueur, en français', async () => {
+      await start();
+      const elodie = await gameMaster('Élodie');
+      const ondine = await gameMaster('Ondine');
+      const neons = await scheduled(elodie.id, 'Néons', 'Table 10');
+      await scheduled(ondine.id, 'Le Marché', 'Table 2');
+      await signUp(neons, await linkedPhone('Lune'));
+      await server()
+        .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+        .expect(204);
+
+      const response = await publish(1).expect(422);
+
+      expect(response.body).toMatchObject({
+        code: 'games-without-players',
+        title: 'Partie sans joueur',
+        detail:
+          "1\u00a0partie du créneau 1 n'a aucun joueur\u00a0: annule-la pour publier le tirage.",
+      });
+      expect((await tracking()).timeSlots[0]!.state).toBe('drawing');
+    });
+
+    it('n’a plus d’inscription active au créneau suivant pour le joueur placé dans une partie double (TI-3, IN-4)', async () => {
+      await start();
+      const elodie = await gameMaster('Élodie');
+      const ondine = await gameMaster('Ondine');
+      await server()
+        .put(
+          apiUrl(availabilityEndpoints.declare, { gameMasterId: elodie.id, timeSlotId: slot(2) }),
+        )
+        .expect(200);
+      await server()
+        .put(
+          apiUrl(availabilityEndpoints.declare, { gameMasterId: ondine.id, timeSlotId: slot(2) }),
+        )
+        .expect(200);
+      const epice = (
+        await server()
+          .post(apiUrl(scenarioEndpoints.propose, { gameMasterId: elodie.id }))
+          .send({
+            title: 'Épice',
+            system: 'Dune',
+            presentation: 'Une partie double.',
+            contentWarnings: '',
+            seats: { min: 1, max: 4 },
+            duration: 2,
+          })
+          .expect(201)
+      ).body as ScenarioDto;
+      const games = (
+        await server()
+          .post(apiUrl(scheduleEndpoints.schedule))
+          .send({ scenarioId: epice.id, timeSlotId: slot(1), tableId: table('Table 10') })
+          .expect(201)
+      ).body as ScheduleDto;
+      const epiceGame = games.games.find((game) => game.scenario.id === epice.id)!.id;
+      const songe = (
+        await server()
+          .post(apiUrl(scenarioEndpoints.propose, { gameMasterId: ondine.id }))
+          .send({
+            title: 'Songe',
+            system: 'Rêve de dragon',
+            presentation: 'Un rêve.',
+            contentWarnings: '',
+            seats: { min: 1, max: 4 },
+            duration: 1,
+          })
+          .expect(201)
+      ).body as ScenarioDto;
+      const songeGame = (
+        (
+          await server()
+            .post(apiUrl(scheduleEndpoints.schedule))
+            .send({ scenarioId: songe.id, timeSlotId: slot(2), tableId: table('Table 2') })
+            .expect(201)
+        ).body as ScheduleDto
+      ).games.find((game) => game.scenario.id === songe.id)!.id;
+      const lune = await linkedPhone('Lune');
+      await signUp(epiceGame, lune);
+      await signUp(songeGame, lune);
+      await signUp(songeGame, await linkedPhone('Sven'));
+      await server()
+        .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+        .expect(204);
+      expect((await tracking()).timeSlots[1]!.demand).toBe(2);
+
+      await publish(1).expect(204);
+
+      const second = (await tracking()).timeSlots[1]!;
+      expect(second.demand).toBe(1);
+      expect(second.participants.map(({ nickname }) => nickname)).toEqual(['Sven']);
+      expect((await scheduleOf(lune)).games.find(({ id }) => id === songeGame)!.signUpCount).toBe(
+        1,
+      );
+      await server()
+        .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(2) }))
+        .expect(204);
+      expect(
+        (await tracking()).timeSlots[1]!.draw!.assignments.map(({ nickname }) => nickname),
+      ).toEqual(['Sven']);
+    });
+  });
 });

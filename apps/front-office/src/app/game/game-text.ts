@@ -16,9 +16,16 @@ import {
 } from '@chimeres/design';
 import type { LedGame } from '../participant-data/participant-data';
 
-/** « Aucun inscrit · 5 places », « 6 inscrits · 4 places » : les places maximum (§5.3). */
+/**
+ * « Aucun inscrit · 5 places », « 6 inscrits · 4 places » : les places maximum (§5.3). Après la
+ * publication du tirage de son créneau, ses joueurs : « 4 joueurs · 5 places ».
+ */
 export function counterOf(game: FrontOfficeGameDto): string {
-  return `${signUpCountOf(game)} · ${countOf(game.seats.max, 'place', 'places')}`;
+  const count =
+    game.playerCount === null
+      ? signUpCountOf(game)
+      : countOf(game.playerCount, 'joueur', 'joueurs');
+  return fr`${count} · ${countOf(game.seats.max, 'place', 'places')}`;
 }
 
 /** « 6 inscrits », ou « Aucun inscrit ». */

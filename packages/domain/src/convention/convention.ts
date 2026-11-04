@@ -7,6 +7,7 @@ import type { Seats } from '../scenario/seats.js';
 import { Day } from './day.js';
 import type { Draw } from './draw.js';
 import type { DrawAlgorithm, RandomSource } from './draw-algorithm.js';
+import { buildDrawPublicationNotifications } from './draw-publication.js';
 import { Draws, type DrawCollaborators } from './draws.js';
 import type { Game } from './game.js';
 import type { GameMaster } from './game-master.js';
@@ -756,6 +757,29 @@ export class Convention {
     );
   }
 
+  /**
+   * Publie le tirage provisoire du créneau (TI-7) : son résultat est figé. Refuse un tirage dont une
+   * partie non annulée n'a aucun joueur. Rend « table » à chaque joueur, « pas de place » aux non
+   * placés, avec les tables où il reste de la place, et « tu mènes » à chaque MJ. Le catalogue,
+   * entier, donne les places maximum des parties.
+   */
+  publishDraw(timeSlotId: string, catalogue: ScenarioCatalogue): Notification[] {
+    this.day.verifyTimeSlotExists(timeSlotId);
+    this.allDraws = this.allDraws.getDrawsAfterPublishingDraw(
+      timeSlotId,
+      this.day,
+      this.gameSchedule,
+    );
+    return buildDrawPublicationNotifications(this.allDraws.findDrawOfTimeSlot(timeSlotId)!, {
+      day: this.day,
+      date: this.state.date,
+      schedule: this.gameSchedule,
+      tables: this.allTables,
+      participants: this.allParticipants,
+      catalogue,
+    });
+  }
+
   /** Ce que le tirage lit hors des Tirages, avec ce catalogue, entier. */
   private buildDrawCollaborators(catalogue: ScenarioCatalogue): DrawCollaborators {
     return {
@@ -796,14 +820,38 @@ export class Convention {
         timeSlotId: slot.id,
         state: this.getTimeSlotState(slot.id),
         ledGameId: this.findGameLedByParticipantOnTimeSlot(participant.id, slot.id)?.id ?? null,
-        // Le tirage n'existe pas encore : aucun résultat.
-        drawResult: null,
+        drawResult: this.computeDrawResult(participant.id, slot.id),
         withoutGame: this.allSignUps.isParticipantWithoutGameOnTimeSlot(
           participant.id,
           slot.id,
           collaborators,
         ),
       })),
+    };
+  }
+
+  /**
+   * Le résultat publié du tirage du créneau pour le participant (§5.7) : sa partie, ou pas de
+   * place, s'il est du tirage ; sinon, pour un MJ, les joueurs de la partie qu'il mène et qui
+   * commence sur le créneau. `null` avant la publication.
+   */
+  private computeDrawResult(participantId: string, timeSlotId: string): DrawResult {
+    const draw = this.allDraws.findPublishedDrawOfTimeSlot(timeSlotId);
+    if (!draw) return null;
+    const assignment = draw.findAssignmentOfParticipant(participantId);
+    if (assignment) {
+      return assignment.gameId
+        ? { kind: 'assigned', gameId: assignment.gameId }
+        : { kind: 'unassigned' };
+    }
+    const led = this.findGameLedByParticipantOnTimeSlot(participantId, timeSlotId);
+    if (!led || led.timeSlotIds[0] !== timeSlotId || draw.isGameCancelled(led.id)) return null;
+    const players = new Set(draw.listPlayerIdsOfGame(led.id));
+    return {
+      kind: 'leading',
+      players: this.allParticipants.participants
+        .filter(({ id }) => players.has(id))
+        .map(({ nickname }) => nickname.text),
     };
   }
 

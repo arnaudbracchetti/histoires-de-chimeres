@@ -13,6 +13,7 @@ import {
   CancelGame,
   LaunchDraw,
   MoveParticipant,
+  PublishDraw,
   ReopenSignUps,
   RerunDraw,
   RestoreGame,
@@ -29,6 +30,7 @@ export class DrawController {
     @Inject(RerunDraw) private readonly rerunDraw: RerunDraw,
     @Inject(ReopenSignUps) private readonly reopenSignUps: ReopenSignUps,
     @Inject(MoveParticipant) private readonly moveParticipant: MoveParticipant,
+    @Inject(PublishDraw) private readonly publishDraw: PublishDraw,
     @Inject(CancelGame) private readonly cancelGame: CancelGame,
     @Inject(RestoreGame) private readonly restoreGame: RestoreGame,
   ) {}
@@ -59,6 +61,12 @@ export class DrawController {
     @Body(new ZodBody(moveParticipantBodySchema)) body: MoveParticipantBody,
   ): Promise<void> {
     await this.moveParticipant.execute(timeSlotId, participantId, body.gameId);
+  }
+
+  @Post(drawEndpoints.publish.path)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async publish(@Param('timeSlotId') timeSlotId: string): Promise<void> {
+    await this.publishDraw.execute(timeSlotId);
   }
 
   @Put(drawEndpoints.cancelGame.path)

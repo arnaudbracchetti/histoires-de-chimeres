@@ -6,11 +6,13 @@ import {
   apiUrl,
   availabilityEndpoints,
   conventionEndpoints,
+  drawEndpoints,
   gameMasterEndpoints,
   linkedPhoneEndpoints,
   scenarioEndpoints,
   scheduleEndpoints,
   signUpEndpoints,
+  signUpTrackingEndpoints,
   tableEndpoints,
   timeSlotEndpoints,
   type ConventionDto,
@@ -19,6 +21,7 @@ import {
   type PushSubscriptionBody,
   type ScenarioDto,
   type ScheduleDto,
+  type SignUpTrackingDto,
 } from '@chimeres/contract';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { startApp } from '../../../test/app.js';
@@ -233,6 +236,58 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
             body: "Néons est retirée\u00a0: tu peux t'inscrire sur ce créneau.",
           }),
         }),
+      ]);
+    });
+
+    it('la publication du tirage prévient le joueur, le non placé et le MJ (TI-7)', async () => {
+      await signUp(svenPhone);
+      await server()
+        .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+        .expect(204);
+      const tracking = (await server().get(apiUrl(signUpTrackingEndpoints.read)).expect(200))
+        .body as SignUpTrackingDto;
+      const svenId = tracking.timeSlots[0]!.draw!.assignments.find(
+        ({ nickname }) => nickname === 'Sven',
+      )!.participantId;
+      await server()
+        .put(apiUrl(drawEndpoints.moveParticipant, { timeSlotId: slot(1), participantId: svenId }))
+        .send({ gameId: null })
+        .expect(204);
+
+      await server()
+        .post(apiUrl(drawEndpoints.publish, { timeSlotId: slot(1) }))
+        .expect(204);
+
+      const received = await push.receivedAtLeast(3);
+      const textOf = (subscription: PushSubscriptionBody) =>
+        filterReceivedBySubscription(received, subscription).map(({ message }) => {
+          const { title, body, navigate } = (
+            message as { notification: { title: string; body: string; navigate: string } }
+          ).notification;
+          return { title, body, navigate };
+        });
+      expect(textOf(lune)).toEqual([
+        {
+          title: 'Créneau 1\u00a0: table Griffon',
+          body: 'Tu joues à Néons, avec Élodie.',
+          navigate: `${PUBLIC_URL}/parties/${gameId}`,
+        },
+      ]);
+      expect(textOf(sven)).toEqual([
+        {
+          title: 'Créneau 1\u00a0: pas de place pour toi',
+          body:
+            'Les parties que tu avais choisies sont complètes. Il reste de la place à la table ' +
+            'Griffon\u00a0: va voir son MJ.',
+          navigate: `${PUBLIC_URL}/programme?creneau=1`,
+        },
+      ]);
+      expect(textOf(elodie)).toEqual([
+        {
+          title: 'Créneau 1\u00a0: tu mènes à la table Griffon',
+          body: 'Néons, avec 1\u00a0joueur.',
+          navigate: `${PUBLIC_URL}/mes-parties?creneau=1`,
+        },
       ]);
     });
 

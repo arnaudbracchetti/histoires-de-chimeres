@@ -439,17 +439,6 @@ describe('Pilotage du jour J', () => {
     expect(text(summary())).toContain("Aucune inscription sur ce créneau pour l'instant.");
   });
 
-  it('dit qu’un créneau publié ne change plus', async () => {
-    const { fixture, tiles, summary } = await render();
-
-    tiles()[0]!.click();
-    fixture.detectChanges();
-
-    expect(text(summary())).toBe(
-      'Créneau 1 · 9 h 00 – 11 h 30 Tirage publié : les inscriptions sont fermées et le programme du créneau ne change plus.',
-    );
-  });
-
   describe('lancer le tirage', () => {
     it('offre « Lancer le tirage » sur le seul premier créneau dont le tirage n’est pas publié', async () => {
       const { fixture, tiles, summary, button } = await render();
@@ -561,7 +550,7 @@ describe('Pilotage du jour J', () => {
       const { summary, button } = await render(DRAWING);
 
       expect(text(summary())).toBe(
-        "Créneau 2 · 13 h 00 – 15 h 30 Relancer le tirage Rouvrir les inscriptions Tirage provisoire 19 / 26 placés 7 non placés 4 / 5 parties au minimum Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication.",
+        "Créneau 2 · 13 h 00 – 15 h 30 Relancer le tirage Rouvrir les inscriptions Publier le tirage Tirage provisoire 19 / 26 placés 7 non placés 4 / 5 parties au minimum Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication.",
       );
       expect(button('Lancer le tirage')).toBeUndefined();
     });
@@ -775,6 +764,153 @@ describe('Pilotage du jour J', () => {
         expect(button('Relancer le tirage')).toBeUndefined();
         expect(button('Rouvrir les inscriptions')).toBeUndefined();
       }
+    });
+  });
+
+  describe('publier le tirage', () => {
+    /**
+     * Le créneau 2 en tirage provisoire : « Brumes » au-delà de son maximum, « Néons » sous son
+     * minimum, avec 2 joueurs.
+     */
+    const PUBLISHABLE: SignUpTrackingDto = {
+      ...DRAWING,
+      timeSlots: DRAWING.timeSlots.map((slot) =>
+        slot.draw
+          ? {
+              ...slot,
+              draw: {
+                ...slot.draw,
+                games: [
+                  slot.draw.games[0]!,
+                  {
+                    ...slot.draw.games[1]!,
+                    playerCount: 2,
+                    belowMinimum: true,
+                    withoutPlayers: false,
+                    freeSeatCount: 2,
+                  },
+                ],
+              },
+            }
+          : slot,
+      ),
+    };
+    /** Le suivi, le créneau 2 publié. */
+    const PUBLISHED: SignUpTrackingDto = {
+      ...PUBLISHABLE,
+      timeSlots: PUBLISHABLE.timeSlots.map((slot) =>
+        slot.draw ? { ...slot, state: 'published', draw: { ...slot.draw, published: true } } : slot,
+      ),
+    };
+    const dialogButton = (dialog: HTMLElement | null, name: string) =>
+      [...dialog!.querySelectorAll('button')].find((candidate) => text(candidate) === name)!;
+
+    it('offre « Publier le tirage », bouton principal, sur un créneau en tirage provisoire', async () => {
+      const { button } = await render(DRAWING);
+
+      expect(button('Publier le tirage')!.classList).toContain('primary');
+      expect(button('Publier le tirage')!.disabled).toBe(false);
+    });
+
+    it('publie après une confirmation orange, puis relit le suivi et l’annonce', async () => {
+      const { http, button, dialog, settle, reread } = await render(PUBLISHABLE);
+      const announce = vi.spyOn(TestBed.inject(Announcer), 'announce');
+      button('Publier le tirage')!.click();
+      await settle();
+
+      expect(text(dialog()?.querySelector('h2'))).toBe('Publier le tirage du créneau 2 ?');
+      expect([...dialog()!.querySelectorAll('p')].map((paragraph) => text(paragraph))).toEqual([
+        '19 participants sont placés, 7 ne le sont pas. Chacun reçoit sa notification, ainsi que les MJ.',
+        '« Brumes » est jouée au-delà de son maximum : 5 joueurs pour 4 places.',
+        '« Néons » est jouée sous son minimum : 2 joueurs pour 3 places au moins.',
+        'Le résultat ne pourra plus être modifié.',
+      ]);
+      expect(
+        [...dialog()!.querySelectorAll('p.warning')].map((paragraph) =>
+          paragraph.querySelector('app-icon') ? text(paragraph).slice(0, 10) : null,
+        ),
+      ).toEqual(['« Brumes »', '« Néons » ']);
+      expect(document.activeElement?.textContent?.trim()).toBe('Annuler');
+      const confirm = dialogButton(dialog(), 'Publier le tirage');
+      expect(confirm.classList).toContain('primary');
+      confirm.click();
+      http
+        .expectOne({ method: 'POST', url: apiUrl(drawEndpoints.publish, { timeSlotId: 's2' }) })
+        .flush(null, { status: 204, statusText: 'No Content' });
+      await reread(PUBLISHED);
+
+      expect(dialog()).toBeNull();
+      expect(announce).toHaveBeenCalledWith('Tirage du créneau 2 publié.');
+    });
+
+    it('dit « 1 participant est placé », sans non placé', async () => {
+      const { button, dialog, settle } = await render({
+        ...PUBLISHABLE,
+        timeSlots: PUBLISHABLE.timeSlots.map((slot) =>
+          slot.draw
+            ? { ...slot, draw: { ...slot.draw, assignedCount: 1, unassignedCount: 0, games: [] } }
+            : slot,
+        ),
+      });
+      button('Publier le tirage')!.click();
+      await settle();
+
+      expect([...dialog()!.querySelectorAll('p')].map((paragraph) => text(paragraph))).toEqual([
+        '1 participant est placé. Chacun reçoit sa notification, ainsi que les MJ.',
+        'Le résultat ne pourra plus être modifié.',
+      ]);
+    });
+
+    it('montre le refus dans le dialogue', async () => {
+      const { http, button, dialog, settle } = await render(DRAWING);
+      button('Publier le tirage')!.click();
+      await settle();
+      dialogButton(dialog(), 'Publier le tirage').click();
+
+      http.expectOne(apiUrl(drawEndpoints.publish, { timeSlotId: 's2' })).flush(
+        {
+          status: 422,
+          code: 'games-without-players',
+          title: 'Partie sans joueur',
+          detail: "1 partie du créneau 2 n'a aucun joueur : annule-la pour publier le tirage.",
+        },
+        { status: 422, statusText: 'Refus' },
+      );
+      await settle();
+
+      expect(text(dialog()?.querySelector('[role="alert"]'))).toBe(
+        "1 partie du créneau 2 n'a aucun joueur : annule-la pour publier le tirage.",
+      );
+    });
+
+    it('résume un créneau publié : cadenas, chiffres, notifications parties, places restantes, sans geste', async () => {
+      const { fixture, summary, button, tiles } = await render(PUBLISHED);
+      tiles()[1]!.click();
+      fixture.detectChanges();
+
+      expect(tiles()[1]!.classList).toContain('closed');
+      expect(text(tiles()[1])).toContain('19 / 26 placés / participants Tirage publié');
+      expect(text(summary())).toBe(
+        'Créneau 2 · 13 h 00 – 15 h 30 Tirage publié 19 / 26 placés 7 non placés 4 / 5 parties au minimum Tirage publié : les participants et les MJ ont reçu leur notification, et le résultat ne change plus. Il reste de la place : Sphinx (3 places). Les non placés vont voir leur MJ.',
+      );
+      expect(summary()!.querySelector('.state.published app-icon')).not.toBeNull();
+      for (const name of ['Publier le tirage', 'Relancer le tirage', 'Rouvrir les inscriptions']) {
+        expect(button(name)).toBeUndefined();
+      }
+    });
+
+    it('ne dit rien des places quand il n’en reste pas', async () => {
+      const { fixture, summary, tiles } = await render({
+        ...PUBLISHED,
+        timeSlots: PUBLISHED.timeSlots.map((slot) =>
+          slot.draw ? { ...slot, draw: { ...slot.draw, tablesWithSeats: [] } } : slot,
+        ),
+      });
+      tiles()[1]!.click();
+      fixture.detectChanges();
+
+      expect(text(summary())).toContain('Tirage publié :');
+      expect(text(summary())).not.toContain('Il reste de la place');
     });
   });
 

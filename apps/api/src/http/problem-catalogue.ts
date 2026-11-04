@@ -250,6 +250,13 @@ export const problemCatalogue: Catalogue = {
     title: 'Partie annulée',
     detail: () => fr`Cette partie est annulée : rétablis-la d'abord.`,
   },
+  'games-without-players': {
+    title: 'Partie sans joueur',
+    detail: ({ rank, games }) =>
+      games > 1
+        ? fr`${countOf(games, 'partie', 'parties')} du créneau ${rank} n'ont aucun joueur : annule-les pour publier le tirage.`
+        : fr`${countOf(games, 'partie', 'parties')} du créneau ${rank} n'a aucun joueur : annule-la pour publier le tirage.`,
+  },
   'game-not-on-time-slot': {
     title: "Partie d'un autre créneau",
     detail: ({ rank }) => fr`Cette partie ne commence pas sur le créneau ${rank}.`,

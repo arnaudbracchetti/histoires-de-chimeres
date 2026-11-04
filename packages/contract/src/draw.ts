@@ -24,6 +24,7 @@ export const drawEndpoints = {
     'PUT',
     'time-slots/:timeSlotId/draw/participants/:participantId',
   ),
+  publish: endpoint<void, DrawParams>('POST', 'time-slots/:timeSlotId/draw/publication'),
   cancelGame: endpoint<void, DrawGameParams>('PUT', 'games/:gameId/cancellation'),
   restoreGame: endpoint<void, DrawGameParams>('DELETE', 'games/:gameId/cancellation'),
 };
