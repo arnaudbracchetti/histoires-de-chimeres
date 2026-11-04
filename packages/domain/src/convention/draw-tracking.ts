@@ -1,5 +1,6 @@
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import type { Draw } from './draw.js';
+import { computeDrawSignals, type DrawSignal } from './draw-signal.js';
 import type { Participant } from './participant.js';
 import type { SignUpCollaborators, SignUps } from './sign-ups.js';
 import type { Table } from './table.js';
@@ -44,7 +45,8 @@ export type TableWithSeats = { tableId: string; freeSeatCount: number };
 /**
  * Le tirage d'un créneau lancé : publié ou provisoire, ses chiffres, ses parties, celles qui
  * commencent sur le créneau, dans l'ordre de leur programmation, les tables où il reste de la place,
- * dans l'ordre naturel des tables, et ses affectations, dans l'ordre naturel des pseudos.
+ * dans l'ordre naturel des tables, ses affectations, dans l'ordre naturel des pseudos, et ses
+ * signaux, aucun sur un tirage publié.
  */
 export type DrawTracking = {
   published: boolean;
@@ -57,6 +59,7 @@ export type DrawTracking = {
   tablesWithSeats: TableWithSeats[];
   games: DrawGameTracking[];
   assignments: AssignmentTracking[];
+  signals: DrawSignal[];
 };
 
 /** Ce que le suivi du tirage lit de la convention, tiré de son état. */
@@ -107,7 +110,12 @@ export function computeDrawTracking(
         )
         .map(({ gameId }) => gameId),
     };
-    return { tableId: game.tableId, atMinimum: !cancelled && playerCount >= minSeats, tracking };
+    return {
+      tableId: game.tableId,
+      atMinimum: !cancelled && playerCount >= minSeats,
+      maxSeats,
+      tracking,
+    };
   });
   const games = measured.map(({ tracking }) => tracking);
   const assignmentOf = new Map(
@@ -134,19 +142,36 @@ export function computeDrawTracking(
   const freeSeatsByTable = new Map(
     measured.map(({ tableId, tracking }) => [tableId, tracking.freeSeatCount]),
   );
+  const unassignedCount = draw.assignments.length - assignedCount;
+  const freeSeatCount = games.reduce((sum, game) => sum + game.freeSeatCount, 0);
   return {
     published: draw.published,
     participantCount: draw.assignments.length,
     assignedCount,
-    unassignedCount: draw.assignments.length - assignedCount,
+    unassignedCount,
     gameCount: games.filter(({ cancelled }) => !cancelled).length,
     gamesAtMinimumCount: measured.filter(({ atMinimum }) => atMinimum).length,
-    freeSeatCount: games.reduce((sum, game) => sum + game.freeSeatCount, 0),
+    freeSeatCount,
     tablesWithSeats: tables.flatMap((table): TableWithSeats[] => {
       const freeSeatCount = freeSeatsByTable.get(table.id) ?? 0;
       return freeSeatCount > 0 ? [{ tableId: table.id, freeSeatCount }] : [];
     }),
     games,
     assignments,
+    signals: draw.published
+      ? []
+      : computeDrawSignals({
+          unassignedCount,
+          freeSeatCount,
+          gamesWithoutPlayers: games.filter(({ withoutPlayers }) => withoutPlayers).length,
+          gamesBelowMinimum: games.filter(({ belowMinimum }) => belowMinimum).length,
+          gamesOverMaximum: measured
+            .filter(({ tracking }) => tracking.overMaximum)
+            .map(({ maxSeats, tracking: { gameId, playerCount } }) => ({
+              gameId,
+              playerCount,
+              maxSeats,
+            })),
+        }),
   };
 }

@@ -1,4 +1,5 @@
 import type { Capacity } from './sign-up-tracking.js';
+import type { StatusLevel } from './status-level.js';
 
 /**
  * Paramètres de la ligne de sous-demande : `demand` et `minCapacity`, le nombre de parties sous
@@ -33,12 +34,9 @@ export type SignUpWarningParams = {
 
 export type SignUpWarningCode = keyof SignUpWarningParams;
 
-/** Rouge (`danger`) ou jaune (`warning`), comme les statuts de la charte. */
-export type SignUpWarningLevel = 'danger' | 'warning';
-
 /** Un avertissement de suivi : un code, son niveau et ses paramètres, sans texte. */
 export type SignUpWarning = {
-  [C in SignUpWarningCode]: { code: C; level: SignUpWarningLevel; params: SignUpWarningParams[C] };
+  [C in SignUpWarningCode]: { code: C; level: StatusLevel; params: SignUpWarningParams[C] };
 }[SignUpWarningCode];
 
 /** Le seuil de « presque plein », en pourcentage de la capacité maximum. Sans réglage. */

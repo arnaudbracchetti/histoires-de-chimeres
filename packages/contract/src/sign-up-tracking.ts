@@ -69,8 +69,11 @@ export type SignUpWarningParams = {
 
 export type SignUpWarningCode = keyof SignUpWarningParams;
 
-/** Rouge (`danger`) ou jaune (`warning`), comme les statuts de la charte. */
-export type SignUpWarningLevel = 'danger' | 'warning';
+/**
+ * Le niveau d'un statut, rouge (`danger`) ou jaune (`warning`), comme dans la charte : celui d'un
+ * avertissement de suivi comme d'un signal du tirage.
+ */
+export type StatusLevel = 'danger' | 'warning';
 
 /**
  * Un avertissement de suivi d'un créneau, écrit par l'API : le titre (« Il manque 4 places ») et
@@ -79,7 +82,7 @@ export type SignUpWarningLevel = 'danger' | 'warning';
  */
 export type SignUpWarningDto = {
   code: SignUpWarningCode;
-  level: SignUpWarningLevel;
+  level: StatusLevel;
   title: string;
   detail: string;
 };
@@ -156,6 +159,37 @@ export type AssignmentDto = {
   playsWithoutSignUp: boolean;
 };
 
+/** Une partie au-delà de son maximum : ses joueurs et ses places maximum. */
+export type GameOverMaximumDto = { gameId: string; playerCount: number; maxSeats: number };
+
+/**
+ * Codes des signaux du tirage d'un créneau, avec leurs paramètres (ADR 0008). Le domaine déclare la
+ * même carte, et `application` vérifie à la compilation qu'elles concordent.
+ */
+export type DrawSignalParams = {
+  /** `unassignedCount` participants ne sont pas placés ; `freeSeatCount` places restent libres. */
+  'participants-unassigned': { unassignedCount: number; freeSeatCount: number };
+  /** `gameCount` parties maintenues n'ont aucun joueur. */
+  'games-without-players': { gameCount: number };
+  /** `gameCount` parties ont 1 joueur au moins, sous leur minimum. */
+  'games-below-minimum': { gameCount: number };
+  /** Ces parties ont plus de joueurs que leurs places maximum, dans l'ordre de leur programmation. */
+  'games-over-maximum': { games: GameOverMaximumDto[] };
+};
+
+export type DrawSignalCode = keyof DrawSignalParams;
+
+/**
+ * Un signal du tirage, écrit par l'API : le titre (« 7 non placés ») et le détail (« Il reste
+ * 3 places dans les parties du créneau. »).
+ */
+export type DrawSignalDto = {
+  code: DrawSignalCode;
+  level: StatusLevel;
+  title: string;
+  detail: string;
+};
+
 /** Une table où il reste de la place, avec son nom et ses places libres. */
 export type TableWithSeatsDto = { tableId: string; name: string; freeSeatCount: number };
 
@@ -163,7 +197,8 @@ export type TableWithSeatsDto = { tableId: string; name: string; freeSeatCount: 
  * Le tirage d'un créneau lancé, provisoire ou publié : ses chiffres (participants du tirage,
  * placés, non placés, parties qui commencent sur le créneau, parties à leur minimum, places libres),
  * les tables où il reste de la place, dans l'ordre naturel, ses parties, dans l'ordre de leur
- * programmation, et ses affectations, dans l'ordre naturel des pseudos : le front garde ces ordres.
+ * programmation, ses affectations, dans l'ordre naturel des pseudos, et ses signaux, les rouges
+ * d'abord, aucun sur un tirage publié : le front garde ces ordres.
  */
 export type DrawTrackingDto = {
   published: boolean;
@@ -176,6 +211,7 @@ export type DrawTrackingDto = {
   tablesWithSeats: TableWithSeatsDto[];
   games: DrawGameDto[];
   assignments: AssignmentDto[];
+  signals: DrawSignalDto[];
 };
 
 /**

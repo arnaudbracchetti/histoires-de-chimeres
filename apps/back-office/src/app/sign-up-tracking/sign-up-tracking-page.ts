@@ -20,7 +20,7 @@ import {
   type ScheduleScenarioDto,
   type SignUpWarningCode,
   type SignUpWarningDto,
-  type SignUpWarningLevel,
+  type StatusLevel,
   type TableDto,
   type TimeSlotStateDto,
   type TimeSlotTrackingDto,
@@ -80,8 +80,11 @@ const CLOSED_STATE: Record<
   published: { label: 'Tirage publié', icon: 'lock' },
 };
 
-/** L'icône de chaque niveau d'avertissement de suivi (docs/design/patterns.md, Statuts). */
-const WARNING_ICONS: Record<SignUpWarningLevel, string> = {
+/**
+ * L'icône de chaque niveau, d'un avertissement de suivi comme d'un signal du tirage
+ * (docs/design/patterns.md, Statuts).
+ */
+const LEVEL_ICONS: Record<StatusLevel, string> = {
   danger: 'octagon-alert',
   warning: 'triangle-alert',
 };
@@ -192,7 +195,7 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                   />
                   @if (slot.warnings.length) {
                     <span class="warning-count" [class.danger]="isDanger(slot)"
-                      ><app-icon [name]="warningIcons[isDanger(slot) ? 'danger' : 'warning']" />{{
+                      ><app-icon [name]="levelIcons[isDanger(slot) ? 'danger' : 'warning']" />{{
                         countOf(slot.warnings.length, 'avertissement', 'avertissements')
                       }}</span
                     >
@@ -273,7 +276,7 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                       <ul class="warnings" aria-label="Avertissements de suivi">
                         @for (warning of slot.warnings; track warning.code) {
                           <li [class]="warning.level">
-                            <app-icon [name]="warningIcons[warning.level]" />
+                            <app-icon [name]="levelIcons[warning.level]" />
                             <p>
                               <span class="title">{{ warning.title }}</span>
                               <span class="detail">{{ warning.detail }}</span>
@@ -312,6 +315,19 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                           >&nbsp;{{ plural(draw.gameCount, 'partie', 'parties') }} au minimum</span
                         >
                       </p>
+                      @if (draw.signals.length) {
+                        <ul class="signals" aria-label="Signaux du tirage">
+                          @for (signal of draw.signals; track signal.code) {
+                            <li [class]="signal.level">
+                              <app-icon [name]="levelIcons[signal.level]" />
+                              <p>
+                                <span class="title">{{ signal.title }}</span>
+                                <span class="detail">{{ signal.detail }}</span>
+                              </p>
+                            </li>
+                          }
+                        </ul>
+                      }
                     }
                     <p class="quiet">{{ closedSummary[slot.state] }}</p>
                     @if (slot.state === 'published' && slot.draw?.tablesWithSeats?.length) {
@@ -504,8 +520,12 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
         }
       }
 
-      /* Un avertissement par ligne : icône, titre en couleur, détail en gris, et son bouton. */
-      .warnings {
+      /*
+       * Un avertissement de suivi par ligne : icône, titre en couleur, détail en gris, et son
+       * bouton. Un signal du tirage, de même, sans bouton.
+       */
+      .warnings,
+      .signals {
         display: flex;
         flex-direction: column;
         gap: var(--space-s);
@@ -686,7 +706,7 @@ export class SignUpTrackingPage {
   protected readonly closedSummary = CLOSED_SUMMARY;
   protected readonly countOf = countOf;
   protected readonly formatCount = formatCount;
-  protected readonly warningIcons = WARNING_ICONS;
+  protected readonly levelIcons = LEVEL_ICONS;
   protected readonly warningActions = WARNING_ACTIONS;
   protected readonly formatSeatRange = formatSeatRange;
   protected readonly timeSlotLabel = timeSlotLabel;

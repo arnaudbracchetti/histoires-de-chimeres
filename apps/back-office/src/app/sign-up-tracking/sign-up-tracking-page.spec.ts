@@ -254,6 +254,7 @@ const DRAW_OF_SLOT_2: DrawTrackingDto = {
       playsWithoutSignUp: true,
     },
   ],
+  signals: [],
 };
 
 /** Le suivi, le créneau 2 en tirage provisoire. */
@@ -553,6 +554,47 @@ describe('Pilotage du jour J', () => {
         "Créneau 2 · 13 h 00 – 15 h 30 Relancer le tirage Rouvrir les inscriptions Publier le tirage Tirage provisoire 19 / 26 placés 7 non placés 4 / 5 parties au minimum Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication.",
       );
       expect(button('Lancer le tirage')).toBeUndefined();
+    });
+
+    it('montre les signaux du tirage dans l’ordre reçu, un par ligne, avant la phrase des inscriptions fermées', async () => {
+      const { summary } = await render({
+        ...DRAWING,
+        timeSlots: DRAWING.timeSlots.map((slot) =>
+          slot.draw
+            ? {
+                ...slot,
+                draw: {
+                  ...slot.draw,
+                  signals: [
+                    {
+                      code: 'games-over-maximum',
+                      level: 'warning',
+                      title: '1 partie au-delà de son maximum',
+                      detail: '« Brumes » : 5 joueurs pour 4 places.',
+                    },
+                    {
+                      code: 'participants-unassigned',
+                      level: 'danger',
+                      title: '7 non placés',
+                      detail: 'Il reste 3 places dans les parties du créneau.',
+                    },
+                  ],
+                },
+              }
+            : slot,
+        ),
+      });
+      const signals = [...summary()!.querySelectorAll('.signals li')];
+
+      expect(signals.map((signal) => text(signal))).toEqual([
+        '1 partie au-delà de son maximum « Brumes » : 5 joueurs pour 4 places.',
+        '7 non placés Il reste 3 places dans les parties du créneau.',
+      ]);
+      expect(signals.map((signal) => signal.className)).toEqual(['warning', 'danger']);
+      expect(signals.every((signal) => signal.querySelector('app-icon'))).toBe(true);
+      expect(text(summary())).toMatch(
+        /4 \/ 5 parties au minimum 1 partie au-delà .* Les inscriptions du créneau sont fermées/,
+      );
     });
 
     it('remplace les onglets par le plan de salle : « Non placés » en tête, puis une carte par partie, dans l’ordre des tables', async () => {

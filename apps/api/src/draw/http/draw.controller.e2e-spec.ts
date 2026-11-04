@@ -155,6 +155,7 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
         expect.objectContaining({ nickname: 'Lune', gameId: neons, movedByHand: false }),
         expect.objectContaining({ nickname: 'Sven', gameId: neons, movedByHand: false }),
       ],
+      signals: [],
     });
     expect((await tracking()).timeSlots[1]!.draw).toBeNull();
     const ondine = await linkedPhone('Ondine');
@@ -415,6 +416,65 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
 
     expect((await tracking()).timeSlots[0]!.draw!.assignments).toEqual([
       expect.objectContaining({ nickname: 'Lune', gameId: null, movedByHand: true }),
+    ]);
+  });
+
+  it('écrit en français un signal du tirage de chaque code (TI-5)', async () => {
+    await start();
+    await server().post(apiUrl(tableEndpoints.add)).send({ name: 'Table 3' }).expect(201);
+    convention = (await server().get(apiUrl(conventionEndpoints.read)).expect(200))
+      .body as ConventionDto;
+    const neons = await scheduled((await gameMaster('Élodie')).id, 'Néons', 'Table 10');
+    const marche = await scheduled((await gameMaster('Ondine')).id, 'Le Marché', 'Table 2');
+    await scheduled((await gameMaster('Gaspard')).id, 'La Forge', 'Table 3');
+    // Sept inscrits à « Néons », de 2 à 4 places : trois ne sont pas placés.
+    for (const nickname of ['Lune', 'Sven', 'Mara', 'Nils', 'Pia', 'Tom', 'Yann']) {
+      await signUp(neons, await linkedPhone(nickname));
+    }
+    await server()
+      .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+      .expect(204);
+    const unassigned = (await tracking()).timeSlots[0]!.draw!.assignments.filter(
+      ({ gameId }) => gameId === null,
+    );
+    // L'un joue seul au « Marché », l'autre est le cinquième de « Néons ».
+    for (const [index, gameId] of [marche, neons].entries()) {
+      await server()
+        .put(
+          apiUrl(drawEndpoints.moveParticipant, {
+            timeSlotId: slot(1),
+            participantId: unassigned[index]!.participantId,
+          }),
+        )
+        .send({ gameId })
+        .expect(204);
+    }
+
+    expect((await tracking()).timeSlots[0]!.draw!.signals).toEqual([
+      {
+        code: 'participants-unassigned',
+        level: 'danger',
+        title: '1 non placé',
+        detail: 'Il reste 7 places dans les parties du créneau.',
+      },
+      {
+        code: 'games-without-players',
+        level: 'danger',
+        title: '1 partie sans joueur',
+        detail: 'Annule-la pour publier le tirage.',
+      },
+      {
+        code: 'games-below-minimum',
+        level: 'warning',
+        title: '1 partie sous son minimum',
+        detail: "Maintenue : elle sera jouée ainsi, sauf si tu l'annules.",
+      },
+      {
+        code: 'games-over-maximum',
+        level: 'warning',
+        title: '1 partie au-delà de son maximum',
+        detail: '« Néons » : 5 joueurs pour 4 places.',
+      },
     ]);
   });
 

@@ -486,6 +486,14 @@ describe('Suivi d’un créneau lancé', () => {
           playsWithoutSignUp: false,
         },
       ],
+      signals: [
+        {
+          code: 'participants-unassigned',
+          level: 'danger',
+          params: { unassignedCount: 1, freeSeatCount: 7 },
+        },
+        { code: 'games-below-minimum', level: 'warning', params: { gameCount: 2 } },
+      ],
     });
   });
 
@@ -580,6 +588,82 @@ describe('Suivi d’un créneau lancé', () => {
       signedUpGameIds: ['brumes'],
       playsWithoutSignUp: false,
     });
+  });
+});
+
+describe('Signaux du tirage (TI-5)', () => {
+  const signalsOf = (convention: Convention, catalogue: ScenarioCatalogue) =>
+    convention.computeSignUpTracking(catalogue).find((slot) => slot.timeSlotId === 's1')!.draw!
+      .signals;
+
+  /** « brumes » de 1 place, « épice » de 2 à 4, « forge » de 3 à 5. */
+  const catalogue = ScenarioCatalogue.restore([
+    { id: 'a', gameMasterId: 'g1', duration: 1, minSeats: 1, maxSeats: 1 },
+    { id: 'b', gameMasterId: 'g2', duration: 2, minSeats: 2, maxSeats: 4 },
+    { id: 'c', gameMasterId: 'g1', duration: 1, minSeats: 3, maxSeats: 5 },
+    { id: 'd', gameMasterId: 'g3', duration: 1, minSeats: 3, maxSeats: 5 },
+  ]);
+
+  /**
+   * Au créneau 1, en plus : « forge » (t3, MJ Mira), et le participant Maël (p4). Élodie et Lune
+   * jouent à « brumes », Zéphyr à « forge », Maël n'est pas placé, « épice » n'a aucun joueur.
+   */
+  function aDrawWithEveryShortfall(published: boolean): Convention {
+    const convention = aConvention();
+    convention.addTable('t3', 'Table 3');
+    convention.addGameMaster('g3', 'p-g3', 'Mira');
+    convention.declareGameMasterAvailability('g3', 's1');
+    convention.scheduleScenario('forge', aScenario('d', 'g3'), 's1', 't3');
+    convention.identifyByNickname('p4', 'K7M2', 'Maël', null, NOW);
+    convention.launchDraw('s1', catalogue, FIRST_GAME, RANDOM);
+    return restoreWithDraws(convention, [
+      new Draw('s1', published, [
+        new Assignment('p1', 'brumes', true),
+        new Assignment('p2', 'brumes', true),
+        new Assignment('p3', 'forge', true),
+        new Assignment('p4', null, true),
+      ]),
+    ]);
+  }
+
+  it('donne chaque signal avec ses paramètres, les rouges d’abord', () => {
+    expect(signalsOf(aDrawWithEveryShortfall(false), catalogue)).toEqual([
+      {
+        code: 'participants-unassigned',
+        level: 'danger',
+        params: { unassignedCount: 1, freeSeatCount: 8 },
+      },
+      // « épice » n'a aucun joueur : elle n'est pas « sous son minimum ».
+      { code: 'games-without-players', level: 'danger', params: { gameCount: 1 } },
+      { code: 'games-below-minimum', level: 'warning', params: { gameCount: 1 } },
+      {
+        code: 'games-over-maximum',
+        level: 'warning',
+        params: { games: [{ gameId: 'brumes', playerCount: 2, maxSeats: 1 }] },
+      },
+    ]);
+  });
+
+  it('n’en donne aucun sur un tirage publié', () => {
+    expect(signalsOf(aDrawWithEveryShortfall(true), catalogue)).toEqual([]);
+  });
+
+  it('ne compte une partie annulée dans aucun', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+
+    convention.cancelGame('epice', CATALOGUE);
+
+    // Kaïros, le MJ d'« épice », entre au tirage, non placé.
+    expect(signalsOf(convention, CATALOGUE)).toEqual([
+      {
+        code: 'participants-unassigned',
+        level: 'danger',
+        params: { unassignedCount: 1, freeSeatCount: 4 },
+      },
+      { code: 'games-below-minimum', level: 'warning', params: { gameCount: 1 } },
+    ]);
   });
 });
 

@@ -34,6 +34,7 @@ export { ReadSchedule, type ReserveScenario, type Schedule } from './game/read-s
 export {
   ReadSignUpTracking,
   type SignUpTracking,
+  type TrackedDraw,
   type TrackedTimeSlot,
 } from './sign-up-tracking/read-sign-up-tracking.js';
 export { ReadParticipantSituation } from './sign-up/read-participant-situation.js';

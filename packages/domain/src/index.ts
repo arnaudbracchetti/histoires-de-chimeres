@@ -29,6 +29,12 @@ export type {
   DrawTracking,
   TableWithSeats,
 } from './convention/draw-tracking.js';
+export type {
+  DrawSignal,
+  DrawSignalCode,
+  DrawSignalParams,
+  GameOverMaximum,
+} from './convention/draw-signal.js';
 export { Game } from './convention/game.js';
 export type { LocalMoment } from './convention/local-moment.js';
 export { PresenceCode } from './convention/presence-code.js';
@@ -48,9 +54,9 @@ export type {
 export {
   type SignUpWarning,
   type SignUpWarningCode,
-  type SignUpWarningLevel,
   type SignUpWarningParams,
 } from './convention/sign-up-warning.js';
+export type { StatusLevel } from './convention/status-level.js';
 export { Table } from './convention/table.js';
 export { TimeOfDay } from './convention/time-of-day.js';
 export { TimeSlot } from './convention/time-slot.js';

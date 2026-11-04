@@ -1,17 +1,21 @@
-import type { SignUpTrackingDto, TimeSlotTrackingDto } from '@chimeres/contract';
-import type { SignUpWarning, TimeSlotReserveEntry } from '@chimeres/domain';
+import type { DrawTrackingDto, SignUpTrackingDto, TimeSlotTrackingDto } from '@chimeres/contract';
+import type { DrawSignal, SignUpWarning, TimeSlotReserveEntry } from '@chimeres/domain';
 import type { ConventionRepository } from '../convention/convention-repository.js';
 import { readReserve, type ReserveScenario } from '../game/read-schedule.js';
 import type { ScheduleReader } from '../game/schedule-reader.js';
 import type { ScenarioRepository } from '../scenario/scenario-repository.js';
 
+/** Le tirage d'un créneau, avec ses signaux, qui restent des codes du domaine. */
+export type TrackedDraw = Omit<DrawTrackingDto, 'signals'> & { signals: DrawSignal[] };
+
 /**
- * Le suivi d'un créneau, avec ses avertissements de suivi, qui restent des codes du domaine, et sa
- * réserve, dont les motifs restent des refus du domaine.
+ * Le suivi d'un créneau, avec ses avertissements de suivi, qui restent des codes du domaine, sa
+ * réserve, dont les motifs restent des refus du domaine, et son tirage.
  */
-export type TrackedTimeSlot = Omit<TimeSlotTrackingDto, 'warnings' | 'reserve'> & {
+export type TrackedTimeSlot = Omit<TimeSlotTrackingDto, 'warnings' | 'reserve' | 'draw'> & {
   warnings: SignUpWarning[];
   reserve: TimeSlotReserveEntry[];
+  draw: TrackedDraw | null;
 };
 
 /** Le suivi des inscriptions, avec la réserve, comme dans le programme. */
