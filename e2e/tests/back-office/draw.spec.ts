@@ -1,0 +1,129 @@
+import { devices, type Page } from '@playwright/test';
+import {
+  apiUrl,
+  availabilityEndpoints,
+  gameMasterEndpoints,
+  scenarioEndpoints,
+  scheduleEndpoints,
+  tableEndpoints,
+  timeSlotEndpoints,
+  type ConventionDto,
+  type GameMasterDto,
+  type ScenarioDto,
+  type TimeSlotDto,
+} from '@chimeres/contract';
+import { expect, test } from '../../fixtures.js';
+import { aNickname, identify } from '../front-office/identification.js';
+import { gameCard, scheduleTab, timeSlotChip } from '../front-office/schedule.js';
+
+/*
+ * Le parcours du tirage tient en entier dans le projet `bureau`, qui pilote aussi un téléphone
+ * (contexte Pixel 7). Dans la base du projet `mobile`, jamais remise à zéro et partagée par ses
+ * tests en parallèle, un tirage lancé fermerait les inscriptions de leur créneau 1. Ici, la base
+ * est remise à zéro avant le test (fixtures.ts), et le pseudo du téléphone lui reste propre.
+ */
+
+async function post<T>(page: Page, url: string, data: object): Promise<T> {
+  const response = await page.request.post(url, { data });
+  expect(response.ok(), await response.text()).toBe(true);
+  return (await response.json()) as T;
+}
+
+/**
+ * Par l'API : un créneau, la table « Griffon », et « Les Brumes » de Kaïros, d'une place au moins,
+ * programmée à cette table. Une seule partie : une partie sans joueur empêcherait la publication.
+ */
+async function prepare(page: Page) {
+  const { timeSlots } = await post<ConventionDto>(page, apiUrl(timeSlotEndpoints.add), {
+    start: '09:00',
+    end: '11:30',
+  });
+  const { tables } = await post<ConventionDto>(page, apiUrl(tableEndpoints.add), {
+    name: 'Griffon',
+  });
+  const [{ id: gameMasterId }] = (await post<GameMasterDto[]>(
+    page,
+    apiUrl(gameMasterEndpoints.add),
+    { nickname: 'Kaïros' },
+  )) as [GameMasterDto];
+  const [{ id: timeSlotId }] = timeSlots as [TimeSlotDto];
+  const declared = await page.request.put(
+    apiUrl(availabilityEndpoints.declare, { gameMasterId, timeSlotId }),
+  );
+  expect(declared.ok(), await declared.text()).toBe(true);
+  const brumes = await post<ScenarioDto>(
+    page,
+    apiUrl(scenarioEndpoints.propose, { gameMasterId }),
+    {
+      title: 'Les Brumes',
+      system: "L'Appel de Cthulhu",
+      presentation: 'Une enquête sous la brume.',
+      contentWarnings: '',
+      seats: { min: 1, max: 5 },
+      duration: 1,
+    },
+  );
+  await post(page, apiUrl(scheduleEndpoints.schedule), {
+    scenarioId: brumes.id,
+    timeSlotId,
+    tableId: tables[0]!.id,
+  });
+}
+
+test('un téléphone s’inscrit, l’Organisateur lance et publie le tirage, le téléphone montre sa table (TI-1, TI-5, TI-7)', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  await prepare(page);
+  const phoneContext = await browser.newContext({ ...devices['Pixel 7'], baseURL });
+  try {
+    await followDraw(page, await phoneContext.newPage());
+  } finally {
+    await phoneContext.close();
+  }
+});
+
+/** Le parcours, entre le bureau de l'Organisateur (`page`) et le téléphone du participant (`phone`). */
+async function followDraw(page: Page, phone: Page) {
+  const nickname = aNickname('Élodie');
+
+  await identify(phone, nickname);
+  await scheduleTab(phone).click();
+  await timeSlotChip(phone, 1).click();
+  await gameCard(phone, 'Les Brumes').click();
+  await phone.getByRole('button', { name: "S'inscrire" }).click();
+  await expect(phone.getByText('Inscription enregistrée')).toBeVisible();
+
+  await page.goto('/gestion/');
+  await page.getByRole('link', { name: 'Pilotage du jour J' }).click();
+  await page.getByRole('button', { name: 'Lancer le tirage' }).click();
+  await page
+    .getByRole('alertdialog', { name: /^Lancer le tirage du créneau 1/ })
+    .getByRole('button', { name: 'Lancer le tirage' })
+    .click();
+
+  const brumesCard = page
+    .getByRole('list', { name: 'Plan de salle' })
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('heading', { name: 'Les Brumes' }) });
+  await expect(brumesCard).toContainText(nickname);
+
+  // Le résultat provisoire ne se voit pas sur le téléphone (TI-5).
+  await phone.goto('/');
+  await expect(phone.getByRole('heading', { name: 'Tirage en cours' })).toBeVisible();
+  await expect(phone.getByText('Table Griffon')).toBeHidden();
+
+  await page.getByRole('button', { name: 'Publier le tirage' }).click();
+  await page
+    .getByRole('alertdialog', { name: /^Publier le tirage du créneau 1/ })
+    .getByRole('button', { name: 'Publier le tirage' })
+    .click();
+  await expect(
+    page.getByRole('group', { name: 'Créneaux de la journée' }).getByRole('button'),
+  ).toContainText('Tirage publié');
+
+  await phone.reload();
+  const assignment = phone.getByRole('link', { name: /Table Griffon/ });
+  await expect(assignment).toContainText('Tu joues à Les Brumes, avec Kaïros');
+}
