@@ -62,7 +62,17 @@ const PLACEMENTS: PlacementDto[] = [
   { timeSlotId: 's1', tableId: 't2', refusal: null },
   { timeSlotId: 's2', tableId: 't1', refusal: refused('game-master-unavailable') },
   { timeSlotId: 's2', tableId: 't2', refusal: refused('game-master-busy') },
-];
+].map((verdict) => ({ ...verdict, erasedDrawTimeSlotId: null }));
+
+/** La confirmation ouverte : son titre, puis ses paragraphes. */
+const confirmation = () => document.querySelector<HTMLElement>('[role="alertdialog"]');
+const confirmationTexts = () =>
+  [...confirmation()!.querySelectorAll('h2, p')].map((element) => element.textContent?.trim());
+const confirmationButton = (name: string) =>
+  [...confirmation()!.querySelectorAll('button')].find(
+    (button) => button.textContent?.trim() === name,
+  )!;
+const ERASED_DRAW_OF_SLOT_1 = `Le tirage provisoire du créneau 1 sera effacé, avec ses déplacements et ses parties annulées. Les inscriptions sur ce créneau seront rouvertes.`;
 
 const SCHEDULE: ScheduleDto = { games: [], reserve: [] };
 
@@ -147,6 +157,29 @@ describe('PlacementDialog', () => {
     const request = http.expectOne(apiUrl(scheduleEndpoints.schedule));
     expect(request.request.body).toEqual({ scenarioId: 'a', timeSlotId: 's1', tableId: 't2' });
     request.flush(SCHEDULE);
+
+    expect(await closed).toEqual(SCHEDULE);
+  });
+
+  it('sur un créneau en tirage, demande d’abord une confirmation rouge : le tirage sera effacé (TI-6)', async () => {
+    const { http, closed, dialog, flushPlacements } = await open();
+    await flushPlacements(
+      PLACEMENTS.map((verdict) =>
+        verdict.refusal ? verdict : { ...verdict, erasedDrawTimeSlotId: 's1' },
+      ),
+    );
+
+    dialog().querySelector<HTMLButtonElement>('button[aria-label^="Choisir"]')!.click();
+    await settle();
+
+    expect(confirmationTexts()).toEqual([
+      `Programmer «${NBSP}Brumes${NBSP}» sur le créneau 1, Table 2${THIN_NBSP}?`,
+      ERASED_DRAW_OF_SLOT_1,
+    ]);
+    expect(confirmation()!.querySelector('button.danger')).toBeTruthy();
+    http.expectNone(apiUrl(scheduleEndpoints.schedule));
+    confirmationButton('Programmer la partie').click();
+    http.expectOne(apiUrl(scheduleEndpoints.schedule)).flush(SCHEDULE);
 
     expect(await closed).toEqual(SCHEDULE);
   });
@@ -297,15 +330,6 @@ describe('PlacementDialog', () => {
     });
 
     describe('un geste qui retire des inscriptions (IN-6, NO-2)', () => {
-      const confirmation = () => document.querySelector<HTMLElement>('[role="alertdialog"]');
-      const confirmationTexts = () =>
-        [...confirmation()!.querySelectorAll('h2, p')].map((element) =>
-          element.textContent?.trim(),
-        );
-      const confirmationButton = (name: string) =>
-        [...confirmation()!.querySelectorAll('button')].find(
-          (button) => button.textContent?.trim() === name,
-        )!;
       /** Le créneau 2, table 1 permis : un déplacement qui retire 12 inscriptions. */
       const toSlot2 = MOVE_PLACEMENTS.map((verdict) =>
         verdict.timeSlotId === 's2' && verdict.tableId === 't1'
@@ -337,6 +361,41 @@ describe('PlacementDialog', () => {
         http.expectOne(apiUrl(scheduleEndpoints.move, { gameId: 'p1' })).flush(SCHEDULE);
 
         expect(await closed).toEqual({ schedule: SCHEDULE, swappedWith: null });
+      });
+
+      it('ajoute le tirage provisoire effacé aux inscriptions retirées (TI-6)', async () => {
+        const { dialog } = await openMove(
+          toSlot2.map((verdict) =>
+            verdict.refusal ? verdict : { ...verdict, erasedDrawTimeSlotId: 's1' },
+          ),
+        );
+
+        dialog().querySelector<HTMLButtonElement>('button[aria-label^="Choisir"]')!.click();
+        await settle();
+
+        expect(confirmationTexts().slice(1)).toEqual([
+          `Il y a 12${NBSP}inscrits à la partie. Ils perdront leur inscription et seront notifiés.`,
+          "3 d'entre eux n'ont pas d'autre inscription sur le créneau\u00a0: ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie.",
+          ERASED_DRAW_OF_SLOT_1,
+        ]);
+      });
+
+      it('confirme un tirage effacé, même sans inscription retirée (TI-6)', async () => {
+        const { dialog } = await openMove(
+          MOVE_PLACEMENTS.map((verdict) =>
+            verdict.timeSlotId === 's2' && verdict.tableId === 't1'
+              ? { ...verdict, refusal: null, erasedDrawTimeSlotId: 's1' }
+              : verdict,
+          ),
+        );
+
+        dialog().querySelector<HTMLButtonElement>('button[aria-label^="Choisir"]')!.click();
+        await settle();
+
+        expect(confirmationTexts()).toEqual([
+          `Déplacer «${NBSP}Brumes${NBSP}» sur le créneau 2${THIN_NBSP}?`,
+          ERASED_DRAW_OF_SLOT_1,
+        ]);
       });
 
       it('« Annuler » n’écrit rien, et rend le focus à « Choisir »', async () => {

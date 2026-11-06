@@ -10,12 +10,16 @@ import {
   type CurrentSignUpFigures,
 } from './removed-sign-ups-confirmations';
 
-/** La confirmation d'une déprogrammation, lue : ses textes, aucun sans inscrit ; ou illisible. */
+/**
+ * La confirmation d'une déprogrammation, lue : ses textes, aucun sans inscrit ni tirage effacé ; ou
+ * illisible.
+ */
 export type UnscheduleConfirmation =
   { status: 'read'; texts: ConfirmationTexts | undefined } | { status: 'unreadable' };
 
 /**
- * Les gestes qui retirent des inscriptions (docs/design/patterns.md, Actions destructrices),
+ * Les gestes qui retirent des inscriptions, ou effacent un tirage provisoire (docs/design/patterns.md,
+ * Actions destructrices),
  * confirmés d'abord s'ils en retirent, dans le Calendrier comme dans le pilotage. `onStale` : ce
  * que l'écran relit quand un refus le dit périmé.
  */
@@ -25,7 +29,7 @@ export class RemovedSignUpsGestures {
   private readonly apiCall = injectApiCall();
 
   /**
-   * Déprogramme la partie : aussitôt sans inscrit, sinon après la confirmation, dont les chiffres
+   * Déprogramme la partie : aussitôt sans inscrit ni tirage effacé, sinon après la confirmation, dont les chiffres
    * suivent `current` s'il est donné. Le geste retire les inscriptions présentes à l'écriture. Le
    * programme relu, ou `undefined` sans écriture.
    */
@@ -53,8 +57,8 @@ export class RemovedSignUpsGestures {
   }
 
   /**
-   * La confirmation de déprogrammer la partie, d'après les inscriptions que le geste retirerait,
-   * lues par `gesture`. `unreadable` si la lecture est refusée : le refus part en alerte, et s'il
+   * La confirmation de déprogrammer la partie, d'après les inscriptions que le geste retirerait et
+   * le tirage provisoire qu'il effacerait, lus par `gesture`. `unreadable` si la lecture est refusée : le refus part en alerte, et s'il
    * dit l'écran périmé, `onStale`. Avec `current`, les chiffres du dialogue ouvert le suivent.
    */
   async readUnscheduleConfirmation(
@@ -69,10 +73,9 @@ export class RemovedSignUpsGestures {
     );
     if (verdict.status === 'refused' && verdict.refusal.stale) onStale();
     if (verdict.status !== 'done') return { status: 'unreadable' };
-    const [removed] = verdict.value.removedSignUps;
     return {
       status: 'read',
-      texts: removed && buildUnscheduleConfirmation(game, removed, timeSlots, current),
+      texts: buildUnscheduleConfirmation(game, verdict.value, timeSlots, current),
     };
   }
 

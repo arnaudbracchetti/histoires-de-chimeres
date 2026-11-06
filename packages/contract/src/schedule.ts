@@ -39,10 +39,17 @@ export type ScheduleDto = {
 };
 
 /**
+ * Ce que dit en plus le verdict d'un geste de programmation : le créneau dont il effacerait le
+ * tirage provisoire, avec ses déplacements et ses parties annulées, en rouvrant ses inscriptions
+ * (TI-6) ; `null` s'il n'en efface aucun, toujours pour un geste refusé.
+ */
+export type DrawErasureDto = { erasedDrawTimeSlotId: string | null };
+
+/**
  * Le verdict d'une case créneau × table pour un scénario : `refusal` est `null` si on peut l'y
  * programmer, sinon le refus que l'écriture lèverait, avec son motif court et sa phrase.
  */
-export type PlacementDto = {
+export type PlacementDto = DrawErasureDto & {
   timeSlotId: string;
   tableId: string;
   refusal: VerdictRefusalDto | null;
@@ -52,7 +59,7 @@ export type PlacementDto = {
  * Le verdict d'une case créneau × table pour un scénario sans partie qui commence sur ce créneau :
  * `refusal` est `null` si on peut l'y programmer, sinon le refus que l'écriture lèverait.
  */
-export type CellPlacementDto = {
+export type CellPlacementDto = DrawErasureDto & {
   scenario: ScheduleScenarioDto;
   refusal: VerdictRefusalDto | null;
 };
@@ -80,8 +87,11 @@ export type MovePlacementDto = PlacementDto & {
   removedSignUps: RemovedSignUpsDto[];
 };
 
-/** Le verdict de la déprogrammation d'une partie : vide si elle n'a aucun inscrit actif. */
-export type UnscheduleVerdictDto = { removedSignUps: RemovedSignUpsDto[] };
+/**
+ * Le verdict de la déprogrammation d'une partie : `removedSignUps` vide si elle n'a aucun inscrit
+ * actif.
+ */
+export type UnscheduleVerdictDto = DrawErasureDto & { removedSignUps: RemovedSignUpsDto[] };
 
 export type ScheduleGameBody = { scenarioId: string; timeSlotId: string; tableId: string };
 

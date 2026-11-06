@@ -3,6 +3,7 @@ import { DOCUMENT } from '@angular/common';
 import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import {
   scheduleEndpoints,
+  type DrawErasureDto,
   type GameDto,
   type MovePlacementDto,
   type PlacementDto,
@@ -28,9 +29,10 @@ export type DropTarget = ({ kind: 'cell'; gameId: string | null } & Place) | { k
 /**
  * Un dépôt sur une cible valide. `removedSignUps` : les inscriptions que le verdict de la case,
  * lu au début du geste, dit retirées (IN-6) ; aucune pour un scénario, ni pour le bac, dont le
- * verdict se lit au dépôt.
+ * verdict se lit au dépôt. `erasedDrawTimeSlotId` : le créneau dont ce même verdict dit le tirage
+ * provisoire effacé (TI-6), ou `null`, toujours pour le bac.
  */
-export type Drop = {
+export type Drop = DrawErasureDto & {
   subject: DragSubject;
   target: DropTarget;
   removedSignUps: readonly RemovedSignUpsDto[];
@@ -166,18 +168,21 @@ export class ScheduleDrag {
   /**
    * Lâche l'élément sur la cible survolée. Sur une cible valide, l'aperçu ne revient pas à sa place
    * d'origine : l'élément prendra sa nouvelle place à la fin du geste (`end()`), avec les
-   * inscriptions que le verdict de la case dit retirées. Ailleurs, il y revient.
+   * inscriptions que le verdict de la case dit retirées, et le tirage qu'il dit effacé. Ailleurs, il
+   * y revient.
    */
   release() {
     const subject = this.subject();
     const target = this.hovered();
     const state = target ? this.stateOf(target) : IDLE;
     const removedSignUps = target?.kind === 'cell' ? this.listRemovedSignUpsAt(target) : [];
+    const erasedDrawTimeSlotId =
+      (target?.kind === 'cell' && this.findVerdictAt(target)?.erasedDrawTimeSlotId) || null;
     this.subject.set(null);
     this.hovered.set(null);
     this.landing = null;
     if (!subject || !target || state.kind !== 'valid') return;
-    this.landing = { subject, target, removedSignUps };
+    this.landing = { subject, target, removedSignUps, erasedDrawTimeSlotId };
     document.querySelector('.cdk-drag-preview')?.classList.add('landing');
   }
 

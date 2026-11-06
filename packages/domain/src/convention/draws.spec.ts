@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Notification } from '../notification.js';
 import { Refusal } from '../refusal.js';
 import { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Scenario, type Duration } from '../scenario/scenario.js';
@@ -1637,3 +1638,222 @@ function stateOfConvention(convention: Convention) {
     presenceCode: convention.presenceCode,
   };
 }
+
+describe('Gestes de programmation sur un créneau en tirage (TI-6, IN-6)', () => {
+  /** Les scénarios du catalogue, et d (MJ Ysolde) et e (MJ Orso), de 3 à 5 places. */
+  const PROGRAMMING_CATALOGUE = ScenarioCatalogue.restore([
+    ...CATALOGUE.listEntries(),
+    { id: 'd', gameMasterId: 'g3', duration: 1, minSeats: 3, maxSeats: 5 },
+    { id: 'e', gameMasterId: 'g4', duration: 1, minSeats: 3, maxSeats: 5 },
+  ]);
+
+  /**
+   * Celle d'`aConvention()`, avec les tables t3 et t4, et les MJ Ysolde (g3) et Orso (g4),
+   * disponibles sur les trois créneaux, comme Brann pour le créneau 3. « orage » (d, MJ Ysolde) est
+   * au créneau 1, table 3. Élodie et Lune sont inscrites à « épice », Zéphyr à « brumes ». Le tirage
+   * du créneau 1 est lancé, chacun sur sa partie.
+   */
+  function aDrawingConvention(): Convention {
+    const convention = aConvention();
+    convention.addTable('t3', 'Table 3');
+    convention.addTable('t4', 'Table 4');
+    convention.addGameMaster('g3', 'p-g3', 'Ysolde');
+    convention.addGameMaster('g4', 'p-g4', 'Orso');
+    for (const slot of ['s1', 's2', 's3']) {
+      convention.declareGameMasterAvailability('g3', slot);
+      convention.declareGameMasterAvailability('g4', slot);
+    }
+    convention.declareGameMasterAvailability('g1', 's3');
+    convention.scheduleScenario('orage', aScenario('d', 'g3'), 's1', 't3');
+    convention.signUpForGame('p1', 'epice', PROGRAMMING_CATALOGUE);
+    convention.signUpForGame('p2', 'epice', PROGRAMMING_CATALOGUE);
+    convention.signUpForGame('p3', 'brumes', PROGRAMMING_CATALOGUE);
+    convention.launchDraw('s1', PROGRAMMING_CATALOGUE, FIRST_GAME, RANDOM);
+    return convention;
+  }
+
+  const KEPT = ['p1 epice', 'p2 epice', 'p3 brumes'];
+  const ASSIGNED = ['p3 brumes', 'p1 epice', 'p2 epice'];
+  const signUpsOf = (convention: Convention) =>
+    convention.signUps.map(({ participantId, gameId }) => `${participantId} ${gameId}`);
+
+  describe('effacent le tirage provisoire et rouvrent les inscriptions', () => {
+    it('programmer sur le créneau', () => {
+      const convention = aDrawingConvention();
+
+      convention.scheduleScenario('foret', aScenario('e', 'g4'), 's1', 't4');
+
+      expect(convention.draws).toEqual([]);
+      expect(stateOf(convention, 's1')).toBe('sign-ups-open');
+      expect(signUpsOf(convention)).toEqual(KEPT);
+    });
+
+    it('déplacer une partie vers le créneau', () => {
+      const convention = aDrawingConvention();
+      convention.scheduleScenario('foret', aScenario('e', 'g4'), 's3', 't1');
+      expect(assignmentsOf(convention, 's1')).toEqual(ASSIGNED);
+
+      convention.moveGame('foret', 's1', 't4');
+
+      expect(convention.draws).toEqual([]);
+    });
+
+    it('déplacer une partie hors du créneau, puis IN-6 : ses inscrits la perdent, et restent sans partie', () => {
+      const convention = aDrawingConvention();
+
+      convention.moveGame('brumes', 's3', 't1');
+
+      expect(convention.draws).toEqual([]);
+      expect(signUpsOf(convention)).toEqual(['p1 epice', 'p2 epice']);
+      expect(convention.participantsWithoutGame).toEqual([new ParticipantWithoutGame('p3', 's1')]);
+    });
+
+    it('échanger deux parties de créneaux différents, dont l’une y commence', () => {
+      const convention = aDrawingConvention();
+
+      convention.swapGames('brumes', 'neons');
+
+      expect(convention.draws).toEqual([]);
+    });
+
+    it('déprogrammer une de ses parties', () => {
+      const convention = aDrawingConvention();
+
+      convention.unscheduleGame('orage');
+
+      expect(convention.draws).toEqual([]);
+    });
+
+    it('avec ses parties annulées : leur MJ mène de nouveau', () => {
+      const convention = aDrawingConvention();
+      convention.cancelGame('brumes', PROGRAMMING_CATALOGUE);
+
+      convention.unscheduleGame('orage');
+
+      expect(convention.draws).toEqual([]);
+      expect(convention.computeParticipantSituation('p-g1').timeSlots[0]!.ledGameId).toBe('brumes');
+    });
+  });
+
+  describe('gardent le tirage : les joueurs suivent leur partie', () => {
+    it('changer de table dans le créneau', () => {
+      const convention = aDrawingConvention();
+
+      convention.moveGame('brumes', 's1', 't4');
+
+      expect(stateOf(convention, 's1')).toBe('drawing');
+      expect(assignmentsOf(convention, 's1')).toEqual(ASSIGNED);
+    });
+
+    it('échanger deux parties du créneau', () => {
+      const convention = aDrawingConvention();
+
+      convention.swapGames('brumes', 'orage');
+
+      expect(assignmentsOf(convention, 's1')).toEqual(ASSIGNED);
+    });
+
+    it('un geste sur d’autres créneaux', () => {
+      const convention = aDrawingConvention();
+
+      convention.scheduleScenario('foret', aScenario('e', 'g4'), 's3', 't1');
+      convention.moveGame('foret', 's3', 't2');
+
+      expect(assignmentsOf(convention, 's1')).toEqual(ASSIGNED);
+    });
+  });
+
+  describe('notifications : « Les inscriptions du créneau sont rouvertes » (NO-2)', () => {
+    const reopenedOf = (notifications: Notification[]) =>
+      notifications.map(({ code, params }) => `${code} ${'reopened' in params && params.reopened}`);
+
+    it('« nouvelle partie » et « tu mènes » sur le créneau rouvert', () => {
+      expect(
+        reopenedOf(
+          aDrawingConvention().scheduleScenario('foret', aScenario('e', 'g4'), 's1', 't4'),
+        ),
+      ).toEqual(['new-game true', 'own-game-scheduled false']);
+    });
+
+    it('« partie retirée du programme » à ses inscrits et à son MJ', () => {
+      expect(reopenedOf(aDrawingConvention().unscheduleGame('brumes'))).toEqual([
+        'game-unscheduled true',
+        'own-game-unscheduled true',
+      ]);
+    });
+
+    it('« partie déplacée » hors du créneau rouvert, ou vers lui', () => {
+      expect(reopenedOf(aDrawingConvention().moveGame('brumes', 's3', 't1'))).toEqual([
+        'game-moved true',
+        'new-game false',
+        'own-game-scheduled false',
+      ]);
+      const convention = aDrawingConvention();
+      convention.scheduleScenario('foret', aScenario('e', 'g4'), 's3', 't1');
+      convention.reopenSignUps('s1');
+      convention.withdrawFromGame('p3', 'brumes');
+      convention.signUpForGame('p3', 'foret', PROGRAMMING_CATALOGUE);
+      convention.launchDraw('s1', PROGRAMMING_CATALOGUE, FIRST_GAME, RANDOM);
+      expect(reopenedOf(convention.moveGame('foret', 's1', 't4'))).toEqual([
+        'game-moved true',
+        'new-game true',
+        'own-game-scheduled false',
+      ]);
+    });
+
+    it('rien de tel sur un créneau sans tirage', () => {
+      expect(
+        reopenedOf(
+          aDrawingConvention().scheduleScenario('foret', aScenario('e', 'g4'), 's3', 't1'),
+        ),
+      ).toEqual(['new-game false', 'own-game-scheduled false']);
+    });
+  });
+
+  describe('verdicts : le créneau dont le geste effacerait le tirage', () => {
+    it('programmer', () => {
+      const convention = aDrawingConvention();
+      const erasedAt = (timeSlotId: string, tableId: string) =>
+        convention
+          .computePlacementVerdicts(aScenario('e', 'g4'))
+          .find((verdict) => verdict.timeSlotId === timeSlotId && verdict.tableId === tableId)
+          ?.erasedDrawTimeSlotId;
+
+      expect(erasedAt('s1', 't4')).toBe('s1');
+      expect(erasedAt('s3', 't1')).toBeNull();
+      // Une case refusée n'efface rien : la table 1 est prise.
+      expect(erasedAt('s1', 't1')).toBeNull();
+    });
+
+    it('programmer sur une case', () => {
+      const verdicts = aDrawingConvention().computeCellPlacementVerdicts(
+        PROGRAMMING_CATALOGUE,
+        's1',
+        't4',
+      );
+
+      expect(verdicts.find(({ scenarioId }) => scenarioId === 'e')?.erasedDrawTimeSlotId).toBe(
+        's1',
+      );
+    });
+
+    it('déplacer ou échanger', () => {
+      const verdicts = aDrawingConvention().computeMoveVerdicts('brumes');
+      const erasedAt = (timeSlotId: string, tableId: string) =>
+        verdicts.find((verdict) => verdict.timeSlotId === timeSlotId && verdict.tableId === tableId)
+          ?.erasedDrawTimeSlotId;
+
+      expect(erasedAt('s1', 't4')).toBeNull();
+      expect(erasedAt('s1', 't3')).toBeNull();
+      expect(erasedAt('s3', 't1')).toBe('s1');
+      expect(erasedAt('s2', 't1')).toBe('s1');
+    });
+
+    it('déprogrammer', () => {
+      const convention = aDrawingConvention();
+
+      expect(convention.computeUnscheduleVerdict('orage').erasedDrawTimeSlotId).toBe('s1');
+      expect(convention.computeUnscheduleVerdict('neons').erasedDrawTimeSlotId).toBeNull();
+    });
+  });
+});

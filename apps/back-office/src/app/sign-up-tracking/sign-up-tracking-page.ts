@@ -58,7 +58,9 @@ import { Confirmation, type Consequence } from '../ui/confirmation';
 import { EmptyState } from '../ui/empty-state';
 import { Gauge } from '../ui/gauge';
 import { Icon } from '../ui/icon';
+import { MoreMenu, type MoreMenuItem } from '../ui/more-menu';
 import { DrawPlan, type DrawnGame, type ParticipantMove } from './draw-plan';
+import { ReserveScheduling } from './reserve-scheduling-dialog';
 import { TrackedGameSignUps } from './tracked-game-sign-ups';
 import { rowIdOf, TrackedGamesPanel } from './tracked-games-panel';
 import {
@@ -137,6 +139,7 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
     Gauge,
     Icon,
     Loadable,
+    MoreMenu,
     PageHeader,
     RouterLink,
     Tab,
@@ -229,12 +232,14 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                         <button type="button" appButton="secondary" (click)="rerun(slot)">
                           <app-icon name="rotate-ccw" />Relancer le tirage
                         </button>
-                        <button type="button" appButton="secondary" (click)="reopenSignUps(slot)">
-                          <app-icon name="lock-open" />Rouvrir les inscriptions
-                        </button>
                         <button type="button" appButton="primary" (click)="publish(slot)">
                           Publier le tirage
                         </button>
+                        <app-more-menu
+                          label="Autres actions sur le créneau"
+                          [items]="drawingMenu"
+                          (selected)="onDrawingMenu($event, slot)"
+                        />
                       </div>
                     }
                   </div>
@@ -758,6 +763,7 @@ export class SignUpTrackingPage {
   private readonly apiCall = injectApiCall();
   private readonly placements = inject(Placements);
   private readonly cellPlacements = inject(CellPlacements);
+  private readonly reserveScheduling = inject(ReserveScheduling);
   private readonly announcer = inject(Announcer);
   private readonly gestures = inject(RemovedSignUpsGestures);
   private readonly injector = inject(Injector);
@@ -924,6 +930,41 @@ export class SignUpTrackingPage {
       if (outcome.status !== 'done') return;
     }
     this.announcer.announce(fr`Tirage du créneau ${slot.rank} relancé.`);
+    this.tracking.reload();
+  }
+
+  /** Le menu « ⋯ » d'un créneau en tirage provisoire. */
+  protected readonly drawingMenu: readonly MoreMenuItem[] = [
+    { value: 'schedule-from-reserve', label: 'Programmer depuis la réserve…' },
+    { value: 'reopen-sign-ups', label: 'Rouvrir les inscriptions', danger: true },
+  ];
+
+  protected onDrawingMenu(value: string, slot: TimeSlotTrackingDto) {
+    if (value === 'schedule-from-reserve') void this.scheduleFromReserve(slot);
+    else if (value === 'reopen-sign-ups') void this.reopenSignUps(slot);
+  }
+
+  /**
+   * Programme une partie de plus sur le créneau en tirage (TI-6) : la réserve du créneau, une table
+   * libre, puis la confirmation rouge, le tirage provisoire étant effacé. Le résumé et les onglets
+   * du suivi reviennent, le focus va au titre du résumé, et la région `aria-live` l'annonce.
+   */
+  protected async scheduleFromReserve(slot: TimeSlotTrackingDto) {
+    const { timeSlots, reserve, tables, games } = this.value()!;
+    const known = new Set(games.map(({ id }) => id));
+    const schedule = await this.reserveScheduling.scheduleFromReserve({
+      timeSlot: slot,
+      timeSlots,
+      reserve,
+      tables,
+    });
+    // Fermé sans geste, le dialogue a pu essuyer un refus périmé : le suivi se relit aussi.
+    const game = schedule?.games.find(({ id }) => !known.has(id));
+    if (game) {
+      this.announcer.announce(describeScheduledGame(game, [slot], tables));
+      this.selectedTab.set('games');
+      this.focusAfterReading.set('summary-title');
+    }
     this.tracking.reload();
   }
 

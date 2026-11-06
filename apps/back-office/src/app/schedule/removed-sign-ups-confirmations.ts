@@ -1,5 +1,12 @@
 import { computed, type Signal } from '@angular/core';
-import type { GameDto, RemovedSignUpsDto } from '@chimeres/contract';
+import type {
+  DrawErasureDto,
+  GameDto,
+  RemovedSignUpsDto,
+  ScheduleScenarioDto,
+  TableDto,
+  UnscheduleVerdictDto,
+} from '@chimeres/contract';
 import { countOf, formatCount, formatTimeSlotRanks, fr, plural } from '@chimeres/design';
 import type { ConfirmationRequest } from '../ui/confirmation';
 import type { GridTimeSlot } from './grid-time-slot';
@@ -21,20 +28,25 @@ type SignUpFigures = Pick<RemovedSignUpsDto, 'signUpCount' | 'withoutOtherSignUp
 export type CurrentSignUpFigures = (gameId: string) => SignUpFigures | undefined;
 
 /**
- * La confirmation d'une déprogrammation qui retire des inscriptions (IN-6, NO-2) :
- * « Déprogrammer « Néons » du créneau 2 ? ».
+ * La confirmation d'une déprogrammation qui retire des inscriptions (IN-6, NO-2), ou qui efface
+ * le tirage provisoire de son créneau (TI-6) : « Déprogrammer « Néons » du créneau 2 ? » ;
+ * `undefined` si le verdict ne dit ni l'un ni l'autre : le geste s'écrit aussitôt.
  */
 export function buildUnscheduleConfirmation(
   game: GameDto,
-  removed: RemovedSignUpsDto,
+  { removedSignUps: [removed], erasedDrawTimeSlotId }: UnscheduleVerdictDto,
   timeSlots: readonly GridTimeSlot[],
   current?: CurrentSignUpFigures,
-): ConfirmationTexts {
+): ConfirmationTexts | undefined {
+  if (!removed && !erasedDrawTimeSlotId) return undefined;
   return {
     question: fr`Déprogrammer « ${game.scenario.title} » ${ofRanks(ranksOf(game.timeSlotIds, timeSlots))} ?`,
     consequences: followFigures(current, (figuresOf) => [
-      ...describeRemovedSignUps(figuresOf(removed), theGame(game, timeSlots)),
-      fr`Le scénario revient en réserve, sans ses inscriptions.`,
+      ...(removed ? describeRemovedSignUps(figuresOf(removed), theGame(game, timeSlots)) : []),
+      ...describeErasedDraw(erasedDrawTimeSlotId, timeSlots),
+      removed
+        ? fr`Le scénario revient en réserve, sans ses inscriptions.`
+        : fr`Le scénario revient en réserve.`,
     ]),
     confirmLabel: 'Déprogrammer la partie',
   };
@@ -43,23 +55,70 @@ export function buildUnscheduleConfirmation(
 /**
  * La confirmation du déplacement de la partie sur la case de `timeSlotId`, ou de son échange avec
  * `otherGameId` (une partie du programme `games`), d'après les inscriptions que le verdict de la
- * case dit retirées ; `undefined` s'il n'en retire aucune : le geste s'écrit aussitôt. Avec
- * `current`, les chiffres du dialogue ouvert suivent ceux des mêmes parties.
+ * case dit retirées et le tirage provisoire qu'il dit effacé ; `undefined` s'il ne dit ni l'un ni
+ * l'autre : le geste s'écrit aussitôt. Avec `current`, les chiffres du dialogue ouvert suivent ceux
+ * des mêmes parties.
  */
 export function buildMoveOrSwapConfirmation(
   game: GameDto,
   timeSlotId: string,
   otherGameId: string | null,
   removed: readonly RemovedSignUpsDto[],
+  { erasedDrawTimeSlotId }: DrawErasureDto,
   games: readonly GameDto[],
   timeSlots: readonly GridTimeSlot[],
   current?: CurrentSignUpFigures,
 ): ConfirmationTexts | undefined {
-  const [first] = removed;
-  if (!first) return undefined;
-  if (!otherGameId) return buildMoveConfirmation(game, timeSlotId, first, timeSlots, current);
+  if (!removed.length && !erasedDrawTimeSlotId) return undefined;
+  const erasedDraw = describeErasedDraw(erasedDrawTimeSlotId, timeSlots);
+  if (!otherGameId) {
+    return buildMoveConfirmation(game, timeSlotId, removed[0], erasedDraw, timeSlots, current);
+  }
   const other = games.find(({ id }) => id === otherGameId);
-  return buildSwapConfirmation(game, other, removed, timeSlots, current);
+  return buildSwapConfirmation(game, other, removed, erasedDraw, timeSlots, current);
+}
+
+/**
+ * La confirmation de programmer le scénario sur la case, si son verdict dit qu'elle efface le
+ * tirage provisoire d'un créneau (TI-6) ; `undefined` sinon : le geste s'écrit aussitôt.
+ */
+export function buildScheduleConfirmation(
+  scenario: ScheduleScenarioDto,
+  timeSlotId: string,
+  table: TableDto,
+  { erasedDrawTimeSlotId }: DrawErasureDto,
+  timeSlots: readonly GridTimeSlot[],
+): ConfirmationTexts | undefined {
+  if (!erasedDrawTimeSlotId) return undefined;
+  return {
+    question: buildScheduleQuestion(scenario, ranksOf([timeSlotId], timeSlots)[0] ?? 0, table),
+    consequences: describeErasedDraw(erasedDrawTimeSlotId, timeSlots),
+    confirmLabel: 'Programmer la partie',
+  };
+}
+
+/** « Programmer « Néons » sur le créneau 2, Licorne ? » */
+export function buildScheduleQuestion(
+  scenario: Pick<ScheduleScenarioDto, 'title'>,
+  rank: number,
+  table: Pick<TableDto, 'name'>,
+): string {
+  return fr`Programmer « ${scenario.title} » sur le créneau ${rank}, ${table.name} ?`;
+}
+
+/**
+ * « Le tirage provisoire du créneau 2 sera effacé, avec ses déplacements et ses parties annulées, et
+ * ses inscriptions rouvertes. » (TI-6), ou rien sans tirage effacé.
+ */
+function describeErasedDraw(
+  erasedDrawTimeSlotId: string | null,
+  timeSlots: readonly GridTimeSlot[],
+): string[] {
+  if (!erasedDrawTimeSlotId) return [];
+  const [rank] = ranksOf([erasedDrawTimeSlotId], timeSlots);
+  return [
+    fr`Le tirage provisoire du créneau ${rank} sera effacé, avec ses déplacements et ses parties annulées. Les inscriptions sur ce créneau seront rouvertes.`,
+  ];
 }
 
 /**
@@ -74,13 +133,15 @@ function followFigures(
 }
 
 /**
- * La confirmation d'un déplacement sur un autre créneau qui retire des inscriptions :
- * « Déplacer « Néons » sur le créneau 3 ? ». `timeSlotId` : son nouveau premier créneau.
+ * La confirmation d'un déplacement sur un autre créneau qui retire des inscriptions, ou efface un
+ * tirage provisoire (`erasedDraw`, ses paragraphes) : « Déplacer « Néons » sur le créneau 3 ? ».
+ * `timeSlotId` : son nouveau premier créneau.
  */
 function buildMoveConfirmation(
   game: GameDto,
   timeSlotId: string,
-  removed: RemovedSignUpsDto,
+  removed: RemovedSignUpsDto | undefined,
+  erasedDraw: readonly string[],
   timeSlots: readonly GridTimeSlot[],
   current: CurrentSignUpFigures | undefined,
 ): ConfirmationTexts {
@@ -88,22 +149,25 @@ function buildMoveConfirmation(
   const target = timeSlots.slice(first, first + game.timeSlotIds.length).map(({ rank }) => rank);
   return {
     question: fr`Déplacer « ${game.scenario.title} » ${onRanks(target)} ?`,
-    consequences: followFigures(current, (figuresOf) =>
-      describeRemovedSignUps(figuresOf(removed), theGame(game, timeSlots)),
-    ),
+    consequences: followFigures(current, (figuresOf) => [
+      ...(removed ? describeRemovedSignUps(figuresOf(removed), theGame(game, timeSlots)) : []),
+      ...erasedDraw,
+    ]),
     confirmLabel: 'Déplacer la partie',
   };
 }
 
 /**
  * La confirmation d'un échange entre deux créneaux qui retire des inscriptions : les phrases de
- * chaque partie touchée, « Il y a 12 inscrits à « Néons » (créneau 2). ». `other` manque si le
- * programme lu ne la connaît plus : la question ne nomme alors que la partie déplacée.
+ * chaque partie touchée, « Il y a 12 inscrits à « Néons » (créneau 2). », puis celles du tirage
+ * provisoire effacé (`erasedDraw`). `other` manque si le programme lu ne la connaît plus : la
+ * question ne nomme alors que la partie déplacée.
  */
 function buildSwapConfirmation(
   game: GameDto,
   other: GameDto | undefined,
   removed: readonly RemovedSignUpsDto[],
+  erasedDraw: readonly string[],
   timeSlots: readonly GridTimeSlot[],
   current: CurrentSignUpFigures | undefined,
 ): ConfirmationTexts {
@@ -111,8 +175,8 @@ function buildSwapConfirmation(
     question: other
       ? fr`Échanger « ${game.scenario.title} » et « ${other.scenario.title} » ?`
       : fr`Échanger « ${game.scenario.title} » avec l'autre partie ?`,
-    consequences: followFigures(current, (figuresOf) =>
-      removed.flatMap((each) => {
+    consequences: followFigures(current, (figuresOf) => [
+      ...removed.flatMap((each) => {
         const touched = [game, other].find((candidate) => candidate?.id === each.gameId);
         if (!touched) return describeRemovedSignUps(figuresOf(each), "l'autre partie");
         const ranks = formatTimeSlotRanks(ranksOf(touched.timeSlotIds, timeSlots));
@@ -121,7 +185,8 @@ function buildSwapConfirmation(
           fr`« ${touched.scenario.title} » (${ranks})`,
         );
       }),
-    ),
+      ...erasedDraw,
+    ]),
     confirmLabel: 'Échanger les parties',
   };
 }

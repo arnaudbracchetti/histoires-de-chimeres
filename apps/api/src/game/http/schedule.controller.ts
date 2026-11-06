@@ -119,7 +119,7 @@ export class ScheduleController {
     return toDto(await this.readSchedule.execute());
   }
 
-  /** Les inscriptions que la déprogrammation de la partie retirerait. */
+  /** Les inscriptions que la déprogrammation de la partie retirerait, et le tirage qu'elle effacerait. */
   @Get(scheduleEndpoints.unscheduleVerdict.path)
   async unscheduleVerdict(
     @Param('gameId') gameId: string,
@@ -137,12 +137,12 @@ export class ScheduleController {
   }
 }
 
-function toPlacementDto({ timeSlotId, tableId, refusal }: Placement) {
-  return { timeSlotId, tableId, refusal: refusal && verdictOf(refusal) };
+function toPlacementDto({ timeSlotId, tableId, refusal, erasedDrawTimeSlotId }: Placement) {
+  return { timeSlotId, tableId, refusal: refusal && verdictOf(refusal), erasedDrawTimeSlotId };
 }
 
-function toCellPlacementDto({ scenario, refusal }: ScenarioCellPlacement) {
-  return { scenario, refusal: refusal && verdictOf(refusal) };
+function toCellPlacementDto({ scenario, refusal, erasedDrawTimeSlotId }: ScenarioCellPlacement) {
+  return { scenario, refusal: refusal && verdictOf(refusal), erasedDrawTimeSlotId };
 }
 
 function toMovePlacementDto({ swapWith, removedSignUps, ...placement }: MovePlacement) {

@@ -114,7 +114,13 @@ describe('Notifications d’une partie programmée (NO-2)', () => {
     expect(notifications).toEqual([
       {
         code: 'new-game',
-        params: { gameId: 'songe', scenarioId: 'd', ranks: [2], tableName: 'Table 3' },
+        params: {
+          gameId: 'songe',
+          scenarioId: 'd',
+          ranks: [2],
+          tableName: 'Table 3',
+          reopened: false,
+        },
         recipients: { kind: 'everyone-except', participantIds: ['p-g1', 'p-g2', 'p-g3'] },
         deadline: endOfDay('16:30'),
       },
@@ -178,19 +184,19 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
     expect(notifications).toEqual([
       {
         code: 'game-unscheduled',
-        params: { scenarioId: 'a', ranks: [1], withoutGame: false },
+        params: { scenarioId: 'a', ranks: [1], withoutGame: false, reopened: false },
         recipients: { kind: 'participants', participantIds: ['p2'] },
         deadline: endOfDay('11:30'),
       },
       {
         code: 'game-unscheduled',
-        params: { scenarioId: 'a', ranks: [1], withoutGame: true },
+        params: { scenarioId: 'a', ranks: [1], withoutGame: true, reopened: false },
         recipients: { kind: 'participants', participantIds: ['p1'] },
         deadline: endOfDay('11:30'),
       },
       {
         code: 'own-game-unscheduled',
-        params: { scenarioId: 'a', ranks: [1] },
+        params: { scenarioId: 'a', ranks: [1], reopened: false },
         recipients: { kind: 'participants', participantIds: ['p-g1'] },
         deadline: endOfDay('11:30'),
       },
@@ -203,7 +209,12 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
 
     const [toSignedUp] = convention.unscheduleGame('epice');
 
-    expect(toSignedUp?.params).toEqual({ scenarioId: 'b', ranks: [1, 2], withoutGame: true });
+    expect(toSignedUp?.params).toEqual({
+      scenarioId: 'b',
+      ranks: [1, 2],
+      withoutGame: true,
+      reopened: false,
+    });
     expect(toSignedUp?.deadline).toEqual(endOfDay('16:30'));
   });
 
@@ -214,7 +225,12 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
 
     const [toSignedUp] = convention.unscheduleGame('epice');
 
-    expect(toSignedUp?.params).toEqual({ scenarioId: 'b', ranks: [1, 2], withoutGame: false });
+    expect(toSignedUp?.params).toEqual({
+      scenarioId: 'b',
+      ranks: [1, 2],
+      withoutGame: false,
+      reopened: false,
+    });
   });
 
   it('sans inscrit, seul le MJ est prévenu', () => {
@@ -266,6 +282,7 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
           fromRanks: [1],
           toRanks: [3],
           withoutGame: true,
+          reopened: false,
         },
         recipients: { kind: 'participants', participantIds: ['p1'] },
         deadline: endOfDay('20:30'),
@@ -286,6 +303,7 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
       fromRanks: [2],
       toRanks: [1],
       withoutGame: true,
+      reopened: false,
     });
     expect(moved?.deadline).toEqual(endOfDay('16:30'));
   });
@@ -304,7 +322,13 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
     expect(filterByCode(notifications, 'new-game')).toEqual([
       {
         code: 'new-game',
-        params: { gameId: 'brumes', scenarioId: 'a', ranks: [3], tableName: 'Table 2' },
+        params: {
+          gameId: 'brumes',
+          scenarioId: 'a',
+          ranks: [3],
+          tableName: 'Table 2',
+          reopened: false,
+        },
         recipients: { kind: 'everyone-except', participantIds: ['p-g1', 'p1'] },
         deadline: endOfDay('20:30'),
       },
@@ -371,6 +395,7 @@ describe('Notifications de deux parties échangées (NO-2)', () => {
           fromRanks: [1],
           toRanks: [2],
           withoutGame: true,
+          reopened: false,
         },
         recipients: { kind: 'participants', participantIds: ['p1'] },
       },
@@ -382,6 +407,7 @@ describe('Notifications de deux parties échangées (NO-2)', () => {
           fromRanks: [2],
           toRanks: [1],
           withoutGame: true,
+          reopened: false,
         },
         recipients: { kind: 'participants', participantIds: ['p1', 'p2'] },
       },

@@ -300,8 +300,12 @@ describe('Inscriptions retirées par un geste (IN-6)', () => {
 
     expect(convention.computeUnscheduleVerdict('epice')).toEqual({
       removedSignUps: [{ gameId: 'epice', signUpCount: 2, withoutOtherSignUpCount: 1 }],
+      erasedDrawTimeSlotId: null,
     });
-    expect(convention.computeUnscheduleVerdict('neons')).toEqual({ removedSignUps: [] });
+    expect(convention.computeUnscheduleVerdict('neons')).toEqual({
+      removedSignUps: [],
+      erasedDrawTimeSlotId: null,
+    });
   });
 
   it('les inscriptions d’un MJ qui mène sur le créneau ne comptent pas (IN-4)', () => {
@@ -315,6 +319,7 @@ describe('Inscriptions retirées par un geste (IN-6)', () => {
 
     expect(convention.computeUnscheduleVerdict('epice')).toEqual({
       removedSignUps: [{ gameId: 'epice', signUpCount: 1, withoutOtherSignUpCount: 1 }],
+      erasedDrawTimeSlotId: null,
     });
     convention.addTimeSlot('s3', at('18:00'), at('20:30'));
     convention.declareGameMasterAvailability('g2', 's3');

@@ -28,6 +28,7 @@ import { Button } from '../ui/button';
 import { Confirmation } from '../ui/confirmation';
 import {
   buildMoveOrSwapConfirmation,
+  buildScheduleConfirmation,
   type ConfirmationTexts,
   type CurrentSignUpFigures,
 } from './removed-sign-ups-confirmations';
@@ -75,7 +76,8 @@ let nextId = 0;
  * « Choisir », « Échanger » sur la première case d'une autre partie, ou éteinte avec le motif de
  * son verdict ; le front ne recalcule jamais PR-5. Choisir programme ou déplace la partie, Échanger
  * échange les deux parties, et le dialogue se ferme sur le programme relu. Un geste dont le verdict
- * retire des inscriptions (IN-6) demande d'abord une confirmation ; les cases n'en disent rien.
+ * retire des inscriptions (IN-6), ou efface un tirage provisoire (TI-6), demande d'abord une
+ * confirmation ; les cases n'en disent rien.
  */
 @Component({
   selector: 'app-placement-dialog',
@@ -244,12 +246,14 @@ export class PlacementDialog {
     const place = { timeSlotId: slot.id, tableId: table.id };
     const request = this.request;
     if (!('game' in request)) {
-      const outcome = await this.gesture.run(() =>
-        this.apiCall(scheduleEndpoints.schedule, {
-          body: { scenarioId: request.scenario.id, ...place },
-        }),
+      await this.write(
+        () =>
+          this.apiCall(scheduleEndpoints.schedule, {
+            body: { scenarioId: request.scenario.id, ...place },
+          }),
+        null,
+        buildScheduleConfirmation(request.scenario, slot.id, table, verdict, request.timeSlots),
       );
-      this.conclude(outcome, null);
       return;
     }
     const { game, games, timeSlots, currentSignUpFigures } = request;
@@ -261,6 +265,7 @@ export class PlacementDialog {
         slot.id,
         null,
         verdict.removedSignUps ?? [],
+        verdict,
         games,
         timeSlots,
         currentSignUpFigures,
@@ -284,6 +289,7 @@ export class PlacementDialog {
         verdict.timeSlotId,
         otherGameId,
         verdict.removedSignUps ?? [],
+        verdict,
         games,
         timeSlots,
         currentSignUpFigures,
@@ -292,7 +298,7 @@ export class PlacementDialog {
   }
 
   /**
-   * Écrit le déplacement ou l'échange : aussitôt, ou par le dialogue de confirmation de `texts`,
+   * Écrit la programmation, le déplacement ou l'échange : aussitôt, ou par le dialogue de confirmation de `texts`,
    * qui affiche son refus. Un refus périmé relit la grille ; « Annuler » n'écrit rien, et le
    * dialogue de placement reste ouvert.
    */

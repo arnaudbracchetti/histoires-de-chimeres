@@ -2,6 +2,7 @@ export { ComparableName } from './comparable-name.js';
 export {
   Convention,
   type CellPlacement,
+  type DrawErasure,
   type ConventionState,
   type Identification,
   type IdentityConfirmation,

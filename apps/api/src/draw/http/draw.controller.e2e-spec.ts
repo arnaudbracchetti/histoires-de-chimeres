@@ -19,6 +19,7 @@ import {
   type FrontOfficeScheduleDto,
   type GameMasterDto,
   type ParticipantSituationDto,
+  type PlacementDto,
   type ScenarioDto,
   type ScheduleDto,
   type SignUpTrackingDto,
@@ -281,6 +282,65 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
 
     expect((await tracking()).timeSlots[0]).toMatchObject({ state: 'sign-ups-open', draw: null });
     await signUp(neons, await linkedPhone('Sven'));
+  });
+
+  it('programmer sur un créneau en tirage efface le tirage, que le verdict annonce (TI-6)', async () => {
+    await start();
+    const neons = await scheduled((await gameMaster('Élodie')).id, 'Néons', 'Table 10');
+    await signUp(neons, await linkedPhone('Lune'));
+    await server()
+      .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+      .expect(204);
+    const sven = await gameMaster('Sven');
+    const scenario = (
+      await server()
+        .post(apiUrl(scenarioEndpoints.propose, { gameMasterId: sven.id }))
+        .send({
+          title: 'Brumes',
+          system: 'Cthulhu',
+          presentation: 'Une enquête.',
+          contentWarnings: '',
+          seats: { min: 2, max: 4 },
+          duration: 1,
+        })
+        .expect(201)
+    ).body as ScenarioDto;
+
+    const placements = (
+      await server()
+        .get(apiUrl(scheduleEndpoints.placements, { scenarioId: scenario.id }))
+        .expect(200)
+    ).body as PlacementDto[];
+    expect(
+      placements.find(
+        (placement) => placement.timeSlotId === slot(1) && placement.tableId === table('Table 2'),
+      ),
+    ).toMatchObject({ refusal: null, erasedDrawTimeSlotId: slot(1) });
+
+    await server()
+      .post(apiUrl(scheduleEndpoints.schedule))
+      .send({ scenarioId: scenario.id, timeSlotId: slot(1), tableId: table('Table 2') })
+      .expect(201);
+
+    expect((await tracking()).timeSlots[0]).toMatchObject({ state: 'sign-ups-open', draw: null });
+  });
+
+  it('changer de table dans un créneau en tirage garde le tirage : le joueur suit sa partie', async () => {
+    await start();
+    const neons = await scheduled((await gameMaster('Élodie')).id, 'Néons', 'Table 10');
+    await signUp(neons, await linkedPhone('Lune'));
+    await server()
+      .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+      .expect(204);
+
+    await server()
+      .put(apiUrl(scheduleEndpoints.move, { gameId: neons }))
+      .send({ timeSlotId: slot(1), tableId: table('Table 2') })
+      .expect(200);
+
+    const first = (await tracking()).timeSlots[0]!;
+    expect(first.state).toBe('drawing');
+    expect(first.draw?.assignments).toMatchObject([{ nickname: 'Lune', gameId: neons }]);
   });
 
   it('refuse de relancer ou de rouvrir un tirage pas lancé, en français', async () => {

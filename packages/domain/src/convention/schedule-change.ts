@@ -25,6 +25,7 @@ export type ScheduleChangeCollaborators = {
   /** Les inscriptions d'après le geste, avec ce qu'elles lisent dans le Programme d'après. */
   nextSignUps: SignUps;
   nextSignUpCollaborators: SignUpCollaborators;
+  /** L'état de chaque créneau avant le geste : un tirage provisoire qu'il efface rouvre le créneau. */
   getTimeSlotState(timeSlotId: string): TimeSlotState;
 };
 
@@ -65,6 +66,23 @@ export class ScheduleChange {
   }
 
   /**
+   * Les premiers créneaux dont le geste change les parties (TI-6) : celui d'une partie déprogrammée,
+   * l'ancien et le nouveau d'une partie passée sur d'autres créneaux, celui d'une nouvelle partie.
+   * Un changement de table, ou un échange sur un même créneau, n'en fait pas partie. Sans doublon.
+   */
+  listTimeSlotIdsWithChangedGames(): string[] {
+    return [
+      ...new Set([
+        ...this.listUnscheduledGames().map(getFirstTimeSlotId),
+        ...this.listGamesMovedToOtherTimeSlots().map(({ previous }) =>
+          getFirstTimeSlotId(previous),
+        ),
+        ...this.listGamesOnNewTimeSlots().map(getFirstTimeSlotId),
+      ]),
+    ];
+  }
+
+  /**
    * « Partie retirée du programme » aux inscrits actifs de chaque partie déprogrammée (IN-4, IN-6),
    * jusqu'à la fin de son dernier créneau (NO-3) : une pour ceux qui deviennent sans partie sur son
    * premier créneau (`withoutGame`), une pour les autres. Rien sans inscrit.
@@ -84,6 +102,7 @@ export class ScheduleChange {
           scenarioId: game.scenarioId,
           ranks: day.getTimeSlotRanks(game.timeSlotIds),
           withoutGame,
+          reopened: isTimeSlotDrawingBeforeChange(game, collaborators),
         },
         recipients: buildParticipantRecipients(participantIds),
         deadline: day.computeEndOfTimeSlots(date, game.timeSlotIds),
@@ -96,14 +115,17 @@ export class ScheduleChange {
    * dernier créneau (NO-3). Son inscription à sa propre partie n'est pas active (IN-4) : il ne
    * reçoit que celle-ci (NO-1).
    */
-  private buildOwnGameUnscheduledNotifications({
-    day,
-    date,
-    participants,
-  }: ScheduleChangeCollaborators): Notification[] {
+  private buildOwnGameUnscheduledNotifications(
+    collaborators: ScheduleChangeCollaborators,
+  ): Notification[] {
+    const { day, date, participants } = collaborators;
     return this.listUnscheduledGames().map((game): Notification => ({
       code: 'own-game-unscheduled',
-      params: { scenarioId: game.scenarioId, ranks: day.getTimeSlotRanks(game.timeSlotIds) },
+      params: {
+        scenarioId: game.scenarioId,
+        ranks: day.getTimeSlotRanks(game.timeSlotIds),
+        reopened: isTimeSlotDrawingBeforeChange(game, collaborators),
+      },
       recipients: buildParticipantRecipients([getGameMasterParticipantId(game, participants)]),
       deadline: day.computeEndOfTimeSlots(date, game.timeSlotIds),
     }));
@@ -130,6 +152,9 @@ export class ScheduleChange {
           fromRanks: day.getTimeSlotRanks(previous.timeSlotIds),
           toRanks: day.getTimeSlotRanks(next.timeSlotIds),
           withoutGame,
+          reopened:
+            isTimeSlotDrawingBeforeChange(previous, collaborators) ||
+            isTimeSlotDrawingBeforeChange(next, collaborators),
         },
         recipients: buildParticipantRecipients(participantIds),
         deadline: day.computeEndOfTimeSlots(date, [...previous.timeSlotIds, ...next.timeSlotIds]),
@@ -146,8 +171,9 @@ export class ScheduleChange {
    */
   private buildNewGameNotifications(
     moreSpecificRecipients: readonly string[],
-    { day, date, tables, participants, getTimeSlotState }: ScheduleChangeCollaborators,
+    collaborators: ScheduleChangeCollaborators,
   ): Notification[] {
+    const { day, date, tables, participants, getTimeSlotState } = collaborators;
     return this.listGamesOnNewTimeSlots()
       .filter((game) => getTimeSlotState(game.timeSlotIds[0]!) !== 'published')
       .map((game): Notification => ({
@@ -157,6 +183,7 @@ export class ScheduleChange {
           scenarioId: game.scenarioId,
           ranks: day.getTimeSlotRanks(game.timeSlotIds),
           tableName: getTableName(game, tables),
+          reopened: isTimeSlotDrawingBeforeChange(game, collaborators),
         },
         recipients: {
           kind: 'everyone-except',
@@ -254,6 +281,19 @@ function splitByWithoutGame(
     { participantIds: signedUp.filter((id) => !isWithoutGame(id)), withoutGame: false },
     { participantIds: signedUp.filter(isWithoutGame), withoutGame: true },
   ].filter(({ participantIds }) => participantIds.length);
+}
+
+/** Le créneau de la partie, son premier (TI-3). */
+function getFirstTimeSlotId(game: Game): string {
+  return game.timeSlotIds[0]!;
+}
+
+/** Le créneau de la partie était en tirage provisoire : le geste en efface le tirage (TI-6). */
+function isTimeSlotDrawingBeforeChange(
+  game: Game,
+  { getTimeSlotState }: ScheduleChangeCollaborators,
+): boolean {
+  return getTimeSlotState(getFirstTimeSlotId(game)) === 'drawing';
 }
 
 /** Le participant du MJ de la partie (ADR 0012). */

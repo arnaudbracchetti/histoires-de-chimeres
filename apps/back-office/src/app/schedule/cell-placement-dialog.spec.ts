@@ -37,8 +37,8 @@ const scenario = (id: string, title: string, nickname = 'Kaïros'): ScheduleScen
 
 /** Dans l'ordre de l'API : les programmables d'abord. */
 const PLACEMENTS: CellPlacementDto[] = [
-  { scenario: scenario('a', 'Abysses'), refusal: null },
-  { scenario: scenario('b', 'Brumes'), refusal: null },
+  { scenario: scenario('a', 'Abysses'), refusal: null, erasedDrawTimeSlotId: null },
+  { scenario: scenario('b', 'Brumes'), refusal: null, erasedDrawTimeSlotId: null },
   {
     scenario: scenario('c', 'Cendres', 'Élodie'),
     refusal: {
@@ -46,6 +46,7 @@ const PLACEMENTS: CellPlacementDto[] = [
       title: 'MJ indisponible',
       detail: "Élodie n'est pas disponible sur le créneau 2.",
     },
+    erasedDrawTimeSlotId: null,
   },
 ];
 

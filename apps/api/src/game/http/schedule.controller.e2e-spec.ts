@@ -440,8 +440,9 @@ describe('Programme', () => {
           detail:
             'La table «\u00a0Table 1\u00a0» accueille déjà une partie sur le créneau 1\u00a0: choisis une autre table.',
         },
+        erasedDrawTimeSlotId: null,
       },
-      { timeSlotId: slot(1), tableId: table('Table 2'), refusal: null },
+      { timeSlotId: slot(1), tableId: table('Table 2'), refusal: null, erasedDrawTimeSlotId: null },
       {
         timeSlotId: slot(2),
         tableId: table('Table 1'),
@@ -449,11 +450,13 @@ describe('Programme', () => {
           code: 'game-master-unavailable',
           title: 'MJ indisponible',
         }),
+        erasedDrawTimeSlotId: null,
       },
       {
         timeSlotId: slot(2),
         tableId: table('Table 2'),
         refusal: expect.objectContaining({ code: 'game-master-unavailable' }),
+        erasedDrawTimeSlotId: null,
       },
     ]);
     await placements(UNKNOWN_ID).expect(404);
@@ -476,8 +479,13 @@ describe('Programme', () => {
           gameMaster: expect.objectContaining({ nickname: 'Élodie' }),
         }),
         refusal: null,
+        erasedDrawTimeSlotId: null,
       },
-      { scenario: expect.objectContaining({ title: 'Ruines' }), refusal: null },
+      {
+        scenario: expect.objectContaining({ title: 'Ruines' }),
+        refusal: null,
+        erasedDrawTimeSlotId: null,
+      },
       {
         scenario: expect.objectContaining({ title: 'Brumes' }),
         refusal: {
@@ -485,6 +493,7 @@ describe('Programme', () => {
           title: 'MJ indisponible',
           detail: expect.stringContaining('Kaïros'),
         },
+        erasedDrawTimeSlotId: null,
       },
     ]);
     // « Néons » commence déjà sur le créneau 1 : il n'y figure pas.
@@ -919,7 +928,10 @@ describe('Programme', () => {
         const response = await server()
           .get(apiUrl(scheduleEndpoints.unscheduleVerdict, { gameId: neonsGameId }))
           .expect(200);
-        expect(response.body as UnscheduleVerdictDto).toEqual({ removedSignUps: removed });
+        expect(response.body as UnscheduleVerdictDto).toEqual({
+          removedSignUps: removed,
+          erasedDrawTimeSlotId: null,
+        });
       });
 
       it('deux parties échangées entre deux créneaux perdent leurs inscriptions (IN-6)', async () => {

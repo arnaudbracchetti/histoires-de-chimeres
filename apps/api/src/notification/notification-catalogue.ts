@@ -41,16 +41,16 @@ type Writer<P> = P extends { scenarioId: string }
 export const notificationCatalogue: {
   [C in NotificationCode]: Writer<NotificationParams[C]>;
 } = {
-  'game-unscheduled': ({ ranks, withoutGame }, { title }) => ({
-    ...buildGameUnscheduledText(ranks, title, withoutGame),
+  'game-unscheduled': ({ ranks, withoutGame, reopened }, { title }) => ({
+    ...buildGameUnscheduledText(ranks, title, withoutGame, reopened),
     url: frontOfficeUrls.timeSlotGames(ranks[0]!),
   }),
-  'own-game-unscheduled': ({ ranks }, { title }) => ({
-    ...buildOwnGameUnscheduledText(ranks, title),
+  'own-game-unscheduled': ({ ranks, reopened }, { title }) => ({
+    ...buildOwnGameUnscheduledText(ranks, title, reopened),
     url: frontOfficeUrls.timeSlotGames(ranks[0]!),
   }),
-  'game-moved': ({ gameId, fromRanks, toRanks, withoutGame }, { title }) => ({
-    ...buildGameMovedText(fromRanks, toRanks, title, withoutGame),
+  'game-moved': ({ gameId, fromRanks, toRanks, withoutGame, reopened }, { title }) => ({
+    ...buildGameMovedText(fromRanks, toRanks, title, withoutGame, reopened),
     url: frontOfficeUrls.game(gameId),
   }),
   'game-oversubscribed': ({ rank }, { title }) => ({
@@ -59,8 +59,8 @@ export const notificationCatalogue: {
     // Un `Topic` tient en 32 caractères base64url.
     replacement: { tag: `oversubscribed-${rank}`, renotify: true },
   }),
-  'new-game': ({ gameId, ranks, tableName }, { title, system }) => ({
-    ...buildNewGameText(ranks, { title, system, tableName }),
+  'new-game': ({ gameId, ranks, tableName, reopened }, { title, system }) => ({
+    ...buildNewGameText(ranks, { title, system, tableName }, reopened),
     url: frontOfficeUrls.game(gameId),
     replacement: { tag: `new-game-${ranks[0]!}`, renotify: false },
   }),

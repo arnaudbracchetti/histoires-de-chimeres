@@ -1093,6 +1093,20 @@ describe('ParticipantData', () => {
       ]);
     });
 
+    it('dit que les inscriptions du créneau en tirage sont rouvertes (TI-6)', async () => {
+      await opened(
+        schedule([brumes, neons]),
+        now,
+        situation(['Brumes'], { ...open('s1'), state: 'drawing' }),
+      );
+
+      await rereadWith(schedule([neons]), situation());
+
+      expect(changeAlerts().map(({ detail }) => detail)).toEqual([
+        `Brumes est retirée${NBSP}: ton inscription est supprimée. Les inscriptions du créneau sont rouvertes.`,
+      ]);
+    });
+
     it('signale une inscription retirée par le déplacement de sa partie sur un autre créneau (IN-6)', async () => {
       await opened(schedule([brumes]), now, situation(['Brumes']));
 

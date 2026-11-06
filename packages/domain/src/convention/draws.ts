@@ -13,6 +13,7 @@ import type {
   RandomSource,
 } from './draw-algorithm.js';
 import type { Schedule } from './schedule.js';
+import type { ScheduleChange } from './schedule-change.js';
 import type { SignUpCollaborators, SignUps } from './sign-ups.js';
 
 /**
@@ -114,6 +115,26 @@ export class Draws {
   getDrawsAfterReopeningSignUps(timeSlotId: string, day: Day): Draws {
     this.verifyDrawProvisional(timeSlotId, day);
     return new Draws(this.draws.filter((draw) => draw.timeSlotId !== timeSlotId));
+  }
+
+  /**
+   * Les Tirages après un changement du Programme (TI-6) : le tirage provisoire d'un créneau dont le
+   * changement modifie les parties est effacé, annulations comprises, et ses inscriptions rouvrent.
+   * Un changement de table ou un échange sur le même créneau le garde : les joueurs suivent leur
+   * partie. Un tirage publié reste.
+   */
+  getDrawsAfterChangingSchedule(change: ScheduleChange): Draws {
+    const erased = new Set(this.listProvisionalTimeSlotIdsErasedBy(change));
+    if (!erased.size) return this;
+    return new Draws(this.draws.filter((draw) => !erased.has(draw.timeSlotId)));
+  }
+
+  /**
+   * Le créneau dont le changement du Programme effacerait le tirage provisoire, ou `null`. Les
+   * tirages se lancent dans l'ordre de la journée : un seul est provisoire à la fois.
+   */
+  findProvisionalTimeSlotIdErasedBy(change: ScheduleChange): string | null {
+    return this.listProvisionalTimeSlotIdsErasedBy(change)[0] ?? null;
   }
 
   /**
@@ -259,6 +280,13 @@ export class Draws {
     if (!draw) throw new Refusal('draw-not-launched', { rank });
     if (draw.published) throw new Refusal('draw-published', { rank });
     return draw;
+  }
+
+  /** Les créneaux en tirage provisoire dont le changement du Programme modifie les parties. */
+  private listProvisionalTimeSlotIdsErasedBy(change: ScheduleChange): string[] {
+    return change
+      .listTimeSlotIdsWithChangedGames()
+      .filter((timeSlotId) => this.getTimeSlotState(timeSlotId) === 'drawing');
   }
 
   /** Les Tirages, ce tirage à la place de celui de son créneau. */

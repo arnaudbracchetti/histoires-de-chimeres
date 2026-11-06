@@ -8,15 +8,23 @@ import type { LocalMoment } from './convention/local-moment.js';
 export type NotificationParams = {
   /**
    * Aux inscrits d'une partie déprogrammée : leur inscription est supprimée (IN-6). `withoutGame` :
-   * ils deviennent sans partie sur son premier créneau.
+   * ils deviennent sans partie sur son premier créneau. `reopened` : le geste a effacé le tirage
+   * provisoire de ce créneau, dont les inscriptions rouvrent (TI-6) ; de même pour les codes qui
+   * suivent.
    */
-  'game-unscheduled': { scenarioId: string; ranks: number[]; withoutGame: boolean };
+  'game-unscheduled': {
+    scenarioId: string;
+    ranks: number[];
+    withoutGame: boolean;
+    reopened: boolean;
+  };
   /** Au MJ d'une partie déprogrammée : il peut s'inscrire sur ce créneau. */
-  'own-game-unscheduled': { scenarioId: string; ranks: number[] };
+  'own-game-unscheduled': { scenarioId: string; ranks: number[]; reopened: boolean };
   /**
    * Aux inscrits d'une partie passée à d'autres créneaux : leur inscription est retirée (IN-6).
    * `fromRanks` : ses anciens créneaux ; `toRanks` : les nouveaux. `withoutGame` : ils deviennent
-   * sans partie sur son ancien premier créneau.
+   * sans partie sur son ancien premier créneau. `reopened` : l'ancien ou le nouveau premier
+   * créneau était en tirage provisoire.
    */
   'game-moved': {
     gameId: string;
@@ -24,6 +32,7 @@ export type NotificationParams = {
     fromRanks: number[];
     toRanks: number[];
     withoutGame: boolean;
+    reopened: boolean;
   };
   /**
    * Aux inscrits d'une partie passée au-dessus de ses places maximum, dont c'est la seule
@@ -34,7 +43,13 @@ export type NotificationParams = {
    * À tous ceux qui peuvent s'inscrire sur les créneaux d'une partie programmée ou déplacée, avant
    * leur publication. `tableName` : le nom de sa table.
    */
-  'new-game': { gameId: string; scenarioId: string; ranks: number[]; tableName: string };
+  'new-game': {
+    gameId: string;
+    scenarioId: string;
+    ranks: number[];
+    tableName: string;
+    reopened: boolean;
+  };
   /**
    * Au MJ d'une partie programmée, ou déplacée sur d'autres créneaux. `start` et `end` (`HH:MM`) :
    * le début de son premier créneau et la fin du dernier.

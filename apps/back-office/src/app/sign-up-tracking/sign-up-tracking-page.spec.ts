@@ -7,6 +7,7 @@ import {
   drawEndpoints,
   scheduleEndpoints,
   signUpTrackingEndpoints,
+  type PlacementDto,
   type ProblemDto,
   type RemovedSignUpsDto,
   type ReserveScenarioDto,
@@ -282,6 +283,20 @@ const text = (element: Element | null | undefined) => {
     .trim();
 };
 
+/** Le bouton « ⋯ » du créneau en tirage, nommé par son `aria-label`, ou `null`. */
+const moreMenuOf = (host: HTMLElement) =>
+  host.querySelector<HTMLButtonElement>('button[aria-label="Autres actions sur le créneau"]');
+
+/** Ouvre « ⋯ » du créneau en tirage, et y choisit l'entrée `name`. */
+async function chooseInMenu(host: HTMLElement, settle: () => Promise<void>, name: string) {
+  moreMenuOf(host)!.click();
+  await settle();
+  [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+    .find((item) => text(item) === name)!
+    .click();
+  await settle();
+}
+
 describe('Pilotage du jour J', () => {
   /** Le dialogue de placement, qui a sa propre spec : il rend ce que le test lui fait rendre. */
   let moveTo: ReturnType<typeof vi.fn<(request: MoveRequest) => Promise<Placed | undefined>>>;
@@ -349,7 +364,7 @@ describe('Pilotage du jour J', () => {
       await fixture.whenStable();
       http
         .expectOne(apiUrl(scheduleEndpoints.unscheduleVerdict, { gameId: 'p1' }))
-        .flush({ removedSignUps });
+        .flush({ removedSignUps, erasedDrawTimeSlotId: null });
       await settle();
     };
     const dialog = () => document.querySelector<HTMLElement>('[role="alertdialog"]');
@@ -551,7 +566,7 @@ describe('Pilotage du jour J', () => {
       const { summary, button } = await render(DRAWING);
 
       expect(text(summary())).toBe(
-        "Créneau 2 · 13 h 00 – 15 h 30 Relancer le tirage Rouvrir les inscriptions Publier le tirage Tirage provisoire 19 / 26 placés 7 non placés 4 / 5 parties au minimum Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication.",
+        "Créneau 2 · 13 h 00 – 15 h 30 Relancer le tirage Publier le tirage Programmer depuis la réserve… Rouvrir les inscriptions Tirage provisoire 19 / 26 placés 7 non placés 4 / 5 parties au minimum Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication.",
       );
       expect(button('Lancer le tirage')).toBeUndefined();
     });
@@ -766,13 +781,11 @@ describe('Pilotage du jour J', () => {
       );
     });
 
-    it('« Rouvrir les inscriptions » : confirmation rouge, puis le résumé et les onglets reviennent', async () => {
-      const { http, button, dialog, settle, reread, tabs } = await render(DRAWING);
+    it('« ⋯ » puis « Rouvrir les inscriptions » : confirmation rouge, puis le résumé et les onglets reviennent', async () => {
+      const { http, host, button, dialog, settle, reread, tabs } = await render(DRAWING);
       const announce = vi.spyOn(TestBed.inject(Announcer), 'announce');
 
-      expect(button('Rouvrir les inscriptions')!.classList).toContain('secondary');
-      button('Rouvrir les inscriptions')!.click();
-      await settle();
+      await chooseInMenu(host, settle, 'Rouvrir les inscriptions');
 
       expect(text(dialog()?.querySelector('h2'))).toBe('Rouvrir les inscriptions du créneau 2 ?');
       expect([...dialog()!.querySelectorAll('p')].map((paragraph) => text(paragraph))).toEqual([
@@ -797,15 +810,124 @@ describe('Pilotage du jour J', () => {
     });
 
     it('n’offre ni relance ni réouverture sur un créneau ouvert ou publié', async () => {
-      const { fixture, tiles, button } = await render(DRAWING);
+      const { fixture, host, tiles, button } = await render(DRAWING);
 
       for (const tile of [0, 2]) {
         tiles()[tile]!.click();
         fixture.detectChanges();
 
         expect(button('Relancer le tirage')).toBeUndefined();
-        expect(button('Rouvrir les inscriptions')).toBeUndefined();
+        expect(moreMenuOf(host)).toBeNull();
       }
+    });
+  });
+
+  describe('programmer depuis la réserve un créneau en tirage (TI-6)', () => {
+    /** Le créneau 2 en tirage provisoire, avec sa réserve. */
+    const DRAWING_WITH_RESERVE: SignUpTrackingDto = {
+      ...DRAWING,
+      timeSlots: DRAWING.timeSlots.map((slot) =>
+        slot.id === 's2' ? { ...slot, reserve: RESERVE_OF_SLOT_2 } : slot,
+      ),
+    };
+    /** Les verdicts de « Cendres » : Phénix libre au créneau 2, dont le tirage serait effacé. */
+    const CENDRES_PLACEMENTS: PlacementDto[] = TRACKING.tables.flatMap((table) =>
+      ['s1', 's2', 's3'].map((timeSlotId) =>
+        timeSlotId === 's2' && table.id === 't3'
+          ? { timeSlotId, tableId: table.id, refusal: null, erasedDrawTimeSlotId: 's2' }
+          : {
+              timeSlotId,
+              tableId: table.id,
+              refusal: { code: 'table-taken', title: 'Table prise', detail: 'Table prise.' },
+              erasedDrawTimeSlotId: null,
+            },
+      ),
+    );
+    const placementDialog = () =>
+      document.querySelector<HTMLElement>('app-reserve-scheduling-dialog');
+
+    it('ouvre la réserve du créneau, puis ses tables libres, puis la confirmation rouge', async () => {
+      const { http, host, dialog, settle, reread } = await render(DRAWING_WITH_RESERVE);
+      const announce = vi.spyOn(TestBed.inject(Announcer), 'announce');
+
+      await chooseInMenu(host, settle, 'Programmer depuis la réserve…');
+
+      expect(text(placementDialog()?.querySelector('h2'))).toBe(
+        'Programmer depuis la réserve du créneau 2',
+      );
+      const cards = [...placementDialog()!.querySelectorAll('app-reserve-scenario-card')];
+      expect(cards.map((card) => text(card.querySelector('h3')))).toEqual([
+        'Abysses',
+        'Cendres',
+        'Aube',
+      ]);
+      cards[1]!.querySelector('button')!.click();
+      // Pas de `whenStable()` avant de servir les verdicts : leur lecture garde l'application instable.
+      await new Promise((resolve) => setTimeout(resolve));
+      TestBed.tick();
+      http
+        .expectOne(apiUrl(scheduleEndpoints.placements, { scenarioId: 'r2' }))
+        .flush(CENDRES_PLACEMENTS);
+      await settle();
+
+      expect(text(placementDialog()?.querySelector('h2'))).toBe(
+        'Programmer « Cendres » sur le créneau 2',
+      );
+      const tables = [...placementDialog()!.querySelectorAll('ul button')];
+      expect(tables.map((table) => text(table))).toEqual(['Programmer sur Phénix']);
+      expect(document.activeElement).toBe(tables[0]);
+      (tables[0] as HTMLButtonElement).click();
+      await settle();
+
+      expect([...dialog()!.querySelectorAll('h2, p')].map((element) => text(element))).toEqual([
+        'Programmer « Cendres » sur le créneau 2, Phénix ?',
+        'Le tirage provisoire sera effacé, avec ses déplacements et ses parties annulées, et les inscriptions du créneau 2 rouvertes.',
+        "Tous ceux qui peuvent s'inscrire sur ce créneau reçoivent la notification « nouvelle partie », qui annonce la réouverture. Tu relanceras le tirage ensuite.",
+      ]);
+      const confirm = [...dialog()!.querySelectorAll('button')].find(
+        (candidate) => text(candidate) === 'Programmer la partie',
+      )!;
+      expect(confirm.classList).toContain('danger');
+      http.expectNone(apiUrl(scheduleEndpoints.schedule));
+      confirm.click();
+      const request = http.expectOne(apiUrl(scheduleEndpoints.schedule));
+      expect(request.request.body).toEqual({ scenarioId: 'r2', timeSlotId: 's2', tableId: 't3' });
+      const cendres = game('p9', 'Cendres', 't3', ['s2']);
+      request.flush({ games: [BRUMES, EPICE, NEONS, cendres], reserve: [] });
+      await reread({ ...TRACKING, games: [BRUMES, EPICE, NEONS, cendres] });
+
+      expect(placementDialog()).toBeNull();
+      expect(announce).toHaveBeenCalledWith(
+        `Partie «${NBSP}Cendres${NBSP}» programmée${NBSP}: créneau 2, Phénix.`,
+      );
+      expect(document.activeElement?.id).toBe('summary-title');
+    });
+
+    it('« Retour à la réserve » revient aux cartes, « Annuler » ferme sans rien écrire', async () => {
+      const { http, host, settle, reread } = await render(DRAWING_WITH_RESERVE);
+      await chooseInMenu(host, settle, 'Programmer depuis la réserve…');
+      placementDialog()!
+        .querySelectorAll('app-reserve-scenario-card')[1]!
+        .querySelector('button')!
+        .click();
+      // Pas de `whenStable()` avant de servir les verdicts : leur lecture garde l'application instable.
+      await new Promise((resolve) => setTimeout(resolve));
+      TestBed.tick();
+      http
+        .expectOne(apiUrl(scheduleEndpoints.placements, { scenarioId: 'r2' }))
+        .flush(CENDRES_PLACEMENTS);
+      await settle();
+
+      [...placementDialog()!.querySelectorAll('button')]
+        .find((candidate) => text(candidate) === 'Retour à la réserve')!
+        .click();
+      await settle();
+      expect(placementDialog()!.querySelectorAll('app-reserve-scenario-card')).toHaveLength(3);
+
+      placementDialog()!.querySelector<HTMLButtonElement>('.cancel')!.click();
+      await reread(DRAWING_WITH_RESERVE);
+      expect(placementDialog()).toBeNull();
+      http.expectNone(apiUrl(scheduleEndpoints.schedule));
     });
   });
 
@@ -956,7 +1078,7 @@ describe('Pilotage du jour J', () => {
     });
 
     it('résume un créneau publié : cadenas, chiffres, notifications parties, places restantes, sans geste', async () => {
-      const { fixture, summary, button, tiles } = await render(PUBLISHED);
+      const { fixture, host, summary, button, tiles } = await render(PUBLISHED);
       tiles()[1]!.click();
       fixture.detectChanges();
 
@@ -966,9 +1088,10 @@ describe('Pilotage du jour J', () => {
         'Créneau 2 · 13 h 00 – 15 h 30 Tirage publié 19 / 26 placés 7 non placés 4 / 5 parties au minimum Tirage publié : les participants et les MJ ont reçu leur notification, et le résultat ne change plus. Il reste de la place : Sphinx (3 places). Les non placés vont voir leur MJ.',
       );
       expect(summary()!.querySelector('.state.published app-icon')).not.toBeNull();
-      for (const name of ['Publier le tirage', 'Relancer le tirage', 'Rouvrir les inscriptions']) {
+      for (const name of ['Publier le tirage', 'Relancer le tirage']) {
         expect(button(name)).toBeUndefined();
       }
+      expect(moreMenuOf(host)).toBeNull();
     });
 
     it('ne dit rien des places quand il n’en reste pas', async () => {

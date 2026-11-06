@@ -459,18 +459,20 @@ export class Convention {
    */
   computePlacementVerdicts(scenario: Scenario): Placement[] {
     return this.day.timeSlots.flatMap((slot) =>
-      this.tables.map((table) => ({
-        timeSlotId: slot.id,
-        tableId: table.id,
-        refusal: this.extractRefusal(
-          this.getScheduleAfterSchedulingScenario(
-            HYPOTHETICAL_GAME_ID,
-            scenario,
-            slot.id,
-            table.id,
-          ),
-        ),
-      })),
+      this.tables.map((table) => {
+        const result = this.getScheduleAfterSchedulingScenario(
+          HYPOTHETICAL_GAME_ID,
+          scenario,
+          slot.id,
+          table.id,
+        );
+        return {
+          timeSlotId: slot.id,
+          tableId: table.id,
+          refusal: this.extractRefusal(result),
+          erasedDrawTimeSlotId: this.computeErasedDrawTimeSlotId(result),
+        };
+      }),
     );
   }
 
@@ -490,12 +492,19 @@ export class Convention {
     return catalogue
       .listEntries()
       .filter((entry) => !starting.some((game) => game.scenarioId === entry.id))
-      .map((entry) => ({
-        scenarioId: entry.id,
-        refusal: this.extractRefusal(
-          this.getScheduleAfterSchedulingScenario(HYPOTHETICAL_GAME_ID, entry, timeSlotId, tableId),
-        ),
-      }));
+      .map((entry) => {
+        const result = this.getScheduleAfterSchedulingScenario(
+          HYPOTHETICAL_GAME_ID,
+          entry,
+          timeSlotId,
+          tableId,
+        );
+        return {
+          scenarioId: entry.id,
+          refusal: this.extractRefusal(result),
+          erasedDrawTimeSlotId: this.computeErasedDrawTimeSlotId(result),
+        };
+      });
   }
 
   /**
@@ -518,18 +527,22 @@ export class Convention {
           tableId: table.id,
           swapWith: other?.id ?? null,
           refusal: this.extractRefusal(result),
+          erasedDrawTimeSlotId: this.computeErasedDrawTimeSlotId(result),
           removedSignUps: this.computeRemovedSignUps(result),
         };
       }),
     );
   }
 
-  /** Le verdict de `unscheduleGame()` : les inscriptions qu'il retirerait (IN-6). */
+  /**
+   * Le verdict de `unscheduleGame()` : les inscriptions qu'il retirerait (IN-6), et le créneau dont
+   * il effacerait le tirage provisoire (TI-6).
+   */
   computeUnscheduleVerdict(gameId: string): UnscheduleVerdict {
+    const next = this.gameSchedule.getScheduleAfterUnschedulingGame(gameId);
     return {
-      removedSignUps: this.computeRemovedSignUps(
-        this.gameSchedule.getScheduleAfterUnschedulingGame(gameId),
-      ),
+      removedSignUps: this.computeRemovedSignUps(next),
+      erasedDrawTimeSlotId: this.computeErasedDrawTimeSlotId(next),
     };
   }
 
@@ -989,19 +1002,24 @@ export class Convention {
   }
 
   /**
-   * Remplace le Programme, et rend les notifications du changement (`ScheduleChange`). Une partie
-   * déprogrammée, ou qui passe sur d'autres créneaux, perd ses inscriptions ; changer de table les
-   * garde (IN-6). Les notifications lisent les inscriptions d'avant, que le remplacement efface, et
-   * celles d'après, qui disent qui devient sans partie.
+   * Remplace le Programme, et rend les notifications du changement (`ScheduleChange`). Le tirage
+   * provisoire d'un créneau dont les parties changent est d'abord effacé, annulations comprises
+   * (TI-6) ; IN-6 s'applique ensuite : une partie déprogrammée, ou qui passe sur d'autres créneaux,
+   * perd ses inscriptions ; changer de table les garde. Les notifications lisent les inscriptions
+   * d'avant, que le remplacement efface, celles d'après, qui disent qui devient sans partie, et
+   * l'état des créneaux d'avant, qui dit lesquels rouvrent.
    */
   private replaceScheduleAndBuildNotifications(next: Schedule): Notification[] {
+    const change = new ScheduleChange(this.gameSchedule, next);
+    const previousDraws = this.allDraws;
+    this.allDraws = previousDraws.getDrawsAfterChangingSchedule(change);
     const previousSignUpCollaborators = this.buildSignUpCollaborators(this.gameSchedule);
     const nextSignUpCollaborators = this.buildSignUpCollaborators(next);
     const nextSignUps = this.allSignUps.getSignUpsAfterChangingSchedule(
       previousSignUpCollaborators,
       nextSignUpCollaborators,
     );
-    const notifications = new ScheduleChange(this.gameSchedule, next).buildNotifications({
+    const notifications = change.buildNotifications({
       day: this.day,
       date: this.state.date,
       tables: this.allTables,
@@ -1010,7 +1028,7 @@ export class Convention {
       previousSignUpCollaborators,
       nextSignUps,
       nextSignUpCollaborators,
-      getTimeSlotState: (timeSlotId) => this.getTimeSlotState(timeSlotId),
+      getTimeSlotState: (timeSlotId) => previousDraws.getTimeSlotState(timeSlotId),
     });
     this.allSignUps = nextSignUps;
     this.gameSchedule = next;
@@ -1029,6 +1047,17 @@ export class Convention {
     return this.allSignUps.computeRemovedSignUpsAfterChangingSchedule(
       next,
       this.buildSignUpCollaborators(this.gameSchedule),
+    );
+  }
+
+  /**
+   * Le créneau dont le passage au Programme d'après effacerait le tirage provisoire (TI-6), ou
+   * `null` ; aucun pour un geste refusé.
+   */
+  private computeErasedDrawTimeSlotId(next: Schedule | Refusal): string | null {
+    if (next instanceof Refusal) return null;
+    return this.allDraws.findProvisionalTimeSlotIdErasedBy(
+      new ScheduleChange(this.gameSchedule, next),
     );
   }
 
@@ -1090,11 +1119,21 @@ export type ParticipantSituation = {
   }[];
 };
 
+/**
+ * Ce que dit en plus le verdict d'un geste de programmation : le créneau dont il effacerait le
+ * tirage provisoire (TI-6), ou `null`, toujours pour un geste refusé.
+ */
+export type DrawErasure = { erasedDrawTimeSlotId: string | null };
+
 /** Le verdict d'une case créneau × table pour un scénario : le refus d'écriture, ou `null`. */
-export type Placement = { timeSlotId: string; tableId: string; refusal: Refusal | null };
+export type Placement = DrawErasure & {
+  timeSlotId: string;
+  tableId: string;
+  refusal: Refusal | null;
+};
 
 /** Le verdict d'une case pour un scénario : le refus d'écriture, ou `null`. */
-export type CellPlacement = { scenarioId: string; refusal: Refusal | null };
+export type CellPlacement = DrawErasure & { scenarioId: string; refusal: Refusal | null };
 
 /**
  * Le verdict d'une case créneau × table pour déplacer une partie : `swapWith`, l'id de la partie
@@ -1106,8 +1145,11 @@ export type MovePlacement = Placement & {
   removedSignUps: RemovedSignUps[];
 };
 
-/** Le verdict de la déprogrammation d'une partie : les inscriptions qu'elle retirerait. */
-export type UnscheduleVerdict = { removedSignUps: RemovedSignUps[] };
+/**
+ * Le verdict de la déprogrammation d'une partie : les inscriptions qu'elle retirerait, et le
+ * tirage provisoire qu'elle effacerait.
+ */
+export type UnscheduleVerdict = DrawErasure & { removedSignUps: RemovedSignUps[] };
 
 /** Le verdict de retrait d'une disponibilité : le refus d'écriture, ou `null`. */
 export type WithdrawalVerdict = { timeSlotId: string; refusal: Refusal | null };

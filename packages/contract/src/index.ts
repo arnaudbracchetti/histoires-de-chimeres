@@ -77,6 +77,7 @@ export {
   scheduleEndpoints,
   type CellParams,
   type CellPlacementDto,
+  type DrawErasureDto,
   type GameDto,
   type GameParams,
   type MoveGameBody,

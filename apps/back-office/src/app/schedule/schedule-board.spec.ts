@@ -99,19 +99,27 @@ describe('ScheduleBoard', () => {
       await settle();
     };
     const unschedule = async () => {
-      await askUnschedule({ removedSignUps: [] });
+      await askUnschedule({ removedSignUps: [], erasedDrawTimeSlotId: null });
       return http.expectOne(apiUrl(scheduleEndpoints.unschedule, { gameId: 'p1' }));
     };
     const dialog = () => document.querySelector<HTMLElement>('[role="alertdialog"]');
     const dialogButton = (name: string) =>
       [...(dialog()?.querySelectorAll('button') ?? [])].find((b) => text(b) === name)!;
-    /** Lâche la partie sur une case de la frise, avec les inscriptions que son verdict dit retirées. */
-    const drop = async (target: Drop['target'], removedSignUps: Drop['removedSignUps'] = []) => {
+    /**
+     * Lâche la partie sur une case de la frise, avec les inscriptions que son verdict dit retirées,
+     * et le tirage qu'il dit effacé.
+     */
+    const drop = async (
+      target: Drop['target'],
+      removedSignUps: Drop['removedSignUps'] = [],
+      erasedDrawTimeSlotId: string | null = null,
+    ) => {
       const timeline = fixture.debugElement.query(By.directive(ScheduleTimeline));
       (timeline.componentInstance as ScheduleTimeline).dropped.emit({
         subject: { kind: 'game', game: GAME },
         target,
         removedSignUps,
+        erasedDrawTimeSlotId,
       });
       await fixture.whenStable();
     };
@@ -201,6 +209,7 @@ describe('ScheduleBoard', () => {
   describe('« Déprogrammer » une partie qui a des inscrits (IN-6, NO-2)', () => {
     const TWELVE: UnscheduleVerdictDto = {
       removedSignUps: [{ gameId: 'p1', signUpCount: 12, withoutOtherSignUpCount: 3 }],
+      erasedDrawTimeSlotId: null,
     };
 
     it('demande d’abord une confirmation, qui dit combien d’inscrits perdent leur inscription', async () => {
@@ -230,6 +239,7 @@ describe('ScheduleBoard', () => {
 
       await askUnschedule({
         removedSignUps: [{ gameId: 'p1', signUpCount: 1, withoutOtherSignUpCount: 1 }],
+        erasedDrawTimeSlotId: null,
       });
 
       expect([...dialog()!.querySelectorAll('p')].map(text)).toEqual([
@@ -476,7 +486,7 @@ describe('ScheduleBoard', () => {
         await drop({ kind: 'reserve' });
         http
           .expectOne(apiUrl(scheduleEndpoints.unscheduleVerdict, { gameId: 'p1' }))
-          .flush({ removedSignUps: TWELVE });
+          .flush({ removedSignUps: TWELVE, erasedDrawTimeSlotId: null });
         await settle();
 
         expect(text(dialog()!.querySelector('h2'))).toBe(
@@ -491,13 +501,41 @@ describe('ScheduleBoard', () => {
         expect(document.activeElement?.id).toBe('reserve-title');
       });
 
+      it('sur une case, un tirage effacé sans inscription retirée : confirmation rouge (TI-6)', async () => {
+        const { settle, drop, dialog, text } = await render(TWO_SLOTS);
+
+        await drop(toSlot2, [], 's1');
+        await settle();
+
+        expect([...dialog()!.querySelectorAll('h2, p')].map(text)).toEqual([
+          `Déplacer «${NBSP}Brumes${NBSP}» sur le créneau 2${THIN_NBSP}?`,
+          'Le tirage provisoire du créneau 1 sera effacé, avec ses déplacements et ses parties annulées. Les inscriptions sur ce créneau seront rouvertes.',
+        ]);
+      });
+
+      it('sur le bac, un tirage effacé sans inscrit : confirmation rouge (TI-6)', async () => {
+        const { http, settle, drop, dialog, text } = await render();
+
+        await drop({ kind: 'reserve' });
+        http
+          .expectOne(apiUrl(scheduleEndpoints.unscheduleVerdict, { gameId: 'p1' }))
+          .flush({ removedSignUps: [], erasedDrawTimeSlotId: 's1' });
+        await settle();
+
+        expect([...dialog()!.querySelectorAll('h2, p')].map(text)).toEqual([
+          `Déprogrammer «${NBSP}Brumes${NBSP}» du créneau 1${THIN_NBSP}?`,
+          'Le tirage provisoire du créneau 1 sera effacé, avec ses déplacements et ses parties annulées. Les inscriptions sur ce créneau seront rouvertes.',
+          'Le scénario revient en réserve.',
+        ]);
+      });
+
       it('sur le bac, sans inscrit : déprogramme aussitôt, sans dialogue', async () => {
         const { http, settle, drop, dialog } = await render();
 
         await drop({ kind: 'reserve' });
         http
           .expectOne(apiUrl(scheduleEndpoints.unscheduleVerdict, { gameId: 'p1' }))
-          .flush({ removedSignUps: [] });
+          .flush({ removedSignUps: [], erasedDrawTimeSlotId: null });
         await settle();
 
         expect(dialog()).toBeNull();

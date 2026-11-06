@@ -89,7 +89,11 @@ function ledGameChanges(before: Reading, after: Reading): ChangeNotice[] {
       const ranks = ranksOf(before.schedule, game);
       return [
         buildChangeNotice(
-          buildOwnGameUnscheduledText(ranks, game.title),
+          buildOwnGameUnscheduledText(
+            ranks,
+            game.title,
+            isTimeSlotReopenedBetween(game.timeSlotIds[0]!, before, after),
+          ),
           frontOfficeUrls.timeSlotGames(ranks[0]!),
         ),
       ];
@@ -130,8 +134,14 @@ function removedSignUps(
         ({ timeSlotId }) => timeSlotId === game.timeSlotIds[0],
       )?.withoutGame;
       const moved = findGame(after.schedule, gameId);
+      const reopened = isTimeSlotReopenedBetween(game.timeSlotIds[0]!, before, after);
       if (!moved) {
-        return [buildChangeNotice(buildGameUnscheduledText(ranks, game.title, withoutGame), see)];
+        return [
+          buildChangeNotice(
+            buildGameUnscheduledText(ranks, game.title, withoutGame, reopened),
+            see,
+          ),
+        ];
       }
       if (moved.timeSlotIds.join() === game.timeSlotIds.join()) return [];
       const text = buildGameMovedText(
@@ -139,9 +149,20 @@ function removedSignUps(
         ranksOf(after.schedule, moved),
         game.title,
         withoutGame,
+        reopened || isTimeSlotReopenedBetween(moved.timeSlotIds[0]!, before, after),
       );
       return [buildChangeNotice(text, see)];
     });
+}
+
+/**
+ * Le tirage provisoire du créneau a été effacé entre les deux lectures, et ses inscriptions
+ * rouvertes : un geste de programmation l'a fait (TI-6), le texte le dit comme la notification.
+ */
+function isTimeSlotReopenedBetween(timeSlotId: string, before: Reading, after: Reading): boolean {
+  const stateIn = ({ situation }: Reading) =>
+    situation.timeSlots.find((slot) => slot.timeSlotId === timeSlotId)?.state;
+  return stateIn(before) === 'drawing' && stateIn(after) === 'sign-ups-open';
 }
 
 function findGame(

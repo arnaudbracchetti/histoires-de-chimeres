@@ -12,7 +12,6 @@ import {
   scheduleEndpoints,
   type ConventionDto,
   type GameDto,
-  type RemovedSignUpsDto,
   type ScheduleDto,
   type ScheduleScenarioDto,
 } from '@chimeres/contract';
@@ -29,7 +28,10 @@ import {
   describeUnscheduledGame,
 } from './gesture-announcements';
 import { Placements } from './placement-dialog';
-import { buildMoveOrSwapConfirmation } from './removed-sign-ups-confirmations';
+import {
+  buildMoveOrSwapConfirmation,
+  buildScheduleConfirmation,
+} from './removed-sign-ups-confirmations';
 import { RemovedSignUpsGestures } from './removed-sign-ups-gestures';
 import { ReserveTray } from './reserve-tray';
 import {
@@ -218,16 +220,17 @@ export class ScheduleBoard {
 
   /**
    * Écrit un glisser-déposer : programmer, déplacer, échanger ou déprogrammer. Pendant l'écriture,
-   * et pendant la confirmation d'un geste qui retire des inscriptions, le programme montre son
-   * résultat, les parties concernées atténuées ; refusé ou annulé, il revient à son état. Pas
-   * d'annulation après coup : on refait le geste inverse.
+   * et pendant la confirmation d'un geste qui retire des inscriptions ou efface un tirage
+   * provisoire, le programme montre son résultat, les parties concernées atténuées ; refusé ou
+   * annulé, il revient à son état. Pas d'annulation après coup : on refait le geste inverse.
    */
-  protected async drop({ subject, target, removedSignUps }: Drop) {
+  protected async drop(drop: Drop) {
+    const { subject, target } = drop;
     const schedule = this.schedule.value();
     if (!schedule || this.dropping.running()) return;
     const known = this.gameIds();
     this.pending.set(this.pendingAfter(schedule.games, subject, target));
-    const written = await this.writeDrop(subject, target, removedSignUps, schedule.games);
+    const written = await this.writeDrop(drop, schedule.games);
     this.pending.set(null);
     if (!written) return;
     if (subject.kind === 'scenario') this.scheduled(written, known);
@@ -236,21 +239,34 @@ export class ScheduleBoard {
   }
 
   /**
-   * Écrit le dépôt, confirmé d'abord s'il retire des inscriptions : celles que le verdict de la case
-   * dit retirées (`removedSignUps`), ou celles de la déprogrammation, lues au dépôt dans le bac.
+   * Écrit le dépôt, confirmé d'abord s'il retire des inscriptions ou efface un tirage provisoire :
+   * ce que le verdict de la case en dit, ou celui de la déprogrammation, lu au dépôt dans le bac.
    * `games` : le programme d'avant le geste. Le programme relu, ou `undefined` sans écriture.
    */
   private async writeDrop(
-    subject: DragSubject,
-    target: DropTarget,
-    removedSignUps: readonly RemovedSignUpsDto[],
+    { subject, target, removedSignUps, erasedDrawTimeSlotId }: Drop,
     games: readonly GameDto[],
   ): Promise<ScheduleDto | undefined> {
     const write = () => this.callDrop(subject, target);
-    if (subject.kind === 'scenario')
-      return this.gestures.writeConfirmingIfAny(write, undefined, this.dropping, this.refresh);
-    const { game } = subject;
     const timeSlots = this.convention().timeSlots;
+    if (subject.kind === 'scenario') {
+      const table =
+        target.kind === 'cell'
+          ? this.convention().tables.find(({ id }) => id === target.tableId)
+          : undefined;
+      const texts =
+        target.kind === 'cell' && table
+          ? buildScheduleConfirmation(
+              subject.scenario,
+              target.timeSlotId,
+              table,
+              { erasedDrawTimeSlotId },
+              timeSlots,
+            )
+          : undefined;
+      return this.gestures.writeConfirmingIfAny(write, texts, this.dropping, this.refresh);
+    }
+    const { game } = subject;
     if (target.kind === 'reserve') {
       const confirmation = await this.gestures.readUnscheduleConfirmation(
         game,
@@ -271,6 +287,7 @@ export class ScheduleBoard {
       target.timeSlotId,
       swapGameId(game, target),
       removedSignUps,
+      { erasedDrawTimeSlotId },
       games,
       timeSlots,
     );

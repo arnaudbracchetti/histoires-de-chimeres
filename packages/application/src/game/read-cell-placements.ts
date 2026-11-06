@@ -1,11 +1,13 @@
 import type { ScheduleScenarioDto } from '@chimeres/contract';
-import type { Refusal } from '@chimeres/domain';
+import type { CellPlacement } from '@chimeres/domain';
 import type { ConventionRepository } from '../convention/convention-repository.js';
 import type { ScenarioRepository } from '../scenario/scenario-repository.js';
 import type { ScheduleReader } from './schedule-reader.js';
 
 /** Le verdict d'une case pour un scénario, avec sa présentation. */
-export type ScenarioCellPlacement = { scenario: ScheduleScenarioDto; refusal: Refusal | null };
+export type ScenarioCellPlacement = Omit<CellPlacement, 'scenarioId'> & {
+  scenario: ScheduleScenarioDto;
+};
 
 /**
  * Les verdicts d'une case (un créneau, une table), que la convention calcule avec le catalogue
@@ -27,14 +29,17 @@ export class ReadCellPlacements {
       this.conventions.get(),
       this.scenarios.catalogue(),
     ]);
-    const refusals = new Map(
+    const verdicts = new Map(
       convention
         .computeCellPlacementVerdicts(catalogue, timeSlotId, tableId)
-        .map(({ scenarioId, refusal }) => [scenarioId, refusal]),
+        .map(({ scenarioId, ...verdict }) => [scenarioId, verdict]),
     );
-    const scenarios = await this.reader.scenarios([...refusals.keys()]);
+    const scenarios = await this.reader.scenarios([...verdicts.keys()]);
     return scenarios
-      .map((scenario) => ({ scenario, refusal: refusals.get(scenario.id) ?? null }))
+      .flatMap((scenario) => {
+        const verdict = verdicts.get(scenario.id);
+        return verdict ? [{ scenario, ...verdict }] : [];
+      })
       .toSorted((a, b) => Number(a.refusal !== null) - Number(b.refusal !== null));
   }
 }

@@ -39,56 +39,81 @@ function formatCancelledBody(gameTitle: string, tablesWithSeats: readonly string
   return fr`${gameTitle} n'a pas atteint son minimum. ${formatSeatsLeft(tablesWithSeats)} : va voir ${formatGameMasters(tablesWithSeats)}.`;
 }
 
+/**
+ * Le corps, suivi de « Les inscriptions du créneau sont rouvertes. » si le geste a effacé le tirage
+ * provisoire du créneau (TI-6, NO-2).
+ */
+function appendReopeningSentence(body: string, reopened: boolean): string {
+  return reopened ? `${body} Les inscriptions du créneau sont rouvertes.` : body;
+}
+
 /** « avec 5 joueurs », ou « sans joueur ». */
 export function formatPlayerCount(count: number): string {
   return count ? `avec ${countOf(count, 'joueur', 'joueurs')}` : 'sans joueur';
 }
 
 /**
- * Ses inscrits : la partie est retirée du programme avant le tirage de son créneau. `withoutGame` :
- * c'était sa dernière inscription sur son premier créneau, il reste dans son tirage (IN-6).
+ * Ses inscrits : la partie est retirée du programme avant la publication de son créneau.
+ * `withoutGame` : c'était sa dernière inscription sur son premier créneau, il reste dans son tirage
+ * (IN-6). `reopened` : le geste a effacé le tirage provisoire du créneau.
  */
 export function buildGameUnscheduledText(
   ranks: readonly number[],
   gameTitle: string,
   withoutGame: boolean,
+  reopened: boolean,
 ): ChangeText {
   const removed = fr`${gameTitle} est retirée : ton inscription est supprimée.`;
   return {
     title: fr`${formatCapitalizedTimeSlotRanks(ranks)} : partie retirée du programme`,
-    body: withoutGame
-      ? fr`${removed} Tu restes dans le tirage du ${formatTimeSlotRanks([ranks[0]!])} : inscris-toi à une autre partie pour avoir une table.`
-      : removed,
-  };
-}
-
-/** Son MJ : la partie est retirée du programme avant le tirage de son créneau. */
-export function buildOwnGameUnscheduledText(
-  ranks: readonly number[],
-  gameTitle: string,
-): ChangeText {
-  return {
-    title: fr`${formatCapitalizedTimeSlotRanks(ranks)} : partie retirée du programme`,
-    body: fr`${gameTitle} est retirée : tu peux t'inscrire sur ce créneau.`,
+    body: appendReopeningSentence(
+      withoutGame
+        ? fr`${removed} Tu restes dans le tirage du ${formatTimeSlotRanks([ranks[0]!])} : inscris-toi à une autre partie pour avoir une table.`
+        : removed,
+      reopened,
+    ),
   };
 }
 
 /**
- * Ses inscrits : la partie passe à d'autres créneaux avant le tirage (IN-6). `withoutGame` : c'était
- * sa dernière inscription sur son ancien premier créneau, il reste dans son tirage.
+ * Son MJ : la partie est retirée du programme avant la publication de son créneau. `reopened` : le
+ * geste a effacé le tirage provisoire du créneau.
+ */
+export function buildOwnGameUnscheduledText(
+  ranks: readonly number[],
+  gameTitle: string,
+  reopened: boolean,
+): ChangeText {
+  return {
+    title: fr`${formatCapitalizedTimeSlotRanks(ranks)} : partie retirée du programme`,
+    body: appendReopeningSentence(
+      fr`${gameTitle} est retirée : tu peux t'inscrire sur ce créneau.`,
+      reopened,
+    ),
+  };
+}
+
+/**
+ * Ses inscrits : la partie passe à d'autres créneaux avant la publication (IN-6). `withoutGame` :
+ * c'était sa dernière inscription sur son ancien premier créneau, il reste dans son tirage.
+ * `reopened` : le geste a effacé le tirage provisoire de l'ancien ou du nouveau créneau.
  */
 export function buildGameMovedText(
   fromRanks: readonly number[],
   toRanks: readonly number[],
   gameTitle: string,
   withoutGame: boolean,
+  reopened: boolean,
 ): ChangeText {
   const moved = fr`${gameTitle} passe ${toRanks.length > 1 ? 'aux' : 'au'} ${formatTimeSlotRanks(toRanks)} : ton inscription est retirée. Réinscris-toi si l'horaire te va.`;
   return {
     title: fr`${formatCapitalizedTimeSlotRanks(fromRanks)} : partie déplacée`,
-    body: withoutGame
-      ? fr`${moved} Tu restes dans le tirage du ${formatTimeSlotRanks([fromRanks[0]!])} : inscris-toi à une autre partie pour y avoir une table.`
-      : moved,
+    body: appendReopeningSentence(
+      withoutGame
+        ? fr`${moved} Tu restes dans le tirage du ${formatTimeSlotRanks([fromRanks[0]!])} : inscris-toi à une autre partie pour y avoir une table.`
+        : moved,
+      reopened,
+    ),
   };
 }
 
@@ -102,15 +127,20 @@ export function buildGameOversubscribedText(rank: number, gameTitle: string): Ch
 
 /**
  * Ceux qui peuvent s'y inscrire : une partie est programmée, ou déplacée, sur un créneau pas encore
- * publié. `system` : le jeu de son scénario.
+ * publié. `system` : le jeu de son scénario. `reopened` : le geste a effacé le tirage provisoire du
+ * créneau.
  */
 export function buildNewGameText(
   ranks: readonly number[],
   game: NamedGame & { system: string },
+  reopened: boolean,
 ): ChangeText {
   return {
     title: fr`${formatCapitalizedTimeSlotRanks(ranks)} : nouvelle partie`,
-    body: fr`${game.title} · ${game.system}, table ${game.tableName}. Tu peux t'y inscrire.`,
+    body: appendReopeningSentence(
+      fr`${game.title} · ${game.system}, table ${game.tableName}. Tu peux t'y inscrire.`,
+      reopened,
+    ),
   };
 }
 
