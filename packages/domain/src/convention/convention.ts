@@ -759,18 +759,21 @@ export class Convention {
 
   /**
    * Publie le tirage provisoire du créneau (TI-7) : son résultat est figé. Refuse un tirage dont une
-   * partie non annulée n'a aucun joueur. Rend « table » à chaque joueur, « pas de place » aux non
-   * placés, avec les tables où il reste de la place, et « tu mènes » à chaque MJ. Le catalogue,
-   * entier, donne les places maximum des parties.
+   * partie non annulée n'a aucun joueur. Déprogramme ensuite chaque partie annulée : son scénario
+   * retourne dans la réserve, sa table et son MJ sont libérés, sur tous ses créneaux. Le tirage reste,
+   * personne ne devient sans partie, et IN-6 ne notifie personne. Rend « partie annulée » à leur MJ,
+   * « table » à chaque joueur, « pas de place » aux autres non placés, avec les tables où il reste de
+   * la place, et « tu mènes » à chaque MJ. Le catalogue, entier, donne les places maximum des parties.
    */
   publishDraw(timeSlotId: string, catalogue: ScenarioCatalogue): Notification[] {
     this.day.verifyTimeSlotExists(timeSlotId);
-    this.allDraws = this.allDraws.getDrawsAfterPublishingDraw(
+    const nextDraws = this.allDraws.getDrawsAfterPublishingDraw(
       timeSlotId,
       this.day,
       this.gameSchedule,
     );
-    return buildDrawPublicationNotifications(this.allDraws.findDrawOfTimeSlot(timeSlotId)!, {
+    const provisional = this.allDraws.findDrawOfTimeSlot(timeSlotId)!;
+    const notifications = buildDrawPublicationNotifications(provisional, {
       day: this.day,
       date: this.state.date,
       schedule: this.gameSchedule,
@@ -778,6 +781,11 @@ export class Convention {
       participants: this.allParticipants,
       catalogue,
     });
+    const cancelled = provisional.cancelledGameIds;
+    this.allDraws = nextDraws;
+    this.gameSchedule = this.gameSchedule.getScheduleAfterUnschedulingGames(cancelled);
+    this.allSignUps = this.allSignUps.getSignUpsAfterUnschedulingGames(cancelled);
+    return notifications;
   }
 
   /** Ce que le tirage lit hors des Tirages, avec ce catalogue, entier. */
@@ -845,7 +853,7 @@ export class Convention {
         : { kind: 'unassigned' };
     }
     const led = this.findGameLedByParticipantOnTimeSlot(participantId, timeSlotId);
-    if (!led || led.timeSlotIds[0] !== timeSlotId || draw.isGameCancelled(led.id)) return null;
+    if (!led || led.timeSlotIds[0] !== timeSlotId) return null;
     const players = new Set(draw.listPlayerIdsOfGame(led.id));
     return {
       kind: 'leading',
@@ -1059,14 +1067,13 @@ export type TimeSlotState = 'sign-ups-open' | 'drawing' | 'published';
 /**
  * Le résultat publié du tirage d'un créneau pour un participant : sa partie (`assigned`), ou pas de
  * place (`unassigned`). Pour un MJ, sur le créneau où commence sa partie : ses joueurs, dans l'ordre
- * naturel de leur pseudo (`leading`), ou sa partie annulée (`cancelled`, TI-6). `null` tant que le
- * tirage n'est pas publié, ou sans inscription.
+ * naturel de leur pseudo (`leading`). Le MJ d'une partie annulée, que la publication déprogramme, a
+ * son sort de joueur. `null` tant que le tirage n'est pas publié, ou sans inscription.
  */
 export type DrawResult =
   | { kind: 'assigned'; gameId: string }
   | { kind: 'unassigned' }
   | { kind: 'leading'; players: string[] }
-  | { kind: 'cancelled' }
   | null;
 
 /** La situation d'un participant : voir `Convention.computeParticipantSituation()`. */

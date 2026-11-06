@@ -7,7 +7,7 @@ import { ScenarioIllustration } from '../scenario-illustration';
 /**
  * Les parties d'un créneau publié où il reste de la place, chacune vers sa fiche : la vignette,
  * « Table Dragon », « *Titre*, avec *MJ* », et « 2 places libres » en vert. Pour un non placé
- * (story 55) et pour le MJ d'une partie annulée (TI-6).
+ * (story 55).
  */
 @Component({
   selector: 'app-games-with-seats',

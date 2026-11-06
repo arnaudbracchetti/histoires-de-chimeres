@@ -942,27 +942,6 @@ describe('ParticipantData', () => {
         });
       });
 
-      it('rouvre le créneau d’une partie annulée, qui reste la sienne (TI-6)', async () => {
-        const data = await opened(
-          undefined,
-          undefined,
-          situation([], {
-            timeSlotId: 's2',
-            state: 'published',
-            ledGameId: 'Néons',
-            drawResult: { kind: 'cancelled' },
-          }),
-        );
-
-        expect(data.signUpBarOf('Épice')).toEqual({
-          kind: 'open',
-          signedUp: false,
-          pending: false,
-          oversubscribedAfterSignUp: false,
-        });
-        expect(data.ledGameOn('s2')).toBeNull();
-        expect(data.signUpBarOf('Néons')).toEqual({ kind: 'own-game', rank: 2 });
-      });
     });
 
     it('donne au programme la partie qu’il mène sur chaque créneau, partie double comprise', async () => {
@@ -1018,20 +997,6 @@ describe('ParticipantData', () => {
         expect(ledOf(data)?.[0]?.outcome).toEqual({ kind: 'players', players: ['Élodie', 'Lune'] });
       });
 
-      it('dit « Partie annulée », avec les parties du créneau où il reste de la place (TI-6)', async () => {
-        const withSeats = { ...brumes, playerCount: 3 };
-        const data = await opened(
-          schedule([withSeats, { ...game('Ruines', ['s1']), playerCount: 5 }, epice, neons]),
-          undefined,
-          leadingEpice({ state: 'published', drawResult: { kind: 'cancelled' } }),
-        );
-
-        expect(ledOf(data)?.[0]?.outcome).toEqual({
-          kind: 'cancelled',
-          gamesWithSeats: [withSeats],
-        });
-      });
-
       it('ne déplie rien sur un créneau où il ne mène pas', async () => {
         const data = await opened(undefined, undefined, situation(['Brumes']));
 
@@ -1055,17 +1020,27 @@ describe('ParticipantData', () => {
         expect(data.home()?.timeSlots).toEqual([]);
       });
 
-      it('montre « Ta partie est annulée » quand le dernier tirage publié l’annule (TI-6)', async () => {
+      it('montre sa table de joueur au MJ libéré par une partie annulée, puis placé (TI-7)', async () => {
+        // La publication a déprogrammé « Épice » : il n'y mène plus rien.
         const data = await opened(
+          schedule([brumes, neons]),
           undefined,
-          undefined,
-          leadingEpice({ state: 'published', drawResult: { kind: 'cancelled' } }),
+          situation([], {
+            timeSlotId: 's1',
+            state: 'published',
+            drawResult: { kind: 'assigned', gameId: 'Brumes' },
+          }),
         );
 
         expect(data.home()?.card).toEqual({
-          kind: 'cancelled',
-          timeSlot: slot1,
-          led: { game: epice, started: false, outcome: { kind: 'cancelled', gamesWithSeats: [] } },
+          kind: 'assigned',
+          game: brumes,
+          timeSlots: [slot1],
+          started: false,
+        });
+        expect(data.myTimeSlots()?.[0]).toMatchObject({
+          assignment: { kind: 'assigned', game: brumes },
+          led: null,
         });
       });
 
@@ -1176,7 +1151,7 @@ describe('ParticipantData', () => {
         ]);
       });
 
-      it('signale au MJ ses joueurs, ou sa partie annulée (TI-6)', async () => {
+      it('signale au MJ ses joueurs, ou le retrait de sa partie annulée, sans « Partie annulée » (TI-7)', async () => {
         await opened(
           schedule([brumes, neons]),
           now,
@@ -1187,13 +1162,13 @@ describe('ParticipantData', () => {
           ),
         );
 
+        // La publication du créneau 2 a déprogrammé « Néons », annulée : il n'est pas placé.
         await rereadWith(
-          schedule([full, { ...neons, tableName: 'Dragon' }]),
+          schedule([full]),
           situation([], published({ kind: 'leading', players: ['Ana', 'Yanis'] }, 'Brumes'), {
             timeSlotId: 's2',
             state: 'published',
-            drawResult: { kind: 'cancelled' },
-            ledGameId: 'Néons',
+            drawResult: { kind: 'unassigned' },
           }),
         );
 
@@ -1204,10 +1179,14 @@ describe('ParticipantData', () => {
             see: '/',
           },
           {
-            title: `Créneau 2${NBSP}: ta partie est annulée`,
-            detail:
-              "Néons n'a pas atteint son minimum. Toutes les parties du créneau sont complètes.",
+            title: `Créneau 2${NBSP}: pas de place pour toi`,
+            detail: 'Toutes les parties du créneau sont complètes.',
             see: '/',
+          },
+          {
+            title: `Créneau 2${NBSP}: partie retirée du programme`,
+            detail: "Néons est retirée\u00a0: tu peux t'inscrire sur ce créneau.",
+            see: '/programme?creneau=2',
           },
         ]);
       });

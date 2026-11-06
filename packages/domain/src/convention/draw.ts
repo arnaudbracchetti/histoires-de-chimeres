@@ -57,9 +57,12 @@ export class Draw {
     return this.assignments.find((assignment) => assignment.participantId === participantId);
   }
 
-  /** Le même tirage, publié : son résultat est figé (TI-7). */
+  /**
+   * Le même tirage, publié : son résultat est figé (TI-7). Il ne garde aucune partie annulée : la
+   * publication les déprogramme.
+   */
   getDrawAfterPublishing(): Draw {
-    return new Draw(this.timeSlotId, true, this.assignments, this.cancelledGameIds);
+    return new Draw(this.timeSlotId, true, this.assignments, []);
   }
 
   /** Le participant a une affectation dans ce tirage. */

@@ -62,6 +62,11 @@ export type NotificationParams = {
    * tables où il reste de la place, dans l'ordre naturel.
    */
   'draw-unassigned': { rank: number; tablesWithSeats: string[] };
+  /**
+   * Publication (TI-7) : au MJ d'une partie annulée, que la publication déprogramme.
+   * `tablesWithSeats` : comme pour `draw-unassigned`.
+   */
+  'game-cancelled': { scenarioId: string; ranks: number[]; tablesWithSeats: string[] };
   /** Publication (TI-7) : au MJ d'une partie, qu'il mène avec `playerCount` joueurs. */
   'draw-leading': { scenarioId: string; ranks: number[]; tableName: string; playerCount: number };
 };

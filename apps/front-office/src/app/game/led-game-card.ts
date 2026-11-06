@@ -4,19 +4,17 @@ import { countOf, formatSeats, formatTime, fr } from '@chimeres/design';
 import type { LedGame } from '../participant-data/participant-data';
 import { ScenarioIllustration } from '../scenario-illustration';
 import { Icon } from '../ui/icon';
-import { cancelledGameText, playersOf, signUpCountOf, signUpsForSeatsOf } from './game-text';
-import { GamesWithSeats } from './games-with-seats';
+import { playersOf, signUpCountOf, signUpsForSeatsOf } from './game-text';
 import { OversubscribedBadge } from './oversubscribed-badge';
 
 /**
  * La partie que mène le MJ, dépliée dans Mes parties sur son créneau (§5.7, variante B de #54) :
  * table, titre vers la fiche, jeu, heure de début ou « Maintenant ». Puis, selon son tirage, le
- * nombre d'inscrits sans leurs pseudos, « Tirage en cours », ses joueurs, ou « Partie annulée »
- * avec les tables où il reste de la place.
+ * nombre d'inscrits sans leurs pseudos, « Tirage en cours », ou ses joueurs.
  */
 @Component({
   selector: 'app-led-game-card',
-  imports: [GamesWithSeats, Icon, OversubscribedBadge, RouterLink, ScenarioIllustration],
+  imports: [Icon, OversubscribedBadge, RouterLink, ScenarioIllustration],
   template: `
     @let game = led().game;
     <div class="head">
@@ -29,43 +27,33 @@ import { OversubscribedBadge } from './oversubscribed-badge';
       </span>
     </div>
     @let outcome = led().outcome;
-    @if (outcome.kind === 'cancelled') {
-      <p class="status warning">
-        <app-icon name="triangle-alert" /><strong>Partie annulée</strong>
-      </p>
-      <p>{{ cancelledText() }}</p>
-      @if (outcome.gamesWithSeats.length) {
-        <app-games-with-seats [games]="outcome.gamesWithSeats" />
-      }
+    <p class="when">
+      <app-icon name="clock" />{{ led().started ? 'Maintenant' : 'Début à ' + start() }}
+    </p>
+    @if (outcome.kind === 'players') {
+      <h3 class="over">{{ playersHeading() }}</h3>
+      <ul aria-label="Tes joueurs">
+        @for (player of outcome.players; track player) {
+          <li>
+            <span class="initial" aria-hidden="true">{{ initialOfNickname(player) }}</span>
+            {{ player }}
+          </li>
+        }
+      </ul>
+    } @else if (outcome.kind === 'drawing') {
+      <p class="status"><app-icon name="hourglass" /><strong>Tirage en cours</strong></p>
+      <p class="meta">{{ drawingText() }}</p>
     } @else {
-      <p class="when">
-        <app-icon name="clock" />{{ led().started ? 'Maintenant' : 'Début à ' + start() }}
+      <p class="counter">
+        <span
+          ><strong>{{ signUps() }}</strong
+          ><span class="meta"> · {{ seats() }}</span></span
+        >
+        @if (game.oversubscribed) {
+          <app-oversubscribed-badge />
+        }
       </p>
-      @if (outcome.kind === 'players') {
-        <h3 class="over">{{ playersHeading() }}</h3>
-        <ul aria-label="Tes joueurs">
-          @for (player of outcome.players; track player) {
-            <li>
-              <span class="initial" aria-hidden="true">{{ initialOfNickname(player) }}</span>
-              {{ player }}
-            </li>
-          }
-        </ul>
-      } @else if (outcome.kind === 'drawing') {
-        <p class="status"><app-icon name="hourglass" /><strong>Tirage en cours</strong></p>
-        <p class="meta">{{ drawingText() }}</p>
-      } @else {
-        <p class="counter">
-          <span
-            ><strong>{{ signUps() }}</strong
-            ><span class="meta"> · {{ seats() }}</span></span
-          >
-          @if (game.oversubscribed) {
-            <app-oversubscribed-badge />
-          }
-        </p>
-        <p class="meta">Tes joueurs s'afficheront ici à la publication du tirage.</p>
-      }
+      <p class="meta">Tes joueurs s'afficheront ici à la publication du tirage.</p>
     }
   `,
   styles: `
@@ -134,10 +122,6 @@ import { OversubscribedBadge } from './oversubscribed-badge';
         color: var(--text-muted);
       }
 
-      .warning app-icon {
-        color: var(--warning);
-      }
-
       ul {
         display: grid;
         gap: var(--space-xs);
@@ -189,7 +173,6 @@ export class LedGameCard {
           : 'Aucun joueur';
     return `${heading} · ${this.seats()}`;
   });
-  protected readonly cancelledText = computed(() => cancelledGameText(this.led()));
 
   protected initialOfNickname(nickname: string): string {
     return nickname.trim().charAt(0).toLocaleUpperCase('fr');

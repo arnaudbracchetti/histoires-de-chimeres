@@ -161,7 +161,7 @@ En tête, une seule carte (stories 54, 55, 57, 59), puis « Ton programme ». Au
 
 - **Affectation** : la dernière publiée, tant que sa partie n'est pas terminée (une partie double, jusqu'à la fin de son second créneau). Carte 3:2 qui ouvre la fiche : l'image, dans son coin « Début à 9 h 30 » ou « Maintenant » (`clock`, orange teinté à 14 %), puis par-dessus « Créneau 1 · 9 h 30 – 12 h 00 » en surtitre, « Table Griffon » en Uncial Antiqua à taille de héros, « Tu joues à *Titre*, avec *MJ* » et le jeu.
 - **« Pas de place pour toi »**, si c'est le dernier résultat publié : carte bordée de jaune, la phrase qui dit où il reste de la place, puis une carte par partie du créneau qui en a (vignette, « Table Dragon », « *Titre*, avec *MJ* », « 2 places libres » en vert), qui ouvre sa fiche.
-- **MJ** (stories 56, 58) : si le dernier résultat publié est celui de sa partie, la même carte 3:2, qui ouvre Mes parties, avec « Tu mènes à la table *T* » et « *Titre*, avec *K* joueurs. », puis « Voir tes joueurs » (secondaire, `users`) ; sa partie annulée, « Ta partie est annulée » comme « Pas de place pour toi ». Pendant le tirage de son créneau, « Tirage en cours » avec « Tu mènes *Titre* à la table *T* : *K* inscrits pour *M* places. » et « Voir ta partie » (secondaire, `book-open`).
+- **MJ** (stories 56, 58) : si le dernier résultat publié est celui de sa partie, la même carte 3:2, qui ouvre Mes parties, avec « Tu mènes à la table *T* » et « *Titre*, avec *K* joueurs. », puis « Voir tes joueurs » (secondaire, `users`). Pendant le tirage de son créneau, « Tirage en cours » avec « Tu mènes *Titre* à la table *T* : *K* inscrits pour *M* places. » et « Voir ta partie » (secondaire, `book-open`).
 - **« Tirage en cours »**, sinon, pour un créneau en cours de tirage où le pseudo est inscrit : ses inscriptions comptent pour ce tirage, et sa table s'affichera ici dès la publication.
 - **« Choisis tes parties »**, sans rien de tout cela, avec « Voir le programme ».
 
@@ -176,7 +176,6 @@ En tête, une seule carte (stories 54, 55, 57, 59), puis « Ton programme ». Au
 | pas de place | `triangle-alert` jaune | « Pas de place pour toi » · les tables où il en reste |
 | publié, sans inscription | `circle-check` | « Tirage publié » · « Aucune inscription sur ce créneau » |
 | MJ qui y mène | `book-open` orange | « Tu mènes à la table Dragon » · « *Titre* · 7 inscrits · 5 places », « · tirage en cours » ou « , avec 5 joueurs » |
-| sa partie annulée | `triangle-alert` jaune | « Ta partie est annulée » · les tables où il reste de la place |
 
 Une ligne ouvre la fiche de sa table, Mes parties sur un créneau où il mène, sinon le programme du créneau, posé sur l'Accueil comme son onglet. Le rappel d'IN-5 s'y ajoute, sur fond jaune teinté à 14 %.
 
@@ -191,8 +190,9 @@ L'onglet suit la journée du pseudo, créneau par créneau à venir (story 86). 
 - **Partie menée** (§5.7, [#54](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/54), variante B) : sur chaque créneau où le MJ mène, les deux d'une partie double, à la place des inscriptions. Carte en Anthracite 2, bordée d'orange : la vignette de 48 px, « Tu mènes » en surtitre, « Table Dragon », le titre en lien orange vers la fiche, le jeu ; puis « Début à 14 h 00 » ou « Maintenant » (`clock`, orange). Selon le tirage de son premier créneau :
   - inscriptions ouvertes : « 7 inscrits · 4 à 5 places », « Très demandée » s'il y a lieu, sans les pseudos, puis « Tes joueurs s'afficheront ici à la publication du tirage. » ;
   - tirage lancé : « Tirage en cours » (`hourglass`), et le nombre d'inscrits pour les places ; le résultat provisoire reste invisible ;
-  - publié : « Tes 5 joueurs · 4 à 5 places » en surtitre, puis un pseudo par ligne, après son initiale dans un rond orange teinté, dans l'ordre que donne l'API ;
-  - annulée (TI-6) : « Partie annulée » (`triangle-alert` jaune), la phrase de NO-2, puis les parties du créneau où il reste de la place, comme sur l'Accueil.
+  - publié : « Tes 5 joueurs · 4 à 5 places » en surtitre, puis un pseudo par ligne, après son initiale dans un rond orange teinté, dans l'ordre que donne l'API.
+
+  Une partie annulée quitte le programme à la publication (TI-7) : la carte disparaît, et le MJ a sur ce créneau le sort d'un participant (table ou « Pas de place pour toi »), sur l'Accueil comme dans Mes parties.
 
 `/mes-parties?creneau=2` fait défiler jusqu'au créneau 2 : « Voir tes joueurs » et « Voir dans Mes parties » y mènent.
 

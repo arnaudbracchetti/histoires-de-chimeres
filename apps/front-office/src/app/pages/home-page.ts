@@ -8,9 +8,7 @@ import {
 } from '@chimeres/contract';
 import { countOf, formatList, formatTime, fr, timeSlotLabel } from '@chimeres/design';
 import {
-  cancelledGameText,
   counterOf,
-  gamesWithSeatsOf,
   seatsLeftText,
   unassignedText,
   signUpsForSeatsOf,
@@ -118,15 +116,6 @@ type ProgrammeLine = {
         >
           <app-icon name="users" />Voir tes joueurs
         </a>
-      } @else if (card.kind === 'cancelled') {
-        <section class="card warning" aria-labelledby="cancelled">
-          <span class="over">{{ timeSlotLabel(card.timeSlot) }}</span>
-          <h2 id="cancelled">Ta partie est annulée</h2>
-          <p>{{ cancelledGameText(card.led) }}</p>
-          @if (gamesWithSeatsOf(card.led).length) {
-            <app-games-with-seats [games]="gamesWithSeatsOf(card.led)" />
-          }
-        </section>
       } @else if (card.kind === 'leading-drawing') {
         <section class="card" aria-labelledby="drawing">
           <span class="over">{{ timeSlotLabel(card.timeSlot) }}</span>
@@ -402,12 +391,12 @@ export class HomePage {
 
   /**
    * Une ligne mène à la fiche de sa table, à Mes parties sur un créneau où il mène, sinon au
-   * programme du créneau (celui d'une partie annulée, où il peut encore aller voir une table).
+   * programme du créneau.
    */
   protected hrefOf(slot: MyTimeSlot): string {
     const { timeSlot, assignment } = slot;
     if (assignment?.kind === 'assigned') return frontOfficeUrls.game(assignment.game.id);
-    if (leadsToMyGames(slot)) return this.myGamesUrl(timeSlot.rank);
+    if (slot.led) return this.myGamesUrl(timeSlot.rank);
     return frontOfficeUrls.timeSlotGames(timeSlot.rank);
   }
 
@@ -416,7 +405,7 @@ export class HomePage {
     const { timeSlot, assignment } = slot;
     if (assignment?.kind === 'assigned') {
       void this.router.navigateByUrl(frontOfficeUrls.game(assignment.game.id));
-    } else if (leadsToMyGames(slot)) {
+    } else if (slot.led) {
       this.openMyGames(timeSlot.rank);
     } else {
       this.navigation.go(frontOfficePaths.schedule, { [TIME_SLOT_PARAM]: timeSlot.rank });
@@ -429,8 +418,6 @@ export class HomePage {
   }
 
   protected readonly withPlayersOf = withPlayersOf;
-  protected readonly gamesWithSeatsOf = gamesWithSeatsOf;
-  protected readonly cancelledGameText = cancelledGameText;
 
   /** « Tirage en cours » avec la partie qu'il mène (story 58). */
   protected leadingDrawingText({ game }: LedGame): string {
@@ -458,14 +445,6 @@ export class HomePage {
   }: MyTimeSlot): ProgrammeLine {
     const titles = formatList(signedUpGames.map(({ title }) => title));
     const signUps = countOf(signedUpGames.length, 'inscription', 'inscriptions');
-    if (led?.outcome.kind === 'cancelled') {
-      return {
-        icon: 'triangle-alert',
-        tone: 'warning',
-        label: 'Ta partie est annulée',
-        detail: seatsLeftText(led.outcome.gamesWithSeats),
-      };
-    }
     if (led) {
       const { game, outcome } = led;
       const detail =
@@ -528,9 +507,4 @@ export class HomePage {
       ? { icon: 'circle-check', tone: 'accent', label: signUps, detail: titles }
       : { icon: 'plus', tone: 'muted', label: 'Aucune inscription', detail: 'Choisir une partie' };
   }
-}
-
-/** La ligne d'un créneau où il mène ouvre Mes parties, sauf sa partie annulée : il peut y jouer. */
-function leadsToMyGames({ led }: MyTimeSlot): boolean {
-  return !!led && led.outcome.kind !== 'cancelled';
 }

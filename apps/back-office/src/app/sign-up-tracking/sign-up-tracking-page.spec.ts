@@ -903,6 +903,36 @@ describe('Pilotage du jour J', () => {
       ]);
     });
 
+    it('liste les parties annulées dont le MJ est notifié, après les parties jouées hors de leurs places (TI-7)', async () => {
+      const { button, dialog, settle } = await render({
+        ...PUBLISHABLE,
+        timeSlots: PUBLISHABLE.timeSlots.map((slot) =>
+          slot.draw
+            ? {
+                ...slot,
+                draw: {
+                  ...slot.draw,
+                  games: [
+                    slot.draw.games[0]!,
+                    { ...slot.draw.games[1]!, cancelled: true, cancellable: false },
+                  ],
+                },
+              }
+            : slot,
+        ),
+      });
+      button('Publier le tirage')!.click();
+      await settle();
+
+      expect([...dialog()!.querySelectorAll('p')].map((paragraph) => text(paragraph))).toEqual([
+        '19 participants sont placés, 7 ne le sont pas. Chacun reçoit sa notification, ainsi que les MJ.',
+        '« Brumes » est jouée au-delà de son maximum : 5 joueurs pour 4 places.',
+        '« Néons » est annulée : elle quitte le programme, et Kaïros, son MJ, reçoit la notification « partie annulée ».',
+        'Le résultat ne pourra plus être modifié.',
+      ]);
+      expect(dialog()!.querySelectorAll('p.warning')).toHaveLength(1);
+    });
+
     it('montre le refus dans le dialogue', async () => {
       const { http, button, dialog, settle } = await render(DRAWING);
       button('Publier le tirage')!.click();

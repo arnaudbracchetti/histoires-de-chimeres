@@ -32,8 +32,8 @@ export function formatUnassignedBody(tablesWithSeats: readonly string[]): string
   return fr`Les parties que tu avais choisies sont complètes. ${formatSeatsLeft(tablesWithSeats)} : va voir ${formatGameMasters(tablesWithSeats)}.`;
 }
 
-/** « Partie annulée » (TI-6) : elle n'a pas atteint son minimum, et où il reste de la place. */
-export function formatCancelledBody(gameTitle: string, tablesWithSeats: readonly string[]): string {
+/** « Partie annulée » (TI-7) : elle n'a pas atteint son minimum, et où il reste de la place. */
+function formatCancelledBody(gameTitle: string, tablesWithSeats: readonly string[]): string {
   if (!tablesWithSeats.length)
     return fr`${gameTitle} n'a pas atteint son minimum. ${formatSeatsLeft([])}`;
   return fr`${gameTitle} n'a pas atteint son minimum. ${formatSeatsLeft(tablesWithSeats)} : va voir ${formatGameMasters(tablesWithSeats)}.`;
@@ -158,7 +158,7 @@ export function buildLeadingText(
   };
 }
 
-/** Publication : la partie du MJ est annulée (TI-6) ; `tablesWithSeats`, où il reste de la place. */
+/** Publication : la partie du MJ est annulée, puis déprogrammée (TI-7) ; `tablesWithSeats`, où il reste de la place. */
 export function buildCancelledText(
   ranks: readonly number[],
   gameTitle: string,

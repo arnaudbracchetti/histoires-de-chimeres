@@ -826,8 +826,9 @@ export class SignUpTrackingPage {
 
   /**
    * Publie le tirage du créneau, après une confirmation orange qui rappelle les placés et les non
-   * placés, puis, en jaune, les parties jouées au-delà de leur maximum ou sous leur minimum. Le
-   * bouton reste actif : un refus s'affiche dans le dialogue. Le suivi se relit ensuite, et la
+   * placés, puis, en jaune, les parties jouées au-delà de leur maximum ou sous leur minimum, puis les
+   * parties annulées, que la publication déprogramme, et dont le MJ est notifié (TI-7). Le bouton
+   * reste actif : un refus s'affiche dans le dialogue. Le suivi se relit ensuite, et la
    * région `aria-live` l'annonce.
    */
   protected async publish(slot: TimeSlotTrackingDto) {
@@ -835,7 +836,7 @@ export class SignUpTrackingPage {
     const findGame = (gameId: string) => this.value()?.games.find(({ id }) => id === gameId);
     const playedOutsideSeats = draw.games.flatMap((figures): Consequence[] => {
       const game = findGame(figures.gameId);
-      if (!game) return [];
+      if (!game || figures.cancelled) return [];
       const { title, seats } = game.scenario;
       const players = countOf(figures.playerCount, 'joueur', 'joueurs');
       if (figures.overMaximum) {
@@ -856,6 +857,16 @@ export class SignUpTrackingPage {
       }
       return [];
     });
+    const cancelled = draw.games
+      .filter((figures) => figures.cancelled)
+      .flatMap(({ gameId }) => {
+        const game = findGame(gameId);
+        if (!game) return [];
+        const { title, gameMaster } = game.scenario;
+        return [
+          fr`« ${title} » est annulée : elle quitte le programme, et ${gameMaster.nickname}, son MJ, reçoit la notification « partie annulée ».`,
+        ];
+      });
     const assigned = fr`${countOf(draw.assignedCount, 'participant', 'participants')} ${plural(draw.assignedCount, 'est placé', 'sont placés')}`;
     const unassigned = draw.unassignedCount
       ? fr`, ${formatCount(draw.unassignedCount)} ${plural(draw.unassignedCount, "ne l'est pas", 'ne le sont pas')}`
@@ -865,6 +876,7 @@ export class SignUpTrackingPage {
       consequences: [
         fr`${assigned}${unassigned}. Chacun reçoit sa notification, ainsi que les MJ.`,
         ...playedOutsideSeats,
+        ...cancelled,
         fr`Le résultat ne pourra plus être modifié.`,
       ],
       confirmLabel: 'Publier le tirage',

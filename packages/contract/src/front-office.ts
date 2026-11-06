@@ -80,14 +80,13 @@ export type TimeSlotStateDto = 'sign-ups-open' | 'drawing' | 'published';
 /**
  * Le résultat publié du tirage d'un créneau pour le pseudo : sa partie, ou pas de place. Pour un MJ,
  * sur le créneau où commence sa partie : ses joueurs, dans l'ordre naturel de leur pseudo
- * (`leading`), ou sa partie annulée (`cancelled`, TI-6). `null` tant que le tirage n'est pas publié,
- * ou sans inscription.
+ * (`leading`). Le MJ d'une partie annulée, que la publication déprogramme, a son sort de joueur.
+ * `null` tant que le tirage n'est pas publié, ou sans inscription.
  */
 export type DrawResultDto =
   | { kind: 'assigned'; gameId: string }
   | { kind: 'unassigned' }
   | { kind: 'leading'; players: string[] }
-  | { kind: 'cancelled' }
   | null;
 
 /** La situation du pseudo du téléphone : ses inscriptions, et l'état de chaque créneau pour lui, MJ compris. */

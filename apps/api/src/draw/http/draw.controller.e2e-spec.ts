@@ -572,7 +572,7 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
       expect(refused.body).toMatchObject({ code: 'draw-published' });
     });
 
-    it('ne donne au téléphone aucun nombre de joueurs pour une partie annulée : elle n’a pas de place (TI-6)', async () => {
+    it('déprogramme une partie annulée : le téléphone ne la voit plus, son scénario revient dans la réserve (TI-7)', async () => {
       await start();
       const elodie = await gameMaster('Élodie');
       const ondine = await gameMaster('Ondine');
@@ -590,8 +590,17 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
       await publish(1).expect(204);
 
       const games = (await scheduleOf(lune)).games;
-      expect(games.find(({ id }) => id === marche)!.playerCount).toBeNull();
-      expect(games.find(({ id }) => id === neons)!.playerCount).toBe(1);
+      expect(games.map(({ id }) => id)).toEqual([neons]);
+      expect(games[0]!.playerCount).toBe(1);
+      const first = (await tracking()).timeSlots[0]!;
+      expect(first.state).toBe('published');
+      expect(first.draw!.assignments.map(({ nickname }) => nickname)).toEqual(['Lune', 'Ondine']);
+      expect(first.draw!.games.map(({ gameId }) => gameId)).toEqual([neons]);
+      const programme = (await server().get(apiUrl(scheduleEndpoints.read)).expect(200))
+        .body as ScheduleDto;
+      expect(programme.games.map(({ id }) => id)).toEqual([neons]);
+      const reserved = programme.reserve.find(({ title }) => title === 'Le Marché')!;
+      expect(reserved.timeSlots[0]).toMatchObject({ inReserve: true, scheduled: false });
     });
 
     it('refuse un tirage dont une partie n’a aucun joueur, en français', async () => {

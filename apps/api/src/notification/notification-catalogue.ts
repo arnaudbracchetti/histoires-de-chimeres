@@ -1,6 +1,7 @@
 import { frontOfficeUrls } from '@chimeres/contract';
 import {
   buildAssignedText,
+  buildCancelledText,
   buildGameMovedText,
   buildGameOversubscribedText,
   buildGameUnscheduledText,
@@ -74,6 +75,10 @@ export const notificationCatalogue: {
   'draw-unassigned': ({ rank, tablesWithSeats }) => ({
     ...buildUnassignedText(rank, tablesWithSeats),
     url: frontOfficeUrls.timeSlotGames(rank),
+  }),
+  'game-cancelled': ({ ranks, tablesWithSeats }, { title }) => ({
+    ...buildCancelledText(ranks, title, tablesWithSeats),
+    url: frontOfficeUrls.timeSlotGames(ranks[0]!),
   }),
   'draw-leading': ({ ranks, tableName, playerCount }, { title }) => ({
     ...buildLeadingText(ranks, { title, tableName }, playerCount),

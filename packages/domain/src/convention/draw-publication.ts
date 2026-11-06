@@ -21,11 +21,13 @@ export type DrawPublicationCollaborators = {
 };
 
 /**
- * Les notifications de la publication du tirage (TI-7, NO-2) : « table » aux joueurs de chaque
- * partie, « pas de place » aux non placés, avec les tables où il reste de la place, puis « tu
- * mènes » au MJ de chaque partie. Les parties sont celles qui commencent sur le créneau, sans les
- * annulées, dans l'ordre de leur programmation ; la partie double commencée au créneau d'avant n'en
- * est pas. Chacune court jusqu'à la fin du créneau, le second d'une partie double (NO-3). Un
+ * Les notifications de la publication du tirage provisoire (TI-7, NO-2) : « partie annulée » au MJ
+ * de chaque partie annulée, « table » aux joueurs de chaque partie, « pas de place » aux non placés,
+ * sauf le MJ d'une partie annulée, déjà prévenu, avec les tables où il reste de la place, puis
+ * « tu mènes » au MJ de chaque partie. Le MJ d'une partie annulée qu'un Organisateur a placé reçoit
+ * donc « partie annulée », puis « table » (NO-1). Les parties sont celles qui commencent sur le
+ * créneau, dans l'ordre de leur programmation ; la partie double commencée au créneau d'avant n'en
+ * est pas. Une partie annulée n'a ni joueur, ni place libre, ni « tu mènes ». Chacune court jusqu'à la fin du créneau, le second d'une partie double (NO-3). Un
  * créneau sans partie se publie sans notification.
  */
 export function buildDrawPublicationNotifications(
@@ -33,10 +35,10 @@ export function buildDrawPublicationNotifications(
   collaborators: DrawPublicationCollaborators,
 ): Notification[] {
   const { day, date, schedule, tables, participants, catalogue } = collaborators;
-  const games = schedule
-    .listGamesStartingOnTimeSlot(draw.timeSlotId)
-    .filter((game) => !draw.isGameCancelled(game.id));
-  if (!games.length) return [];
+  const starting = schedule.listGamesStartingOnTimeSlot(draw.timeSlotId);
+  const cancelledGames = starting.filter((game) => draw.isGameCancelled(game.id));
+  const games = starting.filter((game) => !cancelledGames.includes(game));
+  if (!games.length && !cancelledGames.length) return [];
   const rank = day.getTimeSlotRank(draw.timeSlotId);
   const listRanks = (game: Game) => game.timeSlotIds.map((slotId) => day.getTimeSlotRank(slotId));
   const findTableName = (tableId: string) => tables.findExistingItemById(tableId).name.text;
@@ -62,7 +64,6 @@ export function buildDrawPublicationNotifications(
     ];
   });
 
-  const unassignedIds = draw.listUnassignedParticipantIds();
   const freeTableIds = new Set(
     games
       .filter(
@@ -72,16 +73,26 @@ export function buildDrawPublicationNotifications(
       )
       .map((game) => game.tableId),
   );
+  const tablesWithSeats = tables.itemsInNaturalOrder
+    .filter((table) => freeTableIds.has(table.id))
+    .map((table) => table.name.text);
+
+  const cancelled = cancelledGames.map((game): Notification => ({
+    code: 'game-cancelled',
+    params: { scenarioId: game.scenarioId, ranks: listRanks(game), tablesWithSeats },
+    recipients: buildParticipantRecipients([findGameMaster(game).participant.id]),
+    deadline: computeDeadline(game),
+  }));
+  const cancelledGameMasterIds = cancelled.flatMap(({ recipients }) => recipients.participantIds);
+
+  const unassignedIds = draw
+    .listUnassignedParticipantIds()
+    .filter((participantId) => !cancelledGameMasterIds.includes(participantId));
   const unassigned: Notification[] = unassignedIds.length
     ? [
         {
           code: 'draw-unassigned',
-          params: {
-            rank,
-            tablesWithSeats: tables.itemsInNaturalOrder
-              .filter((table) => freeTableIds.has(table.id))
-              .map((table) => table.name.text),
-          },
+          params: { rank, tablesWithSeats },
           recipients: buildParticipantRecipients(unassignedIds),
           deadline: day.computeEndOfTimeSlots(date, [draw.timeSlotId]),
         },
@@ -100,5 +111,5 @@ export function buildDrawPublicationNotifications(
     deadline: computeDeadline(game),
   }));
 
-  return [...assigned, ...unassigned, ...leading];
+  return [...cancelled, ...assigned, ...unassigned, ...leading];
 }

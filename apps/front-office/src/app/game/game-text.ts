@@ -5,7 +5,6 @@ import type {
 } from '@chimeres/contract';
 import {
   countOf,
-  formatCancelledBody,
   formatCapitalizedTimeSlotRanks,
   formatPlayerCount,
   formatSeatsLeft,
@@ -119,17 +118,4 @@ export function playersOf({ outcome }: LedGame): string[] {
 /** « avec 5 joueurs », ou « sans joueur » : ses joueurs publiés (story 56). */
 export function withPlayersOf(led: LedGame): string {
   return formatPlayerCount(playersOf(led).length);
-}
-
-/** Les parties du créneau où il reste de la place, quand la partie qu'il mène est annulée. */
-export function gamesWithSeatsOf({ outcome }: LedGame): FrontOfficeGameDto[] {
-  return outcome.kind === 'cancelled' ? outcome.gamesWithSeats : [];
-}
-
-/**
- * « Partie annulée » (TI-6) : la partie n'a pas atteint son minimum, et où il reste de la place,
- * ou que tout est complet.
- */
-export function cancelledGameText(led: LedGame): string {
-  return formatCancelledBody(led.game.title, tableNamesOf(gamesWithSeatsOf(led)));
 }

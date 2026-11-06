@@ -170,6 +170,11 @@ export class Schedule {
     return new Schedule(this.games.filter((candidate) => candidate !== game));
   }
 
+  /** Le Programme après le retrait de ces parties, annulées par le tirage publié (TI-7). */
+  getScheduleAfterUnschedulingGames(gameIds: readonly string[]): Schedule {
+    return new Schedule(this.games.filter((game) => !gameIds.includes(game.id)));
+  }
+
   /**
    * Refuse une journée qui ne garderait pas chaque partie double sur deux créneaux consécutifs
    * (PR-11). Le refus donne le rang de la partie dans la journée actuelle.

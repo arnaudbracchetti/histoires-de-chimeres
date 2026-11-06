@@ -6,7 +6,6 @@ import {
 } from '@chimeres/contract';
 import {
   buildAssignedText,
-  buildCancelledText,
   buildGameMovedText,
   buildGameUnscheduledText,
   buildLeadingText,
@@ -39,8 +38,9 @@ export function changesBetween(
 }
 
 /**
- * Les tirages publiés qui le concernent : sa table, pas de place, ou pour un MJ, ses joueurs ou sa
- * partie annulée. Une partie double a son résultat sur son seul premier créneau (TI-3).
+ * Les tirages publiés qui le concernent : sa table, pas de place, ou pour un MJ, ses joueurs. Une
+ * partie annulée quitte le programme à la publication : « partie retirée du programme » le dit à son MJ.
+ * Une partie double a son résultat sur son seul premier créneau (TI-3).
  */
 function publishedDraws(before: Reading, after: Reading): ChangeNotice[] {
   const { schedule } = after;
@@ -59,9 +59,7 @@ function publishedDraws(before: Reading, after: Reading): ChangeNotice[] {
     const text =
       drawResult.kind === 'assigned'
         ? buildAssignedText(ranks, game)
-        : drawResult.kind === 'leading'
-          ? buildLeadingText(ranks, game, drawResult.players.length)
-          : buildCancelledText(ranks, game.title, tablesWithSeats);
+        : buildLeadingText(ranks, game, drawResult.players.length);
     return [buildChangeNotice(text, see)];
   });
 }

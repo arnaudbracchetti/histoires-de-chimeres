@@ -1305,6 +1305,132 @@ describe('Publier le tirage (TI-7)', () => {
   });
 });
 
+describe('Publier un tirage qui a des parties annulées (TI-7)', () => {
+  /**
+   * Élodie inscrite à « épice », partie double de 2 à 4 places ; Lune et Zéphyr à « brumes ». Au
+   * tirage du créneau 1, chacun est sur sa partie, puis « épice » est annulée : Élodie et Kaïros, son
+   * MJ, sont non placés.
+   */
+  function aConventionWithCancelledGame(): Convention {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+    convention.signUpForGame('p2', 'brumes', CATALOGUE);
+    convention.signUpForGame('p3', 'brumes', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    convention.cancelGame('epice', CATALOGUE);
+    return convention;
+  }
+
+  it('déprogramme la partie annulée : son scénario retourne dans la réserve', () => {
+    const convention = aConventionWithCancelledGame();
+
+    convention.publishDraw('s1', CATALOGUE);
+
+    expect(convention.games.map(({ id }) => id)).toEqual(['brumes', 'neons']);
+    expect(convention.computeReserve(CATALOGUE).map(({ scenarioId }) => scenarioId)).toContain('b');
+  });
+
+  it('libère sa table et son MJ, sur les deux créneaux d’une partie double', () => {
+    const convention = aConventionWithCancelledGame();
+
+    convention.publishDraw('s1', CATALOGUE);
+
+    expect(() =>
+      convention.scheduleScenario('dune', aScenario('d', 'g2'), 's2', 't2'),
+    ).not.toThrow();
+  });
+
+  it('garde le tirage, sans partie annulée, et ne crée aucun participant sans partie', () => {
+    const convention = aConventionWithCancelledGame();
+
+    convention.publishDraw('s1', CATALOGUE);
+
+    expect(assignmentsOf(convention, 's1')).toEqual(['p2 brumes', 'p3 brumes', 'p1 -', 'p-g2 -']);
+    expect(convention.draws[0]!.cancelledGameIds).toEqual([]);
+    expect(convention.participantsWithoutGame).toEqual([]);
+    expect(convention.signUps.some(({ gameId }) => gameId === 'epice')).toBe(false);
+    expect(convention.computeParticipantSituation('p1').timeSlots[0]!.withoutGame).toBe(false);
+  });
+
+  it('prévient le MJ resté non placé de l’annulation seulement, sans les notifications de IN-6', () => {
+    const convention = aConventionWithCancelledGame();
+    convention.changeDate('2027-03-14');
+
+    const notifications = convention.publishDraw('s1', CATALOGUE);
+
+    expect(
+      notifications.map(({ code, params, recipients, deadline }) => ({
+        code,
+        params,
+        recipients: recipients.participantIds,
+        deadline: deadline?.time.toString(),
+      })),
+    ).toEqual([
+      {
+        code: 'game-cancelled',
+        params: { scenarioId: 'b', ranks: [1, 2], tablesWithSeats: ['Table 1'] },
+        recipients: ['p-g2'],
+        deadline: '16:30',
+      },
+      {
+        code: 'draw-assigned',
+        params: {
+          gameId: 'brumes',
+          scenarioId: 'a',
+          ranks: [1],
+          tableName: 'Table 1',
+          gameMasterNickname: 'Brann',
+        },
+        recipients: ['p2', 'p3'],
+        deadline: '11:30',
+      },
+      {
+        code: 'draw-unassigned',
+        params: { rank: 1, tablesWithSeats: ['Table 1'] },
+        recipients: ['p1'],
+        deadline: '11:30',
+      },
+      {
+        code: 'draw-leading',
+        params: { scenarioId: 'a', ranks: [1], tableName: 'Table 1', playerCount: 2 },
+        recipients: ['p-g1'],
+        deadline: '11:30',
+      },
+    ]);
+  });
+
+  it('prévient le MJ placé de l’annulation, puis de sa table (NO-1)', () => {
+    const convention = aConventionWithCancelledGame();
+    convention.moveParticipant('s1', 'p-g2', 'brumes');
+
+    const notifications = convention.publishDraw('s1', CATALOGUE);
+
+    expect(
+      notifications
+        .filter(({ recipients }) => recipients.participantIds.includes('p-g2'))
+        .map(({ code }) => code),
+    ).toEqual(['game-cancelled', 'draw-assigned']);
+  });
+
+  it('donne au MJ libéré son sort de joueur sur le téléphone', () => {
+    const unassigned = aConventionWithCancelledGame();
+    const assigned = aConventionWithCancelledGame();
+    assigned.moveParticipant('s1', 'p-g2', 'brumes');
+
+    unassigned.publishDraw('s1', CATALOGUE);
+    assigned.publishDraw('s1', CATALOGUE);
+
+    expect(unassigned.computeParticipantSituation('p-g2').timeSlots[0]).toMatchObject({
+      ledGameId: null,
+      drawResult: { kind: 'unassigned' },
+    });
+    expect(assigned.computeParticipantSituation('p-g2').timeSlots[0]).toMatchObject({
+      ledGameId: null,
+      drawResult: { kind: 'assigned', gameId: 'brumes' },
+    });
+  });
+});
+
 describe('Publier le tirage : refus, dans l’ordre', () => {
   it('refuse un créneau dont le tirage n’est pas lancé', () => {
     const refusal = refusalOf(() => aConvention().publishDraw('s1', CATALOGUE));

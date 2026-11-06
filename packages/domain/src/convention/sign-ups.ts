@@ -180,6 +180,17 @@ export class SignUps {
     );
   }
 
+  /**
+   * Les inscriptions sans celles de ces parties, annulées puis déprogrammées par la publication
+   * (TI-7) : aucun de leurs inscrits ne devient sans partie.
+   */
+  getSignUpsAfterUnschedulingGames(gameIds: readonly string[]): SignUps {
+    return new SignUps(
+      this.signUps.filter((signUp) => !gameIds.includes(signUp.gameId)),
+      this.participantsWithoutGame,
+    );
+  }
+
   /** Les inscriptions sans les participants sans partie du créneau, qui disparaît (PR-10). */
   getSignUpsAfterRemovingTimeSlot(timeSlotId: string): SignUps {
     return new SignUps(

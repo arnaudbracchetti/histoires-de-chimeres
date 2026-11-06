@@ -291,6 +291,39 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
       ]);
     });
 
+    it('la publication prévient le MJ d’une partie annulée, sans les notifications de IN-6 (TI-7)', async () => {
+      await server()
+        .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+        .expect(204);
+      await server()
+        .put(apiUrl(drawEndpoints.cancelGame, { gameId }))
+        .expect(204);
+
+      await server()
+        .post(apiUrl(drawEndpoints.publish, { timeSlotId: slot(1) }))
+        .expect(204);
+
+      const received = await push.receivedAtLeast(2);
+      await quietPeriod();
+      const titlesOf = (subscription: PushSubscriptionBody) =>
+        filterReceivedBySubscription(received, subscription).map(({ message }) => {
+          const { title, body, navigate } = (
+            message as { notification: { title: string; body: string; navigate: string } }
+          ).notification;
+          return { title, body, navigate };
+        });
+      expect(titlesOf(elodie)).toEqual([
+        {
+          title: 'Créneau 1\u00a0: ta partie est annulée',
+          body: "Néons n'a pas atteint son minimum. Toutes les parties du créneau sont complètes.",
+          navigate: `${PUBLIC_URL}/programme?creneau=1`,
+        },
+      ]);
+      expect(titlesOf(lune).map(({ title }) => title)).toEqual([
+        'Créneau 1\u00a0: pas de place pour toi',
+      ]);
+    });
+
     it('chiffre, signe, et envoie en urgence, 4 semaines tant que la convention n’a pas de date', async () => {
       await unschedule();
 
