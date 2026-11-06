@@ -5,6 +5,7 @@ import type { Draw } from './draw.js';
 import type { Game } from './game.js';
 import type { Participants } from './participants.js';
 import type { Schedule } from './schedule.js';
+import type { SignUpCollaborators, SignUps } from './sign-ups.js';
 import type { Table } from './table.js';
 import type { UniquelyNamedCollection } from './uniquely-named-collection.js';
 
@@ -18,12 +19,16 @@ export type DrawPublicationCollaborators = {
   participants: Participants;
   /** Entier : il donne les places maximum des parties. */
   catalogue: ScenarioCatalogue;
+  /** Elles donnent les participants sans partie du créneau. */
+  signUps: SignUps;
+  signUpCollaborators: SignUpCollaborators;
 };
 
 /**
  * Les notifications de la publication du tirage provisoire (TI-7, NO-2) : « partie annulée » au MJ
  * de chaque partie annulée, « table » aux joueurs de chaque partie, « pas de place » aux non placés,
- * sauf le MJ d'une partie annulée, déjà prévenu, avec les tables où il reste de la place, puis
+ * sauf le MJ d'une partie annulée, déjà prévenu, avec les tables où il reste de la place, en deux
+ * notifications quand il le faut : les participants sans partie (`withoutGame`) à part ; puis
  * « tu mènes » au MJ de chaque partie. Le MJ d'une partie annulée qu'un Organisateur a placé reçoit
  * donc « partie annulée », puis « table » (NO-1). Les parties sont celles qui commencent sur le
  * créneau, dans l'ordre de leur programmation ; la partie double commencée au créneau d'avant n'en
@@ -34,7 +39,8 @@ export function buildDrawPublicationNotifications(
   draw: Draw,
   collaborators: DrawPublicationCollaborators,
 ): Notification[] {
-  const { day, date, schedule, tables, participants, catalogue } = collaborators;
+  const { day, date, schedule, tables, participants, catalogue, signUps, signUpCollaborators } =
+    collaborators;
   const starting = schedule.listGamesStartingOnTimeSlot(draw.timeSlotId);
   const cancelledGames = starting.filter((game) => draw.isGameCancelled(game.id));
   const games = starting.filter((game) => !cancelledGames.includes(game));
@@ -88,16 +94,26 @@ export function buildDrawPublicationNotifications(
   const unassignedIds = draw
     .listUnassignedParticipantIds()
     .filter((participantId) => !cancelledGameMasterIds.includes(participantId));
-  const unassigned: Notification[] = unassignedIds.length
-    ? [
-        {
-          code: 'draw-unassigned',
-          params: { rank, tablesWithSeats },
-          recipients: buildParticipantRecipients(unassignedIds),
-          deadline: day.computeEndOfTimeSlots(date, [draw.timeSlotId]),
-        },
-      ]
-    : [];
+  const withoutGameIds = new Set(
+    signUps.listParticipantIdsWithoutGameOnTimeSlot(draw.timeSlotId, signUpCollaborators),
+  );
+  // « Pas de place » en deux notifications : les inscrits, puis les participants sans partie.
+  const buildUnassignedNotifications = (withoutGame: boolean): Notification[] => {
+    const recipients = unassignedIds.filter((id) => withoutGameIds.has(id) === withoutGame);
+    if (!recipients.length) return [];
+    return [
+      {
+        code: 'draw-unassigned',
+        params: { rank, tablesWithSeats, withoutGame },
+        recipients: buildParticipantRecipients(recipients),
+        deadline: day.computeEndOfTimeSlots(date, [draw.timeSlotId]),
+      },
+    ];
+  };
+  const unassigned = [
+    ...buildUnassignedNotifications(false),
+    ...buildUnassignedNotifications(true),
+  ];
 
   const leading = games.map((game): Notification => ({
     code: 'draw-leading',

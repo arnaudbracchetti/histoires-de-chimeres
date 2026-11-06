@@ -941,7 +941,6 @@ describe('ParticipantData', () => {
           oversubscribedAfterSignUp: false,
         });
       });
-
     });
 
     it('donne au programme la partie qu’il mène sur chaque créneau, partie double comprise', async () => {
@@ -1162,6 +1161,23 @@ describe('ParticipantData', () => {
             detail: `Les parties que tu avais choisies sont complètes. Il reste de la place à la table Licorne${NBSP}: va voir son MJ.`,
             see: '/',
           },
+        ]);
+      });
+
+      it('signale au participant sans partie qu’il n’avait plus d’inscription', async () => {
+        await opened(
+          schedule([brumes, epice]),
+          now,
+          situation([], { ...open('s1'), state: 'drawing', withoutGame: true }),
+        );
+
+        await rereadWith(
+          schedule([full, withSeats]),
+          situation([], { ...published({ kind: 'unassigned' }), withoutGame: true }),
+        );
+
+        expect(changeAlerts().map(({ detail }) => detail)).toEqual([
+          `Tu n'avais plus d'inscription sur ce créneau. Il reste de la place à la table Licorne${NBSP}: va voir son MJ.`,
         ]);
       });
 

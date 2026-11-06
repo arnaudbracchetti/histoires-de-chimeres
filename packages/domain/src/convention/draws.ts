@@ -77,8 +77,9 @@ export class Draws {
   /**
    * Les Tirages après le lancement de celui du créneau (TI-1), le premier dont le tirage n'est pas
    * publié. Les participants du tirage sont ceux qui ont une inscription active (IN-4) sur une
-   * partie qui commence sur le créneau : le MJ qui y mène n'en est pas (TI-2). L'algorithme reçoit
-   * ces participants et ces parties, avec leurs places ; sa sortie est vérifiée.
+   * partie qui commence sur le créneau, et les participants sans partie du créneau : le MJ qui y
+   * mène n'en est pas (TI-2). L'algorithme reçoit ces participants et ces parties, avec leurs
+   * places ; sa sortie est vérifiée.
    */
   getDrawsAfterLaunchingDraw(
     timeSlotId: string,
@@ -324,8 +325,10 @@ function buildDraw(
 /**
  * L'entrée de l'algorithme : les parties qui commencent sur le créneau, sans les annulées, avec
  * leurs places ; ceux qui ont une inscription active sur une partie qui y commence, annulées
- * comprises, partie après partie, dans l'ordre de leur inscription ; puis les MJ des parties
- * annulées. Un participant qui n'a d'inscription qu'à des parties annulées y est, sans partie.
+ * comprises, partie après partie, dans l'ordre de leur inscription ; puis les participants sans
+ * partie du créneau (TI-3 et IN-4 les excluent comme les autres) ; puis les MJ des parties
+ * annulées. Un participant qui n'a d'inscription qu'à des parties annulées y est, sans partie ; un
+ * participant sans partie, aussi.
  */
 function buildDrawInput(
   timeSlotId: string,
@@ -345,6 +348,7 @@ function buildDrawInput(
     ...starting.flatMap((game) =>
       signUps.listActiveParticipantIdsOfGame(game, signUpCollaborators),
     ),
+    ...signUps.listParticipantIdsWithoutGameOnTimeSlot(timeSlotId, signUpCollaborators),
     ...cancelled.map((game) => findExistingParticipantIdOfGameMaster(game.gameMasterId)),
   ]);
   const participants = [...participantIds].map((id): DrawParticipant => ({

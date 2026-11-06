@@ -471,6 +471,7 @@ describe('Suivi d’un créneau lancé', () => {
           movedByHand: false,
           signedUpGameIds: ['epice', 'brumes'],
           playsWithoutSignUp: false,
+          withoutGame: false,
         },
         {
           participantId: 'p2',
@@ -478,6 +479,7 @@ describe('Suivi d’un créneau lancé', () => {
           movedByHand: false,
           signedUpGameIds: ['epice'],
           playsWithoutSignUp: false,
+          withoutGame: false,
         },
         {
           participantId: 'p3',
@@ -485,6 +487,7 @@ describe('Suivi d’un créneau lancé', () => {
           movedByHand: false,
           signedUpGameIds: ['brumes'],
           playsWithoutSignUp: false,
+          withoutGame: false,
         },
       ],
       signals: [
@@ -543,6 +546,7 @@ describe('Suivi d’un créneau lancé', () => {
       movedByHand: true,
       signedUpGameIds: [],
       playsWithoutSignUp: true,
+      withoutGame: false,
     });
   });
 
@@ -588,6 +592,7 @@ describe('Suivi d’un créneau lancé', () => {
       movedByHand: false,
       signedUpGameIds: ['brumes'],
       playsWithoutSignUp: false,
+      withoutGame: false,
     });
   });
 });
@@ -1204,7 +1209,7 @@ describe('Publier le tirage (TI-7)', () => {
       },
       {
         code: 'draw-unassigned',
-        params: { rank: 1, tablesWithSeats: ['Table 1', 'Table 2'] },
+        params: { rank: 1, tablesWithSeats: ['Table 1', 'Table 2'], withoutGame: false },
         recipients: { kind: 'participants', participantIds: ['p2'] },
       },
       {
@@ -1261,7 +1266,7 @@ describe('Publier le tirage (TI-7)', () => {
       .publishDraw('s1', full)
       .find(({ code }) => code === 'draw-unassigned');
 
-    expect(unassigned?.params).toEqual({ rank: 1, tablesWithSeats: [] });
+    expect(unassigned?.params).toEqual({ rank: 1, tablesWithSeats: [], withoutGame: false });
   });
 
   it('n’annonce pas les places de la partie double commencée au créneau d’avant', () => {
@@ -1282,7 +1287,11 @@ describe('Publier le tirage (TI-7)', () => {
       .publishDraw('s2', CATALOGUE)
       .find(({ code }) => code === 'draw-unassigned');
 
-    expect(unassigned?.params).toEqual({ rank: 2, tablesWithSeats: ['Table 1'] });
+    expect(unassigned?.params).toEqual({
+      rank: 2,
+      tablesWithSeats: ['Table 1'],
+      withoutGame: false,
+    });
   });
 
   it('publie un créneau sans partie, sans notification', () => {
@@ -1387,7 +1396,7 @@ describe('Publier un tirage qui a des parties annulées (TI-7)', () => {
       },
       {
         code: 'draw-unassigned',
-        params: { rank: 1, tablesWithSeats: ['Table 1'] },
+        params: { rank: 1, tablesWithSeats: ['Table 1'], withoutGame: false },
         recipients: ['p1'],
         deadline: '11:30',
       },
@@ -1855,5 +1864,136 @@ describe('Gestes de programmation sur un créneau en tirage (TI-6, IN-6)', () =>
       expect(convention.computeUnscheduleVerdict('orage').erasedDrawTimeSlotId).toBe('s1');
       expect(convention.computeUnscheduleVerdict('neons').erasedDrawTimeSlotId).toBeNull();
     });
+  });
+});
+
+describe('Participant sans partie dans le tirage (TI-2)', () => {
+  const trackingOf = (convention: Convention, timeSlotId: string) =>
+    convention.computeSignUpTracking(CATALOGUE).find((slot) => slot.timeSlotId === timeSlotId)!;
+
+  /**
+   * Élodie inscrite à « brumes », Lune à « épice ». « brumes » est déprogrammée : Élodie est sans
+   * partie sur le créneau 1.
+   */
+  function aConventionWithParticipantWithoutGame(): Convention {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'epice', CATALOGUE);
+    convention.unscheduleGame('brumes');
+    return convention;
+  }
+
+  it('entre au tirage au lancement : l’algorithme le reçoit sans partie', () => {
+    const convention = aConventionWithParticipantWithoutGame();
+    const algorithm = new FakeDrawAlgorithm();
+
+    convention.launchDraw('s1', CATALOGUE, algorithm, RANDOM);
+
+    expect(algorithm.received?.participants).toEqual([
+      { id: 'p2', gameIds: ['epice'] },
+      { id: 'p1', gameIds: [] },
+    ]);
+    expect(assignmentsOf(convention, 's1')).toEqual(['p2 -', 'p1 -']);
+  });
+
+  it('entre au tirage à la relance', () => {
+    const convention = aConventionWithParticipantWithoutGame();
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    convention.moveParticipant('s1', 'p1', 'epice');
+    const algorithm = new FakeDrawAlgorithm();
+
+    convention.rerunDraw('s1', CATALOGUE, algorithm, RANDOM);
+
+    expect(algorithm.received?.participants).toEqual([
+      { id: 'p2', gameIds: ['epice'] },
+      { id: 'p1', gameIds: [] },
+    ]);
+  });
+
+  it('reste hors du tirage du créneau suivant une partie double publiée où il est placé (TI-3)', () => {
+    const base = aConvention();
+    base.signUpForGame('p1', 'epice', CATALOGUE);
+    const convention = Convention.restore({
+      ...stateOfConvention(base),
+      participantsWithoutGame: [new ParticipantWithoutGame('p1', 's2')],
+      draws: [new Draw('s1', true, [new Assignment('p1', 'epice', false)])],
+    });
+    const algorithm = new FakeDrawAlgorithm();
+
+    convention.launchDraw('s2', CATALOGUE, algorithm, RANDOM);
+
+    expect(algorithm.received?.participants).toEqual([]);
+  });
+
+  it('porte « sans partie » dans les affectations lues', () => {
+    const convention = aConventionWithParticipantWithoutGame();
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+
+    const assignments = trackingOf(convention, 's1').draw!.assignments;
+
+    expect(
+      assignments.map(({ participantId, withoutGame }) => `${participantId} ${withoutGame}`),
+    ).toEqual(['p1 true', 'p2 false']);
+  });
+
+  it('porte « sans partie » pour le MJ d’une partie annulée sans inscription active à une partie maintenue', () => {
+    const convention = aConvention();
+    convention.unscheduleGame('epice');
+    convention.signUpForGame('p-g2', 'brumes', CATALOGUE);
+    convention.scheduleScenario('epice', aScenario('b', 'g2', 2), 's1', 't2');
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+
+    convention.cancelGame('brumes', CATALOGUE);
+    convention.cancelGame('epice', CATALOGUE);
+
+    const withoutGame = Object.fromEntries(
+      trackingOf(convention, 's1').draw!.assignments.map(({ participantId, withoutGame }) => [
+        participantId,
+        withoutGame,
+      ]),
+    );
+    // Kaïros reste inscrit à « brumes », mais elle est annulée : il est sans partie, comme Brann.
+    expect(withoutGame).toEqual({ 'p-g1': true, 'p-g2': true });
+  });
+
+  it('se place à la main, sur une partie où il n’est pas inscrit', () => {
+    const convention = aConventionWithParticipantWithoutGame();
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+
+    convention.moveParticipant('s1', 'p1', 'epice');
+
+    expect(assignmentsOf(convention, 's1')).toEqual(['p2 epice', 'p1 epice']);
+    expect(trackingOf(convention, 's1').draw!.assignments[0]).toMatchObject({
+      participantId: 'p1',
+      gameId: 'epice',
+      movedByHand: true,
+      playsWithoutSignUp: true,
+      withoutGame: true,
+    });
+  });
+
+  it('reçoit à la publication « pas de place », en sachant qu’il n’avait plus d’inscription', () => {
+    const convention = aConventionWithParticipantWithoutGame();
+    convention.signUpForGame('p3', 'epice', CATALOGUE);
+    convention.launchDraw(
+      's1',
+      CATALOGUE,
+      new FakeDrawAlgorithm(() => [
+        { participantId: 'p2', gameId: 'epice' },
+        { participantId: 'p3', gameId: null },
+        { participantId: 'p1', gameId: null },
+      ]),
+      RANDOM,
+    );
+
+    const unassigned = convention
+      .publishDraw('s1', CATALOGUE)
+      .filter(({ code }) => code === 'draw-unassigned')
+      .map(({ params, recipients }) => ({ params, recipients: recipients.participantIds }));
+
+    expect(unassigned).toEqual([
+      { params: { rank: 1, tablesWithSeats: ['Table 2'], withoutGame: false }, recipients: ['p3'] },
+      { params: { rank: 1, tablesWithSeats: ['Table 2'], withoutGame: true }, recipients: ['p1'] },
+    ]);
   });
 });

@@ -475,13 +475,14 @@ export class DrawPlan {
   protected readonly chosenSummary = computed(() => {
     const player = this.chosen();
     if (!player) return '';
+    if (player.withoutGame || !player.signedUpGameIds.length) {
+      return fr`${player.nickname} · sans partie. Choisis sa nouvelle table.`;
+    }
     const titles = player.signedUpGameIds
       .map((gameId) => this.games().find(({ id }) => id === gameId)?.scenario.title)
       .filter((title) => title !== undefined)
       .map((title) => fr`« ${title} »`);
-    return titles.length
-      ? fr`${player.nickname} · inscriptions : ${titles.join(', ')}. Choisis sa nouvelle table.`
-      : fr`${player.nickname} · sans partie. Choisis sa nouvelle table.`;
+    return fr`${player.nickname} · inscriptions : ${titles.join(', ')}. Choisis sa nouvelle table.`;
   });
 
   protected toggleChoice(player: AssignmentDto) {

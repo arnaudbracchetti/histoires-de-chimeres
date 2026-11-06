@@ -168,12 +168,28 @@ export function buildAssignedText(
   };
 }
 
-/** Publication : le participant n'est pas placé ; `tablesWithSeats`, où il reste de la place. */
-export function buildUnassignedText(rank: number, tablesWithSeats: readonly string[]): ChangeText {
+/**
+ * Publication : le participant n'est pas placé ; `tablesWithSeats`, où il reste de la place.
+ * `withoutGame` : il était sans partie sur le créneau, il n'y avait plus d'inscription.
+ */
+export function buildUnassignedText(
+  rank: number,
+  tablesWithSeats: readonly string[],
+  withoutGame: boolean,
+): ChangeText {
   return {
     title: fr`${formatCapitalizedTimeSlotRanks([rank])} : pas de place pour toi`,
-    body: formatUnassignedBody(tablesWithSeats),
+    body: withoutGame
+      ? formatWithoutGameUnassignedBody(tablesWithSeats)
+      : formatUnassignedBody(tablesWithSeats),
   };
+}
+
+/** « Pas de place pour toi », au participant sans partie : il n'avait plus d'inscription. */
+function formatWithoutGameUnassignedBody(tablesWithSeats: readonly string[]): string {
+  const noSignUp = "Tu n'avais plus d'inscription sur ce créneau.";
+  if (!tablesWithSeats.length) return fr`${noSignUp} ${formatSeatsLeft(tablesWithSeats)}`;
+  return fr`${noSignUp} ${formatSeatsLeft(tablesWithSeats)} : va voir ${formatGameMasters(tablesWithSeats)}.`;
 }
 
 /** Publication : le MJ mène sa partie avec ses joueurs. */

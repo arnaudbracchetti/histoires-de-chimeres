@@ -4,6 +4,7 @@ import {
   buildGameUnscheduledText,
   buildNewGameText,
   buildOwnGameUnscheduledText,
+  buildUnassignedText,
 } from './change-texts.js';
 import { fr } from './french.js';
 
@@ -38,5 +39,23 @@ describe('Textes d’un geste qui rouvre les inscriptions d’un créneau en tir
   it('sans réouverture, le corps ne change pas', () => {
     expect(buildGameMovedText([2], [3], 'Néons', false, false).body).not.toContain(REOPENED);
     expect(buildOwnGameUnscheduledText([2], 'Néons', false).body).not.toContain(REOPENED);
+  });
+});
+
+describe('« Pas de place pour toi » à la publication (NO-2)', () => {
+  it('dit au participant inscrit que ses parties sont complètes', () => {
+    expect(buildUnassignedText(2, ['T1', 'T3'], false)).toEqual({
+      title: fr`Créneau 2 : pas de place pour toi`,
+      body: fr`Les parties que tu avais choisies sont complètes. Il reste de la place aux tables T1 et T3 : va voir leur MJ.`,
+    });
+  });
+
+  it('dit au participant sans partie qu’il n’avait plus d’inscription', () => {
+    expect(buildUnassignedText(2, ['T1', 'T3'], true).body).toBe(
+      fr`Tu n'avais plus d'inscription sur ce créneau. Il reste de la place aux tables T1 et T3 : va voir leur MJ.`,
+    );
+    expect(buildUnassignedText(2, [], true).body).toBe(
+      fr`Tu n'avais plus d'inscription sur ce créneau. Toutes les parties du créneau sont complètes.`,
+    );
   });
 });

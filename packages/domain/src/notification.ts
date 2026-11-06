@@ -74,9 +74,10 @@ export type NotificationParams = {
   };
   /**
    * Publication (TI-7) : aux non placés du créneau de rang `rank`. `tablesWithSeats` : les noms des
-   * tables où il reste de la place, dans l'ordre naturel.
+   * tables où il reste de la place, dans l'ordre naturel. `withoutGame` : il était sans partie sur
+   * le créneau, il n'y avait plus d'inscription.
    */
-  'draw-unassigned': { rank: number; tablesWithSeats: string[] };
+  'draw-unassigned': { rank: number; tablesWithSeats: string[]; withoutGame: boolean };
   /**
    * Publication (TI-7) : au MJ d'une partie annulée, que la publication déprogramme.
    * `tablesWithSeats` : comme pour `draw-unassigned`.

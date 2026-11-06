@@ -72,8 +72,8 @@ export const notificationCatalogue: {
     ...buildAssignedText(ranks, { title, tableName, gameMasterNickname }),
     url: frontOfficeUrls.game(gameId),
   }),
-  'draw-unassigned': ({ rank, tablesWithSeats }) => ({
-    ...buildUnassignedText(rank, tablesWithSeats),
+  'draw-unassigned': ({ rank, tablesWithSeats, withoutGame }) => ({
+    ...buildUnassignedText(rank, tablesWithSeats, withoutGame),
     url: frontOfficeUrls.timeSlotGames(rank),
   }),
   'game-cancelled': ({ ranks, tablesWithSeats }, { title }) => ({

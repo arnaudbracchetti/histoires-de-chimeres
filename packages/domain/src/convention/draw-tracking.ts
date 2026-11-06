@@ -28,8 +28,10 @@ export type DrawGameTracking = {
 
 /**
  * Une affectation du tirage : la partie, ou `null` ; déplacé à la main ; les parties du créneau où
- * l'inscription du participant est active (IN-4), dans l'ordre de son inscription ; et s'il joue à
- * une partie qui n'est pas de ses inscriptions.
+ * l'inscription du participant est active (IN-4), dans l'ordre de son inscription ; s'il joue à
+ * une partie qui n'est pas de ses inscriptions ; et s'il est sans partie : enregistré comme tel sur
+ * le créneau, ou MJ d'une partie annulée du tirage sans inscription active à une partie maintenue
+ * du créneau.
  */
 export type AssignmentTracking = {
   participantId: string;
@@ -37,6 +39,7 @@ export type AssignmentTracking = {
   movedByHand: boolean;
   signedUpGameIds: string[];
   playsWithoutSignUp: boolean;
+  withoutGame: boolean;
 };
 
 /** Une table où il reste de la place, et combien. */
@@ -118,6 +121,14 @@ export function computeDrawTracking(
     };
   });
   const games = measured.map(({ tracking }) => tracking);
+  const recordedWithoutGame = new Set(
+    signUps.listParticipantIdsWithoutGameOnTimeSlot(draw.timeSlotId, signUpCollaborators),
+  );
+  const cancelledGameMasterIds = new Set(
+    starting
+      .filter((game) => draw.isGameCancelled(game.id))
+      .map((game) => collaborators.findExistingParticipantIdOfGameMaster(game.gameMasterId)),
+  );
   const assignmentOf = new Map(
     draw.assignments.map((assignment) => [assignment.participantId, assignment]),
   );
@@ -135,6 +146,10 @@ export function computeDrawTracking(
         signedUpGameIds,
         playsWithoutSignUp:
           assignment.gameId !== null && !signedUpGameIds.includes(assignment.gameId),
+        withoutGame:
+          recordedWithoutGame.has(id) ||
+          (cancelledGameMasterIds.has(id) &&
+            signedUpGameIds.every((gameId) => draw.isGameCancelled(gameId))),
       },
     ];
   });

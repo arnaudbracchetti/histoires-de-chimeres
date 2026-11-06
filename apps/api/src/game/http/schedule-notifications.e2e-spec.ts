@@ -295,9 +295,7 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
       await server()
         .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
         .expect(204);
-      await server()
-        .put(apiUrl(drawEndpoints.cancelGame, { gameId }))
-        .expect(204);
+      await server().put(apiUrl(drawEndpoints.cancelGame, { gameId })).expect(204);
 
       await server()
         .post(apiUrl(drawEndpoints.publish, { timeSlotId: slot(1) }))
@@ -321,6 +319,44 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
       ]);
       expect(titlesOf(lune).map(({ title }) => title)).toEqual([
         'Créneau 1\u00a0: pas de place pour toi',
+      ]);
+    });
+
+    it('la publication dit au participant sans partie non placé qu’il n’avait plus d’inscription (TI-2)', async () => {
+      // Lune perd « Néons », déprogrammée : elle reste sans partie dans le tirage du créneau 1.
+      await unschedule();
+      const rescheduled = (
+        await server()
+          .post(apiUrl(scheduleEndpoints.schedule))
+          .send({ scenarioId: scenario.id, timeSlotId: slot(1), tableId: convention.tables[0]!.id })
+          .expect(201)
+      ).body as ScheduleDto;
+      await server()
+        .put(apiUrl(signUpEndpoints.signUp, { gameId: rescheduled.games[0]!.id }))
+        .set('Cookie', svenPhone)
+        .expect(204);
+      await server()
+        .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+        .expect(204);
+
+      await server()
+        .post(apiUrl(drawEndpoints.publish, { timeSlotId: slot(1) }))
+        .expect(204);
+
+      await push.receivedAtLeast(5);
+      await quietPeriod();
+      const unassigned = filterReceivedBySubscription(push.received, lune)
+        .map(
+          ({ message }) =>
+            (message as { notification: { title: string; body: string } }).notification,
+        )
+        .filter(({ title }) => title === 'Créneau 1\u00a0: pas de place pour toi');
+      expect(unassigned).toEqual([
+        expect.objectContaining({
+          body:
+            "Tu n'avais plus d'inscription sur ce créneau. Il reste de la place à la table " +
+            'Griffon\u00a0: va voir son MJ.',
+        }),
       ]);
     });
 

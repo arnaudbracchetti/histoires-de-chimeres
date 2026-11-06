@@ -45,23 +45,28 @@ export function changesBetween(
 function publishedDraws(before: Reading, after: Reading): ChangeNotice[] {
   const { schedule } = after;
   const see = frontOfficeUrls.home();
-  return after.situation.timeSlots.flatMap(({ timeSlotId, state, drawResult, ledGameId }) => {
-    const previous = before.situation.timeSlots.find((slot) => slot.timeSlotId === timeSlotId);
-    if (state !== 'published' || !drawResult || previous?.state === 'published') return [];
-    const tablesWithSeats = tableNamesOf(gamesWithSeatsOn(timeSlotId, schedule));
-    if (drawResult.kind === 'unassigned') {
-      const rank = schedule.timeSlots.find(({ id }) => id === timeSlotId)?.rank ?? 0;
-      return [buildChangeNotice(buildUnassignedText(rank, tablesWithSeats), see)];
-    }
-    const game = findGame(schedule, drawResult.kind === 'assigned' ? drawResult.gameId : ledGameId);
-    if (!game) return [];
-    const ranks = ranksOf(schedule, game);
-    const text =
-      drawResult.kind === 'assigned'
-        ? buildAssignedText(ranks, game)
-        : buildLeadingText(ranks, game, drawResult.players.length);
-    return [buildChangeNotice(text, see)];
-  });
+  return after.situation.timeSlots.flatMap(
+    ({ timeSlotId, state, drawResult, ledGameId, withoutGame }) => {
+      const previous = before.situation.timeSlots.find((slot) => slot.timeSlotId === timeSlotId);
+      if (state !== 'published' || !drawResult || previous?.state === 'published') return [];
+      const tablesWithSeats = tableNamesOf(gamesWithSeatsOn(timeSlotId, schedule));
+      if (drawResult.kind === 'unassigned') {
+        const rank = schedule.timeSlots.find(({ id }) => id === timeSlotId)?.rank ?? 0;
+        return [buildChangeNotice(buildUnassignedText(rank, tablesWithSeats, withoutGame), see)];
+      }
+      const game = findGame(
+        schedule,
+        drawResult.kind === 'assigned' ? drawResult.gameId : ledGameId,
+      );
+      if (!game) return [];
+      const ranks = ranksOf(schedule, game);
+      const text =
+        drawResult.kind === 'assigned'
+          ? buildAssignedText(ranks, game)
+          : buildLeadingText(ranks, game, drawResult.players.length);
+      return [buildChangeNotice(text, see)];
+    },
+  );
 }
 
 /**

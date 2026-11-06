@@ -229,6 +229,7 @@ const DRAW_OF_SLOT_2: DrawTrackingDto = {
       movedByHand: false,
       signedUpGameIds: ['p1'],
       playsWithoutSignUp: false,
+      withoutGame: false,
     },
     {
       participantId: 'u4',
@@ -237,6 +238,7 @@ const DRAW_OF_SLOT_2: DrawTrackingDto = {
       movedByHand: false,
       signedUpGameIds: ['p3'],
       playsWithoutSignUp: false,
+      withoutGame: false,
     },
     {
       participantId: 'u3',
@@ -245,6 +247,7 @@ const DRAW_OF_SLOT_2: DrawTrackingDto = {
       movedByHand: true,
       signedUpGameIds: ['p1', 'p3'],
       playsWithoutSignUp: false,
+      withoutGame: false,
     },
     {
       participantId: 'u2',
@@ -253,6 +256,7 @@ const DRAW_OF_SLOT_2: DrawTrackingDto = {
       movedByHand: false,
       signedUpGameIds: ['p3'],
       playsWithoutSignUp: true,
+      withoutGame: false,
     },
   ],
   signals: [],
@@ -1276,7 +1280,7 @@ describe('Pilotage du jour J', () => {
       );
     });
 
-    it('dit « sans partie » pour un joueur sans inscription sur le créneau', async () => {
+    it('dit « sans partie » dans le bandeau pour un participant sans partie, et toutes ses cibles « pas inscrit »', async () => {
       const { host, settle } = await render({
         ...DRAWING,
         timeSlots: DRAWING.timeSlots.map((slot) =>
@@ -1287,7 +1291,7 @@ describe('Pilotage du jour J', () => {
                   ...slot.draw,
                   assignments: slot.draw.assignments.map((assignment) =>
                     assignment.nickname === 'Bastou'
-                      ? { ...assignment, signedUpGameIds: [] }
+                      ? { ...assignment, signedUpGameIds: [], withoutGame: true }
                       : assignment,
                   ),
                 },
@@ -1295,11 +1299,16 @@ describe('Pilotage du jour J', () => {
             : slot,
         ),
       });
+      expect(text(pill(host, 'Bastou'))).toBe('Bastou');
 
       await choose(host, settle, 'Bastou');
 
       expect(text(banner(host))).toBe('Bastou · sans partie. Choisis sa nouvelle table. Annuler');
-      expect(targets(cards(host)[3]!)).toEqual(['Déplacer ici · pas inscrit']);
+      // « Brumes » et « Néons » ; « Épice », seconde moitié d'une partie double, n'en a pas.
+      expect(cards(host).flatMap(targets)).toEqual([
+        'Déplacer ici · pas inscrit',
+        'Déplacer ici · pas inscrit',
+      ]);
     });
 
     it('offre en bas des autres cartes « inscrit » ou « pas inscrit », et le dépassement en jaune', async () => {

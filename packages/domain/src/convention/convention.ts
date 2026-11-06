@@ -793,6 +793,8 @@ export class Convention {
       tables: this.allTables,
       participants: this.allParticipants,
       catalogue,
+      signUps: this.allSignUps,
+      signUpCollaborators: this.buildSignUpCollaborators(this.gameSchedule),
     });
     const cancelled = provisional.cancelledGameIds;
     this.allDraws = nextDraws;
