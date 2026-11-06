@@ -230,6 +230,47 @@ export class Draws {
     return this.getDrawsAfterReplacingDraw(draw.getDrawAfterPublishing());
   }
 
+  /**
+   * Le refus d'un geste de programmation qui touche une partie de ces créneaux, pour le premier dont
+   * le tirage est publié : son programme ne change plus (TI-7). `null` si aucun ne l'est.
+   */
+  findPublishedTimeSlotRefusal(timeSlotIds: readonly string[], day: Day): Refusal | null {
+    const published = timeSlotIds.find(
+      (timeSlotId) => this.getTimeSlotState(timeSlotId) === 'published',
+    );
+    if (!published) return null;
+    return new Refusal('time-slot-published', { rank: day.getTimeSlotRank(published) });
+  }
+
+  /**
+   * Refuse un créneau dont le tirage est lancé, provisoire ou publié : ses heures ne changent plus,
+   * et il ne se supprime pas (PR-10, PR-11).
+   */
+  verifyTimeSlotNotDrawn(timeSlotId: string, day: Day): void {
+    const state = this.getTimeSlotState(timeSlotId);
+    if (state === 'sign-ups-open') return;
+    throw new Refusal('time-slot-locked-by-draw', {
+      rank: day.getTimeSlotRank(timeSlotId),
+      published: state === 'published',
+    });
+  }
+
+  /**
+   * Refuse une journée où le créneau, non tiré, se place avant un créneau tiré : les tirages suivent
+   * l'ordre de la journée (PR-11). Le refus nomme le premier créneau tiré qui le suivrait, par son
+   * rang actuel : s'il est provisoire, c'est le seul tiré après lui, et rouvrir ses inscriptions
+   * suffit.
+   */
+  verifyNoDrawAfterTimeSlot(timeSlotId: string, currentDay: Day, nextDay: Day): void {
+    const following = nextDay.timeSlots.slice(nextDay.getTimeSlotRank(timeSlotId));
+    const drawn = following.find((slot) => this.findDrawOfTimeSlot(slot.id));
+    if (!drawn) return;
+    throw new Refusal('time-slot-before-draw', {
+      rank: currentDay.getTimeSlotRank(drawn.id),
+      published: this.getTimeSlotState(drawn.id) === 'published',
+    });
+  }
+
   /** Le tirage publié du créneau, ou `undefined` tant qu'il ne l'est pas : son résultat se montre (§5.7). */
   findPublishedDrawOfTimeSlot(timeSlotId: string): Draw | undefined {
     const draw = this.findDrawOfTimeSlot(timeSlotId);

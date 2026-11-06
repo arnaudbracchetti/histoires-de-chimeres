@@ -222,13 +222,22 @@ export class Convention {
     return this.day.getTimeSlotRank(timeSlotId);
   }
 
+  /**
+   * Ajoute un créneau, qui doit tenir dans la journée sans couper une partie double, ni se placer
+   * avant un créneau tiré (PR-11).
+   */
   addTimeSlot(id: string, start: TimeOfDay, end: TimeOfDay): void {
-    this.day = this.verifyTwoSlotGamesStayConsecutive(
+    const nextDay = this.verifyTwoSlotGamesStayConsecutive(
       this.day.getDayAfterAddingTimeSlot(id, start, end),
     );
+    this.allDraws.verifyNoDrawAfterTimeSlot(id, this.day, nextDay);
+    this.day = nextDay;
   }
 
-  /** Les heures d'un créneau qui porte une partie ou une disponibilité ne se modifient plus (PR-11). */
+  /**
+   * Les heures d'un créneau qui porte une partie ou une disponibilité, ou dont le tirage est lancé,
+   * ne se modifient plus ; un créneau ne se déplace pas avant un créneau tiré (PR-11).
+   */
   changeTimeSlotHours(id: string, start: TimeOfDay, end: TimeOfDay): void {
     const current = this.day.findExistingTimeSlotById(id);
     if (current.start.equals(start) && current.end.equals(end)) return;
@@ -246,20 +255,24 @@ export class Convention {
         availabilities,
       });
     }
-    this.day = this.verifyTwoSlotGamesStayConsecutive(
+    this.allDraws.verifyTimeSlotNotDrawn(id, this.day);
+    const nextDay = this.verifyTwoSlotGamesStayConsecutive(
       this.day.getDayAfterChangingTimeSlotHours(id, start, end),
     );
+    this.allDraws.verifyNoDrawAfterTimeSlot(id, this.day, nextDay);
+    this.day = nextDay;
   }
 
   /**
    * Supprime un créneau, et les disponibilités et les participants sans partie qui s'y rattachent.
-   * Un créneau qui porte des parties reste (PR-10).
+   * Un créneau qui porte des parties, ou dont le tirage est lancé, reste (PR-10).
    */
   removeTimeSlot(id: string): void {
     this.day.verifyTimeSlotExists(id);
     const games = this.gameSchedule.countGamesOnTimeSlot(id);
     if (games > 0)
       throw new Refusal('time-slot-has-games', { rank: this.getTimeSlotRank(id), games });
+    this.allDraws.verifyTimeSlotNotDrawn(id, this.day);
     this.day = this.day.getDayAfterRemovingTimeSlot(id);
     this.allParticipants =
       this.allParticipants.getParticipantsAfterWithdrawingAvailabilitiesOnTimeSlot(id);
@@ -393,7 +406,8 @@ export class Convention {
   }
 
   /**
-   * Programme le scénario sur un créneau et une table (PR-3), dans le respect de PR-5. Une partie
+   * Programme le scénario sur un créneau et une table (PR-3), dans le respect de PR-5, hors d'un
+   * créneau publié (TI-7). Une partie
    * double se programme sur son premier créneau, et prend le suivant, à la même table. Les
    * inscriptions de son MJ sur ses créneaux restent, inactives (IN-4). Rend « nouvelle partie »
    * et « tu mènes une partie » (`ScheduleChange`).
@@ -413,7 +427,8 @@ export class Convention {
 
   /**
    * Déplace la partie sur un créneau et une table (PR-17), dans le respect de PR-5, sans compter la
-   * partie elle-même. Une partie double se déplace par son premier créneau, et prend le suivant.
+   * partie elle-même. Ni depuis ni vers un créneau publié, même à une autre table (TI-7). Une partie
+   * double se déplace par son premier créneau, et prend le suivant.
    * Elle reste la même partie, à son rang dans le programme. Sur un autre créneau, elle perd ses
    * inscriptions ; à une autre table du même créneau, elle les garde (IN-6). Sur un autre créneau,
    * rend « partie déplacée » à ses inscrits, puis « nouvelle partie » et « tu mènes une partie »
@@ -427,7 +442,8 @@ export class Convention {
   }
 
   /**
-   * Échange deux parties (PR-17) : chacune prend le premier créneau et la table de l'autre, en un
+   * Échange deux parties (PR-17), dont aucune ne commence sur un créneau publié (TI-7) : chacune
+   * prend le premier créneau et la table de l'autre, en un
    * seul geste. Les deux places sont vérifiées ensemble contre PR-5, sans compter les deux parties à
    * leur ancienne place. Chacune reste la même partie, à son rang dans le programme. Échangées entre
    * deux créneaux, elles perdent leurs inscriptions ; sur un même créneau, elles les gardent (IN-6).
@@ -443,13 +459,13 @@ export class Convention {
   }
 
   /**
-   * Déprogramme la partie (PR-17) : son scénario reste proposé, et revient dans la réserve. Elle
+   * Déprogramme la partie (PR-17), sauf sur un créneau publié (TI-7) : son scénario reste proposé, et revient dans la réserve. Elle
    * perd ses inscriptions (IN-6). Rend « partie retirée du programme » à ses inscrits et à son MJ
    * (`ScheduleChange`).
    */
   unscheduleGame(gameId: string): Notification[] {
     return this.replaceScheduleAndBuildNotifications(
-      this.gameSchedule.getScheduleAfterUnschedulingGame(gameId),
+      this.throwIfRefused(this.getScheduleAfterUnschedulingGame(gameId)),
     );
   }
 
@@ -511,7 +527,7 @@ export class Convention {
    * Le verdict de chaque case créneaux × tables pour déplacer la partie, dans l'ordre des créneaux,
    * puis des tables. La première case d'une autre partie propose de l'échanger avec elle
    * (`swapWith`), avec le refus que `swapGames()` lèverait ; toute autre case, le refus que
-   * `moveGame()` y lèverait. Sa propre case est permise. Une case permise dit aussi les inscriptions
+   * `moveGame()` y lèverait. Sa propre case est permise, sauf sur un créneau publié (TI-7). Une case permise dit aussi les inscriptions
    * que le geste retirerait (IN-6).
    */
   computeMoveVerdicts(gameId: string): MovePlacement[] {
@@ -536,10 +552,11 @@ export class Convention {
 
   /**
    * Le verdict de `unscheduleGame()` : les inscriptions qu'il retirerait (IN-6), et le créneau dont
-   * il effacerait le tirage provisoire (TI-6).
+   * il effacerait le tirage provisoire (TI-6). Refuse, comme le geste, une partie d'un créneau publié
+   * (TI-7).
    */
   computeUnscheduleVerdict(gameId: string): UnscheduleVerdict {
-    const next = this.gameSchedule.getScheduleAfterUnschedulingGame(gameId);
+    const next = this.throwIfRefused(this.getScheduleAfterUnschedulingGame(gameId));
     return {
       removedSignUps: this.computeRemovedSignUps(next),
       erasedDrawTimeSlotId: this.computeErasedDrawTimeSlotId(next),
@@ -951,7 +968,10 @@ export class Convention {
     }
   }
 
-  /** Le Programme après la programmation du scénario sur cette case, ou le refus de PR-5. */
+  /**
+   * Le Programme après la programmation du scénario sur cette case, ou le refus d'un créneau publié
+   * (TI-7), puis de PR-5.
+   */
   private getScheduleAfterSchedulingScenario(
     id: string,
     scenario: SchedulableScenario,
@@ -959,38 +979,65 @@ export class Convention {
     tableId: string,
   ): Schedule | Refusal {
     this.day.verifyTimeSlotExists(timeSlotId);
-    return this.gameSchedule.getScheduleAfterSchedulingScenario(
-      id,
-      scenario,
-      timeSlotId,
-      this.findExistingGameMasterAndTable(scenario.gameMasterId, tableId),
-      this.day,
+    return (
+      this.allDraws.findPublishedTimeSlotRefusal([timeSlotId], this.day) ??
+      this.gameSchedule.getScheduleAfterSchedulingScenario(
+        id,
+        scenario,
+        timeSlotId,
+        this.findExistingGameMasterAndTable(scenario.gameMasterId, tableId),
+        this.day,
+      )
     );
   }
 
-  /** Le Programme après le déplacement de la partie sur cette case, ou le refus de PR-5. */
+  /**
+   * Le Programme après le déplacement de la partie sur cette case, ou le refus : son premier créneau,
+   * puis celui de la case, est publié (TI-7) ; puis PR-5. Un changement de table compte.
+   */
   private getScheduleAfterMovingGame(
     game: Game,
     timeSlotId: string,
     tableId: string,
   ): Schedule | Refusal {
     this.day.verifyTimeSlotExists(timeSlotId);
-    return this.gameSchedule.getScheduleAfterMovingGame(
-      game,
-      timeSlotId,
-      this.findExistingGameMasterAndTable(game.gameMasterId, tableId),
-      this.day,
+    return (
+      this.allDraws.findPublishedTimeSlotRefusal([game.timeSlotIds[0]!, timeSlotId], this.day) ??
+      this.gameSchedule.getScheduleAfterMovingGame(
+        game,
+        timeSlotId,
+        this.findExistingGameMasterAndTable(game.gameMasterId, tableId),
+        this.day,
+      )
     );
   }
 
-  /** Le Programme après l'échange des deux parties, ou le refus de PR-5. */
+  /**
+   * Le Programme après l'échange des deux parties, ou le refus : le premier créneau de l'une est
+   * publié (TI-7) ; puis PR-5.
+   */
   private getScheduleAfterSwappingGames(game: Game, other: Game): Schedule | Refusal {
-    return this.gameSchedule.getScheduleAfterSwappingGames(
-      game,
-      this.findExistingGameMasterAndTable(game.gameMasterId, other.tableId),
-      other,
-      this.findExistingGameMasterAndTable(other.gameMasterId, game.tableId),
-      this.day,
+    return (
+      this.allDraws.findPublishedTimeSlotRefusal(
+        [game.timeSlotIds[0]!, other.timeSlotIds[0]!],
+        this.day,
+      ) ??
+      this.gameSchedule.getScheduleAfterSwappingGames(
+        game,
+        this.findExistingGameMasterAndTable(game.gameMasterId, other.tableId),
+        other,
+        this.findExistingGameMasterAndTable(other.gameMasterId, game.tableId),
+        this.day,
+      )
+    );
+  }
+
+  /** Le Programme après le retrait de la partie, ou le refus d'un créneau publié (TI-7). */
+  private getScheduleAfterUnschedulingGame(gameId: string): Schedule | Refusal {
+    const game = this.gameSchedule.findExistingGameById(gameId);
+    return (
+      this.allDraws.findPublishedTimeSlotRefusal([game.timeSlotIds[0]!], this.day) ??
+      this.gameSchedule.getScheduleAfterUnschedulingGame(gameId)
     );
   }
 

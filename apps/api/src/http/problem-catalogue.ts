@@ -228,6 +228,25 @@ export const problemCatalogue: Catalogue = {
     detail: ({ rank }) =>
       fr`Le tirage du créneau ${rank} est lancé : ses inscriptions sont fermées.`,
   },
+  'time-slot-published': {
+    title: 'Créneau publié',
+    detail: ({ rank }) =>
+      fr`Le tirage du créneau ${rank} est publié : son programme ne change plus.`,
+  },
+  'time-slot-before-draw': {
+    title: 'Tirage lancé après',
+    detail: ({ rank, published }) =>
+      published
+        ? fr`Le tirage du créneau ${rank} est publié : aucun créneau ne se place plus avant lui.`
+        : fr`Le tirage du créneau ${rank} est lancé : rouvre d'abord ses inscriptions pour placer un créneau avant lui.`,
+  },
+  'time-slot-locked-by-draw': {
+    title: 'Créneau tiré',
+    detail: ({ rank, published }) =>
+      published
+        ? fr`Le tirage du créneau ${rank} est publié : le créneau ne change plus.`
+        : fr`Le tirage du créneau ${rank} est lancé : rouvre d'abord ses inscriptions.`,
+  },
   'draw-already-launched': {
     title: 'Tirage déjà lancé',
     detail: ({ rank }) => fr`Le tirage du créneau ${rank} est déjà lancé.`,

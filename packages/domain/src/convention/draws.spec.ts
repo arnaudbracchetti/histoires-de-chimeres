@@ -3,6 +3,7 @@ import type { Notification } from '../notification.js';
 import { Refusal } from '../refusal.js';
 import { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Scenario, type Duration } from '../scenario/scenario.js';
+import { Seats } from '../scenario/seats.js';
 import { Convention } from './convention.js';
 import { Assignment, Draw } from './draw.js';
 import { FaultyDrawOutputError } from './draws.js';
@@ -1995,5 +1996,304 @@ describe('Participant sans partie dans le tirage (TI-2)', () => {
       { params: { rank: 1, tablesWithSeats: ['Table 2'], withoutGame: false }, recipients: ['p3'] },
       { params: { rank: 1, tablesWithSeats: ['Table 2'], withoutGame: true }, recipients: ['p1'] },
     ]);
+  });
+});
+
+describe('Gestes de programmation sur un créneau publié (TI-7)', () => {
+  /**
+   * Celle d'`aConvention()`, avec la table t3 et la MJ Ysolde (g3), disponible sur les trois
+   * créneaux, comme Brann pour le créneau 3. Élodie est inscrite à « brumes », Lune à « épice ». Le
+   * tirage du créneau 1 est publié, chacune sur sa partie : « épice », partie double, en sort figée.
+   */
+  function aPublishedConvention(): Convention {
+    const convention = aConvention();
+    convention.addTable('t3', 'Table 3');
+    convention.addGameMaster('g3', 'p-g3', 'Ysolde');
+    for (const slot of ['s1', 's2', 's3']) convention.declareGameMasterAvailability('g3', slot);
+    convention.declareGameMasterAvailability('g1', 's3');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'epice', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    convention.publishDraw('s1', CATALOGUE);
+    return convention;
+  }
+
+  const PUBLISHED = new Refusal('time-slot-published', { rank: 1 });
+
+  describe('sont refusés', () => {
+    it('programmer sur le créneau', () => {
+      expect(
+        refusalOf(() =>
+          aPublishedConvention().scheduleScenario('orage', aScenario('d', 'g3'), 's1', 't3'),
+        ),
+      ).toEqual(PUBLISHED);
+    });
+
+    it('déplacer une partie vers le créneau', () => {
+      const convention = aPublishedConvention();
+      convention.scheduleScenario('orage', aScenario('d', 'g3'), 's3', 't3');
+
+      expect(refusalOf(() => convention.moveGame('orage', 's1', 't3'))).toEqual(PUBLISHED);
+    });
+
+    it('déplacer une partie hors du créneau', () => {
+      expect(refusalOf(() => aPublishedConvention().moveGame('brumes', 's3', 't1'))).toEqual(
+        PUBLISHED,
+      );
+    });
+
+    it('changer de table dans le créneau', () => {
+      expect(refusalOf(() => aPublishedConvention().moveGame('brumes', 's1', 't3'))).toEqual(
+        PUBLISHED,
+      );
+    });
+
+    it('échanger avec une partie du créneau, depuis un autre créneau ou dans le créneau', () => {
+      const convention = aPublishedConvention();
+      convention.scheduleScenario('orage', aScenario('d', 'g3'), 's3', 't3');
+
+      expect(refusalOf(() => convention.swapGames('orage', 'brumes'))).toEqual(PUBLISHED);
+      expect(refusalOf(() => convention.swapGames('brumes', 'epice'))).toEqual(PUBLISHED);
+    });
+
+    it('déprogrammer une de ses parties', () => {
+      expect(refusalOf(() => aPublishedConvention().unscheduleGame('brumes'))).toEqual(PUBLISHED);
+    });
+
+    it('déplacer ou déprogrammer une partie double qui y commence : elle est figée sur ses deux créneaux', () => {
+      const convention = aPublishedConvention();
+
+      expect(refusalOf(() => convention.moveGame('epice', 's2', 't3'))).toEqual(PUBLISHED);
+      expect(refusalOf(() => convention.unscheduleGame('epice'))).toEqual(PUBLISHED);
+    });
+  });
+
+  describe('les verdicts le montrent, avant PR-5', () => {
+    it('programmer : chaque case du créneau', () => {
+      const refusals = aPublishedConvention()
+        .computePlacementVerdicts(aScenario('d', 'g3'))
+        .filter(({ timeSlotId }) => timeSlotId === 's1')
+        .map(({ refusal }) => refusal);
+
+      // Les tables 1 et 2 sont prises, mais le créneau publié l'emporte.
+      expect(refusals).toEqual([PUBLISHED, PUBLISHED, PUBLISHED]);
+    });
+
+    it('programmer sur une case du créneau', () => {
+      const verdicts = aPublishedConvention().computeCellPlacementVerdicts(
+        ScenarioCatalogue.restore([
+          ...CATALOGUE.listEntries(),
+          { id: 'd', gameMasterId: 'g3', duration: 1, minSeats: 3, maxSeats: 5 },
+        ]),
+        's1',
+        't3',
+      );
+
+      expect(verdicts.map(({ scenarioId, refusal }) => [scenarioId, refusal])).toEqual([
+        ['c', PUBLISHED],
+        ['d', PUBLISHED],
+      ]);
+    });
+
+    it('déplacer ou échanger une partie du créneau : chaque case', () => {
+      const refusals = aPublishedConvention()
+        .computeMoveVerdicts('brumes')
+        .map(({ refusal }) => refusal);
+
+      expect(refusals.every((refusal) => refusal?.code === 'time-slot-published')).toBe(true);
+    });
+
+    it('déplacer une autre partie : les cases du créneau seulement', () => {
+      const verdicts = aPublishedConvention().computeMoveVerdicts('neons');
+      const refusalAt = (timeSlotId: string, tableId: string) =>
+        verdicts.find((verdict) => verdict.timeSlotId === timeSlotId && verdict.tableId === tableId)
+          ?.refusal;
+
+      expect(refusalAt('s1', 't3')).toEqual(PUBLISHED);
+      expect(refusalAt('s3', 't3')).toBeNull();
+    });
+
+    it('déprogrammer', () => {
+      expect(refusalOf(() => aPublishedConvention().computeUnscheduleVerdict('brumes'))).toEqual(
+        PUBLISHED,
+      );
+    });
+  });
+
+  describe('restent permis', () => {
+    it('programmer sur le second créneau de la partie double, à une autre table', () => {
+      const convention = aPublishedConvention();
+
+      convention.scheduleScenario('orage', aScenario('d', 'g3'), 's2', 't3');
+
+      expect(convention.games.map(({ id }) => id)).toContain('orage');
+    });
+
+    it('changer les places d’un scénario du créneau (PR-4)', () => {
+      expect(
+        aPublishedConvention().buildOversubscribedNotificationsAfterSeatsChange(
+          aScenario('a', 'g1'),
+          Seats.createBetween(5, 8),
+        ),
+      ).toEqual([]);
+    });
+
+    it('déclarer et retirer une disponibilité sur le créneau, où le MJ ne mène pas (PR-15)', () => {
+      const convention = aPublishedConvention();
+
+      convention.withdrawGameMasterAvailability('g3', 's1');
+      convention.declareGameMasterAvailability('g3', 's1');
+
+      expect(convention.countAvailabilitiesOnTimeSlot('s1')).toBe(3);
+    });
+
+    it('ajouter une table, renommer celle d’une partie publiée, changer le pseudo d’un MJ', () => {
+      const convention = aPublishedConvention();
+
+      convention.addTable('t4', 'Table 4');
+      convention.renameTable('t1', 'Dragon');
+      convention.changeGameMasterNickname('g1', 'Brann le Sage');
+
+      expect(convention.tables.map(({ name }) => name.text)).toContain('Dragon');
+      expect(convention.gameMasters.map(({ nickname }) => nickname.text)).toContain(
+        'Brann le Sage',
+      );
+    });
+  });
+});
+
+describe('Créneaux tirés (PR-10, PR-11)', () => {
+  /** Celle d'`aConvention()`, le tirage du créneau 1 lancé. */
+  function aDrawingConvention(): Convention {
+    const convention = aConvention();
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    return convention;
+  }
+
+  /** Celle d'`aConvention()`, le tirage du créneau 1 publié. */
+  function aPublishedConvention(): Convention {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'epice', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    convention.publishDraw('s1', CATALOGUE);
+    return convention;
+  }
+
+  describe('ajouter un créneau', () => {
+    it('refuse un créneau avant un créneau en tirage provisoire', () => {
+      expect(
+        refusalOf(() => aDrawingConvention().addTimeSlot('s0', at('07:00'), at('08:30'))),
+      ).toEqual(new Refusal('time-slot-before-draw', { rank: 1, published: false }));
+    });
+
+    it('refuse un créneau avant un créneau publié', () => {
+      expect(
+        refusalOf(() => aPublishedConvention().addTimeSlot('s0', at('07:00'), at('08:30'))),
+      ).toEqual(new Refusal('time-slot-before-draw', { rank: 1, published: true }));
+    });
+
+    it('ajoute un créneau après les créneaux tirés', () => {
+      const convention = aDrawingConvention();
+
+      convention.addTimeSlot('s4', at('20:00'), at('22:00'));
+
+      expect(convention.getTimeSlotRank('s4')).toBe(4);
+    });
+
+    it('fait passer d’abord les refus existants', () => {
+      expect(
+        refusalOf(() => aDrawingConvention().addTimeSlot('s0', at('08:00'), at('10:00'))),
+      ).toEqual(new Refusal('time-slot-end-overlaps', { rank: 1 }));
+    });
+  });
+
+  /**
+   * Une journée sans partie : créneaux s1, s2 et s3. Le tirage du créneau 1 est publié, celui du
+   * créneau 2 lancé, tous deux vides.
+   */
+  function aDayWithoutGames(): Convention {
+    const convention = Convention.restore({
+      ...stateOfConvention(aConvention()),
+      timeSlots: [],
+      tables: [],
+      gameMasters: [],
+      participants: [],
+      signUps: [],
+      games: [],
+    });
+    convention.addTimeSlot('s1', at('09:00'), at('11:30'));
+    convention.addTimeSlot('s2', at('14:00'), at('16:30'));
+    convention.addTimeSlot('s3', at('17:00'), at('19:30'));
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    convention.publishDraw('s1', CATALOGUE);
+    convention.launchDraw('s2', CATALOGUE, FIRST_GAME, RANDOM);
+    return convention;
+  }
+
+  describe('changer les heures d’un créneau', () => {
+    it('refuse un créneau dont le tirage est publié, puis lancé', () => {
+      const convention = aDayWithoutGames();
+
+      expect(
+        refusalOf(() => convention.changeTimeSlotHours('s1', at('08:00'), at('11:30'))),
+      ).toEqual(new Refusal('time-slot-locked-by-draw', { rank: 1, published: true }));
+      expect(
+        refusalOf(() => convention.changeTimeSlotHours('s2', at('14:00'), at('16:00'))),
+      ).toEqual(new Refusal('time-slot-locked-by-draw', { rank: 2, published: false }));
+    });
+
+    it('refuse de déplacer un créneau non tiré avant un créneau tiré', () => {
+      expect(
+        refusalOf(() => aDayWithoutGames().changeTimeSlotHours('s3', at('12:00'), at('13:30'))),
+      ).toEqual(new Refusal('time-slot-before-draw', { rank: 2, published: false }));
+    });
+
+    it('change les heures d’un créneau non tiré qui reste après les créneaux tirés', () => {
+      const convention = aDayWithoutGames();
+
+      convention.changeTimeSlotHours('s3', at('18:00'), at('20:00'));
+
+      expect(convention.timeSlots[2]!.start).toEqual(at('18:00'));
+    });
+
+    it('fait passer d’abord les refus existants : parties, puis disponibilités', () => {
+      expect(
+        refusalOf(() => aDrawingConvention().changeTimeSlotHours('s1', at('08:00'), at('11:30'))),
+      ).toEqual(new Refusal('time-slot-hours-locked-by-games', { rank: 1, games: 2 }));
+      const convention = aDayWithoutGames();
+      convention.addGameMaster('g1', 'p-g1', 'Brann');
+      convention.declareGameMasterAvailability('g1', 's2');
+      expect(
+        refusalOf(() => convention.changeTimeSlotHours('s2', at('14:00'), at('16:00'))),
+      ).toEqual(new Refusal('time-slot-hours-locked', { rank: 2, availabilities: 1 }));
+    });
+  });
+
+  describe('supprimer un créneau', () => {
+    it('refuse un créneau dont le tirage est publié, puis lancé', () => {
+      const convention = aDayWithoutGames();
+
+      expect(refusalOf(() => convention.removeTimeSlot('s1'))).toEqual(
+        new Refusal('time-slot-locked-by-draw', { rank: 1, published: true }),
+      );
+      expect(refusalOf(() => convention.removeTimeSlot('s2'))).toEqual(
+        new Refusal('time-slot-locked-by-draw', { rank: 2, published: false }),
+      );
+    });
+
+    it('supprime un créneau non tiré', () => {
+      const convention = aDayWithoutGames();
+
+      convention.removeTimeSlot('s3');
+
+      expect(convention.timeSlots.map(({ id }) => id)).toEqual(['s1', 's2']);
+    });
+
+    it('fait passer d’abord le refus d’un créneau qui porte des parties', () => {
+      expect(refusalOf(() => aDrawingConvention().removeTimeSlot('s1'))).toEqual(
+        new Refusal('time-slot-has-games', { rank: 1, games: 2 }),
+      );
+    });
   });
 });

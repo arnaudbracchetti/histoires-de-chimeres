@@ -59,6 +59,18 @@ export type RefusalParams = {
   /** `rank` : le rang du premier créneau de la partie double qu'un créneau couperait (PR-11). */
   'time-slot-splits-two-slot-game': { rank: number };
   'game-not-found': Record<string, never>;
+  /** `rank` : le rang du créneau, dont le tirage est publié : son programme ne change plus (TI-7). */
+  'time-slot-published': { rank: number };
+  /**
+   * `rank` : le rang du premier créneau tiré que le créneau précéderait ; `published` : son tirage
+   * est publié, sinon provisoire. Aucun créneau ne se place avant un créneau tiré (PR-11).
+   */
+  'time-slot-before-draw': { rank: number; published: boolean };
+  /**
+   * `rank` : le rang du créneau, dont le tirage est lancé ; `published` : il est publié, sinon
+   * provisoire. Ses heures ne changent plus, et il ne se supprime pas (PR-10, PR-11).
+   */
+  'time-slot-locked-by-draw': { rank: number; published: boolean };
   /** `rank` : le rang du créneau, dont le tirage est lancé (IN-2). */
   'sign-ups-closed': { rank: number };
   /** `rank` : le rang du créneau, dont le tirage est déjà lancé. */

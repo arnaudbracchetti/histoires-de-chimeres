@@ -572,6 +572,25 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
     });
   });
 
+  it('refuse d’ajouter un créneau avant un créneau en tirage, en français (PR-11)', async () => {
+    await start();
+    await server()
+      .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+      .expect(204);
+
+    const response = await server()
+      .post(apiUrl(timeSlotEndpoints.add))
+      .send({ start: '07:00', end: '08:30' })
+      .expect(422);
+
+    expect(response.body).toMatchObject({
+      code: 'time-slot-before-draw',
+      title: 'Tirage lancé après',
+      detail:
+        "Le tirage du créneau 1 est lancé\u00a0: rouvre d'abord ses inscriptions pour placer un créneau avant lui.",
+    });
+  });
+
   describe('Publier le tirage (TI-7)', () => {
     const publish = (rank: number) =>
       server().post(apiUrl(drawEndpoints.publish, { timeSlotId: slot(rank) }));
@@ -683,6 +702,50 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
           "1\u00a0partie du créneau 1 n'a aucun joueur\u00a0: annule-la pour publier le tirage.",
       });
       expect((await tracking()).timeSlots[0]!.state).toBe('drawing');
+    });
+
+    it('fige le programme du créneau publié : verdict et geste refusés, en français', async () => {
+      await start();
+      const neons = await scheduled((await gameMaster('Élodie')).id, 'Néons', 'Table 10');
+      await signUp(neons, await linkedPhone('Lune'));
+      await server()
+        .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+        .expect(204);
+      await publish(1).expect(204);
+      const published = {
+        code: 'time-slot-published',
+        title: 'Créneau publié',
+        detail: 'Le tirage du créneau 1 est publié\u00a0: son programme ne change plus.',
+      };
+
+      const placements = (
+        await server()
+          .get(apiUrl(scheduleEndpoints.movePlacements, { gameId: neons }))
+          .expect(200)
+      ).body as PlacementDto[];
+      expect(placements[0]!.refusal).toEqual(published);
+      const refused = await server()
+        .delete(apiUrl(scheduleEndpoints.unschedule, { gameId: neons }))
+        .expect(422);
+      expect(refused.body).toMatchObject(published);
+    });
+
+    it('refuse de supprimer un créneau publié, en français (PR-10)', async () => {
+      await start();
+      await server()
+        .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+        .expect(204);
+      await publish(1).expect(204);
+
+      const response = await server()
+        .delete(apiUrl(timeSlotEndpoints.remove, { timeSlotId: slot(1) }))
+        .expect(422);
+
+      expect(response.body).toMatchObject({
+        code: 'time-slot-locked-by-draw',
+        title: 'Créneau tiré',
+        detail: 'Le tirage du créneau 1 est publié\u00a0: le créneau ne change plus.',
+      });
     });
 
     it('n’a plus d’inscription active au créneau suivant pour le joueur placé dans une partie double (TI-3, IN-4)', async () => {
