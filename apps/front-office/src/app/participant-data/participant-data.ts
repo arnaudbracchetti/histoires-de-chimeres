@@ -41,18 +41,27 @@ const SLOW_NETWORK = fr`Le réseau ne répond pas : vérifie ton inscription.`;
  * inscriptions de son créneau sont ouvertes, ou pourquoi il est impossible.
  * - `open` : « S'inscrire », ou « Inscription enregistrée » et « Se désinscrire » ; `pending`
  *   pendant l'envoi ; `oversubscribedAfterSignUp` quand l'inscription laisserait la partie très
- *   demandée, ou l'y ferait passer : la confirmation d'IN-5 vient d'abord ;
+ *   demandée, ou l'y ferait passer : la confirmation d'IN-5 vient d'abord ; `backupFor` : la
+ *   partie que mène le MJ du pseudo sur l'un des créneaux de celle-ci, où il s'inscrit en secours,
+ *   ou `null` (IN-4) ;
  * - `own-game` : « Tu mènes cette partie », avec Mes parties sur son créneau `rank` (§5.7) ;
- * - `leading` : le MJ du pseudo mène `game` sur l'un des créneaux de celle-ci (IN-4) ;
+ * - `leading` : le MJ du pseudo mène `game` sur l'un des créneaux de celle-ci, dont le premier, de
+ *   rang `rank`, est en tirage ou publié : les inscriptions y sont fermées (IN-4) ;
  * - `held` : le pseudo joue à `game`, partie double publiée qui occupe un créneau de celle-ci ;
  * - `drawing` : « Tirage en cours » sur le créneau `rank` ;
  * - après la publication : `assigned-here` (« Tu joues à cette table »), `assigned-elsewhere` (sa
  *   table sur ce créneau), `unassigned` (« Pas de place pour toi »), `closed` (sans inscription).
  */
 export type SignUpBarState =
-  | { kind: 'open'; signedUp: boolean; pending: boolean; oversubscribedAfterSignUp: boolean }
+  | {
+      kind: 'open';
+      signedUp: boolean;
+      pending: boolean;
+      oversubscribedAfterSignUp: boolean;
+      backupFor: FrontOfficeGameDto | null;
+    }
   | { kind: 'own-game'; rank: number }
-  | { kind: 'leading'; game: FrontOfficeGameDto }
+  | { kind: 'leading'; game: FrontOfficeGameDto; rank: number }
   | { kind: 'held'; game: FrontOfficeGameDto; signedUp: boolean }
   | { kind: 'drawing'; rank: number; signedUp: boolean }
   | { kind: 'assigned-here' }
@@ -82,6 +91,8 @@ export type MyTimeSlot = {
   state: TimeSlotStateDto;
   /** Les inscriptions du pseudo dont c'est le premier créneau : une partie double est sous son premier (IN-3). */
   signedUpGames: FrontOfficeGameDto[];
+  /** Ses inscriptions de secours dont c'est le premier créneau, où son MJ mène (IN-4). */
+  backupGames: FrontOfficeGameDto[];
   /**
    * Le pseudo y est sans partie, inscriptions ouvertes : un Organisateur lui a retiré sa dernière
    * inscription du créneau, et il reste dans son tirage, dont il peut se retirer (IN-6).
@@ -225,6 +236,9 @@ export class ParticipantData {
         (game) =>
           game.timeSlotIds[0] === timeSlot.id && situation.signedUpGameIds.includes(game.id),
       );
+      const backupGames = schedule.games.filter(
+        (game) => game.timeSlotIds[0] === timeSlot.id && situation.backupGameIds.includes(game.id),
+      );
       const slotSituation = timeSlotSituationOf(situation, timeSlot.id);
       const state = slotSituation?.state ?? 'sign-ups-open';
       const assignment = assignmentOf(timeSlot.id, fullSchedule, situation);
@@ -233,6 +247,7 @@ export class ParticipantData {
         timeSlot,
         state,
         signedUpGames,
+        backupGames,
         withoutGame: state === 'sign-ups-open' && !!slotSituation?.withoutGame,
         assignment,
         // Une partie double où il joue occupe le créneau : ses inscriptions y sont ignorées (TI-3).
@@ -268,7 +283,7 @@ export class ParticipantData {
 
   /**
    * La partie que mène le MJ du pseudo sur ce créneau, sur les deux d'une partie double, ou `null` :
-   * il ne peut pas s'y inscrire (IN-4).
+   * il ne s'y inscrit qu'en secours (IN-4).
    */
   ledGameOn(timeSlotId: string): FrontOfficeGameDto | null {
     const schedule = this.lastRead();
@@ -282,9 +297,14 @@ export class ParticipantData {
     return this.signUpBarOf(gameId)?.kind === 'own-game';
   }
 
-  /** Le pseudo est inscrit à la partie. */
+  /** Le pseudo est inscrit à la partie, et son inscription compte. */
   isSignedUp(gameId: string): boolean {
     return !!this.lastSituation()?.signedUpGameIds.includes(gameId);
+  }
+
+  /** Le MJ du pseudo s'est inscrit en secours à la partie, sur un créneau où il mène (IN-4). */
+  isBackup(gameId: string): boolean {
+    return !!this.lastSituation()?.backupGameIds.includes(gameId);
   }
 
   /**
@@ -301,10 +321,9 @@ export class ParticipantData {
     if (gameLedOn(game.timeSlotIds[0]!, schedule, situation)?.id === game.id) {
       return { kind: 'own-game', rank: rankOf(schedule, game.timeSlotIds[0]!) };
     }
-    const leading = game.timeSlotIds
-      .map((id) => gameLedOn(id, schedule, situation))
-      .find((ledGame) => ledGame);
-    if (leading) return { kind: 'leading', game: leading };
+    const leading =
+      game.timeSlotIds.map((id) => gameLedOn(id, schedule, situation)).find((ledGame) => ledGame) ??
+      null;
     const held = assignedDoubleGames(schedule, situation).find(
       (assigned) =>
         assigned.id !== game.id && assigned.timeSlotIds.some((id) => game.timeSlotIds.includes(id)),
@@ -313,6 +332,10 @@ export class ParticipantData {
     const firstTimeSlotId = game.timeSlotIds[0]!;
     const rank = rankOf(schedule, firstTimeSlotId);
     const slot = timeSlotSituationOf(situation, firstTimeSlotId);
+    // Tirage lancé ou publié : il ne s'inscrit plus, même en secours, mais il y mène toujours.
+    if (leading && (slot?.state ?? 'sign-ups-open') !== 'sign-ups-open') {
+      return { kind: 'leading', game: leading, rank };
+    }
     if (slot?.state === 'drawing') return { kind: 'drawing', rank, signedUp };
     if (slot?.state === 'published') {
       const result = slot.drawResult;
@@ -322,11 +345,13 @@ export class ParticipantData {
       const assigned = result?.kind === 'assigned' ? gameById(result.gameId) : undefined;
       return assigned ? { kind: 'assigned-elsewhere', game: assigned } : { kind: 'closed', rank };
     }
+    const signedUpOrBackup = signedUp || situation.backupGameIds.includes(game.id);
     return {
       kind: 'open',
-      signedUp,
+      signedUp: signedUpOrBackup,
       pending: this.pending().has(game.id),
-      oversubscribedAfterSignUp: !signedUp && game.signUpCount + 1 > game.seats.max,
+      oversubscribedAfterSignUp: !signedUpOrBackup && game.signUpCount + 1 > game.seats.max,
+      backupFor: leading,
     };
   }
 

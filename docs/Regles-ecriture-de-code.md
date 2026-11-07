@@ -33,7 +33,7 @@ type rend évident.
 - Quand on touche un fichier, on corrige aussi ses noms laconiques.
 - Un appel dont on jette le résultat pour vérifier s'appelle `verify…`.
 - « Mener » se dit `lead` partout (`isGameMasterLeadingOnTimeSlot`, code de refus
-  `leads-game-on-time-slot`).
+  `game-led-by-participant`).
 - Les termes du domaine viennent de `GLOSSARY.md` : `signUp` / `withdraw` pour l'inscription,
   « verdict de placement » pour `Placement`.
 

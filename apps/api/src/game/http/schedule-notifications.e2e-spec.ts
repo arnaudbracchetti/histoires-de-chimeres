@@ -47,6 +47,7 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
   let elodie: PushSubscriptionBody;
   let lunePhone: string;
   let svenPhone: string;
+  let elodiePhone: string;
 
   const server = () => request(app.getHttpServer());
 
@@ -188,7 +189,7 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
     [lune, sven, elodie] = [push.subscription(), push.subscription(), push.subscription()];
     lunePhone = await linkPhone('Lune', lune);
     svenPhone = await linkPhone('Sven', sven);
-    await linkPhone('Élodie', elodie, 'game-master');
+    elodiePhone = await linkPhone('Élodie', elodie, 'game-master');
     await server()
       .put(apiUrl(signUpEndpoints.signUp, { gameId }))
       .set('Cookie', lunePhone)
@@ -425,6 +426,83 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
       });
       expect(filterReceivedBySubscription(received, elodie)[0]).toMatchObject({
         message: { notification: { title: 'Créneau 2\u00a0: tu mènes une partie' } },
+      });
+    });
+
+    describe('MJ qui mène sur le créneau (NO-2, IN-4)', () => {
+      /** Programme « Brumes » de Kaïros, au créneau 1, table Licorne : l'id de la partie. */
+      const scheduleBrumes = async () => {
+        const kairosId = (
+          (
+            await server()
+              .post(apiUrl(gameMasterEndpoints.add))
+              .send({ nickname: 'Kaïros' })
+              .expect(201)
+          ).body as GameMasterDto[]
+        ).find(({ nickname }) => nickname === 'Kaïros')!.id;
+        await server()
+          .put(
+            apiUrl(availabilityEndpoints.declare, { gameMasterId: kairosId, timeSlotId: slot(1) }),
+          )
+          .expect(200);
+        const licorne = (
+          (await server().post(apiUrl(tableEndpoints.add)).send({ name: 'Licorne' }).expect(201))
+            .body as ConventionDto
+        ).tables.find(({ name }) => name === 'Licorne')!;
+        const brumes = (
+          await server()
+            .post(apiUrl(scenarioEndpoints.propose, { gameMasterId: kairosId }))
+            .send({
+              title: 'Brumes',
+              system: 'Cthulhu',
+              presentation: 'Une enquête.',
+              contentWarnings: '',
+              seats: { min: 3, max: 5 },
+              duration: 1,
+            })
+            .expect(201)
+        ).body as ScenarioDto;
+        const scheduled = (
+          await server()
+            .post(apiUrl(scheduleEndpoints.schedule))
+            .send({ scenarioId: brumes.id, timeSlotId: slot(1), tableId: licorne.id })
+            .expect(201)
+        ).body as ScheduleDto;
+        return scheduled.games.find(({ scenario }) => scenario.id === brumes.id)!.id;
+      };
+
+      it('reçoit « nouvelle partie » en secours, puis, sa partie retirée, apprend que ses inscriptions de secours comptent', async () => {
+        const brumesId = await scheduleBrumes();
+        const received = await push.receivedAtLeast(3);
+        expect(filterReceivedBySubscription(received, elodie)).toMatchObject([
+          {
+            message: {
+              notification: {
+                title: 'Créneau 1\u00a0: nouvelle partie',
+                body: "Brumes · Cthulhu, table Licorne. Tu peux t'y inscrire en secours, au cas où ta partie serait annulée.",
+              },
+            },
+          },
+        ]);
+        await server()
+          .put(apiUrl(signUpEndpoints.signUp, { gameId: brumesId }))
+          .set('Cookie', elodiePhone)
+          .expect(204);
+        const before = push.received.length;
+
+        await unschedule();
+
+        const afterUnscheduling = (await push.receivedAtLeast(before + 2)).slice(before);
+        expect(filterReceivedBySubscription(afterUnscheduling, elodie)).toMatchObject([
+          {
+            message: {
+              notification: {
+                title: 'Créneau 1\u00a0: partie retirée du programme',
+                body: 'Néons est retirée\u00a0: tes inscriptions de secours sur ce créneau comptent désormais.',
+              },
+            },
+          },
+        ]);
       });
     });
 

@@ -364,13 +364,14 @@ describe('Un MJ qui mène sur un créneau où il est inscrit (IN-4)', () => {
   const signedUpGameIdsOfMira = (convention: Convention) =>
     convention.computeParticipantSituation('p-g3').signedUpGameIds;
 
-  it('garde ses inscriptions sur le créneau de sa partie, sans les montrer dans sa situation', () => {
+  it('garde ses inscriptions sur le créneau de sa partie, que sa situation montre en secours', () => {
     const convention = aConventionWithMira();
 
     convention.scheduleScenario('ombres', aScenario('d', 'g3'), 's1', 't3');
 
     expect(signUpsOf(convention)).toEqual(['p-g3 brumes', 'p-g3 neons']);
     expect(signedUpGameIdsOfMira(convention)).toEqual(['neons']);
+    expect(convention.computeParticipantSituation('p-g3').backupGameIds).toEqual(['brumes']);
   });
 
   it('les lui rend quand sa partie quitte le créneau, et suspend celles du nouveau', () => {
@@ -418,30 +419,48 @@ describe('Un MJ qui mène sur un créneau où il est inscrit (IN-4)', () => {
 });
 
 describe('Un MJ qui s’inscrit sur un créneau où il mène (IN-4)', () => {
-  it('est refusé sur le créneau de sa partie, avec le créneau et la table de sa partie', () => {
-    const refusal = refusalOf(() => aConvention().signUpForGame('p-g2', 'brumes', CATALOGUE));
-
-    expect(refusal.code).toBe('leads-game-on-time-slot');
-    expect(refusal.params).toEqual({ rank: 1, table: 'Table 2' });
-  });
-
   it('est refusé sur sa propre partie', () => {
-    expect(refusalOf(() => aConvention().signUpForGame('p-g2', 'epice', CATALOGUE)).code).toBe(
-      'leads-game-on-time-slot',
-    );
+    const refusal = refusalOf(() => aConvention().signUpForGame('p-g2', 'epice', CATALOGUE));
+
+    expect(refusal.code).toBe('game-led-by-participant');
   });
 
-  it('est refusé sur une partie double dont il mène le second créneau', () => {
+  it('s’inscrit en secours à une autre partie du créneau de sa partie, sans compter', () => {
+    const convention = aConvention();
+
+    convention.signUpForGame('p-g2', 'brumes', CATALOGUE);
+
+    expect(signUpsOf(convention)).toEqual(['p-g2 brumes']);
+    expect(convention.computeParticipantSituation('p-g2')).toMatchObject({
+      signedUpGameIds: [],
+      backupGameIds: ['brumes'],
+    });
+  });
+
+  it('s’inscrit en secours sur le second créneau d’une partie double qu’il mène', () => {
+    const convention = aConvention();
+
+    convention.signUpForGame('p-g2', 'neons', CATALOGUE);
+
+    expect(convention.computeParticipantSituation('p-g2')).toMatchObject({
+      signedUpGameIds: [],
+      backupGameIds: ['neons'],
+    });
+  });
+
+  it('s’inscrit en secours à une partie double dont il mène le second créneau', () => {
     const convention = aConvention();
     convention.addTable('t3', 'Table 3');
     convention.addGameMaster('g3', 'p-g3', 'Mira');
     convention.declareGameMasterAvailability('g3', 's2');
     convention.scheduleScenario('ombres', aScenario('d', 'g3'), 's2', 't3');
 
-    const refusal = refusalOf(() => convention.signUpForGame('p-g3', 'epice', CATALOGUE));
+    convention.signUpForGame('p-g3', 'epice', CATALOGUE);
 
-    expect(refusal.code).toBe('leads-game-on-time-slot');
-    expect(refusal.params).toEqual({ rank: 2, table: 'Table 3' });
+    expect(convention.computeParticipantSituation('p-g3')).toMatchObject({
+      signedUpGameIds: [],
+      backupGameIds: ['epice'],
+    });
   });
 
   it('s’inscrit sur un créneau où il ne mène pas', () => {
@@ -454,6 +473,10 @@ describe('Un MJ qui s’inscrit sur un créneau où il mène (IN-4)', () => {
     convention.signUpForGame('p-g3', 'brumes', CATALOGUE);
 
     expect(signUpsOf(convention)).toEqual(['p-g3 brumes']);
+    expect(convention.computeParticipantSituation('p-g3')).toMatchObject({
+      signedUpGameIds: ['brumes'],
+      backupGameIds: [],
+    });
   });
 });
 
@@ -658,6 +681,7 @@ describe('Situation d’un participant', () => {
 
     expect(convention.computeParticipantSituation('p1')).toEqual({
       signedUpGameIds: ['epice'],
+      backupGameIds: [],
       timeSlots: [
         {
           timeSlotId: 's1',

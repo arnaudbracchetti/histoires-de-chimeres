@@ -91,15 +91,20 @@ export type DrawResultDto =
 
 /** La situation du pseudo du téléphone : ses inscriptions, et l'état de chaque créneau pour lui, MJ compris. */
 export type ParticipantSituationDto = {
-  /** Les parties où il est inscrit. */
+  /** Les parties où il est inscrit, et où son inscription compte. */
   signedUpGameIds: string[];
+  /**
+   * Ses inscriptions de secours : sur un créneau où son MJ mène, elles ne comptent que si sa partie
+   * quitte le créneau (IN-4).
+   */
+  backupGameIds: string[];
   /** Dans l'ordre de la journée. */
   timeSlots: {
     timeSlotId: string;
     state: TimeSlotStateDto;
     /**
      * La partie que mène son MJ sur ce créneau, sur les deux d'une partie double, ou `null` : il ne
-     * peut pas s'y inscrire (IN-4).
+     * s'y inscrit qu'en secours (IN-4).
      */
     ledGameId: string | null;
     drawResult: DrawResultDto;

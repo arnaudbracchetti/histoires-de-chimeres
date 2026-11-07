@@ -148,8 +148,9 @@ export type DrawGameDto = {
 /**
  * Une affectation du tirage : la partie du participant, ou `null` s'il n'est pas placé ; déplacé à
  * la main ; les parties du créneau où son inscription est active (IN-4) ; s'il joue à une partie
- * qui n'est pas de ses inscriptions ; et s'il est sans partie sur le créneau, MJ d'une partie
- * annulée sans inscription à une partie maintenue compris.
+ * qui n'est pas de ses inscriptions ; s'il est sans partie sur le créneau, MJ d'une partie
+ * annulée sans inscription à une partie maintenue compris ; et s'il est le MJ d'une partie annulée
+ * (TI-6).
  */
 export type AssignmentDto = {
   participantId: string;
@@ -159,6 +160,7 @@ export type AssignmentDto = {
   signedUpGameIds: string[];
   playsWithoutSignUp: boolean;
   withoutGame: boolean;
+  gameMasterOfCancelledGame: boolean;
 };
 
 /** Une partie au-delà de son maximum : ses joueurs et ses places maximum. */

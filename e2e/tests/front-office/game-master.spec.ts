@@ -27,7 +27,7 @@ test('Mes parties déplie la partie que mène le MJ, sur ses deux créneaux (§5
   await expect(page).toHaveURL(/\/mes-parties\?creneau=1$/);
 });
 
-test('le MJ ne peut pas s’inscrire sur un créneau où il mène, et le programme dit pourquoi (IN-4)', async ({
+test('le MJ s’inscrit en secours sur un créneau où il mène, et le programme le lui dit (IN-4, §5.7)', async ({
   page,
 }) => {
   const { kairos, brumes, epice } = await prepare(page);
@@ -38,7 +38,7 @@ test('le MJ ne peut pas s’inscrire sur un créneau où il mène, et le program
   await expect(timeSlotChip(page, 1)).toHaveAccessibleName(/tu mènes$/);
   await expect(
     page.getByText(
-      `Tu mènes ${epice.title} à la table ${epice.tableName} : tu ne peux pas t'inscrire comme joueur sur ce créneau.`,
+      `Tu mènes ${epice.title} à la table ${epice.tableName}. Tu peux t'inscrire à d'autres parties en secours, au cas où ta partie serait annulée.`,
     ),
   ).toBeVisible();
 
@@ -46,8 +46,19 @@ test('le MJ ne peut pas s’inscrire sur un créneau où il mène, et le program
   await expect(page.getByText('Tu mènes une partie sur ce créneau')).toBeVisible();
   await expect(
     page.getByText(
-      `${epice.title}, table ${epice.tableName} : tu ne peux pas t'inscrire comme joueur.`,
+      `${epice.title}, table ${epice.tableName} : tu peux t'inscrire ici en secours, au cas où ta partie serait annulée.`,
     ),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: "S'inscrire" })).toHaveCount(0);
+  await page.getByRole('button', { name: "S'inscrire en secours" }).click();
+  await expect(page.getByText('Inscrit en secours')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Se désinscrire' })).toBeVisible();
+
+  await page.goBack();
+  await expect(gameCard(page, brumes.title)).toContainText('En secours');
+
+  await page.goto('/mes-parties');
+  const backup = page
+    .getByRole('region', { name: /^Créneau 1\b/ })
+    .getByRole('list', { name: 'Tes inscriptions de secours' });
+  await expect(backup.getByRole('link', { name: brumes.title })).toBeVisible();
 });

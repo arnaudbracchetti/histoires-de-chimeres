@@ -83,9 +83,10 @@ export class ScheduleChange {
   }
 
   /**
-   * « Partie retirée du programme » aux inscrits actifs de chaque partie déprogrammée (IN-4, IN-6),
-   * jusqu'à la fin de son dernier créneau (NO-3) : une pour ceux qui deviennent sans partie sur son
-   * premier créneau (`withoutGame`), une pour les autres. Rien sans inscrit.
+   * « Partie retirée du programme » aux inscrits actifs de chaque partie déprogrammée, et aux MJ qui
+   * s'y sont inscrits en secours (IN-4, IN-6), jusqu'à la fin de son dernier créneau (NO-3) : une
+   * pour ceux qui deviennent sans partie sur son premier créneau (`withoutGame`), une pour les
+   * autres. Rien sans inscrit.
    */
   private buildGameUnscheduledNotifications(
     collaborators: ScheduleChangeCollaborators,
@@ -94,7 +95,7 @@ export class ScheduleChange {
     return this.listUnscheduledGames().flatMap((game) =>
       splitByWithoutGame(
         game,
-        previousSignUps.listActiveParticipantIdsOfGame(game, previousSignUpCollaborators),
+        previousSignUps.listActiveOrBackupParticipantIdsOfGame(game, previousSignUpCollaborators),
         collaborators,
       ).map(({ participantIds, withoutGame }): Notification => ({
         code: 'game-unscheduled',
@@ -113,36 +114,43 @@ export class ScheduleChange {
   /**
    * « Partie retirée du programme » au MJ de chaque partie déprogrammée, jusqu'à la fin de son
    * dernier créneau (NO-3). Son inscription à sa propre partie n'est pas active (IN-4) : il ne
-   * reçoit que celle-ci (NO-1).
+   * reçoit que celle-ci (NO-1). `backupSignUps` : des inscriptions de secours deviennent actives.
    */
   private buildOwnGameUnscheduledNotifications(
     collaborators: ScheduleChangeCollaborators,
   ): Notification[] {
     const { day, date, participants } = collaborators;
-    return this.listUnscheduledGames().map((game): Notification => ({
-      code: 'own-game-unscheduled',
-      params: {
-        scenarioId: game.scenarioId,
-        ranks: day.getTimeSlotRanks(game.timeSlotIds),
-        reopened: isTimeSlotDrawingBeforeChange(game, collaborators),
-      },
-      recipients: buildParticipantRecipients([getGameMasterParticipantId(game, participants)]),
-      deadline: day.computeEndOfTimeSlots(date, game.timeSlotIds),
-    }));
+    return this.listUnscheduledGames().map((game): Notification => {
+      const gameMasterParticipantId = getGameMasterParticipantId(game, participants);
+      return {
+        code: 'own-game-unscheduled',
+        params: {
+          scenarioId: game.scenarioId,
+          ranks: day.getTimeSlotRanks(game.timeSlotIds),
+          reopened: isTimeSlotDrawingBeforeChange(game, collaborators),
+          backupSignUps: hasBackupSignUpsBecomingActive(gameMasterParticipantId, collaborators),
+        },
+        recipients: buildParticipantRecipients([gameMasterParticipantId]),
+        deadline: day.computeEndOfTimeSlots(date, game.timeSlotIds),
+      };
+    });
   }
 
   /**
-   * « Partie déplacée » aux inscrits actifs de chaque partie passée sur d'autres créneaux (IN-4,
-   * IN-6), jusqu'à la fin du plus tardif de ses anciens et nouveaux créneaux (NO-3) : une pour ceux
-   * qui deviennent sans partie sur son ancien premier créneau (`withoutGame`), une pour les autres.
-   * Rien sans inscrit.
+   * « Partie déplacée » aux inscrits actifs de chaque partie passée sur d'autres créneaux, et aux MJ
+   * qui s'y sont inscrits en secours (IN-4, IN-6), jusqu'à la fin du plus tardif de ses anciens et
+   * nouveaux créneaux (NO-3) : une pour ceux qui deviennent sans partie sur son ancien premier
+   * créneau (`withoutGame`), une pour les autres. Rien sans inscrit.
    */
   private buildGameMovedNotifications(collaborators: ScheduleChangeCollaborators): Notification[] {
     const { day, date, previousSignUps, previousSignUpCollaborators } = collaborators;
     return this.listGamesMovedToOtherTimeSlots().flatMap(({ previous, next }) =>
       splitByWithoutGame(
         previous,
-        previousSignUps.listActiveParticipantIdsOfGame(previous, previousSignUpCollaborators),
+        previousSignUps.listActiveOrBackupParticipantIdsOfGame(
+          previous,
+          previousSignUpCollaborators,
+        ),
         collaborators,
       ).map(({ participantIds, withoutGame }): Notification => ({
         code: 'game-moved',
@@ -164,10 +172,11 @@ export class ScheduleChange {
 
   /**
    * « Nouvelle partie » pour chaque partie arrivée sur ses créneaux, avant la publication de son
-   * créneau, à tous ceux qui peuvent s'y inscrire. En sont écartés les MJ qui mènent sur l'un de
-   * ses créneaux (IN-4), et `moreSpecificRecipients` (NO-1). Les joueurs d'une partie double
-   * publiée qui occupe le créneau le seront aussi, quand le tirage existera. Elle court jusqu'à la
-   * fin du dernier créneau de sa partie (NO-3).
+   * créneau : une à tous, sauf aux MJ qui mènent sur l'un de ses créneaux et à
+   * `moreSpecificRecipients` (NO-1) ; une autre à ces MJ, qui peuvent s'y inscrire en secours
+   * (`backup`, IN-4), sans elle s'il n'y en a aucun. Les joueurs d'une partie double publiée qui
+   * occupe le créneau en seront écartés quand le tirage existera. Elle court jusqu'à la fin du
+   * dernier créneau de sa partie (NO-3).
    */
   private buildNewGameNotifications(
     moreSpecificRecipients: readonly string[],
@@ -176,26 +185,45 @@ export class ScheduleChange {
     const { day, date, tables, participants, getTimeSlotState } = collaborators;
     return this.listGamesOnNewTimeSlots()
       .filter((game) => getTimeSlotState(game.timeSlotIds[0]!) !== 'published')
-      .map((game): Notification => ({
-        code: 'new-game',
-        params: {
+      .flatMap((game): Notification[] => {
+        const gameMastersOnTimeSlots = this.listParticipantIdsLeadingOnTimeSlots(
+          game.timeSlotIds,
+          participants,
+        );
+        const backupRecipients = gameMastersOnTimeSlots.filter(
+          (id) => !moreSpecificRecipients.includes(id),
+        );
+        const buildNewGameParams = (backup: boolean) => ({
           gameId: game.id,
           scenarioId: game.scenarioId,
           ranks: day.getTimeSlotRanks(game.timeSlotIds),
           tableName: getTableName(game, tables),
           reopened: isTimeSlotDrawingBeforeChange(game, collaborators),
-        },
-        recipients: {
-          kind: 'everyone-except',
-          participantIds: [
-            ...new Set([
-              ...this.listParticipantIdsLeadingOnTimeSlots(game.timeSlotIds, participants),
-              ...moreSpecificRecipients,
-            ]),
-          ],
-        },
-        deadline: day.computeEndOfTimeSlots(date, game.timeSlotIds),
-      }));
+          backup,
+        });
+        const deadline = day.computeEndOfTimeSlots(date, game.timeSlotIds);
+        return [
+          {
+            code: 'new-game',
+            params: buildNewGameParams(false),
+            recipients: {
+              kind: 'everyone-except',
+              participantIds: [...new Set([...gameMastersOnTimeSlots, ...moreSpecificRecipients])],
+            },
+            deadline,
+          },
+          ...(backupRecipients.length
+            ? [
+                {
+                  code: 'new-game' as const,
+                  params: buildNewGameParams(true),
+                  recipients: buildParticipantRecipients(backupRecipients),
+                  deadline,
+                },
+              ]
+            : []),
+        ];
+      });
   }
 
   /**
@@ -304,4 +332,26 @@ function getGameMasterParticipantId(game: Game, participants: Participants): str
 /** Le nom de la table de la partie. */
 function getTableName(game: Game, tables: UniquelyNamedCollection<Table>): string {
   return tables.findExistingItemById(game.tableId).name.text;
+}
+
+/**
+ * Le geste rend actives des inscriptions de secours du MJ : de secours avant, actives après (IN-4).
+ * L'alerte de changement du front office suit la même définition.
+ */
+function hasBackupSignUpsBecomingActive(
+  participantId: string,
+  {
+    previousSignUps,
+    previousSignUpCollaborators,
+    nextSignUps,
+    nextSignUpCollaborators,
+  }: ScheduleChangeCollaborators,
+): boolean {
+  const activeAfter = nextSignUps.listActiveGameIdsOfParticipant(
+    participantId,
+    nextSignUpCollaborators,
+  );
+  return previousSignUps
+    .listBackupGameIdsOfParticipant(participantId, previousSignUpCollaborators)
+    .some((gameId) => activeAfter.includes(gameId));
 }

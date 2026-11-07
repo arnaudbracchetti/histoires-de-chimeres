@@ -18,8 +18,16 @@ export type NotificationParams = {
     withoutGame: boolean;
     reopened: boolean;
   };
-  /** Au MJ d'une partie déprogrammée : il peut s'inscrire sur ce créneau. */
-  'own-game-unscheduled': { scenarioId: string; ranks: number[]; reopened: boolean };
+  /**
+   * Au MJ d'une partie déprogrammée : il peut s'inscrire sur ce créneau. `backupSignUps` : ses
+   * inscriptions de secours sur ses créneaux comptent désormais (IN-4).
+   */
+  'own-game-unscheduled': {
+    scenarioId: string;
+    ranks: number[];
+    reopened: boolean;
+    backupSignUps: boolean;
+  };
   /**
    * Aux inscrits d'une partie passée à d'autres créneaux : leur inscription est retirée (IN-6).
    * `fromRanks` : ses anciens créneaux ; `toRanks` : les nouveaux. `withoutGame` : ils deviennent
@@ -41,7 +49,8 @@ export type NotificationParams = {
   'game-oversubscribed': { scenarioId: string; rank: number };
   /**
    * À tous ceux qui peuvent s'inscrire sur les créneaux d'une partie programmée ou déplacée, avant
-   * leur publication. `tableName` : le nom de sa table.
+   * leur publication. `tableName` : le nom de sa table. `backup` : aux MJ qui mènent sur l'un de ses
+   * créneaux, qui peuvent s'y inscrire en secours (IN-4).
    */
   'new-game': {
     gameId: string;
@@ -49,6 +58,7 @@ export type NotificationParams = {
     ranks: number[];
     tableName: string;
     reopened: boolean;
+    backup: boolean;
   };
   /**
    * Au MJ d'une partie programmée, ou déplacée sur d'autres créneaux. `start` et `end` (`HH:MM`) :

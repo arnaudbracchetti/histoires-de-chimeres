@@ -608,7 +608,8 @@ export class Convention {
    * Inscrit le participant à la partie (IN-2), tant que le tirage de son créneau n'est pas lancé.
    * Plusieurs inscriptions sur un même créneau sont permises. Une partie double compte sur ses deux
    * créneaux, et ne touche pas aux inscriptions prises sur son second créneau (IN-3, TI-3). Un MJ
-   * ne s'inscrit pas sur un créneau où il mène, sa propre partie comprise (IN-4). Le catalogue, entier,
+   * ne s'inscrit pas à sa propre partie ; ailleurs sur un créneau où il mène, il s'inscrit en secours
+   * (IN-4). Le catalogue, entier,
    * donne les places maximum de la partie. Rend « partie très demandée » si l'inscription la fait
    * passer au-dessus, pour ses autres inscrits (NO-2), ou `null` si le participant y était déjà
    * inscrit : rien ne change.
@@ -622,8 +623,6 @@ export class Convention {
     const next = this.allSignUps.getSignUpsAfterSigningUp(
       signUp,
       this.buildSignUpCollaborators(this.gameSchedule),
-      this.day,
-      this.allTables,
     );
     if (this.allSignUps.hasSignUp(signUp)) return null;
     this.allSignUps = next;
@@ -837,7 +836,7 @@ export class Convention {
   }
 
   /**
-   * La situation du participant : ses inscriptions actives (IN-4), puis
+   * La situation du participant : ses inscriptions actives, ses inscriptions de secours (IN-4), puis
    * l'état de chaque créneau, dans l'ordre de la journée, avec la partie qu'y mène son MJ, le
    * résultat de son tirage, et s'il y est sans partie.
    */
@@ -845,17 +844,17 @@ export class Convention {
     const participant = this.allParticipants.findExistingParticipantById(participantId);
     const collaborators = this.buildSignUpCollaborators(this.gameSchedule);
     // Le MJ ne voit rien de l'annulation de sa partie avant la publication (§5.7) : sur ses
-    // créneaux, ses inscriptions restent cachées tant que sa partie est au programme.
-    const isHiddenByLedGame = (gameId: string) =>
-      this.gameSchedule
-        .findExistingGameById(gameId)
-        .timeSlotIds.some((slotId) =>
-          this.findGameLedByParticipantOnTimeSlot(participant.id, slotId),
-        );
+    // créneaux, ses inscriptions restent de secours tant que sa partie est au programme, annulée
+    // ou non.
+    const backupGameIds = this.allSignUps.listBackupGameIdsOfParticipant(participant.id, {
+      schedule: this.gameSchedule,
+      ledGames: this.buildLedGamesCancelledIncluded(),
+    });
     return {
       signedUpGameIds: this.allSignUps
         .listActiveGameIdsOfParticipant(participant.id, collaborators)
-        .filter((gameId) => !isHiddenByLedGame(gameId)),
+        .filter((gameId) => !backupGameIds.includes(gameId)),
+      backupGameIds,
       timeSlots: this.day.timeSlots.map((slot) => ({
         timeSlotId: slot.id,
         state: this.getTimeSlotState(slot.id),
@@ -928,6 +927,16 @@ export class Convention {
    * (TI-6), et les créneaux qu'il occupe comme joueur d'une partie double publiée, tirés des
    * Tirages (TI-3).
    */
+  /** Les parties que mène chaque participant au Programme, annulées par un tirage comprises. */
+  private buildLedGamesCancelledIncluded(): LedGames {
+    return {
+      listGamesLedByParticipant: (participantId) => {
+        const gameMaster = this.allParticipants.findGameMasterOfParticipant(participantId);
+        return gameMaster ? this.gameSchedule.listGamesLedByGameMaster(gameMaster.id) : [];
+      },
+    };
+  }
+
   private buildSignUpCollaborators(schedule: Schedule): SignUpCollaborators {
     const ledGames: LedGames = {
       listGamesLedByParticipant: (participantId) => {
@@ -1157,6 +1166,11 @@ export type DrawResult =
 /** La situation d'un participant : voir `Convention.computeParticipantSituation()`. */
 export type ParticipantSituation = {
   signedUpGameIds: string[];
+  /**
+   * Ses inscriptions de secours : sur un créneau où son MJ mène, elles ne comptent que si sa partie
+   * quitte le créneau (IN-4). Dans l'ordre où elles ont été prises.
+   */
+  backupGameIds: string[];
   timeSlots: {
     timeSlotId: string;
     state: TimeSlotState;

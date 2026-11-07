@@ -13,7 +13,7 @@ import {
   type TimeSlotDto,
 } from '@chimeres/contract';
 import { expect, test } from '../../fixtures.js';
-import { aNickname, identify } from '../front-office/identification.js';
+import { aNickname, identify, identifyAsGameMaster } from '../front-office/identification.js';
 import { gameCard, scheduleTab, timeSlotChip } from '../front-office/schedule.js';
 
 /*
@@ -68,7 +68,79 @@ async function prepare(page: Page) {
     timeSlotId,
     tableId: tables[0]!.id,
   });
+  return { timeSlotId };
 }
+
+/** Par l'API : la table « Licorne », et « Les Néons » de Sven, d'une place au moins, programmée à cette table. */
+async function prepareNeons(page: Page, timeSlotId: string) {
+  const { tables } = await post<ConventionDto>(page, apiUrl(tableEndpoints.add), {
+    name: 'Licorne',
+  });
+  const gameMasters = await post<GameMasterDto[]>(page, apiUrl(gameMasterEndpoints.add), {
+    nickname: 'Sven',
+  });
+  const gameMasterId = gameMasters.find(({ nickname }) => nickname === 'Sven')!.id;
+  const declared = await page.request.put(
+    apiUrl(availabilityEndpoints.declare, { gameMasterId, timeSlotId }),
+  );
+  expect(declared.ok(), await declared.text()).toBe(true);
+  const neons = await post<ScenarioDto>(page, apiUrl(scenarioEndpoints.propose, { gameMasterId }), {
+    title: 'Les Néons',
+    system: 'Cyberpunk',
+    presentation: 'Une course sous les néons.',
+    contentWarnings: '',
+    seats: { min: 1, max: 5 },
+    duration: 1,
+  });
+  await post(page, apiUrl(scheduleEndpoints.schedule), {
+    scenarioId: neons.id,
+    timeSlotId,
+    tableId: tables.find(({ name }) => name === 'Licorne')!.id,
+  });
+}
+
+test('le MJ d’une partie annulée rejoint les non placés avec ses inscriptions de secours (TI-6, IN-4)', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  const { timeSlotId } = await prepare(page);
+  await prepareNeons(page, timeSlotId);
+  const phoneContext = await browser.newContext({ ...devices['Pixel 7'], baseURL });
+  try {
+    const phone = await phoneContext.newPage();
+    await identifyAsGameMaster(phone, 'Sven');
+    await scheduleTab(phone).click();
+    await timeSlotChip(phone, 1).click();
+    await gameCard(phone, 'Les Brumes').click();
+    await phone.getByRole('button', { name: "S'inscrire en secours" }).click();
+    await expect(phone.getByText('Inscrit en secours')).toBeVisible();
+  } finally {
+    await phoneContext.close();
+  }
+
+  await page.goto('/gestion/');
+  await page.getByRole('link', { name: 'Pilotage du jour J' }).click();
+  await page.getByRole('button', { name: 'Lancer le tirage' }).click();
+  await page
+    .getByRole('alertdialog', { name: /^Lancer le tirage du créneau 1/ })
+    .getByRole('button', { name: 'Lancer le tirage' })
+    .click();
+  const plan = page.getByRole('list', { name: 'Plan de salle' });
+  await plan
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('heading', { name: 'Les Néons' }) })
+    .getByRole('button', { name: 'Annuler la partie' })
+    .click();
+  await page
+    .getByRole('alertdialog', { name: /Annuler « Les Néons »/ })
+    .getByRole('button', { name: 'Annuler la partie' })
+    .click();
+
+  await expect(
+    page.getByRole('list', { name: 'Inscriptions des MJ des parties annulées' }),
+  ).toHaveText('Sven · inscrit à\u00a0: «\u00a0Les Brumes\u00a0»');
+});
 
 test('un téléphone s’inscrit, l’Organisateur lance et publie le tirage, le téléphone montre sa table (TI-1, TI-5, TI-7)', async ({
   page,

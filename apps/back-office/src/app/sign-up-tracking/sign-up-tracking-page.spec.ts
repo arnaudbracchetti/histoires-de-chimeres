@@ -230,6 +230,7 @@ const DRAW_OF_SLOT_2: DrawTrackingDto = {
       signedUpGameIds: ['p1'],
       playsWithoutSignUp: false,
       withoutGame: false,
+      gameMasterOfCancelledGame: false,
     },
     {
       participantId: 'u4',
@@ -239,6 +240,7 @@ const DRAW_OF_SLOT_2: DrawTrackingDto = {
       signedUpGameIds: ['p3'],
       playsWithoutSignUp: false,
       withoutGame: false,
+      gameMasterOfCancelledGame: false,
     },
     {
       participantId: 'u3',
@@ -248,6 +250,7 @@ const DRAW_OF_SLOT_2: DrawTrackingDto = {
       signedUpGameIds: ['p1', 'p3'],
       playsWithoutSignUp: false,
       withoutGame: false,
+      gameMasterOfCancelledGame: false,
     },
     {
       participantId: 'u2',
@@ -257,6 +260,7 @@ const DRAW_OF_SLOT_2: DrawTrackingDto = {
       signedUpGameIds: ['p3'],
       playsWithoutSignUp: true,
       withoutGame: false,
+      gameMasterOfCancelledGame: false,
     },
   ],
   signals: [],

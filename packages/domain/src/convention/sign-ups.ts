@@ -2,13 +2,10 @@ import { Refusal } from '../refusal.js';
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import type { Scenario } from '../scenario/scenario.js';
 import type { Seats } from '../scenario/seats.js';
-import type { Day } from './day.js';
 import type { Game } from './game.js';
 import { ParticipantWithoutGame } from './participant-without-game.js';
 import type { Schedule } from './schedule.js';
 import type { SignUp } from './sign-up.js';
-import type { Table } from './table.js';
-import type { UniquelyNamedCollection } from './uniquely-named-collection.js';
 
 /** Les parties que mène chaque participant, par son rôle de MJ (ADR 0012). */
 export type LedGames = {
@@ -123,24 +120,14 @@ export class SignUps {
 
   /**
    * Les inscriptions après celle-ci (IN-2). S'inscrire de nouveau ne change rien. Un MJ ne s'inscrit
-   * pas sur un créneau où il mène, sa propre partie comprise (IN-4) : le refus donne le créneau et la
-   * table de sa partie. S'inscrire à une partie du créneau, celui où elle commence, fait cesser
-   * d'être sans partie sur ce créneau.
+   * pas à sa propre partie ; sur une autre partie d'un créneau où il mène, son inscription est de
+   * secours : elle reste inactive tant qu'il y mène (IN-4). S'inscrire à une partie du créneau,
+   * celui où elle commence, fait cesser d'être sans partie sur ce créneau.
    */
-  getSignUpsAfterSigningUp(
-    signUp: SignUp,
-    { schedule, ledGames }: SignUpCollaborators,
-    day: Day,
-    tables: UniquelyNamedCollection<Table>,
-  ): SignUps {
+  getSignUpsAfterSigningUp(signUp: SignUp, { schedule, ledGames }: SignUpCollaborators): SignUps {
     const led = ledGames.listGamesLedByParticipant(signUp.participantId);
-    for (const slotId of schedule.findExistingGameById(signUp.gameId).timeSlotIds) {
-      const run = led.find((game) => game.isOnTimeSlot(slotId));
-      if (!run) continue;
-      throw new Refusal('leads-game-on-time-slot', {
-        rank: day.getTimeSlotRank(slotId),
-        table: tables.findExistingItemById(run.tableId).name.text,
-      });
+    if (led.some((game) => game.id === signUp.gameId)) {
+      throw new Refusal('game-led-by-participant', {});
     }
     if (this.hasSignUp(signUp)) return this;
     const firstTimeSlotId = schedule.findExistingGameById(signUp.gameId).timeSlotIds[0]!;
@@ -272,6 +259,35 @@ export class SignUps {
       .map(({ participantId }) => participantId);
   }
 
+  /**
+   * Les participants à prévenir d'un changement de la partie, dans l'ordre de leur inscription :
+   * ses inscrits actifs, et les MJ qui s'y sont inscrits en secours (IN-4).
+   */
+  listActiveOrBackupParticipantIdsOfGame(game: Game, collaborators: SignUpCollaborators): string[] {
+    return this.signUps
+      .filter(
+        (signUp) =>
+          signUp.gameId === game.id &&
+          (this.isActive(signUp, collaborators) || this.isBackup(signUp, collaborators)),
+      )
+      .map(({ participantId }) => participantId);
+  }
+
+  /**
+   * Les inscriptions de secours du participant, dans l'ordre où elles ont été prises : sur un
+   * créneau où il mène une partie que donne `ledGames`, sauf à cette partie (IN-4).
+   */
+  listBackupGameIdsOfParticipant(
+    participantId: string,
+    collaborators: Pick<SignUpCollaborators, 'schedule' | 'ledGames'>,
+  ): string[] {
+    return this.signUps
+      .filter(
+        (signUp) => signUp.participantId === participantId && this.isBackup(signUp, collaborators),
+      )
+      .map(({ gameId }) => gameId);
+  }
+
   /** Les parties où l'inscription du participant est active (IN-4), dans l'ordre de son inscription. */
   listActiveGameIdsOfParticipant(
     participantId: string,
@@ -301,7 +317,8 @@ export class SignUps {
   /**
    * Les destinataires de « partie très demandée » si cette inscription, la dernière prise, fait
    * passer sa partie au-dessus de ses places maximum, que le catalogue, entier, donne ; sinon aucun.
-   * L'auteur de l'inscription n'en est pas : il vient de voir la confirmation (IN-5).
+   * L'auteur de l'inscription n'en est pas : il vient de voir la confirmation (IN-5). Une inscription
+   * de secours ne compte pas : aucun (IN-4).
    */
   listOversubscriptionRecipientsAfterSigningUp(
     signUp: SignUp,
@@ -311,7 +328,7 @@ export class SignUps {
     const game = collaborators.schedule.findExistingGameById(signUp.gameId);
     const { maxSeats } = catalogue.findExistingEntryById(game.scenarioId);
     const signedUp = this.listActiveParticipantIdsOfGame(game, collaborators);
-    if (signedUp.length !== maxSeats + 1) return [];
+    if (!signedUp.includes(signUp.participantId) || signedUp.length !== maxSeats + 1) return [];
     return this.listParticipantIdsWithOnlyActiveSignUpOnFirstTimeSlot(game, collaborators).filter(
       (participantId) => participantId !== signUp.participantId,
     );
@@ -377,6 +394,20 @@ export class SignUps {
   }
 
   /** L'inscription est active : voir `SignUps.isSignUpActive()`. */
+  /**
+   * L'inscription est de secours : son participant mène, sur l'un des créneaux de la partie, une
+   * autre partie (IN-4).
+   */
+  private isBackup(
+    { participantId, gameId }: SignUp,
+    { schedule, ledGames }: Pick<SignUpCollaborators, 'schedule' | 'ledGames'>,
+  ): boolean {
+    const game = schedule.findExistingGameById(gameId);
+    return ledGames
+      .listGamesLedByParticipant(participantId)
+      .some((led) => led.id !== gameId && game.timeSlotIds.some((id) => led.isOnTimeSlot(id)));
+  }
+
   private isActive(
     signUp: SignUp,
     { schedule, ledGames, playedTimeSlots }: SignUpCollaborators,

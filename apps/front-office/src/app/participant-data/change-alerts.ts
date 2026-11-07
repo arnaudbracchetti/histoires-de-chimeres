@@ -3,9 +3,11 @@ import {
   type FrontOfficeGameDto,
   type FrontOfficeScheduleDto,
   type ParticipantSituationDto,
+  type TimeSlotStateDto,
 } from '@chimeres/contract';
 import {
   buildAssignedText,
+  buildCancelledAlertText,
   buildGameMovedText,
   buildGameUnscheduledText,
   buildLeadingText,
@@ -92,13 +94,21 @@ function ledGameChanges(before: Reading, after: Reading): ChangeNotice[] {
       const game = findGame(before.schedule, gameId);
       if (!game) return [];
       const ranks = ranksOf(before.schedule, game);
+      // Une partie annulée quitte le programme à la publication de son créneau (TI-7).
+      if (stateOf(game.timeSlotIds[0]!, after) === 'published') {
+        return [
+          buildChangeNotice(buildCancelledAlertText(ranks, game.title), frontOfficeUrls.home()),
+        ];
+      }
       return [
         buildChangeNotice(
-          buildOwnGameUnscheduledText(
-            ranks,
-            game.title,
-            isTimeSlotReopenedBetween(game.timeSlotIds[0]!, before, after),
-          ),
+          buildOwnGameUnscheduledText(ranks, game.title, {
+            reopened: isTimeSlotReopenedBetween(game.timeSlotIds[0]!, before, after),
+            // Même définition que le domaine : de secours avant, actives après (IN-4).
+            backupSignUps: before.situation.backupGameIds.some((id) =>
+              after.situation.signedUpGameIds.includes(id),
+            ),
+          }),
           frontOfficeUrls.timeSlotGames(ranks[0]!),
         ),
       ];
@@ -116,20 +126,23 @@ function ledGames({ situation }: Reading): Map<string, string> {
 }
 
 /**
- * Ses inscriptions retirées, sauf par lui : sa partie retirée du programme, ou déplacée sur
- * d'autres créneaux (IN-6). S'il est devenu sans partie sur son premier créneau, le texte le dit. Une partie restée en place ne compte plus pour lui quand son MJ mène
- * sur l'un de ses créneaux, mais l'inscription reste, suspendue (IN-4) : rien à signaler.
+ * Ses inscriptions retirées, sauf par lui, celles de secours comprises : sa partie retirée du
+ * programme, ou déplacée sur d'autres créneaux (IN-4, IN-6). S'il est devenu sans partie sur son
+ * premier créneau, le texte le dit. Une inscription qui devient de secours, ou qui cesse de l'être,
+ * reste en place : rien à signaler.
  */
 function removedSignUps(
   before: Reading,
   after: Reading,
   ownWithdrawals: readonly string[],
 ): ChangeNotice[] {
-  return before.situation.signedUpGameIds
-    .filter(
-      (gameId) =>
-        !after.situation.signedUpGameIds.includes(gameId) && !ownWithdrawals.includes(gameId),
-    )
+  const signedUpOrBackup = ({ situation }: Reading) => [
+    ...situation.signedUpGameIds,
+    ...situation.backupGameIds,
+  ];
+  const kept = signedUpOrBackup(after);
+  return signedUpOrBackup(before)
+    .filter((gameId) => !kept.includes(gameId) && !ownWithdrawals.includes(gameId))
     .flatMap((gameId) => {
       const game = findGame(before.schedule, gameId);
       if (!game) return [];
@@ -165,9 +178,14 @@ function removedSignUps(
  * rouvertes : un geste de programmation l'a fait (TI-6), le texte le dit comme la notification.
  */
 function isTimeSlotReopenedBetween(timeSlotId: string, before: Reading, after: Reading): boolean {
-  const stateIn = ({ situation }: Reading) =>
-    situation.timeSlots.find((slot) => slot.timeSlotId === timeSlotId)?.state;
-  return stateIn(before) === 'drawing' && stateIn(after) === 'sign-ups-open';
+  return (
+    stateOf(timeSlotId, before) === 'drawing' && stateOf(timeSlotId, after) === 'sign-ups-open'
+  );
+}
+
+/** L'état du créneau dans cette lecture. */
+function stateOf(timeSlotId: string, { situation }: Reading): TimeSlotStateDto | undefined {
+  return situation.timeSlots.find((slot) => slot.timeSlotId === timeSlotId)?.state;
 }
 
 function findGame(

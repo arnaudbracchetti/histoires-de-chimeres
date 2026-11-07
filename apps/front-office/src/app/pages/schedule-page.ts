@@ -19,8 +19,8 @@ import { formatTime, formatTimeRange, fr } from '@chimeres/design';
 /**
  * Le programme des parties, créneau par créneau : une puce par créneau à venir, puis les parties du
  * créneau choisi, en cartes. Une partie double est sous son seul premier créneau (IN-3). Pour un MJ,
- * la puce d'un créneau où il mène porte `book-open`, et une note dit pourquoi il ne peut pas s'y
- * inscrire, partie double comprise (IN-4).
+ * la puce d'un créneau où il mène porte `book-open`, et une note dit qu'il peut s'y inscrire en
+ * secours, partie double comprise (IN-4).
  */
 @Component({
   selector: 'app-schedule-page',
@@ -210,9 +210,9 @@ export class SchedulePage {
     });
   }
 
-  /** Pourquoi le MJ ne peut pas s'inscrire sur ce créneau (IN-4). */
+  /** Le MJ mène sur ce créneau : il peut s'y inscrire en secours (IN-4). */
   protected ledNote({ title, tableName }: FrontOfficeGameDto): string {
-    return fr`Tu mènes ${title} à la table ${tableName} : tu ne peux pas t'inscrire comme joueur sur ce créneau.`;
+    return fr`Tu mènes ${title} à la table ${tableName}. Tu peux t'inscrire à d'autres parties en secours, au cas où ta partie serait annulée.`;
   }
 
   /** Changer de créneau ne s'empile pas dans l'historique : le retour remonte d'un écran. */

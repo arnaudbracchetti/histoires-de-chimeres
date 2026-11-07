@@ -29,9 +29,10 @@ export type DrawGameTracking = {
 /**
  * Une affectation du tirage : la partie, ou `null` ; déplacé à la main ; les parties du créneau où
  * l'inscription du participant est active (IN-4), dans l'ordre de son inscription ; s'il joue à
- * une partie qui n'est pas de ses inscriptions ; et s'il est sans partie : enregistré comme tel sur
+ * une partie qui n'est pas de ses inscriptions ; s'il est sans partie : enregistré comme tel sur
  * le créneau, ou MJ d'une partie annulée du tirage sans inscription active à une partie maintenue
- * du créneau.
+ * du créneau ; et s'il est le MJ d'une partie annulée, dont les inscriptions de secours sont
+ * devenues actives (TI-6, IN-4).
  */
 export type AssignmentTracking = {
   participantId: string;
@@ -40,6 +41,7 @@ export type AssignmentTracking = {
   signedUpGameIds: string[];
   playsWithoutSignUp: boolean;
   withoutGame: boolean;
+  gameMasterOfCancelledGame: boolean;
 };
 
 /** Une table où il reste de la place, et combien. */
@@ -150,6 +152,7 @@ export function computeDrawTracking(
           recordedWithoutGame.has(id) ||
           (cancelledGameMasterIds.has(id) &&
             signedUpGameIds.every((gameId) => draw.isGameCancelled(gameId))),
+        gameMasterOfCancelledGame: cancelledGameMasterIds.has(id),
       },
     ];
   });

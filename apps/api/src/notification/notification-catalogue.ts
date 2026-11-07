@@ -45,8 +45,8 @@ export const notificationCatalogue: {
     ...buildGameUnscheduledText(ranks, title, withoutGame, reopened),
     url: frontOfficeUrls.timeSlotGames(ranks[0]!),
   }),
-  'own-game-unscheduled': ({ ranks, reopened }, { title }) => ({
-    ...buildOwnGameUnscheduledText(ranks, title, reopened),
+  'own-game-unscheduled': ({ ranks, reopened, backupSignUps }, { title }) => ({
+    ...buildOwnGameUnscheduledText(ranks, title, { reopened, backupSignUps }),
     url: frontOfficeUrls.timeSlotGames(ranks[0]!),
   }),
   'game-moved': ({ gameId, fromRanks, toRanks, withoutGame, reopened }, { title }) => ({
@@ -59,8 +59,8 @@ export const notificationCatalogue: {
     // Un `Topic` tient en 32 caractères base64url.
     replacement: { tag: `oversubscribed-${rank}`, renotify: true },
   }),
-  'new-game': ({ gameId, ranks, tableName, reopened }, { title, system }) => ({
-    ...buildNewGameText(ranks, { title, system, tableName }, reopened),
+  'new-game': ({ gameId, ranks, tableName, reopened, backup }, { title, system }) => ({
+    ...buildNewGameText(ranks, { title, system, tableName }, { reopened, backup }),
     url: frontOfficeUrls.game(gameId),
     replacement: { tag: `new-game-${ranks[0]!}`, renotify: false },
   }),

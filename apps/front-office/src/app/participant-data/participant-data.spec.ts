@@ -68,12 +68,16 @@ const open = (timeSlotId: string): GivenTimeSlot => ({
   state: 'sign-ups-open',
   drawResult: null,
 });
-/** Inscrit à `signedUpGameIds`, les deux créneaux aux inscriptions ouvertes, sauf ceux donnés. */
+/**
+ * Inscrit à `signedUpGameIds`, sans inscription de secours, les deux créneaux aux inscriptions
+ * ouvertes, sauf ceux donnés.
+ */
 const situation = (
   signedUpGameIds: string[] = [],
   ...timeSlots: GivenTimeSlot[]
 ): ParticipantSituationDto => ({
   signedUpGameIds,
+  backupGameIds: [],
   timeSlots: ['s1', 's2'].map((id) => ({
     ledGameId: null,
     withoutGame: false,
@@ -371,6 +375,7 @@ describe('ParticipantData', () => {
         signedUp: false,
         pending: true,
         oversubscribedAfterSignUp: false,
+        backupFor: null,
       });
       const request = http().expectOne(signUpUrl('Brumes'));
       expect(request.request.method).toBe('PUT');
@@ -384,6 +389,7 @@ describe('ParticipantData', () => {
         signedUp: true,
         pending: false,
         oversubscribedAfterSignUp: false,
+        backupFor: null,
       });
       expect(data.isSignedUp('Brumes')).toBe(true);
       expect(data.schedule()?.games[0]?.signUpCount).toBe(1);
@@ -451,6 +457,7 @@ describe('ParticipantData', () => {
         signedUp: false,
         pending: false,
         oversubscribedAfterSignUp: false,
+        backupFor: null,
       });
     });
 
@@ -472,6 +479,7 @@ describe('ParticipantData', () => {
         signedUp: true,
         pending: false,
         oversubscribedAfterSignUp: false,
+        backupFor: null,
       });
       expect(request.cancelled).toBe(false);
       request.flush(null, { status: 204, statusText: '' });
@@ -556,6 +564,7 @@ describe('ParticipantData', () => {
         signedUp: false,
         pending: false,
         oversubscribedAfterSignUp: false,
+        backupFor: null,
       });
     });
 
@@ -589,6 +598,7 @@ describe('ParticipantData', () => {
         signedUp: false,
         pending: false,
         oversubscribedAfterSignUp: false,
+        backupFor: null,
       });
 
       TestBed.resetTestingModule();
@@ -925,7 +935,7 @@ describe('ParticipantData', () => {
     ];
 
     describe('barre d’inscription de la fiche', () => {
-      it('dit « Tu mènes cette partie » sur sa partie, et « Tu mènes une partie sur ce créneau » ailleurs, partie double comprise', async () => {
+      it('dit « Tu mènes cette partie » sur sa partie, et propose l’inscription en secours ailleurs sur le créneau, partie double comprise', async () => {
         const data = await opened(
           undefined,
           undefined,
@@ -933,13 +943,47 @@ describe('ParticipantData', () => {
         );
 
         expect(data.signUpBarOf('Néons')).toEqual({ kind: 'own-game', rank: 2 });
-        expect(data.signUpBarOf('Épice')).toEqual({ kind: 'leading', game: neons });
+        expect(data.signUpBarOf('Épice')).toEqual({
+          kind: 'open',
+          signedUp: false,
+          pending: false,
+          oversubscribedAfterSignUp: false,
+          backupFor: neons,
+        });
         expect(data.signUpBarOf('Brumes')).toEqual({
           kind: 'open',
           signedUp: false,
           pending: false,
           oversubscribedAfterSignUp: false,
+          backupFor: null,
         });
+      });
+
+      it('dit « Tu mènes une partie sur ce créneau » pendant le tirage', async () => {
+        const data = await opened(undefined, undefined, leadingEpice({ state: 'drawing' }));
+
+        expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'leading', game: epice, rank: 1 });
+      });
+
+      it('dit « Tu mènes une partie sur ce créneau » après la publication', async () => {
+        const data = await opened(
+          undefined,
+          undefined,
+          leadingEpice({ state: 'published', drawResult: { kind: 'leading', players: ['Lune'] } }),
+        );
+
+        expect(data.signUpBarOf('Brumes')).toEqual({ kind: 'leading', game: epice, rank: 1 });
+      });
+
+      it('dit « Inscrit en secours » sur une partie où il s’est inscrit en secours', async () => {
+        const data = await opened(undefined, undefined, {
+          ...situation([], { ...open('s2'), ledGameId: 'Néons' }),
+          backupGameIds: ['Épice'],
+        });
+
+        expect(data.signUpBarOf('Épice')).toMatchObject({ signedUp: true, backupFor: neons });
+        expect(data.isSignedUp('Épice')).toBe(false);
+        expect(data.isBackup('Épice')).toBe(true);
       });
     });
 
@@ -1181,7 +1225,7 @@ describe('ParticipantData', () => {
         ]);
       });
 
-      it('signale au MJ ses joueurs, ou le retrait de sa partie annulée, sans « Partie annulée » (TI-7)', async () => {
+      it('signale au MJ ses joueurs, ou sa partie annulée, qui a quitté le programme (TI-7)', async () => {
         await opened(
           schedule([brumes, neons]),
           now,
@@ -1214,9 +1258,9 @@ describe('ParticipantData', () => {
             see: '/',
           },
           {
-            title: `Créneau 2${NBSP}: partie retirée du programme`,
-            detail: "Néons est retirée\u00a0: tu peux t'inscrire sur ce créneau.",
-            see: '/programme?creneau=2',
+            title: `Créneau 2${NBSP}: ta partie est annulée`,
+            detail: "Néons n'a pas atteint son minimum.",
+            see: '/',
           },
         ]);
       });
@@ -1293,6 +1337,54 @@ describe('ParticipantData', () => {
             detail: `Néons est retirée${NBSP}: tu peux t'inscrire sur ce créneau.`,
             see: '/programme?creneau=2',
           },
+        ]);
+      });
+
+      it('dit « ta partie est annulée » quand sa partie annulée quitte le programme à la publication (NO-5, TI-7)', async () => {
+        await opened(schedule([epice, neons]), now, {
+          ...leading('Néons', 's2'),
+          backupGameIds: ['Épice'],
+        });
+
+        await rereadWith(
+          schedule([epice]),
+          situation(['Épice'], {
+            timeSlotId: 's2',
+            state: 'published',
+            drawResult: { kind: 'assigned', gameId: 'Épice' },
+          }),
+        );
+
+        expect(changeAlerts()).toContainEqual({
+          title: `Créneau 2${NBSP}: ta partie est annulée`,
+          detail: "Néons n'a pas atteint son minimum.",
+          see: '/',
+        });
+      });
+
+      it('signale la partie retirée où il est inscrit en secours (IN-4, IN-6)', async () => {
+        await opened(schedule([brumes, epice]), now, {
+          ...leading('Épice', 's1', 's2'),
+          backupGameIds: ['Brumes'],
+        });
+
+        await rereadWith(schedule([epice]), leading('Épice', 's1', 's2'));
+
+        expect(changeAlerts().map(({ detail }) => detail)).toEqual([
+          `Brumes est retirée${NBSP}: ton inscription est supprimée.`,
+        ]);
+      });
+
+      it('dit, sa partie retirée, que ses inscriptions de secours comptent désormais (IN-4)', async () => {
+        await opened(schedule([epice, neons]), now, {
+          ...leading('Néons', 's2'),
+          backupGameIds: ['Épice'],
+        });
+
+        await rereadWith(schedule([epice]), situation(['Épice']));
+
+        expect(changeAlerts().map(({ detail }) => detail)).toEqual([
+          `Néons est retirée${NBSP}: tes inscriptions de secours sur ce créneau comptent désormais.`,
         ]);
       });
 

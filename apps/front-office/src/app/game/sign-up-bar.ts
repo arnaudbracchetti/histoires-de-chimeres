@@ -36,9 +36,10 @@ type Status = {
 
 /**
  * La barre fixée en bas de la fiche d'une partie (§5.3, variante A de #63) : « S'inscrire », ou
- * « Inscription enregistrée » et « Se désinscrire », toujours à portée du pouce. Quand le geste est
- * impossible, elle dit pourquoi à la place du bouton. Le bouton reste actif sans réseau : l'échec
- * se dit en alerte. Avant de s'inscrire à une partie très demandée, une confirmation (IN-5).
+ * « Inscription enregistrée » et « Se désinscrire », toujours à portée du pouce. Sur un créneau où
+ * le MJ du pseudo mène, la barre le dit, et le geste devient l'inscription de secours (IN-4).
+ * Quand le geste est impossible, elle dit pourquoi à la place du bouton. Le bouton reste actif
+ * sans réseau : l'échec se dit en alerte. Avant de s'inscrire à une partie très demandée, une confirmation (IN-5).
  */
 @Component({
   selector: 'app-sign-up-bar',
@@ -47,10 +48,25 @@ type Status = {
     <div class="content" aria-live="polite">
       @if (bar(); as bar) {
         @if (bar.kind === 'open') {
+          @if (bar.backupFor; as led) {
+            <div class="status accent">
+              <app-icon name="book-open" />
+              <div>
+                <p>
+                  <strong>Tu mènes une partie sur ce créneau</strong>
+                </p>
+                <p class="detail">{{ backupDetail(led) }}</p>
+              </div>
+            </div>
+          }
           @if (bar.signedUp) {
             <div class="split">
               <p class="status accent">
-                <app-icon name="circle-check" /><strong>Inscription enregistrée</strong>
+                @if (bar.backupFor) {
+                  <app-icon name="life-buoy" /><strong>Inscrit en secours</strong>
+                } @else {
+                  <app-icon name="circle-check" /><strong>Inscription enregistrée</strong>
+                }
               </p>
               <button
                 type="button"
@@ -72,7 +88,13 @@ type Status = {
               @if (!bar.pending) {
                 <app-icon name="plus" />
               }
-              {{ bar.pending ? 'Inscription…' : "S'inscrire" }}
+              {{
+                bar.pending
+                  ? 'Inscription…'
+                  : bar.backupFor
+                    ? "S'inscrire en secours"
+                    : "S'inscrire"
+              }}
             </button>
           }
         } @else if (status(); as status) {
@@ -201,7 +223,7 @@ export class SignUpBar {
           icon: 'book-open',
           tone: 'accent',
           title: 'Tu mènes une partie sur ce créneau',
-          detail: fr`${bar.game.title}, table ${bar.game.tableName} : tu ne peux pas t'inscrire comme joueur.`,
+          detail: fr`${bar.game.title}, table ${bar.game.tableName}. Les inscriptions du créneau ${bar.rank} sont fermées.`,
         };
       case 'held': {
         const ranks = formatTimeSlotRanks(ranksOf(schedule, bar.game));
@@ -255,6 +277,11 @@ export class SignUpBar {
         };
     }
   });
+
+  /** Sur un créneau où le MJ du pseudo mène `led` : il peut s'inscrire ici en secours (IN-4). */
+  protected backupDetail(led: FrontOfficeGameDto): string {
+    return fr`${led.title}, table ${led.tableName} : tu peux t'inscrire ici en secours, au cas où ta partie serait annulée.`;
+  }
 
   /**
    * S'inscrire, après la confirmation « Partie très demandée » quand l'inscription laisserait la

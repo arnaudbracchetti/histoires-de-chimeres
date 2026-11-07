@@ -113,6 +113,46 @@ describe('Inscriptions du front office (IN-2)', () => {
     return { gameId: games[0]!.id, timeSlotId };
   };
 
+  /** « Kaïros » mène « Les Néons » sur ce créneau, à la table Licorne : l'id de la partie. */
+  const scheduleOtherGame = async (timeSlotId: string) => {
+    const { tables } = await send<ConventionDto>(
+      server().post(apiUrl(tableEndpoints.add)).send({ name: 'Licorne' }),
+    );
+    const gameMasters = await send<GameMasterDto[]>(
+      server().post(apiUrl(gameMasterEndpoints.add)).send({ nickname: 'Kaïros' }),
+    );
+    const kairos = gameMasters.find(({ nickname }) => nickname === 'Kaïros')!;
+    await send(
+      server().put(apiUrl(availabilityEndpoints.declare, { gameMasterId: kairos.id, timeSlotId })),
+    );
+    const scenario = await send<ScenarioDto>(
+      server()
+        .post(apiUrl(scenarioEndpoints.propose, { gameMasterId: kairos.id }))
+        .send({
+          title: 'Les Néons',
+          system: 'Cyberpunk',
+          presentation: 'Une course.',
+          contentWarnings: '',
+          seats: { min: 3, max: 5 },
+          duration: 1,
+        }),
+    );
+    await send(
+      server()
+        .post(apiUrl(scheduleEndpoints.schedule))
+        .send({
+          scenarioId: scenario.id,
+          timeSlotId,
+          tableId: tables.find(({ name }) => name === 'Licorne')!.id,
+        }),
+    );
+    const reader = await linkedPhone('Lecteur');
+    const { games } = (
+      await withCookie(server().get(apiUrl(frontOfficeEndpoints.readSchedule)), reader).expect(200)
+    ).body as FrontOfficeScheduleDto;
+    return games.find(({ title }) => title === 'Les Néons')!.id;
+  };
+
   it('inscrit le pseudo du téléphone : le compteur et sa situation le montrent', async () => {
     const { gameId, timeSlotId } = await prepare();
     const elodie = await linkedPhone('Élodie');
@@ -122,6 +162,7 @@ describe('Inscriptions du front office (IN-2)', () => {
     expect(await signUpCountOf(gameId, elodie)).toBe(1);
     expect((await readSituation(elodie).expect(200)).body).toEqual({
       signedUpGameIds: [gameId],
+      backupGameIds: [],
       timeSlots: [
         {
           timeSlotId,
@@ -134,19 +175,20 @@ describe('Inscriptions du front office (IN-2)', () => {
     });
   });
 
-  it('refuse le MJ sur le créneau où il mène, et sa situation donne sa partie (IN-4)', async () => {
+  it('refuse le MJ sur sa propre partie, et sa situation donne sa partie (IN-4)', async () => {
     const { gameId, timeSlotId } = await prepare();
     const brann = await linkedPhone('Brann', 'game-master');
 
     const response = await signUp(gameId, brann).expect(422);
 
     expect(response.body).toMatchObject({
-      code: 'leads-game-on-time-slot',
-      detail: 'Tu mènes une partie au créneau 1, table Griffon\u00a0: tu ne peux pas y jouer.',
+      code: 'game-led-by-participant',
+      detail: "Tu mènes cette partie\u00a0: tu ne peux pas t'y inscrire.",
     });
     expect(await signUpCountOf(gameId, brann)).toBe(0);
     expect((await readSituation(brann).expect(200)).body).toEqual({
       signedUpGameIds: [],
+      backupGameIds: [],
       timeSlots: [
         {
           timeSlotId,
@@ -156,6 +198,21 @@ describe('Inscriptions du front office (IN-2)', () => {
           withoutGame: false,
         },
       ],
+    });
+  });
+
+  it('inscrit en secours le MJ à une autre partie du créneau où il mène, sans la compter (IN-4)', async () => {
+    const { gameId, timeSlotId } = await prepare();
+    const otherGameId = await scheduleOtherGame(timeSlotId);
+    const kairos = await linkedPhone('Kaïros', 'game-master');
+
+    await signUp(gameId, kairos).expect(204);
+
+    expect(await signUpCountOf(gameId, kairos)).toBe(0);
+    expect((await readSituation(kairos).expect(200)).body).toMatchObject({
+      signedUpGameIds: [],
+      backupGameIds: [gameId],
+      timeSlots: [{ timeSlotId, ledGameId: otherGameId }],
     });
   });
 

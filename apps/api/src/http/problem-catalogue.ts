@@ -285,10 +285,9 @@ export const problemCatalogue: Catalogue = {
     detail: ({ nickname, rank }) =>
       fr`${nickname} ne fait pas partie du tirage du créneau ${rank}.`,
   },
-  'leads-game-on-time-slot': {
-    title: 'Tu mènes sur ce créneau',
-    detail: ({ rank, table }) =>
-      fr`Tu mènes une partie au créneau ${rank}, table ${table} : tu ne peux pas y jouer.`,
+  'game-led-by-participant': {
+    title: 'Tu mènes cette partie',
+    detail: () => fr`Tu mènes cette partie : tu ne peux pas t'y inscrire.`,
   },
   'game-swapped-with-itself': {
     title: 'Même partie',

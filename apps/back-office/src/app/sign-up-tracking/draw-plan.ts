@@ -161,6 +161,13 @@ type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[
             ></li>
           }
         </ul>
+        @if (cancelledGameMasterLines().length) {
+          <ul class="sign-ups" aria-label="Inscriptions des MJ des parties annulées">
+            @for (line of cancelledGameMasterLines(); track line) {
+              <li>{{ line }}</li>
+            }
+          </ul>
+        }
         @if (chosen(); as player) {
           @if (player.gameId !== null) {
             <div class="gesture">
@@ -328,6 +335,14 @@ type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[
         }
       }
 
+      .sign-ups {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        color: var(--text-muted);
+        font-size: var(--font-size-meta);
+      }
+
       .card.unassigned {
         border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
         background: color-mix(in srgb, var(--danger) 8%, var(--surface-2));
@@ -478,12 +493,29 @@ export class DrawPlan {
     if (player.withoutGame || !player.signedUpGameIds.length) {
       return fr`${player.nickname} · sans partie. Choisis sa nouvelle table.`;
     }
-    const titles = player.signedUpGameIds
+    return fr`${player.nickname} · inscriptions : ${this.titlesOf(player.signedUpGameIds)}. Choisis sa nouvelle table.`;
+  });
+
+  /**
+   * « Kaïros · inscrit à : « Brumes », « Néons » » : les inscriptions, devenues actives, de chaque
+   * MJ non placé d'une partie annulée, pour aider à le placer (TI-6, IN-4).
+   */
+  protected readonly cancelledGameMasterLines = computed(() =>
+    this.unassigned()
+      .filter((player) => player.gameMasterOfCancelledGame && !player.withoutGame)
+      .map(
+        (player) => fr`${player.nickname} · inscrit à : ${this.titlesOf(player.signedUpGameIds)}`,
+      ),
+  );
+
+  /** « « Brumes », « Néons » » : les titres de ces parties du créneau. */
+  private titlesOf(gameIds: readonly string[]): string {
+    return gameIds
       .map((gameId) => this.games().find(({ id }) => id === gameId)?.scenario.title)
       .filter((title) => title !== undefined)
-      .map((title) => fr`« ${title} »`);
-    return fr`${player.nickname} · inscriptions : ${titles.join(', ')}. Choisis sa nouvelle table.`;
-  });
+      .map((title) => fr`« ${title} »`)
+      .join(', ');
+  }
 
   protected toggleChoice(player: AssignmentDto) {
     this.chosenId.update((id) => (id === player.participantId ? null : player.participantId));

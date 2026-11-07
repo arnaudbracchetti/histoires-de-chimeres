@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { afterRenderEffect, Component, ElementRef, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -16,7 +17,8 @@ import { Icon } from '../ui/icon';
 /**
  * Mes parties, créneau par créneau à venir : le rappel d'IN-5, les inscriptions du pseudo, chacune
  * vers sa fiche, puis sa table ou « Pas de place pour toi » après la publication (story 86). Sur un
- * créneau où son MJ mène, la partie menée s'y déplie (§5.7). Sur un créneau aux inscriptions
+ * créneau où son MJ mène, la partie menée s'y déplie (§5.7), et ses inscriptions de secours se
+ * groupent sous « En secours » (IN-4). Sur un créneau aux inscriptions
  * ouvertes où il est sans partie, ce qu'il peut faire, et « Me retirer du tirage » (IN-6). `?creneau=2` fait défiler jusqu'au
  * créneau 2.
  */
@@ -26,6 +28,7 @@ import { Icon } from '../ui/icon';
     Button,
     Icon,
     LedGameCard,
+    NgTemplateOutlet,
     OversubscribedBadge,
     OversubscribedReminder,
     RouterLink,
@@ -49,31 +52,12 @@ import { Icon } from '../ui/icon';
               [startTime]="timeSlotsOf(schedule, led.game)[0]!.start"
             />
           } @else if (slot.signedUpGames.length) {
-            <ul aria-label="Tes inscriptions">
-              @for (game of slot.signedUpGames; track game.id) {
-                <li>
-                  <a [routerLink]="['/parties', game.id]">
-                    <span class="text">
-                      <span class="title">{{ game.title }}</span>
-                      <span class="meta">
-                        Table {{ game.tableName }}
-                        @if (doubleGameRanksOf(schedule, game); as ranks) {
-                          · {{ ranks }}
-                        }
-                      </span>
-                      @if (game.oversubscribed) {
-                        <app-oversubscribed-badge />
-                      }
-                    </span>
-                    <app-scenario-illustration
-                      format="thumb"
-                      [title]="game.title"
-                      [imageUrl]="game.imageUrl"
-                    />
-                  </a>
-                </li>
-              }
-            </ul>
+            <ng-container
+              *ngTemplateOutlet="
+                gameList;
+                context: { games: slot.signedUpGames, label: 'Tes inscriptions' }
+              "
+            />
           } @else if (slot.withoutGame) {
             <div class="without-game">
               <p>{{ withoutGameText(slot.timeSlot.rank) }}</p>
@@ -90,6 +74,18 @@ import { Icon } from '../ui/icon';
             </div>
           } @else {
             <p class="empty">Aucune inscription sur ce créneau.</p>
+          }
+          @if (slot.backupGames.length) {
+            <div class="backup" [attr.aria-labelledby]="'backup-' + slot.timeSlot.rank">
+              <h3 [id]="'backup-' + slot.timeSlot.rank">En secours</h3>
+              <p class="meta">Elles ne comptent que si ta partie est annulée.</p>
+              <ng-container
+                *ngTemplateOutlet="
+                  gameList;
+                  context: { games: slot.backupGames, label: 'Tes inscriptions de secours' }
+                "
+              />
+            </div>
           }
           @if (slot.assignment; as assignment) {
             @if (assignment.kind === 'assigned') {
@@ -113,6 +109,33 @@ import { Icon } from '../ui/icon';
       } @empty {
         <p class="empty">Le programme n'est pas encore prêt. Reviens un peu plus tard.</p>
       }
+      <ng-template #gameList let-games="games" let-label="label">
+        <ul [attr.aria-label]="label">
+          @for (game of games; track game.id) {
+            <li>
+              <a [routerLink]="['/parties', game.id]">
+                <span class="text">
+                  <span class="title">{{ game.title }}</span>
+                  <span class="meta">
+                    Table {{ game.tableName }}
+                    @if (doubleGameRanksOf(schedule, game); as ranks) {
+                      · {{ ranks }}
+                    }
+                  </span>
+                  @if (game.oversubscribed) {
+                    <app-oversubscribed-badge />
+                  }
+                </span>
+                <app-scenario-illustration
+                  format="thumb"
+                  [title]="game.title"
+                  [imageUrl]="game.imageUrl"
+                />
+              </a>
+            </li>
+          }
+        </ul>
+      </ng-template>
     } @else {
       <p>Chargement…</p>
     }
@@ -195,6 +218,21 @@ import { Icon } from '../ui/icon';
         > span {
           display: grid;
           gap: var(--space-xxs);
+        }
+      }
+
+      .backup {
+        display: grid;
+        gap: var(--space-s);
+        margin-top: var(--space-s);
+
+        h3,
+        p {
+          margin: 0;
+        }
+
+        h3 {
+          font-size: var(--font-size-mobile-meta);
         }
       }
 

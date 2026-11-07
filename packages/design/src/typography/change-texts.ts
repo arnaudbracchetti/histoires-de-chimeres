@@ -77,17 +77,20 @@ export function buildGameUnscheduledText(
 
 /**
  * Son MJ : la partie est retirée du programme avant la publication de son créneau. `reopened` : le
- * geste a effacé le tirage provisoire du créneau.
+ * geste a effacé le tirage provisoire du créneau. `backupSignUps` : ses inscriptions de secours
+ * sur ce créneau comptent désormais (IN-4).
  */
 export function buildOwnGameUnscheduledText(
   ranks: readonly number[],
   gameTitle: string,
-  reopened: boolean,
+  { reopened, backupSignUps }: { reopened: boolean; backupSignUps: boolean },
 ): ChangeText {
   return {
     title: fr`${formatCapitalizedTimeSlotRanks(ranks)} : partie retirée du programme`,
     body: appendReopeningSentence(
-      fr`${gameTitle} est retirée : tu peux t'inscrire sur ce créneau.`,
+      backupSignUps
+        ? fr`${gameTitle} est retirée : tes inscriptions de secours sur ce créneau comptent désormais.`
+        : fr`${gameTitle} est retirée : tu peux t'inscrire sur ce créneau.`,
       reopened,
     ),
   };
@@ -128,17 +131,20 @@ export function buildGameOversubscribedText(rank: number, gameTitle: string): Ch
 /**
  * Ceux qui peuvent s'y inscrire : une partie est programmée, ou déplacée, sur un créneau pas encore
  * publié. `system` : le jeu de son scénario. `reopened` : le geste a effacé le tirage provisoire du
- * créneau.
+ * créneau. `backup` : un MJ qui mène sur le créneau, qui peut s'y inscrire en secours (IN-4).
  */
 export function buildNewGameText(
   ranks: readonly number[],
   game: NamedGame & { system: string },
-  reopened: boolean,
+  { reopened, backup }: { reopened: boolean; backup: boolean },
 ): ChangeText {
+  const invitation = backup
+    ? fr`Tu peux t'y inscrire en secours, au cas où ta partie serait annulée.`
+    : fr`Tu peux t'y inscrire.`;
   return {
     title: fr`${formatCapitalizedTimeSlotRanks(ranks)} : nouvelle partie`,
     body: appendReopeningSentence(
-      fr`${game.title} · ${game.system}, table ${game.tableName}. Tu peux t'y inscrire.`,
+      fr`${game.title} · ${game.system}, table ${game.tableName}. ${invitation}`,
       reopened,
     ),
   };
@@ -213,6 +219,17 @@ export function buildCancelledText(
   return {
     title: fr`${formatCapitalizedTimeSlotRanks(ranks)} : ta partie est annulée`,
     body: formatCancelledBody(gameTitle, tablesWithSeats),
+  };
+}
+
+/**
+ * L'alerte du MJ dont la partie annulée quitte le programme à la publication (NO-5, TI-7) : le titre
+ * de la notification, sans les tables où il reste de la place, que le téléphone ne calcule pas.
+ */
+export function buildCancelledAlertText(ranks: readonly number[], gameTitle: string): ChangeText {
+  return {
+    title: fr`${formatCapitalizedTimeSlotRanks(ranks)} : ta partie est annulée`,
+    body: fr`${gameTitle} n'a pas atteint son minimum.`,
   };
 }
 

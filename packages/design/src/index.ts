@@ -31,6 +31,7 @@ export {
   buildGameOversubscribedText,
   buildGameUnscheduledText,
   buildLeadingText,
+  buildCancelledAlertText,
   buildNewGameText,
   buildOwnGameScheduledText,
   buildOwnGameUnscheduledText,

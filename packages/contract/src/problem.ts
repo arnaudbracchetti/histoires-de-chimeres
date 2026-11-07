@@ -84,8 +84,8 @@ export type RefusalParams = {
    * n'est pas publié. Les tirages se lancent dans l'ordre de la journée.
    */
   'previous-draw-not-published': { rank: number; previousRank: number };
-  /** `rank` : le rang du créneau où le MJ mène ; `table` : la table de sa partie (IN-4). */
-  'leads-game-on-time-slot': { rank: number; table: string };
+  /** Un MJ ne s'inscrit pas à sa propre partie (IN-4). */
+  'game-led-by-participant': Record<string, never>;
   'game-already-cancelled': Record<string, never>;
   /**
    * `players` : les joueurs actuels de la partie ; `min` : les places minimum de son scénario,

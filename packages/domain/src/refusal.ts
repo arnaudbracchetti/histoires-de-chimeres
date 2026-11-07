@@ -101,8 +101,8 @@ export type RefusalParams = {
    * tirage ne se publie pas : aucun MJ ne reste seul à sa table (TI-7).
    */
   'games-without-players': { rank: number; games: number };
-  /** `rank` : le rang du créneau où le MJ mène ; `table` : la table de sa partie (IN-4). */
-  'leads-game-on-time-slot': { rank: number; table: string };
+  /** Un MJ ne s'inscrit pas à sa propre partie (IN-4). */
+  'game-led-by-participant': Record<string, never>;
   /** Une partie ne s'échange pas avec elle-même (PR-17). */
   'game-swapped-with-itself': Record<string, never>;
   'scenario-not-found': Record<string, never>;

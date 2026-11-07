@@ -13,6 +13,7 @@ const programmeLine = (given: Partial<MyTimeSlot>): MyTimeSlot => ({
   timeSlot,
   state: 'sign-ups-open',
   signedUpGames: [],
+  backupGames: [],
   withoutGame: false,
   assignment: null,
   onlySignUpOversubscribed: false,

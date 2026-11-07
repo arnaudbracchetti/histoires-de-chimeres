@@ -1,7 +1,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import type { FrontOfficeScheduleDto } from '@chimeres/contract';
+import type { FrontOfficeGameDto, FrontOfficeScheduleDto } from '@chimeres/contract';
 import { NBSP } from '@chimeres/design';
 import { ParticipantData, type MyTimeSlot } from '../participant-data/participant-data';
 import { MyGamesPage } from './my-games-page';
@@ -18,6 +18,7 @@ const timeSlot = (given: Partial<MyTimeSlot>): MyTimeSlot => ({
   timeSlot: schedule.timeSlots[0]!,
   state: 'sign-ups-open',
   signedUpGames: [],
+  backupGames: [],
   withoutGame: false,
   assignment: null,
   onlySignUpOversubscribed: false,
@@ -63,6 +64,37 @@ describe('MyGamesPage', () => {
       `Toutes tes parties ont été retirées de ce créneau. Tu restes dans le tirage du créneau 2${NBSP}: inscris-toi à une autre partie pour avoir une table.`,
     );
     expect(text(page.querySelector('section'))).not.toContain('Aucune inscription');
+  });
+
+  it('groupe sous sa partie menée ses inscriptions de secours, « En secours » (IN-4, §5.7)', async () => {
+    const game = (id: string, title: string): FrontOfficeGameDto => ({
+      id,
+      timeSlotIds: ['s2'],
+      tableName: 'Griffon',
+      title,
+      system: 'Cthulhu',
+      gameMasterNickname: 'Brann',
+      imageUrl: null,
+      presentation: '',
+      contentWarnings: '',
+      seats: { min: 3, max: 5 },
+      signUpCount: 2,
+      playerCount: null,
+      oversubscribed: false,
+    });
+    const page = await render(
+      timeSlot({
+        led: { game: game('neons', 'Néons'), started: false, outcome: { kind: 'sign-ups-open' } },
+        backupGames: [game('brumes', 'Brumes')],
+      }),
+    );
+
+    const backup = page.querySelector('[aria-labelledby="backup-2"]');
+    expect(text(backup?.querySelector('h3') ?? null)).toBe('En secours');
+    expect(text(backup?.querySelector('p') ?? null)).toBe(
+      'Elles ne comptent que si ta partie est annulée.',
+    );
+    expect(text(backup?.querySelector('ul a') ?? null)).toContain('Brumes');
   });
 
   it('le retire du tirage d’un tap, sans confirmation', async () => {

@@ -75,8 +75,8 @@ const CATALOGUE = ScenarioCatalogue.restore([
 const endOfDay = (time: string): LocalMoment => ({ date: '2027-03-14', time: at(time) });
 
 /**
- * La convention, avec en plus des inscriptions d'un MJ prises avant la programmation de ses
- * parties : elles restent, sans compter (IN-4), alors que `signUpForGame()` les refuserait aujourd'hui.
+ * La convention, avec en plus des inscriptions d'un MJ, celle de sa propre partie comprise, que
+ * `signUpForGame()` refuserait (IN-4).
  */
 function restoreWithGameMasterSignUps(convention: Convention, ...signUps: SignUp[]): Convention {
   return Convention.restore({
@@ -106,7 +106,7 @@ function addSvenAvailableEverywhere(convention: Convention): Convention {
 }
 
 describe('Notifications d’une partie programmée (NO-2)', () => {
-  it('préviennent tout le monde d’une nouvelle partie, sauf les MJ qui mènent sur le créneau, et son MJ qu’il la mène', () => {
+  it('préviennent tout le monde d’une nouvelle partie, les MJ qui mènent sur le créneau en secours (IN-4), et son MJ qu’il la mène', () => {
     const convention = addSvenAvailableEverywhere(aConvention());
 
     const notifications = convention.scheduleScenario('songe', aScenario('d', 'g3'), 's2', 't3');
@@ -120,8 +120,22 @@ describe('Notifications d’une partie programmée (NO-2)', () => {
           ranks: [2],
           tableName: 'Table 3',
           reopened: false,
+          backup: false,
         },
         recipients: { kind: 'everyone-except', participantIds: ['p-g1', 'p-g2', 'p-g3'] },
+        deadline: endOfDay('16:30'),
+      },
+      {
+        code: 'new-game',
+        params: {
+          gameId: 'songe',
+          scenarioId: 'd',
+          ranks: [2],
+          tableName: 'Table 3',
+          reopened: false,
+          backup: true,
+        },
+        recipients: { kind: 'participants', participantIds: ['p-g1', 'p-g2'] },
         deadline: endOfDay('16:30'),
       },
       {
@@ -139,11 +153,11 @@ describe('Notifications d’une partie programmée (NO-2)', () => {
     ]);
   });
 
-  it('une partie double se désigne par ses deux créneaux, et écarte les MJ qui mènent sur le second', () => {
+  it('une partie double se désigne par ses deux créneaux, et prévient en secours les MJ qui mènent sur le second', () => {
     const convention = addSvenAvailableEverywhere(aConvention());
     convention.unscheduleGame('epice');
 
-    const [newGame, ownGame] = convention.scheduleScenario(
+    const [newGame, backup, ownGame] = convention.scheduleScenario(
       'songe',
       aScenario('d', 'g3', 2),
       's2',
@@ -154,6 +168,10 @@ describe('Notifications d’une partie programmée (NO-2)', () => {
       params: { ranks: [2, 3] },
       recipients: { participantIds: ['p-g1', 'p-g3'] },
       deadline: endOfDay('20:30'),
+    });
+    expect(backup).toMatchObject({
+      params: { ranks: [2, 3], backup: true },
+      recipients: { kind: 'participants', participantIds: ['p-g1'] },
     });
     expect(ownGame).toMatchObject({
       params: { ranks: [2, 3], start: '14:00', end: '20:30' },
@@ -196,7 +214,7 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
       },
       {
         code: 'own-game-unscheduled',
-        params: { scenarioId: 'a', ranks: [1], reopened: false },
+        params: { scenarioId: 'a', ranks: [1], reopened: false, backupSignUps: false },
         recipients: { kind: 'participants', participantIds: ['p-g1'] },
         deadline: endOfDay('11:30'),
       },
@@ -257,6 +275,35 @@ describe('Notifications d’une partie déprogrammée (NO-2)', () => {
       { kind: 'participants', participantIds: ['p1'] },
       { kind: 'participants', participantIds: ['p-g1'] },
     ]);
+  });
+
+  it('préviennent le MJ inscrit en secours, qui ne devient pas sans partie (IN-4)', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p-g2', 'brumes', CATALOGUE);
+
+    const notifications = convention.unscheduleGame('brumes');
+
+    expect(filterByCode(notifications, 'game-unscheduled')).toEqual([
+      {
+        code: 'game-unscheduled',
+        params: { scenarioId: 'a', ranks: [1], withoutGame: false, reopened: false },
+        recipients: { kind: 'participants', participantIds: ['p-g2'] },
+        deadline: endOfDay('11:30'),
+      },
+    ]);
+  });
+
+  it('disent à son MJ que ses inscriptions de secours sur le créneau comptent désormais (IN-4)', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p-g2', 'brumes', CATALOGUE);
+
+    const [ownGame] = convention.unscheduleGame('epice');
+
+    expect(ownGame).toMatchObject({
+      code: 'own-game-unscheduled',
+      params: { scenarioId: 'b', ranks: [1, 2], reopened: false, backupSignUps: true },
+      recipients: { participantIds: ['p-g2'] },
+    });
   });
 });
 
@@ -328,6 +375,7 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
           ranks: [3],
           tableName: 'Table 2',
           reopened: false,
+          backup: false,
         },
         recipients: { kind: 'everyone-except', participantIds: ['p-g1', 'p1'] },
         deadline: endOfDay('20:30'),
@@ -349,6 +397,20 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
     ]);
   });
 
+  it('préviennent le MJ inscrit en secours, qui ne devient pas sans partie (IN-4)', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p-g2', 'brumes', CATALOGUE);
+
+    const notifications = convention.moveGame('brumes', 's3', 't2');
+
+    expect(filterByCode(notifications, 'game-moved')).toMatchObject([
+      {
+        params: { gameId: 'brumes', fromRanks: [1], toRanks: [3], withoutGame: false },
+        recipients: { kind: 'participants', participantIds: ['p-g2'] },
+      },
+    ]);
+  });
+
   it('ne partent pas quand elle change seulement de table (NO-4)', () => {
     const convention = aConvention();
     convention.signUpForGame('p1', 'brumes', CATALOGUE);
@@ -362,12 +424,6 @@ describe('Notifications d’une partie déplacée (NO-2)', () => {
         .moveGame('brumes', 's3', 't1')
         .map(({ code }) => code),
     ).toEqual(['new-game', 'own-game-scheduled']);
-  });
-
-  it('ne vont pas à une inscription qui ne compte pas (IN-4)', () => {
-    const convention = restoreWithGameMasterSignUps(aConvention(), new SignUp('p-g1', 'epice'));
-
-    expect(filterByCode(convention.moveGame('epice', 's2', 't2'), 'game-moved')).toEqual([]);
   });
 });
 
@@ -442,6 +498,11 @@ describe('Notifications de deux parties échangées (NO-2)', () => {
         code: 'new-game',
         ranks: [1],
         recipients: { kind: 'everyone-except', participantIds: ['p-g2', 'p-g3', 'p1', 'p-g1'] },
+      },
+      {
+        code: 'new-game',
+        ranks: [1],
+        recipients: { kind: 'participants', participantIds: ['p-g2'] },
       },
       {
         code: 'own-game-scheduled',
@@ -578,6 +639,15 @@ describe('Notification d’une partie très demandée par une inscription (NO-2,
         .signUpForGame('p2', 'epice', catalogue)
         ?.map(({ recipients }) => recipients.participantIds),
     ).toEqual([['p1']]);
+  });
+
+  it('ne part pas pour l’inscription de secours d’un MJ, qui ne compte pas (IN-4)', () => {
+    const convention = aConvention();
+    const catalogue = catalogueWithMaxSeats({ b: 1 });
+    convention.signUpForGame('p1', 'epice', catalogue);
+    convention.signUpForGame('p2', 'epice', catalogue);
+
+    expect(convention.signUpForGame('p-g1', 'epice', catalogue)).toEqual([]);
   });
 });
 

@@ -473,6 +473,7 @@ describe('Suivi d’un créneau lancé', () => {
           signedUpGameIds: ['epice', 'brumes'],
           playsWithoutSignUp: false,
           withoutGame: false,
+          gameMasterOfCancelledGame: false,
         },
         {
           participantId: 'p2',
@@ -481,6 +482,7 @@ describe('Suivi d’un créneau lancé', () => {
           signedUpGameIds: ['epice'],
           playsWithoutSignUp: false,
           withoutGame: false,
+          gameMasterOfCancelledGame: false,
         },
         {
           participantId: 'p3',
@@ -489,6 +491,7 @@ describe('Suivi d’un créneau lancé', () => {
           signedUpGameIds: ['brumes'],
           playsWithoutSignUp: false,
           withoutGame: false,
+          gameMasterOfCancelledGame: false,
         },
       ],
       signals: [
@@ -548,6 +551,7 @@ describe('Suivi d’un créneau lancé', () => {
       signedUpGameIds: [],
       playsWithoutSignUp: true,
       withoutGame: false,
+      gameMasterOfCancelledGame: false,
     });
   });
 
@@ -594,6 +598,7 @@ describe('Suivi d’un créneau lancé', () => {
       signedUpGameIds: ['brumes'],
       playsWithoutSignUp: false,
       withoutGame: false,
+      gameMasterOfCancelledGame: true,
     });
   });
 });
@@ -1777,12 +1782,12 @@ describe('Gestes de programmation sur un créneau en tirage (TI-6, IN-6)', () =>
     const reopenedOf = (notifications: Notification[]) =>
       notifications.map(({ code, params }) => `${code} ${'reopened' in params && params.reopened}`);
 
-    it('« nouvelle partie » et « tu mènes » sur le créneau rouvert', () => {
+    it('« nouvelle partie », aussi en secours, et « tu mènes » sur le créneau rouvert', () => {
       expect(
         reopenedOf(
           aDrawingConvention().scheduleScenario('foret', aScenario('e', 'g4'), 's1', 't4'),
         ),
-      ).toEqual(['new-game true', 'own-game-scheduled false']);
+      ).toEqual(['new-game true', 'new-game true', 'own-game-scheduled false']);
     });
 
     it('« partie retirée du programme » à ses inscrits et à son MJ', () => {
@@ -1806,6 +1811,7 @@ describe('Gestes de programmation sur un créneau en tirage (TI-6, IN-6)', () =>
       convention.launchDraw('s1', PROGRAMMING_CATALOGUE, FIRST_GAME, RANDOM);
       expect(reopenedOf(convention.moveGame('foret', 's1', 't4'))).toEqual([
         'game-moved true',
+        'new-game true',
         'new-game true',
         'own-game-scheduled false',
       ]);
