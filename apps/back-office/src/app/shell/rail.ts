@@ -25,7 +25,7 @@ const PREPARATION: readonly Entry[] = [
 
 const DAY_OF: readonly (Entry | UpcomingEntry)[] = [
   { label: 'Pilotage du jour J', icon: 'radio-tower', link: '/pilotage' },
-  { label: 'Participants', icon: 'user-round' },
+  { label: 'Participants', icon: 'user-round', link: '/participants' }, // PROTOTYPE (#135)
 ];
 
 function readCollapsed(): boolean {

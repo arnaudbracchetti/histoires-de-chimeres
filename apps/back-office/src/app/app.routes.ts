@@ -30,5 +30,18 @@ export const routes: Routes = [
   },
   { path: 'creneaux-et-tables', title: 'Créneaux et tables', component: TimeSlotsAndTablesPage },
   { path: 'pilotage', title: 'Pilotage du jour J', component: SignUpTrackingPage },
+  // PROTOTYPE, à jeter (#135).
+  {
+    path: 'participants',
+    title: 'Participants',
+    loadComponent: () =>
+      import('./participants-prototype/participants-prototype-page').then((m) => m.ParticipantsPrototypePage),
+  },
+  {
+    path: 'participants/:id',
+    title: 'Participant',
+    loadComponent: () =>
+      import('./participants-prototype/participants-prototype-page').then((m) => m.ParticipantsPrototypePage),
+  },
   { path: '**', redirectTo: '' },
 ];
