@@ -78,10 +78,7 @@ export type SignUpBarState =
 export type LedGame = {
   game: FrontOfficeGameDto;
   started: boolean;
-  outcome:
-    | { kind: 'sign-ups-open' }
-    | { kind: 'drawing' }
-    | { kind: 'players'; players: string[] };
+  outcome: { kind: 'sign-ups-open' } | { kind: 'drawing' } | { kind: 'players'; players: string[] };
 };
 
 /** Un créneau à venir de Mes parties. */
@@ -125,8 +122,10 @@ export type MyTimeSlot = {
  *   créneau où il reste de la place (story 55) ;
  * - `leading` : « Tu mènes à la table *T* », si le dernier tirage publié est celui de sa partie,
  *   sur ses créneaux (story 56) ;
- * - `drawing` : sinon, « Tirage en cours » sur le premier créneau en cours de tirage où il est
- *   inscrit (story 57), ou `leading-drawing` s'il y mène (story 58) ;
+ * - `drawing` : « Tirage en cours » sur le premier créneau en cours de tirage où il est inscrit
+ *   (story 57), ou `leading-drawing` s'il y mène (story 58). Il passe devant les trois cartes
+ *   précédentes, qui redescendent dans « Ton programme » : un tirage se lance vers la fin du créneau
+ *   en cours ;
  * - `choose-games` : sans affectation à montrer, « Choisis tes parties » (story 59).
  */
 export type HomeCard =
@@ -268,13 +267,7 @@ export class ParticipantData {
     const situation = this.lastSituation();
     if (!myTimeSlots || !schedule || !situation) return undefined;
     const card = homeCardOf(myTimeSlots, schedule, situation, this.now());
-    // Les créneaux de la carte ne se répètent pas dessous.
-    const shown =
-      card.kind === 'assigned' || card.kind === 'leading'
-        ? card.timeSlots.map(({ id }) => id)
-        : card.kind === 'choose-games'
-          ? []
-          : [card.timeSlot.id];
+    const shown = timeSlotIdsOf(card);
     return {
       card,
       timeSlots: myTimeSlots.filter(({ timeSlot }) => !shown.includes(timeSlot.id)),
@@ -595,6 +588,22 @@ function homeCardOf(
   situation: ParticipantSituationDto,
   now: Date,
 ): HomeCard {
+  const published = publishedCardOf(myTimeSlots, schedule, situation, now);
+  // Un tirage lancé passe devant : sa partie publiée reste dans « Ton programme ».
+  const drawing = drawingCardOf(myTimeSlots, published ? timeSlotIdsOf(published) : []);
+  return drawing ?? published ?? { kind: 'choose-games' };
+}
+
+/**
+ * La carte du dernier résultat publié, tant que sa partie n'est pas terminée ; `null` sans résultat
+ * à montrer.
+ */
+function publishedCardOf(
+  myTimeSlots: MyTimeSlot[],
+  schedule: FrontOfficeScheduleDto,
+  situation: ParticipantSituationDto,
+  now: Date,
+): HomeCard | null {
   const lastPublished = situation.timeSlots
     .filter(({ state, drawResult }) => state === 'published' && drawResult)
     .at(-1);
@@ -632,15 +641,34 @@ function homeCardOf(
       return { kind: 'assigned', game, timeSlots, started };
     }
   }
-  const drawing = myTimeSlots.find(({ state, signedUpGames, led }) =>
-    led ? led.outcome.kind === 'drawing' : state === 'drawing' && signedUpGames.length,
+  return null;
+}
+
+/**
+ * « Tirage en cours » sur le premier créneau en cours de tirage, hors `excludedTimeSlotIds`, où il
+ * mène ou est inscrit ; `null` sinon.
+ */
+function drawingCardOf(myTimeSlots: MyTimeSlot[], excludedTimeSlotIds: string[]): HomeCard | null {
+  const drawing = myTimeSlots.find(
+    ({ timeSlot, state, signedUpGames, led }) =>
+      !excludedTimeSlotIds.includes(timeSlot.id) &&
+      (led ? led.outcome.kind === 'drawing' : state === 'drawing' && signedUpGames.length),
   );
   if (drawing?.led)
     return { kind: 'leading-drawing', timeSlot: drawing.timeSlot, led: drawing.led };
   if (drawing) {
     return { kind: 'drawing', timeSlot: drawing.timeSlot, signedUpGames: drawing.signedUpGames };
   }
-  return { kind: 'choose-games' };
+  return null;
+}
+
+/** Les créneaux que montre la carte, qui ne se répètent pas dans « Ton programme ». */
+function timeSlotIdsOf(card: HomeCard): string[] {
+  return card.kind === 'assigned' || card.kind === 'leading'
+    ? card.timeSlots.map(({ id }) => id)
+    : card.kind === 'choose-games'
+      ? []
+      : [card.timeSlot.id];
 }
 
 /** `time` (`HH:MM`), le jour `date` (`AAAA-MM-JJ`), est-il passé ? */

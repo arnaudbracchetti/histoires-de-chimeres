@@ -906,6 +906,66 @@ describe('ParticipantData', () => {
       expect(programmeRanks(data)).toEqual([2]);
     });
 
+    describe('tirage lancé d’un créneau suivant, devant le dernier résultat publié', () => {
+      const drawingS2 = { ...open('s2'), state: 'drawing' as const };
+
+      it('montre « Tirage en cours » avant même le début de la partie publiée, qui redescend dans « Ton programme »', async () => {
+        const data = await opened(
+          undefined,
+          undefined,
+          situation(
+            ['Brumes', 'Néons'],
+            published('s1', { kind: 'assigned', gameId: 'Brumes' }),
+            drawingS2,
+          ),
+        );
+
+        expect(data.home()?.card).toEqual({
+          kind: 'drawing',
+          timeSlot: slot2,
+          signedUpGames: [neons],
+        });
+        expect(data.home()?.timeSlots.map(({ assignment }) => assignment)).toEqual([
+          { kind: 'assigned', game: brumes },
+        ]);
+      });
+
+      it('fait céder « Pas de place pour toi » de même', async () => {
+        const data = await opened(
+          undefined,
+          undefined,
+          situation(['Brumes', 'Néons'], published('s1', { kind: 'unassigned' }), drawingS2),
+        );
+
+        expect(data.home()?.card).toMatchObject({ kind: 'drawing', timeSlot: slot2 });
+        expect(programmeRanks(data)).toEqual([1]);
+      });
+
+      it('garde l’affectation sans inscription sur le créneau en cours de tirage', async () => {
+        const data = await opened(
+          undefined,
+          undefined,
+          situation(['Brumes'], published('s1', { kind: 'assigned', gameId: 'Brumes' }), drawingS2),
+        );
+
+        expect(data.home()?.card).toMatchObject({ kind: 'assigned', game: brumes });
+      });
+
+      it('garde la partie double sur son second créneau, même en cours de tirage (TI-3)', async () => {
+        const data = await opened(
+          undefined,
+          undefined,
+          situation(
+            ['Épice', 'Néons'],
+            published('s1', { kind: 'assigned', gameId: 'Épice' }),
+            drawingS2,
+          ),
+        );
+
+        expect(data.home()?.card).toMatchObject({ kind: 'assigned', game: epice });
+      });
+    });
+
     it('montre « Choisis tes parties » sans inscription sur le créneau en cours de tirage, qui reste dans « Ton programme »', async () => {
       const data = await opened(
         undefined,
@@ -1095,6 +1155,31 @@ describe('ParticipantData', () => {
           timeSlot: slot1,
           led: { game: epice, started: false, outcome: { kind: 'drawing' } },
         });
+      });
+
+      it('montre le tirage du créneau suivant avant même le début de sa partie publiée (stories 57, 58)', async () => {
+        // Il mène « Brumes » au créneau 1, publié, et « Néons » au créneau 2, en cours de tirage.
+        const data = await opened(
+          undefined,
+          undefined,
+          situation(
+            [],
+            {
+              timeSlotId: 's1',
+              state: 'published',
+              drawResult: { kind: 'leading', players: ['Lune'] },
+              ledGameId: 'Brumes',
+            },
+            { ...open('s2'), state: 'drawing', ledGameId: 'Néons' },
+          ),
+        );
+
+        expect(data.home()?.card).toEqual({
+          kind: 'leading-drawing',
+          timeSlot: slot2,
+          led: { game: neons, started: false, outcome: { kind: 'drawing' } },
+        });
+        expect(data.home()?.timeSlots.map(({ led }) => led?.game)).toEqual([brumes]);
       });
     });
   });

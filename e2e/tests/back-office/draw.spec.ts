@@ -2,6 +2,7 @@ import { devices, type Page } from '@playwright/test';
 import {
   apiUrl,
   availabilityEndpoints,
+  conventionEndpoints,
   gameMasterEndpoints,
   scenarioEndpoints,
   scheduleEndpoints,
@@ -11,6 +12,7 @@ import {
   type GameMasterDto,
   type ScenarioDto,
   type TimeSlotDto,
+  type UpdateConventionBody,
 } from '@chimeres/contract';
 import { expect, test } from '../../fixtures.js';
 import { aNickname, identify, identifyAsGameMaster } from '../front-office/identification.js';
@@ -198,4 +200,76 @@ async function followDraw(page: Page, phone: Page) {
   await phone.reload();
   const assignment = phone.getByRole('link', { name: /Table Griffon/ });
   await expect(assignment).toContainText('Tu joues à Les Brumes, avec Kaïros');
+}
+
+test('le tirage lancé du créneau suivant passe devant sa table sur le téléphone', async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  // La journée du 13 mars 2027 : créneau 1 (9 h – 11 h 30) avec « Les Brumes », créneau 2 (14 h)
+  // avec « Les Néons ». Le téléphone est à l'heure de Paris, réglée par le test.
+  const body: UpdateConventionBody = { name: 'Chimères 2027', date: '2027-03-13' };
+  const dated = await page.request.put(apiUrl(conventionEndpoints.update), { data: body });
+  expect(dated.ok(), await dated.text()).toBe(true);
+  await prepare(page);
+  const { timeSlots } = await post<ConventionDto>(page, apiUrl(timeSlotEndpoints.add), {
+    start: '14:00',
+    end: '18:30',
+  });
+  await prepareNeons(page, timeSlots.find(({ start }) => start === '14:00')!.id);
+
+  const phoneContext = await browser.newContext({
+    ...devices['Pixel 7'],
+    baseURL,
+    timezoneId: 'Europe/Paris',
+  });
+  try {
+    const phone = await phoneContext.newPage();
+    await phone.clock.install({ time: new Date('2027-03-13T08:00:00+01:00') });
+    await identify(phone, aNickname('Maëlle'));
+    await scheduleTab(phone).click();
+    await timeSlotChip(phone, 1).click();
+    await gameCard(phone, 'Les Brumes').click();
+    await phone.getByRole('button', { name: "S'inscrire" }).click();
+    await expect(phone.getByText('Inscription enregistrée')).toBeVisible();
+    await phone.goBack();
+    await timeSlotChip(phone, 2).click();
+    await gameCard(phone, 'Les Néons').click();
+    await phone.getByRole('button', { name: "S'inscrire" }).click();
+    await expect(phone.getByText('Inscription enregistrée')).toBeVisible();
+
+    await page.goto('/gestion/');
+    await page.getByRole('link', { name: 'Pilotage du jour J' }).click();
+    await drawTimeSlot(page, 1);
+    await page.getByRole('button', { name: 'Publier le tirage' }).click();
+    await page
+      .getByRole('alertdialog', { name: /^Publier le tirage du créneau 1/ })
+      .getByRole('button', { name: 'Publier le tirage' })
+      .click();
+    await page
+      .getByRole('group', { name: 'Créneaux de la journée' })
+      .getByRole('button', { name: /Créneau 2/ })
+      .click();
+    await drawTimeSlot(page, 2);
+
+    // Avant même le début de sa partie, la carte passe au tirage du créneau 2.
+    await phone.goto('/');
+    await expect(phone.getByRole('region', { name: 'Tirage en cours' })).toContainText('Les Néons');
+    await expect(phone.getByRole('region', { name: 'Ton programme' })).toContainText(
+      'Table Griffon',
+    );
+  } finally {
+    await phoneContext.close();
+  }
+});
+
+/** Lance le tirage du créneau `rank`, choisi dans « Pilotage du jour J ». */
+async function drawTimeSlot(page: Page, rank: number) {
+  await page.getByRole('button', { name: 'Lancer le tirage' }).click();
+  await page
+    .getByRole('alertdialog', { name: new RegExp(`^Lancer le tirage du créneau ${rank}`) })
+    .getByRole('button', { name: 'Lancer le tirage' })
+    .click();
+  await expect(page.getByRole('button', { name: 'Publier le tirage' })).toBeVisible();
 }

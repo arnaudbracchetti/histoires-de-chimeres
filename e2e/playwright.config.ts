@@ -6,7 +6,8 @@ const baseURL = process.env['E2E_BASE_URL'] ?? 'http://localhost:8081';
 export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
-  reporter: 'list',
+  // Hors CI, une ligne qui se met à jour montre l'avancement : [23/85] [bureau] › …
+  reporter: process.env['CI'] ? 'list' : 'line',
   use: {
     baseURL,
     trace: 'retain-on-failure',
@@ -35,6 +36,8 @@ export default defineConfig({
     command: 'docker compose -f ../docker-compose.yml up --build app-e2e',
     url: `${baseURL}${apiUrl(healthEndpoints.check)}`,
     reuseExistingServer: true,
+    // Affiche la construction de l'image et le démarrage du conteneur, sinon muets.
+    stdout: 'pipe',
     timeout: 10 * 60 * 1000,
   },
 });
