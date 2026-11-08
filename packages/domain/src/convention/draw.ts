@@ -1,3 +1,19 @@
+import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
+import type { Schedule } from './schedule.js';
+import type { Table } from './table.js';
+
+/** Une table où il reste de la place, et combien. */
+export type TableWithSeats = { tableId: string; freeSeatCount: number };
+
+/** Ce que les places restantes d'un tirage lisent hors du tirage. */
+export type TableSeatsCollaborators = {
+  schedule: Schedule;
+  /** Dans l'ordre naturel. */
+  tables: readonly Table[];
+  /** Entier : il donne les places maximum des parties. */
+  catalogue: ScenarioCatalogue;
+};
+
 /**
  * Affectation : le résultat du tirage pour un participant, provisoire ou publié. Sa partie, ou
  * `null` s'il n'est pas placé, et s'il a été déplacé à la main. Value object de l'agrégat
@@ -43,6 +59,28 @@ export class Draw {
     return this.assignments
       .filter((assignment) => assignment.gameId === gameId)
       .map(({ participantId }) => participantId);
+  }
+
+  /**
+   * Les tables où il reste de la place, et combien, dans l'ordre naturel : celles des
+   * parties non annulées qui commencent sur le créneau, sous leurs places maximum. La partie double
+   * commencée au créneau d'avant n'en est pas.
+   */
+  listTablesWithSeats({ schedule, tables, catalogue }: TableSeatsCollaborators): TableWithSeats[] {
+    const freeSeatsByTable = new Map(
+      schedule
+        .listGamesStartingOnTimeSlot(this.timeSlotId)
+        .filter((game) => !this.isGameCancelled(game.id))
+        .map((game) => [
+          game.tableId,
+          catalogue.findExistingEntryById(game.scenarioId).maxSeats -
+            this.countPlayersOfGame(game.id),
+        ]),
+    );
+    return tables.flatMap((table) => {
+      const freeSeatCount = freeSeatsByTable.get(table.id) ?? 0;
+      return freeSeatCount > 0 ? [{ tableId: table.id, freeSeatCount }] : [];
+    });
   }
 
   /** Les participants du tirage qui ne sont pas placés, dans l'ordre des affectations. */

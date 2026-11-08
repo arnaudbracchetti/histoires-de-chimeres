@@ -47,7 +47,9 @@ function findMatch(
   fragment: ComparableName,
 ): { title: string | null } | null {
   if (ComparableName.createFromText(nickname).contains(fragment)) return { title: null };
-  const signUp = signUps.find(({ title }) => ComparableName.createFromText(title).contains(fragment));
+  const signUp = signUps.find(({ title }) =>
+    ComparableName.createFromText(title).contains(fragment),
+  );
   return signUp ? { title: signUp.title } : null;
 }
 

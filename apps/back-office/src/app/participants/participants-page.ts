@@ -1,4 +1,5 @@
 import { Component, computed, DestroyRef, inject, signal, viewChild } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { participantEndpoints, type TimeSlotSignUpCountDto } from '@chimeres/contract';
 import { countOf, fr } from '@chimeres/design';
 import { apiQueryResource } from '../api-resource';
@@ -17,13 +18,13 @@ const SEARCH_DELAY_MS = 250;
 /**
  * La liste « Participants » (ID-5, docs/design/patterns.md, Participants) : la recherche, que l'API
  * fait, par une partie du pseudo (ID-7) ou du titre d'une partie où il est inscrit, puis un pseudo
- * par ligne, « MJ » en gris pour un MJ, ses inscriptions par créneau en ronds, et son nombre de
+ * par ligne, qui mène à sa fiche, « MJ » en gris pour un MJ, ses inscriptions par créneau en ronds, et son nombre de
  * téléphones reliés. La liste se tient à jour seule (`liveResource()`), et garde ses lignes pendant
  * une recherche.
  */
 @Component({
   selector: 'app-participants-page',
-  imports: [Button, EmptyState, Loadable, PageHeader, Pip, TableFilter],
+  imports: [Button, EmptyState, Loadable, PageHeader, Pip, RouterLink, TableFilter],
   template: `
     <app-page-header title="Participants">
       <p appPageSubtitle class="freshness">
@@ -62,7 +63,9 @@ const SEARCH_DELAY_MS = 250;
               @for (row of rows(); track row.participant.id) {
                 <tr>
                   <th scope="row">
-                    <span class="nickname">{{ row.participant.nickname }}</span>
+                    <a class="nickname" [routerLink]="['/participants', row.participant.id]">{{
+                      row.participant.nickname
+                    }}</a>
                     @if (row.participant.gameMaster) {
                       <span class="role">MJ</span>
                     }

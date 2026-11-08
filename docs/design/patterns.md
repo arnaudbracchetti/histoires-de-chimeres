@@ -402,6 +402,19 @@ La liste des pseudos, de participant et de MJ (ID-5), dans l'ordre naturel.
   - Le pseudo tel qu'il a été saisi, en gras ; « MJ » en gris à côté pour un MJ. Trouvé par le titre d'une partie, une seconde ligne en gris : « inscrit à « Brumes » ».
   - Inscriptions par créneau : un rond par créneau (`app-pip`), comme les disponibilités des MJ, avec le nombre d'inscriptions dedans (de secours comprises, une partie double sur son premier créneau). Contour à la couleur de l'état du créneau, rond teinté s'il y a au moins une inscription, vide avec « 0 » sinon, atténué pour un créneau terminé. Infobulle et texte pour lecteur d'écran : « Créneau 2 · tirage publié : 1 inscription ».
 - La liste se tient à jour seule, comme le pilotage (§6, Fraîcheur).
+- Le pseudo de chaque ligne mène à sa fiche.
+
+### Fiche d'un pseudo
+
+- **En-tête** : « Participants › pseudo », et dessous « Participant » ou « MJ ».
+- Deux [onglets de classeur](#onglets-de-classeur) : **Programme** (`calendar`) et **Téléphones** (`smartphone`), avec leur nombre.
+- **Programme** : une frise verticale, un créneau par ligne. Le rond prend la couleur et l'icône de l'état du créneau ([Statuts](#statuts)). Le trait qui relie les ronds est plein pour ce qui est figé (tirage publié, terminé), en pointillés pour ce qui peut encore changer. Puis « Créneau 2 · 14 h 00 – 16 h 30 » et l'état, puis le résultat, en deux lignes, celui d'un tirage provisoire comme celui d'un tirage publié :
+  - placé : « Table Dragon », puis « Néons, avec Élodie » ; une partie double sur ses deux créneaux ;
+  - non placé : « Non placé » en rouge brique, puis « Il reste de la place à Dragon (3), Licorne (1). », ou « Toutes les parties du créneau sont complètes. » ;
+  - MJ : « Mène Néons », puis « Table Dragon » ;
+  - créneau tiré sans lui : « Pas dans le tirage » ;
+  - créneau ouvert : « 2 inscriptions », ou « Aucune inscription » en gris.
+- **Téléphones** : « Relié à 9 h 12 », un par ligne, rien sur l'appareil. Sans téléphone : « Aucun téléphone relié : la personne lit ses résultats à l'accueil. »
 
 ## Onglets de classeur
 
@@ -412,6 +425,7 @@ Des vues d'un même objet, l'une à la fois, sous ce qui les résume (le résum�
 - Comportement de tablist par Angular Aria : ← →, Début et Fin changent d'onglet.
 - **Aucun avertissement sur un onglet** : les avertissements restent dans le résumé, et un onglet reste une commande.
 - L'onglet ouvert est **gardé** quand l'objet résumé change (d'un créneau à l'autre).
+- Le pilotage et la fiche d'un pseudo partagent leur dessin, écrit une fois dans `styles.css` : un `.binder` qui porte `ngTabs`, et des panneaux `.panel`.
 
 ## Jauge
 

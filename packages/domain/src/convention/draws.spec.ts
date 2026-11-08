@@ -1606,6 +1606,131 @@ describe('Résultat du tirage sur le téléphone (§5.3, §5.7)', () => {
   });
 });
 
+describe('Fiche d’un pseudo : son résultat sur chaque créneau (ID-5)', () => {
+  /**
+   * Lune et Élodie jouent à « brumes », Zéphyr à « épice », la partie double ; Ysé, inscrite à
+   * « brumes », n'est pas placée. Anouk n'est pas du tirage.
+   */
+  function aLaunchedConvention(): Convention {
+    const convention = aConvention();
+    convention.identifyByNickname('p4', 'K7M2', 'Ysé', null, NOW);
+    convention.identifyByNickname('p5', 'K7M2', 'Anouk', null, NOW);
+    convention.signUpForGame('p2', 'brumes', CATALOGUE);
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p4', 'brumes', CATALOGUE);
+    convention.signUpForGame('p3', 'epice', CATALOGUE);
+    const algorithm = new FakeDrawAlgorithm(() => [
+      { participantId: 'p2', gameId: 'brumes' },
+      { participantId: 'p1', gameId: 'brumes' },
+      { participantId: 'p4', gameId: null },
+      { participantId: 'p3', gameId: 'epice' },
+    ]);
+    convention.launchDraw('s1', CATALOGUE, algorithm, RANDOM);
+    return convention;
+  }
+
+  const findResultOfTimeSlot = (
+    convention: Convention,
+    participantId: string,
+    timeSlotId: string,
+  ) =>
+    convention
+      .computeParticipantResults(participantId, NOW, CATALOGUE)
+      .find((slot) => slot.timeSlotId === timeSlotId);
+
+  it('compte ses inscriptions sur un créneau ouvert, une partie double sur son premier créneau', () => {
+    const convention = aConvention();
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p1', 'epice', CATALOGUE);
+
+    expect(findResultOfTimeSlot(convention, 'p1', 's1')).toEqual({
+      timeSlotId: 's1',
+      state: 'sign-ups-open',
+      result: { kind: 'signed-up', signUpCount: 2 },
+    });
+    expect(findResultOfTimeSlot(convention, 'p1', 's2')?.result).toEqual({
+      kind: 'signed-up',
+      signUpCount: 0,
+    });
+  });
+
+  it('donne au participant placé sa table et le MJ de sa partie, dès le tirage provisoire', () => {
+    const convention = aLaunchedConvention();
+
+    expect(findResultOfTimeSlot(convention, 'p1', 's1')).toEqual({
+      timeSlotId: 's1',
+      state: 'drawing',
+      result: {
+        kind: 'assigned',
+        gameId: 'brumes',
+        tableName: 'Table 1',
+        gameMasterNickname: 'Brann',
+      },
+    });
+  });
+
+  it('donne au non placé les tables où il reste de la place, et combien, dans l’ordre naturel', () => {
+    const convention = aLaunchedConvention();
+
+    expect(findResultOfTimeSlot(convention, 'p4', 's1')?.result).toEqual({
+      kind: 'unassigned',
+      tablesWithSeats: [
+        { tableName: 'Table 1', freeSeatCount: 3 },
+        { tableName: 'Table 2', freeSeatCount: 3 },
+      ],
+    });
+  });
+
+  it('se lit de même une fois le tirage publié', () => {
+    const convention = aLaunchedConvention();
+    convention.publishDraw('s1', CATALOGUE);
+
+    expect(findResultOfTimeSlot(convention, 'p1', 's1')).toMatchObject({
+      state: 'published',
+      result: { kind: 'assigned', gameId: 'brumes' },
+    });
+    expect(findResultOfTimeSlot(convention, 'p4', 's1')?.result).toMatchObject({
+      kind: 'unassigned',
+    });
+  });
+
+  it('place le joueur d’une partie double sur ses deux créneaux (TI-3)', () => {
+    const convention = aLaunchedConvention();
+
+    expect(findResultOfTimeSlot(convention, 'p3', 's2')).toEqual({
+      timeSlotId: 's2',
+      state: 'sign-ups-open',
+      result: {
+        kind: 'assigned',
+        gameId: 'epice',
+        tableName: 'Table 2',
+        gameMasterNickname: 'Kaïros',
+      },
+    });
+  });
+
+  it('donne au MJ la partie qu’il mène, sur chacun de ses créneaux', () => {
+    const convention = aLaunchedConvention();
+
+    expect(findResultOfTimeSlot(convention, 'p-g1', 's1')?.result).toEqual({
+      kind: 'leading',
+      gameId: 'brumes',
+      tableName: 'Table 1',
+    });
+    expect(findResultOfTimeSlot(convention, 'p-g2', 's2')?.result).toEqual({
+      kind: 'leading',
+      gameId: 'epice',
+      tableName: 'Table 2',
+    });
+  });
+
+  it('dit « pas dans le tirage » sur un créneau tiré où il n’est pas', () => {
+    expect(findResultOfTimeSlot(aLaunchedConvention(), 'p5', 's1')?.result).toEqual({
+      kind: 'not-in-draw',
+    });
+  });
+});
+
 describe('Inscription active après la publication d’une partie double (TI-3, IN-4)', () => {
   /**
    * Élodie et Lune inscrites à « épice », partie double des créneaux 1 et 2, et à « néons », au
@@ -1797,7 +1922,9 @@ describe('Gestes de programmation sur un créneau en tirage (TI-6, IN-6)', () =>
       convention.unscheduleGame('orage');
 
       expect(convention.draws).toEqual([]);
-      expect(convention.computeParticipantSituation('p-g1', NOW).timeSlots[0]!.ledGameId).toBe('brumes');
+      expect(convention.computeParticipantSituation('p-g1', NOW).timeSlots[0]!.ledGameId).toBe(
+        'brumes',
+      );
     });
   });
 

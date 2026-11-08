@@ -301,6 +301,22 @@ export class SignUps {
   }
 
   /**
+   * Le nombre d'inscriptions du participant aux parties qui commencent sur le créneau, de secours
+   * comprises (IN-4). Une partie double ne compte que sur son premier créneau.
+   */
+  countSignUpsOfParticipantOnTimeSlot(
+    participantId: string,
+    timeSlotId: string,
+    schedule: Schedule,
+  ): number {
+    return this.signUps.filter(
+      (signUp) =>
+        signUp.participantId === participantId &&
+        schedule.findGameById(signUp.gameId)?.timeSlotIds[0] === timeSlotId,
+    ).length;
+  }
+
+  /**
    * La demande du créneau : le nombre de participants distincts qui ont au moins une inscription
    * active sur une partie qui y commence, ou qui y sont sans partie. Une partie double ne compte que
    * sur son premier créneau.

@@ -1,3 +1,5 @@
+import type { ParticipantLinkedPhoneDto } from '@chimeres/contract';
+
 /** Une inscription d'un pseudo : le premier créneau de la partie, et son titre. */
 export type ParticipantSignUp = { timeSlotId: string; title: string };
 
@@ -16,4 +18,9 @@ export type ParticipantRecord = {
 export interface ParticipantReader {
   /** Les pseudos, de participant et de MJ, dans l'ordre naturel. */
   list(): Promise<ParticipantRecord[]>;
+  /**
+   * Les téléphones reliés au pseudo, dans l'ordre de leur liaison, avec son heure ; aucun pour un
+   * pseudo inconnu.
+   */
+  listLinkedPhones(participantId: string): Promise<ParticipantLinkedPhoneDto[]>;
 }

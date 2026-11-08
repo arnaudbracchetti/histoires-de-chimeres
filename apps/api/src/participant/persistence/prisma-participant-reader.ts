@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { ParticipantReader, ParticipantRecord } from '@chimeres/application';
+import type { ParticipantLinkedPhoneDto } from '@chimeres/contract';
 import { ComparableName } from '@chimeres/domain';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -47,9 +48,24 @@ export class PrismaParticipantReader implements ParticipantReader {
         ),
       );
   }
+
+  async listLinkedPhones(participantId: string): Promise<ParticipantLinkedPhoneDto[]> {
+    const phones = await this.prisma.linkedPhone.findMany({
+      where: { participantId },
+      select: { linkedAt: true },
+      orderBy: { linkedAt: 'asc' },
+    });
+    return phones.map(({ linkedAt }) => ({ linkedAt: linkedAt.toISOString() }));
+  }
 }
 
-function toRecord({ id, nickname, gameMaster, _count, signUps }: ParticipantRow): ParticipantRecord {
+function toRecord({
+  id,
+  nickname,
+  gameMaster,
+  _count,
+  signUps,
+}: ParticipantRow): ParticipantRecord {
   return {
     id,
     nickname,

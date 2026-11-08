@@ -142,6 +142,10 @@ export {
 export {
   participantEndpoints,
   type ParticipantListEntryDto,
+  type ParticipantLinkedPhoneDto,
   type ParticipantListQuery,
+  type ParticipantResultDto,
+  type ParticipantSheetDto,
+  type ParticipantTimeSlotDto,
   type TimeSlotSignUpCountDto,
 } from './participant.js';

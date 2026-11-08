@@ -883,6 +883,90 @@ export class Convention {
   }
 
   /**
+   * Le résultat du participant sur chaque créneau, dans l'ordre de la journée, avec l'état du
+   * créneau à cet instant, pour la fiche du pseudo (ID-5). Le tirage provisoire se lit comme le
+   * tirage publié. Le catalogue, entier, donne les places maximum des parties.
+   */
+  computeParticipantResults(
+    participantId: string,
+    now: LocalMoment,
+    catalogue: ScenarioCatalogue,
+  ): ParticipantTimeSlotResult[] {
+    const participant = this.allParticipants.findExistingParticipantById(participantId);
+    return this.day.timeSlots.map((slot) => ({
+      timeSlotId: slot.id,
+      state: this.computeTimeSlotStateAt(slot.id, now),
+      result: this.computeParticipantResultOnTimeSlot(participant.id, slot.id, catalogue),
+    }));
+  }
+
+  /**
+   * Son affectation dans le tirage du créneau, ou dans une partie double qui s'y poursuit (TI-3) ;
+   * sinon la partie qu'il y mène, non annulée ; sinon, sur un créneau tiré, « pas dans le tirage » ;
+   * sinon le nombre de ses inscriptions aux parties qui y commencent, de secours comprises.
+   */
+  private computeParticipantResultOnTimeSlot(
+    participantId: string,
+    timeSlotId: string,
+    catalogue: ScenarioCatalogue,
+  ): ParticipantResult {
+    const draw = this.allDraws.findDrawOfTimeSlot(timeSlotId);
+    const assignment =
+      draw?.findAssignmentOfParticipant(participantId) ??
+      this.allDraws.findAssignmentContinuingOnTimeSlot(
+        participantId,
+        timeSlotId,
+        this.gameSchedule,
+      );
+    if (assignment?.gameId) {
+      const game = this.gameSchedule.findExistingGameById(assignment.gameId);
+      return {
+        kind: 'assigned',
+        gameId: game.id,
+        tableName: this.findExistingTableName(game.tableId),
+        gameMasterNickname: this.allParticipants.findExistingGameMasterById(game.gameMasterId)
+          .participant.nickname.text,
+      };
+    }
+    if (assignment) {
+      return {
+        kind: 'unassigned',
+        tablesWithSeats: draw!
+          .listTablesWithSeats({
+            schedule: this.gameSchedule,
+            tables: this.allTables.itemsInNaturalOrder,
+            catalogue,
+          })
+          .map(({ tableId, freeSeatCount }) => ({
+            tableName: this.findExistingTableName(tableId),
+            freeSeatCount,
+          })),
+      };
+    }
+    const led = this.findGameLedByParticipantOnTimeSlot(participantId, timeSlotId);
+    if (led && !this.allDraws.isGameCancelled(led.id)) {
+      return {
+        kind: 'leading',
+        gameId: led.id,
+        tableName: this.findExistingTableName(led.tableId),
+      };
+    }
+    if (draw) return { kind: 'not-in-draw' };
+    return {
+      kind: 'signed-up',
+      signUpCount: this.allSignUps.countSignUpsOfParticipantOnTimeSlot(
+        participantId,
+        timeSlotId,
+        this.gameSchedule,
+      ),
+    };
+  }
+
+  private findExistingTableName(tableId: string): string {
+    return this.allTables.findExistingItemById(tableId).name.text;
+  }
+
+  /**
    * Le résultat publié du tirage du créneau pour le participant (§5.7) : sa partie, ou pas de
    * place, s'il est du tirage ; sinon, pour un MJ, les joueurs de la partie qu'il mène et qui
    * commence sur le créneau. `null` avant la publication.
@@ -1200,6 +1284,27 @@ export type ParticipantSituation = {
     /** Il y est sans partie : il reste dans son tirage, sans inscription active (IN-6). */
     withoutGame: boolean;
   }[];
+};
+
+/**
+ * Le résultat d'un participant sur un créneau, pour la fiche de son pseudo (ID-5) : placé dans le
+ * tirage, provisoire ou publié, ou dans une partie double qui s'y poursuit (`assigned`) ; non placé,
+ * avec les tables où il reste de la place (`unassigned`) ; MJ de la partie qu'il y mène
+ * (`leading`) ; absent d'un tirage lancé (`not-in-draw`) ; ou, inscriptions ouvertes, le nombre de
+ * ses inscriptions aux parties qui y commencent, de secours comprises (`signed-up`).
+ */
+export type ParticipantResult =
+  | { kind: 'assigned'; gameId: string; tableName: string; gameMasterNickname: string }
+  | { kind: 'unassigned'; tablesWithSeats: { tableName: string; freeSeatCount: number }[] }
+  | { kind: 'leading'; gameId: string; tableName: string }
+  | { kind: 'not-in-draw' }
+  | { kind: 'signed-up'; signUpCount: number };
+
+/** Le résultat d'un participant sur un créneau, avec l'état du créneau à cet instant. */
+export type ParticipantTimeSlotResult = {
+  timeSlotId: string;
+  state: TimeSlotState;
+  result: ParticipantResult;
 };
 
 /**

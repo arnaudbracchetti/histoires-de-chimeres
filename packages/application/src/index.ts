@@ -51,6 +51,7 @@ export type {
   ParticipantSignUp,
 } from './participant/participant-reader.js';
 export { ReadParticipantList } from './participant/read-participant-list.js';
+export { ReadParticipantSheet } from './participant/read-participant-sheet.js';
 export { AddGameMaster } from './game-master/add-game-master.js';
 export { DeclareAvailability } from './game-master/declare-availability.js';
 export type { GameMasterReader } from './game-master/game-master-reader.js';

@@ -57,7 +57,10 @@ export class UniquelyNamedCollection<T extends { readonly id: string }> {
 
   /** La collection après l'ajout d'un élément, dont le nom doit être valide et libre. */
   getCollectionAfterAddingItem(item: T): UniquelyNamedCollection<T> {
-    return new UniquelyNamedCollection([...this.items, this.verifyNameValidAndFree(item)], this.rules);
+    return new UniquelyNamedCollection(
+      [...this.items, this.verifyNameValidAndFree(item)],
+      this.rules,
+    );
   }
 
   /**
@@ -67,7 +70,9 @@ export class UniquelyNamedCollection<T extends { readonly id: string }> {
   getCollectionAfterReplacingItem(item: T): UniquelyNamedCollection<T> {
     this.verifyItemExists(item.id);
     const verified = this.verifyNameValidAndFree(item);
-    return this.getCollectionAfterReplacingEachItem((current) => (current.id === item.id ? verified : current));
+    return this.getCollectionAfterReplacingEachItem((current) =>
+      current.id === item.id ? verified : current,
+    );
   }
 
   /** La collection après le remplacement de chaque élément par `replace(élément)`, du même nom. */

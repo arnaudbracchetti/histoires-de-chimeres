@@ -18,6 +18,7 @@ import {
   type GameMasterDto,
   type IdentityConfirmationDto,
   type ParticipantListEntryDto,
+  type ParticipantSheetDto,
   type ScenarioDto,
   type ScheduleDto,
 } from '@chimeres/contract';
@@ -224,5 +225,79 @@ describe('Liste « Participants » (ID-5)', () => {
     await linkedPhone('Sven');
 
     expect(nicknames(await list('  '))).toEqual(['Lune', 'Sven']);
+  });
+
+  describe('Fiche d’un pseudo (ID-5)', () => {
+    const findParticipantId = async (nickname: string) =>
+      (await list()).find((participant) => participant.nickname === nickname)!.id;
+
+    const sheet = async (nickname: string) =>
+      (
+        await server()
+          .get(
+            apiUrl(participantEndpoints.read, { participantId: await findParticipantId(nickname) }),
+          )
+          .expect(200)
+      ).body as ParticipantSheetDto;
+
+    it('rend son résultat sur chaque créneau, tirage publié, et ses téléphones reliés', async () => {
+      const elodie = await gameMaster('Élodie');
+      const neons = await scheduled(elodie.id, 'Néons', 'Dragon');
+      const lune = await linkedPhone('Lune');
+      await linkedPhone('Lune', 'participant');
+      await linkedPhone('Sven');
+      await signUp(neons, lune);
+      for (const endpoint of [drawEndpoints.launch, drawEndpoints.publish]) {
+        await server()
+          .post(apiUrl(endpoint, { timeSlotId: slot(1) }))
+          .expect(204);
+      }
+
+      expect(await sheet('Lune')).toEqual({
+        id: expect.any(String),
+        nickname: 'Lune',
+        gameMaster: false,
+        timeSlots: [
+          {
+            timeSlotId: slot(1),
+            rank: 1,
+            state: 'published',
+            result: {
+              kind: 'assigned',
+              tableName: 'Dragon',
+              title: 'Néons',
+              gameMasterNickname: 'Élodie',
+            },
+          },
+          {
+            timeSlotId: slot(2),
+            rank: 2,
+            state: 'sign-ups-open',
+            result: { kind: 'signed-up', signUpCount: 0 },
+          },
+        ],
+        linkedPhones: [
+          { linkedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) },
+          { linkedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) },
+        ],
+      });
+      expect(await sheet('Élodie')).toMatchObject({
+        gameMaster: true,
+        timeSlots: [{ result: { kind: 'leading', title: 'Néons', tableName: 'Dragon' } }, {}],
+        linkedPhones: [],
+      });
+      expect((await sheet('Sven')).timeSlots[0]!.result).toEqual({ kind: 'not-in-draw' });
+    });
+
+    it.each(['00000000-0000-4000-8000-000000000000', 'abc'])(
+      'répond 404 pour un pseudo inconnu : « %s »',
+      async (participantId) => {
+        const response = await server()
+          .get(apiUrl(participantEndpoints.read, { participantId }))
+          .expect(404);
+
+        expect(response.body).toMatchObject({ code: 'participant-not-found' });
+      },
+    );
   });
 });

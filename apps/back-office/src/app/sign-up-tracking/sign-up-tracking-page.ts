@@ -561,7 +561,6 @@ const LAUNCHED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, strin
         }
       }
 
-
       /* La fiche ouverte rétrécit le créneau. */
       .workspace {
         display: flex;
@@ -627,59 +626,6 @@ const LAUNCHED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, strin
 
       .quiet {
         color: var(--text-muted);
-      }
-
-      /* Onglets de classeur : l'onglet choisi est soudé au panneau, marqué d'un trait orange. */
-      [ngTabList] {
-        display: flex;
-        gap: var(--space-xs);
-        padding-left: var(--space-m);
-      }
-
-      [ngTab] {
-        position: relative;
-        display: inline-flex;
-        gap: var(--space-xs);
-        align-items: center;
-        margin-bottom: -1px;
-        padding: var(--space-s) var(--space-m);
-        border: 1px solid transparent;
-        border-radius: var(--radius-card) var(--radius-card) 0 0;
-        background: none;
-        color: var(--text-muted);
-        font: inherit;
-        cursor: pointer;
-
-        &:hover {
-          color: var(--text);
-        }
-
-        &[aria-selected='true'] {
-          border-color: var(--border);
-          border-bottom-color: var(--surface-2);
-          background: var(--surface-2);
-          box-shadow: inset 0 2px 0 var(--accent);
-          color: var(--text);
-        }
-      }
-
-      .count {
-        padding: 0 var(--space-xs);
-        border-radius: 999px;
-        background: var(--surface-3);
-        font-size: var(--font-size-meta);
-        font-variant-numeric: tabular-nums;
-      }
-
-      .panel {
-        padding: var(--space-l);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-card);
-        background: var(--surface-2);
-
-        &[inert] {
-          display: none;
-        }
       }
     }
   `,

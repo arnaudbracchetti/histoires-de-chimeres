@@ -1,5 +1,5 @@
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
-import type { Draw } from './draw.js';
+import type { Draw, TableWithSeats } from './draw.js';
 import { computeDrawSignals, type DrawSignal } from './draw-signal.js';
 import type { Participant } from './participant.js';
 import type { SignUpCollaborators, SignUps } from './sign-ups.js';
@@ -43,9 +43,6 @@ export type AssignmentTracking = {
   withoutGame: boolean;
   gameMasterOfCancelledGame: boolean;
 };
-
-/** Une table où il reste de la place, et combien. */
-export type TableWithSeats = { tableId: string; freeSeatCount: number };
 
 /**
  * Le tirage d'un créneau lancé : publié ou provisoire, ses chiffres, ses parties, celles qui
@@ -157,9 +154,6 @@ export function computeDrawTracking(
     ];
   });
   const assignedCount = draw.assignments.filter(({ gameId }) => gameId !== null).length;
-  const freeSeatsByTable = new Map(
-    measured.map(({ tableId, tracking }) => [tableId, tracking.freeSeatCount]),
-  );
   const unassignedCount = draw.assignments.length - assignedCount;
   const freeSeatCount = games.reduce((sum, game) => sum + game.freeSeatCount, 0);
   return {
@@ -170,9 +164,10 @@ export function computeDrawTracking(
     gameCount: games.filter(({ cancelled }) => !cancelled).length,
     gamesAtMinimumCount: measured.filter(({ atMinimum }) => atMinimum).length,
     freeSeatCount,
-    tablesWithSeats: tables.flatMap((table): TableWithSeats[] => {
-      const freeSeatCount = freeSeatsByTable.get(table.id) ?? 0;
-      return freeSeatCount > 0 ? [{ tableId: table.id, freeSeatCount }] : [];
+    tablesWithSeats: draw.listTablesWithSeats({
+      schedule: signUpCollaborators.schedule,
+      tables,
+      catalogue,
     }),
     games,
     assignments,

@@ -76,7 +76,13 @@ describe('Identification par un pseudo (ID-1)', () => {
   it('donne à relier le pseudo existant, une fois confirmé, sans rien créer', () => {
     const convention = withElodie();
 
-    const identification = convention.identifyByNickname('p2', 'K7M2', 'Élodie', 'participant', NOW);
+    const identification = convention.identifyByNickname(
+      'p2',
+      'K7M2',
+      'Élodie',
+      'participant',
+      NOW,
+    );
 
     expect(identification).toEqual({
       verdict: 'link',
@@ -89,7 +95,13 @@ describe('Identification par un pseudo (ID-1)', () => {
   it('crée un pseudo nouveau même confirmé : la confirmation ne vaut que pour un pseudo existant', () => {
     const convention = aConvention();
 
-    const identification = convention.identifyByNickname('p1', 'K7M2', 'Élodie', 'participant', NOW);
+    const identification = convention.identifyByNickname(
+      'p1',
+      'K7M2',
+      'Élodie',
+      'participant',
+      NOW,
+    );
 
     expect(identification).toMatchObject({ verdict: 'link', created: true });
     expect(participantsOf(convention)).toEqual(['p1 Élodie']);
@@ -143,7 +155,9 @@ describe('Identification par un pseudo (ID-1)', () => {
     const convention = aConvention();
 
     convention.identifyByNickname('p1', 'K7M2', 'a'.repeat(30), null, NOW);
-    const refusal = refusalOf(() => convention.identifyByNickname('p2', 'K7M2', 'b'.repeat(31), null, NOW));
+    const refusal = refusalOf(() =>
+      convention.identifyByNickname('p2', 'K7M2', 'b'.repeat(31), null, NOW),
+    );
 
     expect(refusal.code).toBe('nickname-too-long');
     expect(refusal.params).toEqual({ max: 30 });
@@ -153,7 +167,9 @@ describe('Identification par un pseudo (ID-1)', () => {
   it('refuse un code qui n’est pas le code de présence, sans rien créer (ID-2)', () => {
     const convention = aConvention();
 
-    const refusal = refusalOf(() => convention.identifyByNickname('p1', 'X9Z9', 'Élodie', null, NOW));
+    const refusal = refusalOf(() =>
+      convention.identifyByNickname('p1', 'X9Z9', 'Élodie', null, NOW),
+    );
 
     expect(refusal.code).toBe('presence-code-wrong');
     expect(convention.participants).toEqual([]);
@@ -221,7 +237,13 @@ describe('Identification par le pseudo d’un MJ (ID-3, ID-4)', () => {
   it('demande la confirmation « participant » à qui confirme être MJ d’un pseudo de participant', () => {
     const convention = withElodie();
 
-    const identification = convention.identifyByNickname('p2', 'K7M2', 'Élodie', 'game-master', NOW);
+    const identification = convention.identifyByNickname(
+      'p2',
+      'K7M2',
+      'Élodie',
+      'game-master',
+      NOW,
+    );
 
     expect(identification).toMatchObject({ verdict: 'confirm', confirmation: 'participant' });
   });

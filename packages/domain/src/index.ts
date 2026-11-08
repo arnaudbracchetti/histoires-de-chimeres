@@ -8,7 +8,9 @@ export {
   type IdentityConfirmation,
   type DrawResult,
   type MovePlacement,
+  type ParticipantResult,
   type ParticipantSituation,
+  type ParticipantTimeSlotResult,
   type Placement,
   type DrawStage,
   type TimeSlotState,
@@ -23,13 +25,12 @@ export type {
   DrawParticipant,
   RandomSource,
 } from './convention/draw-algorithm.js';
-export { Assignment, Draw } from './convention/draw.js';
+export { Assignment, Draw, type TableWithSeats } from './convention/draw.js';
 export { FaultyDrawOutputError } from './convention/draws.js';
 export type {
   AssignmentTracking,
   DrawGameTracking,
   DrawTracking,
-  TableWithSeats,
 } from './convention/draw-tracking.js';
 export type {
   DrawSignal,

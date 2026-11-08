@@ -70,18 +70,9 @@ export function buildDrawPublicationNotifications(
     ];
   });
 
-  const freeTableIds = new Set(
-    games
-      .filter(
-        (game) =>
-          draw.countPlayersOfGame(game.id) <
-          catalogue.findExistingEntryById(game.scenarioId).maxSeats,
-      )
-      .map((game) => game.tableId),
-  );
-  const tablesWithSeats = tables.itemsInNaturalOrder
-    .filter((table) => freeTableIds.has(table.id))
-    .map((table) => table.name.text);
+  const tablesWithSeats = draw
+    .listTablesWithSeats({ schedule, tables: tables.itemsInNaturalOrder, catalogue })
+    .map(({ tableId }) => findTableName(tableId));
 
   const cancelled = cancelledGames.map((game): Notification => ({
     code: 'game-cancelled',

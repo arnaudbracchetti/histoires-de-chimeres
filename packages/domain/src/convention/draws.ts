@@ -152,6 +152,24 @@ export class Draws {
   }
 
   /**
+   * L'affectation du participant à une partie double qui se poursuit sur ce créneau, placé par le
+   * tirage, provisoire ou publié, de son premier créneau (TI-3) ; sinon `undefined`.
+   */
+  findAssignmentContinuingOnTimeSlot(
+    participantId: string,
+    timeSlotId: string,
+    schedule: Schedule,
+  ): Assignment | undefined {
+    return this.draws
+      .map((draw) => draw.findAssignmentOfParticipant(participantId))
+      .find(
+        (assignment) =>
+          assignment?.gameId &&
+          schedule.findGameById(assignment.gameId)?.timeSlotIds.slice(1).includes(timeSlotId),
+      );
+  }
+
+  /**
    * Les Tirages après l'annulation de la partie (TI-6), dans le tirage provisoire de son premier
    * créneau : ses joueurs passent non placés, et le participant de son MJ entre au tirage, non
    * placé. Refuse une partie déjà annulée, puis une partie qui a au moins le minimum de joueurs de

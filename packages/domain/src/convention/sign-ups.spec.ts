@@ -705,10 +705,14 @@ describe('Situation d’un participant', () => {
     const convention = aConvention();
 
     expect(
-      convention.computeParticipantSituation('p-g2', NOW).timeSlots.map(({ ledGameId }) => ledGameId),
+      convention
+        .computeParticipantSituation('p-g2', NOW)
+        .timeSlots.map(({ ledGameId }) => ledGameId),
     ).toEqual(['epice', 'epice']);
     expect(
-      convention.computeParticipantSituation('p-g1', NOW).timeSlots.map(({ ledGameId }) => ledGameId),
+      convention
+        .computeParticipantSituation('p-g1', NOW)
+        .timeSlots.map(({ ledGameId }) => ledGameId),
     ).toEqual(['brumes', 'neons']);
   });
 
