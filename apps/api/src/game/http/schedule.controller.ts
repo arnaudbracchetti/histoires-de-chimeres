@@ -32,7 +32,7 @@ import {
 } from '@chimeres/contract';
 import { Refusal, type MovePlacement, type Placement } from '@chimeres/domain';
 import { verdictOf } from '../../http/problem-catalogue.js';
-import { ZodBody } from '../../http/zod-body.pipe.js';
+import { ZodPipe } from '../../http/zod.pipe.js';
 import { toReserveDto } from './reserve-dto.js';
 import {
   moveGameBodySchema,
@@ -84,7 +84,7 @@ export class ScheduleController {
   /** Renvoie le programme relu. */
   @Post(scheduleEndpoints.schedule.path)
   async schedule(
-    @Body(new ZodBody(scheduleGameBodySchema)) body: ScheduleGameBody,
+    @Body(new ZodPipe(scheduleGameBodySchema)) body: ScheduleGameBody,
   ): Promise<ResponseOf<typeof scheduleEndpoints.schedule>> {
     await this.scheduleGame.execute(body);
     return toDto(await this.readSchedule.execute());
@@ -102,7 +102,7 @@ export class ScheduleController {
   @Put(scheduleEndpoints.move.path)
   async move(
     @Param('gameId') gameId: string,
-    @Body(new ZodBody(moveGameBodySchema)) body: MoveGameBody,
+    @Body(new ZodPipe(moveGameBodySchema)) body: MoveGameBody,
   ): Promise<ResponseOf<typeof scheduleEndpoints.move>> {
     await this.moveGame.execute(gameId, body);
     return toDto(await this.readSchedule.execute());
@@ -113,7 +113,7 @@ export class ScheduleController {
   @HttpCode(HttpStatus.OK)
   async swap(
     @Param('gameId') gameId: string,
-    @Body(new ZodBody(swapGamesBodySchema)) body: SwapGamesBody,
+    @Body(new ZodPipe(swapGamesBodySchema)) body: SwapGamesBody,
   ): Promise<ResponseOf<typeof scheduleEndpoints.swap>> {
     await this.swapGames.execute(gameId, body);
     return toDto(await this.readSchedule.execute());

@@ -12,6 +12,7 @@ import {
   type ScenarioDto,
 } from '@chimeres/contract';
 import { expect, test } from '../../fixtures.js';
+import { post } from './api.js';
 
 // Espace insécable (U+00A0) et espace fine insécable (U+202F) de docs/design/ton.md.
 const NBSP = ' ';
@@ -23,12 +24,6 @@ const THIN = ' ';
  */
 const cell = (rank: number, start: number, table: string, action = 'Choisir') =>
   `${action} Créneau ${rank} · ${start}${NBSP}h${NBSP}00${THIN}–${THIN}${start + 2}${NBSP}h${NBSP}30, ${table}`;
-
-async function post(page: Page, url: string, data: object) {
-  const response = await page.request.post(url, { data });
-  expect(response.ok()).toBe(true);
-  return response.json();
-}
 
 /** Par l'API : un scénario du MJ, d'un ou deux créneaux. */
 function proposeScenario(

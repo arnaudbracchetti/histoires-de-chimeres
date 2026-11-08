@@ -22,7 +22,7 @@ import {
   type GameMasterNicknameBody,
   type ResponseOf,
 } from '@chimeres/contract';
-import { ZodBody } from '../../http/zod-body.pipe.js';
+import { ZodPipe } from '../../http/zod.pipe.js';
 import { GAME_MASTER_READER } from '../game-master-reader.token.js';
 import { readSheetOrRefuse } from './game-master-sheet.js';
 import { gameMasterNicknameBodySchema } from './game-master-nickname-body.schema.js';
@@ -52,7 +52,7 @@ export class GameMasterController {
   /** Renvoie la liste relue, pour la saisie à la chaîne. */
   @Post(gameMasterEndpoints.add.path)
   async add(
-    @Body(new ZodBody(gameMasterNicknameBodySchema)) body: GameMasterNicknameBody,
+    @Body(new ZodPipe(gameMasterNicknameBodySchema)) body: GameMasterNicknameBody,
   ): Promise<ResponseOf<typeof gameMasterEndpoints.add>> {
     await this.addGameMaster.execute(body);
     return this.reader.list();
@@ -62,7 +62,7 @@ export class GameMasterController {
   @Put(gameMasterEndpoints.rename.path)
   async rename(
     @Param('gameMasterId') gameMasterId: string,
-    @Body(new ZodBody(gameMasterNicknameBodySchema)) body: GameMasterNicknameBody,
+    @Body(new ZodPipe(gameMasterNicknameBodySchema)) body: GameMasterNicknameBody,
   ): Promise<ResponseOf<typeof gameMasterEndpoints.rename>> {
     await this.renameGameMaster.execute(gameMasterId, body);
     return readSheetOrRefuse(this.readGameMaster, gameMasterId);

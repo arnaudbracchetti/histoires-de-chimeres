@@ -37,27 +37,18 @@
 
   <h2 class="section">Jour J</h2>
   <ul>
-    @for (entry of dayOf; track entry.label) {
-      @if (entry.link) {
-        <li>
-          <a
-            class="entry"
-            [routerLink]="entry.link"
-            routerLinkActive="active"
-            ariaCurrentWhenActive="page"
-          >
-            <app-icon [name]="entry.icon" />
-            <span class="label">{{ entry.label }}</span>
-          </a>
-        </li>
-      } @else {
-        <li class="entry upcoming">
+    @for (entry of dayOf; track entry.link) {
+      <li>
+        <a
+          class="entry"
+          [routerLink]="entry.link"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+        >
           <app-icon [name]="entry.icon" />
-          <span class="label"
-            >{{ entry.label }} <span class="soon"><app-icon name="clock" />à venir</span></span
-          >
-        </li>
-      }
+          <span class="label">{{ entry.label }}</span>
+        </a>
+      </li>
     }
   </ul>
 </nav>

@@ -45,13 +45,15 @@ test('le rail mène à chaque page de préparation, focus sur son h1', async ({ 
   }
 });
 
-test('l’entrée « Participants » du jour J est grisée, « à venir »', async ({ page }) => {
+test('le rail mène aux Participants du jour J', async ({ page }) => {
   await page.goto('/gestion/');
   const rail = page.getByRole('navigation', { name: 'Navigation principale' });
 
-  await expect(rail.getByText('Participants')).toBeVisible();
-  await expect(rail.getByRole('link', { name: /Participants/ })).toHaveCount(0);
-  await expect(rail.getByText('à venir')).toHaveCount(1);
+  await rail.getByRole('link', { name: 'Participants', exact: true }).click();
+
+  await expect(page).toHaveURL(/\/gestion\/participants$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Participants');
+  await expect(rail.getByText('à venir')).toHaveCount(0);
 });
 
 test('le rail replié le reste après un rechargement', async ({ page }) => {

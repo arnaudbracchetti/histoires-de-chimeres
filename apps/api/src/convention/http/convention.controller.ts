@@ -5,7 +5,7 @@ import {
   type ResponseOf,
   type UpdateConventionBody,
 } from '@chimeres/contract';
-import { ZodBody } from '../../http/zod-body.pipe.js';
+import { ZodPipe } from '../../http/zod.pipe.js';
 import { CONVENTION_READER } from '../convention-reader.token.js';
 import { updateConventionBodySchema } from './update-convention-body.schema.js';
 
@@ -23,7 +23,7 @@ export class ConventionController {
 
   @Put(conventionEndpoints.update.path)
   async update(
-    @Body(new ZodBody(updateConventionBodySchema)) body: UpdateConventionBody,
+    @Body(new ZodPipe(updateConventionBodySchema)) body: UpdateConventionBody,
   ): Promise<ResponseOf<typeof conventionEndpoints.update>> {
     await this.updateConvention.execute(body);
     return this.reader.read();

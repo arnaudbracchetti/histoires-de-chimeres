@@ -5,6 +5,7 @@ import {
   type Endpoint,
   type ParamsArgs,
   type ParamsOf,
+  type QueryOf,
   type ResponseOf,
 } from '@chimeres/contract';
 
@@ -22,6 +23,21 @@ export function apiResource<E extends Endpoint<unknown, unknown, never>>(
     const values = params();
     return values && apiUrl(endpoint, ...([values] as ParamsArgs<E>));
   });
+}
+
+/**
+ * `httpResource` d'un endpoint sans paramètre de chemin, à paramètres de requête (`?search=elo`) :
+ * `query` est relue à chaque changement, et un paramètre `undefined` n'est pas envoyé.
+ */
+export function apiQueryResource<
+  E extends Endpoint<unknown, never, never, Record<string, string | undefined>>,
+>(endpoint: E, query: () => QueryOf<E>): HttpResourceRef<ResponseOf<E> | undefined> {
+  return httpResource<ResponseOf<E>>(() => ({
+    url: apiUrl(endpoint, ...([] as unknown as ParamsArgs<E>)),
+    params: Object.fromEntries(
+      Object.entries(query()).filter((entry): entry is [string, string] => entry[1] !== undefined),
+    ),
+  }));
 }
 
 /**

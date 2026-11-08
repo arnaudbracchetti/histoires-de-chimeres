@@ -70,21 +70,19 @@ describe('Rail', () => {
       'Scénarios',
       'Créneaux et tables',
       'Pilotage du jour J',
+      'Participants',
     ]);
   });
 
-  it('mène au Pilotage du jour J ; « Participants » reste à venir', () => {
+  it('mène au Pilotage du jour J et aux Participants', () => {
     const { host } = render();
 
-    const pilotage = [...host.querySelectorAll<HTMLAnchorElement>('nav a')].find(
-      (a) => a.textContent?.trim() === 'Pilotage du jour J',
-    );
-    expect(pilotage?.getAttribute('href')).toBe('/pilotage');
-    expect(
-      [...host.querySelectorAll('nav .upcoming')].map((entry) =>
-        entry.textContent?.replace(/\s+/g, ' ').trim(),
-      ),
-    ).toEqual(['Participants à venir']);
+    const findHrefOfEntry = (label: string) =>
+      [...host.querySelectorAll<HTMLAnchorElement>('nav a')]
+        .find((a) => a.textContent?.trim() === label)
+        ?.getAttribute('href');
+    expect(findHrefOfEntry('Pilotage du jour J')).toBe('/pilotage');
+    expect(findHrefOfEntry('Participants')).toBe('/participants');
   });
 
   it('affiche la convention en cours, date à fixer', async () => {

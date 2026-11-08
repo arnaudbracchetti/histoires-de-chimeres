@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Inject, Param, Post, Put } from '@nestjs/common';
 import { AddTable, RemoveTable, RenameTable, type ConventionReader } from '@chimeres/application';
 import { tableEndpoints, type ResponseOf, type TableNameBody } from '@chimeres/contract';
-import { ZodBody } from '../../http/zod-body.pipe.js';
+import { ZodPipe } from '../../http/zod.pipe.js';
 import { CONVENTION_READER } from '../../convention/convention-reader.token.js';
 import { tableNameBodySchema } from './table-name-body.schema.js';
 
@@ -17,7 +17,7 @@ export class TableController {
 
   @Post(tableEndpoints.add.path)
   async add(
-    @Body(new ZodBody(tableNameBodySchema)) body: TableNameBody,
+    @Body(new ZodPipe(tableNameBodySchema)) body: TableNameBody,
   ): Promise<ResponseOf<typeof tableEndpoints.add>> {
     await this.addTable.execute(body);
     return this.reader.read();
@@ -26,7 +26,7 @@ export class TableController {
   @Put(tableEndpoints.rename.path)
   async rename(
     @Param('tableId') tableId: string,
-    @Body(new ZodBody(tableNameBodySchema)) body: TableNameBody,
+    @Body(new ZodPipe(tableNameBodySchema)) body: TableNameBody,
   ): Promise<ResponseOf<typeof tableEndpoints.rename>> {
     await this.renameTable.execute(tableId, body);
     return this.reader.read();

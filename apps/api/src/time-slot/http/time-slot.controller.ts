@@ -6,7 +6,7 @@ import {
   type ConventionReader,
 } from '@chimeres/application';
 import { timeSlotEndpoints, type ResponseOf, type TimeSlotHoursBody } from '@chimeres/contract';
-import { ZodBody } from '../../http/zod-body.pipe.js';
+import { ZodPipe } from '../../http/zod.pipe.js';
 import { CONVENTION_READER } from '../../convention/convention-reader.token.js';
 import { timeSlotHoursBodySchema } from './time-slot-hours-body.schema.js';
 
@@ -22,7 +22,7 @@ export class TimeSlotController {
 
   @Post(timeSlotEndpoints.add.path)
   async add(
-    @Body(new ZodBody(timeSlotHoursBodySchema)) body: TimeSlotHoursBody,
+    @Body(new ZodPipe(timeSlotHoursBodySchema)) body: TimeSlotHoursBody,
   ): Promise<ResponseOf<typeof timeSlotEndpoints.add>> {
     await this.addTimeSlot.execute(body);
     return this.reader.read();
@@ -31,7 +31,7 @@ export class TimeSlotController {
   @Put(timeSlotEndpoints.changeHours.path)
   async changeHours(
     @Param('timeSlotId') timeSlotId: string,
-    @Body(new ZodBody(timeSlotHoursBodySchema)) body: TimeSlotHoursBody,
+    @Body(new ZodPipe(timeSlotHoursBodySchema)) body: TimeSlotHoursBody,
   ): Promise<ResponseOf<typeof timeSlotEndpoints.changeHours>> {
     await this.changeTimeSlotHours.execute(timeSlotId, body);
     return this.reader.read();

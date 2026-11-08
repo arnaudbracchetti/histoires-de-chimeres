@@ -429,11 +429,11 @@ describe('Pilotage du jour J', () => {
     expect(text(summary()?.querySelector('h2'))).toBe('Créneau 2 · 13 h 00 – 15 h 30');
   });
 
-  /** L'état écrit sur la tuile (ou dans le résumé) : sa classe, son icône et son libellé. */
+  /** L'état écrit sur la tuile (ou dans le résumé) : l'état de sa couleur, son icône et son libellé. */
   const writtenStateIn = (element: Element | null | undefined) => {
     const state = element?.querySelector('.state');
     return {
-      class: state?.classList[1],
+      class: state?.getAttribute('data-time-slot-state'),
       icon: state?.querySelector('use')?.getAttribute('href'),
       label: text(state),
     };
@@ -1145,7 +1145,7 @@ describe('Pilotage du jour J', () => {
       expect(text(summary())).toBe(
         'Créneau 2 · 13 h 00 – 15 h 30 Tirage publié 19 / 26 placés 7 non placés 4 / 5 parties au minimum Tirage publié : les participants et les MJ ont reçu leur notification, et le résultat ne change plus. Il reste de la place : Sphinx (3 places). Les non placés vont voir leur MJ.',
       );
-      expect(summary()!.querySelector('.state.published app-icon')).not.toBeNull();
+      expect(summary()!.querySelector('.state[data-time-slot-state="published"] app-icon')).not.toBeNull();
       for (const name of ['Publier le tirage', 'Relancer le tirage']) {
         expect(button(name)).toBeUndefined();
       }

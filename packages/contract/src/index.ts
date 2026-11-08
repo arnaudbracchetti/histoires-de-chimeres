@@ -13,6 +13,7 @@ export {
   type Endpoint,
   type ParamsArgs,
   type ParamsOf,
+  type QueryOf,
   type ResponseOf,
 } from './endpoint.js';
 export {
@@ -138,3 +139,9 @@ export {
   type PushPublicKeyDto,
   type PushSubscriptionBody,
 } from './push-subscription.js';
+export {
+  participantEndpoints,
+  type ParticipantListEntryDto,
+  type ParticipantListQuery,
+  type TimeSlotSignUpCountDto,
+} from './participant.js';

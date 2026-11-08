@@ -109,8 +109,8 @@ describe('GameMasterList', () => {
 
     const cells = [...host.querySelectorAll('tbody td.availabilities')];
     const pips = (cell: Element) =>
-      [...cell.querySelectorAll('.pip')].map(
-        (pip) => `${text(pip)}${pip.classList.contains('available') ? '✓' : ''}`,
+      [...cell.querySelectorAll('app-pip')].map(
+        (pip) => `${text(pip)}${pip.classList.contains('solid') ? '✓' : ''}`,
       );
     expect(cells.map(pips)).toEqual([
       ['1✓', '2', '3✓'],

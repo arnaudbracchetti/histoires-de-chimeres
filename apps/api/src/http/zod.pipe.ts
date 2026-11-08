@@ -2,8 +2,11 @@ import type { PipeTransform } from '@nestjs/common';
 import type { z } from 'zod';
 import { MalformedRequestError } from './malformed-request.error.js';
 
-/** Vérifie la forme d'un corps par son schéma zod : `@Body(new ZodBody(schema))`. Les règles restent au domaine. */
-export class ZodBody<T> implements PipeTransform<unknown, T> {
+/**
+ * Vérifie la forme d'un corps ou des paramètres de requête par leur schéma zod :
+ * `@Body(new ZodPipe(schema))`, `@Query(new ZodPipe(schema))`. Les règles restent au domaine.
+ */
+export class ZodPipe<T> implements PipeTransform<unknown, T> {
   constructor(private readonly schema: z.ZodType<T>) {}
 
   transform(value: unknown): T {

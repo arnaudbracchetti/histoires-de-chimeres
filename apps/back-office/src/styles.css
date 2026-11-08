@@ -17,6 +17,26 @@
     --presentation-heading-3: var(--font-size-meta);
   }
 
+  /*
+   * La couleur de chaque état d'un créneau (docs/design/patterns.md, Statuts), à un seul endroit :
+   * la pastille de l'état et le rond d'un créneau la lisent dans `--time-slot-state`.
+   */
+  [data-time-slot-state='sign-ups-open'] {
+    --time-slot-state: var(--focus);
+  }
+
+  [data-time-slot-state='drawing'] {
+    --time-slot-state: var(--accent);
+  }
+
+  [data-time-slot-state='published'] {
+    --time-slot-state: var(--success);
+  }
+
+  [data-time-slot-state='ended'] {
+    --time-slot-state: var(--text-muted);
+  }
+
   body {
     /* Taille de base du back office : 13 px. */
     font-size: var(--font-size-body);

@@ -23,7 +23,7 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 - **Haut du rail** : l'emblème et « Histoires de Chimères », puis la convention en cours (nom et date, ou « date à fixer »), qui mène à « Créneaux et tables ».
 - **Sections**, une page chacune :
   - **Préparation** : Calendrier (écran d'accueil), MJ, Scénarios, Créneaux et tables ;
-  - **Jour J** : Pilotage du jour J, Participants. La place de Participants est prise, grisée, avec « à venir ».
+  - **Jour J** : Pilotage du jour J, Participants.
 - **Bas du rail** : l'utilisateur. Avant l'authentification, « Organisateur, sans authentification ».
 - **La fiche d'un MJ** (MJ › pseudo) regroupe ses scénarios, ses disponibilités et ses parties. C'est le seul écran restreint à un MJ : il deviendra tout son espace avec l'authentification, sans le rail des Organisateurs ni le calendrier.
 
@@ -149,14 +149,15 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 
 - `<table>` natif, lignes de 48 px, ligne en édition comprise (vignette de 32 px), colonnes de largeur fixe, en-tête collant.
 - **Tri** au clic sur l'en-tête, indiqué par `aria-sort`. Tri et filtres sont des signaux, côté front.
-- **Filtre texte** au-dessus des listes longues (scénarios, MJ).
+- **Filtre texte** au-dessus des listes longues (scénarios, MJ). La liste « Participants » cherche par l'API, voir [Participants](#participants).
 - **Pas de pagination** : quelques dizaines de MJ, une ou deux centaines de scénarios au plus.
 - La **cellule principale** est un lien vers la fiche ; toute la ligne réagit au survol.
 - Les **actions secondaires** d'une ligne passent par un menu « ⋯ » en bout de ligne (motif Menu d'Aria), et non par une rangée d'icônes.
 - Les **nombres** sont en chiffres à chasse fixe, alignés à droite.
 - Listes de l'Organisateur :
   - MJ : pseudo, nombre de scénarios, disponibilités par créneau, parties menées. Les disponibilités sont des ronds numérotés de même taille, un par créneau : plein en orange si le MJ peut y mener une partie, cerclé sinon, sans icône ;
-  - scénarios : vignette, titre, jeu, MJ, places, durée, parties. Lignes de 40 px autour de vignettes de 32 px, triables par titre, jeu et MJ.
+  - scénarios : vignette, titre, jeu, MJ, places, durée, parties. Lignes de 40 px autour de vignettes de 32 px, triables par titre, jeu et MJ ;
+  - participants : voir [Participants](#participants).
 
 ## Chargement, état vide, erreur de lecture
 
@@ -239,7 +240,7 @@ Pensés pour le pilotage du jour J (demande / capacité, PRD §4.4) et les autre
   | Tirage publié | vert (`--success`) | `lock` | tirage publié, créneau pas terminé |
   | Terminé | gris (`--text-muted`), ligne atténuée | `check` | tirage publié, heure de fin passée |
 
-  L'API donne l'état, terminé compris : les fronts ne le recalculent pas. Un créneau dont l'heure de fin est passée sans tirage publié garde son état, et ses gestes. Le libellé est toujours écrit : le lecteur d'écran l'entend, et l'icône reste décorative.
+  L'API donne l'état, terminé compris : les fronts ne le recalculent pas. La couleur de chaque état est écrite une seule fois, dans le `styles.css` du back office (`data-time-slot-state`, qui donne `--time-slot-state`) : la pastille de l'état et les ronds la lisent. Un créneau dont l'heure de fin est passée sans tirage publié garde son état, et ses gestes. Le libellé est toujours écrit : le lecteur d'écran l'entend, et l'icône reste décorative.
 - Une forme d'icône par couleur : aucune information ne passe par la couleur seule. Un statut a **toujours une icône et un libellé**.
 - **Deux formes seulement** :
   - **pastille** : icône et libellé, en ligne, dans un tableau, et pour l'état d'un créneau, sur sa tuile comme dans son résumé ;
@@ -391,6 +392,16 @@ La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque c
   - Chaque geste réussi est annoncé par la région `aria-live` de la coquille, comme dans le Calendrier.
 - La **demande** compte des participants distincts : un participant inscrit à trois parties du créneau compte pour un. La **capacité** est une fourchette, de la somme des places minimum à la somme des places maximum des parties qui commencent sur le créneau. Une partie double ne compte que sur son premier créneau.
 - Les grands chiffres de la tuile et du résumé prennent `--font-size-title`, en police système, à chasse fixe.
+
+## Participants
+
+La liste des pseudos, de participant et de MJ (ID-5), dans l'ordre naturel.
+
+- **Recherche** : la phrase « Tape quelques lettres du pseudo, ou du titre d'une partie où il est inscrit. », puis le filtre texte des tableaux (`app-table-filter`), « Pseudo ou titre d'une partie ». L'API cherche ces lettres dans le pseudo (ID-7 : casse, accents et espaces ignorés, ponctuation comptée), sinon dans le titre des parties où il est inscrit, 250 ms après la dernière frappe. La liste garde ses lignes jusqu'à la réponse. Sans résultat : « Aucun pseudo ne correspond », avec « Effacer la recherche ».
+- **Colonnes** : Pseudo, Inscriptions par créneau, Téléphones (nombre de téléphones reliés, rien sur l'appareil).
+  - Le pseudo tel qu'il a été saisi, en gras ; « MJ » en gris à côté pour un MJ. Trouvé par le titre d'une partie, une seconde ligne en gris : « inscrit à « Brumes » ».
+  - Inscriptions par créneau : un rond par créneau (`app-pip`), comme les disponibilités des MJ, avec le nombre d'inscriptions dedans (de secours comprises, une partie double sur son premier créneau). Contour à la couleur de l'état du créneau, rond teinté s'il y a au moins une inscription, vide avec « 0 » sinon, atténué pour un créneau terminé. Infobulle et texte pour lecteur d'écran : « Créneau 2 · tirage publié : 1 inscription ».
+- La liste se tient à jour seule, comme le pilotage (§6, Fraîcheur).
 
 ## Onglets de classeur
 

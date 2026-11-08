@@ -16,6 +16,7 @@ import { Loadable } from '../shell/loadable';
 import { formatTimeRange, formatTimeSlotRanks, fr } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { EmptyState } from '../ui/empty-state';
+import { Pip } from '../ui/pip';
 import { SortableHeader } from '../ui/sortable-header';
 import { TableFilter } from '../ui/table-filter';
 import { tableView } from '../ui/table-view';
@@ -32,7 +33,16 @@ import { NewGameMaster } from './new-game-master';
  */
 @Component({
   selector: 'app-game-master-list',
-  imports: [Button, EmptyState, Loadable, NewGameMaster, RouterLink, SortableHeader, TableFilter],
+  imports: [
+    Button,
+    EmptyState,
+    Loadable,
+    NewGameMaster,
+    Pip,
+    RouterLink,
+    SortableHeader,
+    TableFilter,
+  ],
   template: `
     <app-loadable [resource]="gameMasters" failure="Impossible de charger les MJ.">
       @if (gameMasters.hasValue()) {
@@ -68,9 +78,12 @@ import { NewGameMaster } from './new-game-master';
                     <span class="visually-hidden">{{ row.summary }}</span>
                     <span class="pips" aria-hidden="true">
                       @for (pip of row.pips; track pip.rank) {
-                        <span class="pip" [class.available]="pip.available" [title]="pip.title">{{
-                          pip.rank
-                        }}</span>
+                        <app-pip
+                          [class.available]="pip.available"
+                          [fill]="pip.available ? 'solid' : null"
+                          [title]="pip.title"
+                          >{{ pip.rank }}</app-pip
+                        >
                       }
                     </span>
                   </td>
@@ -135,26 +148,9 @@ import { NewGameMaster } from './new-game-master';
         gap: var(--space-xs);
       }
 
-      /* Un rond par créneau, de même taille quel que soit l'état : plein ou cerclé, son rang dedans. */
-      .pip {
-        display: inline-grid;
-        place-items: center;
-        box-sizing: border-box;
-        width: 1.375rem;
-        height: 1.375rem;
-        border: 1px solid var(--engraving-strong);
-        border-radius: 50%;
-        color: var(--text-muted);
-        font-size: var(--font-size-overline);
-        font-variant-numeric: tabular-nums;
-        line-height: 1;
-
-        &.available {
-          border-color: var(--accent);
-          background: var(--accent);
-          color: var(--on-accent);
-          font-weight: 600;
-        }
+      /* Plein en orange si le MJ peut y mener une partie, cerclé sinon. */
+      .available {
+        --pip-color: var(--accent);
       }
 
       tbody tr:not(.new):hover {

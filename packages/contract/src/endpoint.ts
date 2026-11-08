@@ -6,31 +6,37 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 /**
  * Descripteur d'un endpoint de l'API, partagé par son controller et par les fronts.
  * `path` est relatif au préfixe, ses paramètres s'écrivent `:param` (`time-slots/:timeSlotId`).
- * `Params` (paramètres de chemin) et `Body` (corps de requête) restent à `never` sans objet.
+ * `Params` (paramètres de chemin), `Body` (corps de requête) et `Query` (paramètres de requête,
+ * `?search=elo`, tous textes) restent à `never` sans objet.
  */
-export type Endpoint<Res, Params = never, Body = never> = {
+export type Endpoint<Res, Params = never, Body = never, Query = never> = {
   readonly method: HttpMethod;
   readonly path: string;
   /** Champ fantôme, jamais renseigné : il retient les types échangés, que lit `ResponseOf`. */
-  readonly types?: { response: Res; params: Params; body: Body };
+  readonly types?: { response: Res; params: Params; body: Body; query: Query };
 };
 
 /** Type de la réponse d'un endpoint. */
-export type ResponseOf<E> = E extends Endpoint<infer Res, unknown, unknown> ? Res : never;
+export type ResponseOf<E> = E extends Endpoint<infer Res, unknown, unknown, unknown> ? Res : never;
 
 /** Type des paramètres de chemin d'un endpoint (`never` s'il n'en a pas). */
-export type ParamsOf<E> = E extends Endpoint<unknown, infer Params, unknown> ? Params : never;
+export type ParamsOf<E> =
+  E extends Endpoint<unknown, infer Params, unknown, unknown> ? Params : never;
 
 /** Type du corps de requête d'un endpoint (`never` s'il n'en a pas). */
-export type BodyOf<E> = E extends Endpoint<unknown, unknown, infer Body> ? Body : never;
+export type BodyOf<E> = E extends Endpoint<unknown, unknown, infer Body, unknown> ? Body : never;
+
+/** Type des paramètres de requête d'un endpoint (`never` s'il n'en a pas). */
+export type QueryOf<E> =
+  E extends Endpoint<unknown, unknown, unknown, infer Query> ? Query : never;
 
 /** Arguments de `apiUrl` après l'endpoint : ses paramètres, exigés dès qu'il en déclare. */
 export type ParamsArgs<E> = [ParamsOf<E>] extends [never] ? [] : [params: ParamsOf<E>];
 
-export function endpoint<Res, Params = never, Body = never>(
+export function endpoint<Res, Params = never, Body = never, Query = never>(
   method: HttpMethod,
   path: string,
-): Endpoint<Res, Params, Body> {
+): Endpoint<Res, Params, Body, Query> {
   return { method, path };
 }
 
@@ -39,7 +45,7 @@ export function endpoint<Res, Params = never, Body = never>(
  * encodée. Elle est absolue : le back office est servi sous `/gestion/`, où une URL relative
  * viserait `/gestion/api/...`.
  */
-export function apiUrl<E extends Endpoint<unknown, unknown, unknown>>(
+export function apiUrl<E extends Endpoint<unknown, unknown, unknown, unknown>>(
   endpoint: E,
   ...[params]: ParamsArgs<E>
 ): string {

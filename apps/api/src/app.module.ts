@@ -10,6 +10,7 @@ import { FrontOfficeModule } from './front-office/front-office.module.js';
 import { GameModule } from './game/game.module.js';
 import { GameMasterModule } from './game-master/game-master.module.js';
 import { HealthModule } from './health/health.module.js';
+import { ParticipantModule } from './participant/participant.module.js';
 import { ScenarioModule } from './scenario/scenario.module.js';
 import { SignUpTrackingModule } from './sign-up-tracking/sign-up-tracking.module.js';
 import { TableModule } from './table/table.module.js';
@@ -49,6 +50,7 @@ const fronts = existsSync(publicDir)
     TimeSlotModule,
     TableModule,
     GameMasterModule,
+    ParticipantModule,
     ScenarioModule,
     GameModule,
     SignUpTrackingModule,

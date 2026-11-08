@@ -19,7 +19,7 @@ import {
   RestoreGame,
 } from '@chimeres/application';
 import { drawEndpoints, type MoveParticipantBody } from '@chimeres/contract';
-import { ZodBody } from '../../http/zod-body.pipe.js';
+import { ZodPipe } from '../../http/zod.pipe.js';
 import { moveParticipantBodySchema } from './move-participant-body.schema.js';
 
 /** Les gestes du tirage rendent 204 : la page relit le suivi. */
@@ -58,7 +58,7 @@ export class DrawController {
   async move(
     @Param('timeSlotId') timeSlotId: string,
     @Param('participantId') participantId: string,
-    @Body(new ZodBody(moveParticipantBodySchema)) body: MoveParticipantBody,
+    @Body(new ZodPipe(moveParticipantBodySchema)) body: MoveParticipantBody,
   ): Promise<void> {
     await this.moveParticipant.execute(timeSlotId, participantId, body.gameId);
   }

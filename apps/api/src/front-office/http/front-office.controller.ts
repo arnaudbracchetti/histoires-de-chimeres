@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Ip, Post } from '@nestjs/common';
 import { ReadFrontOffice, VerifyPresenceCode } from '@chimeres/application';
 import { frontOfficeEndpoints, type PresenceCodeBody, type ResponseOf } from '@chimeres/contract';
-import { ZodBody } from '../../http/zod-body.pipe.js';
+import { ZodPipe } from '../../http/zod.pipe.js';
 import { PresenceCodeAttempts } from '../presence-code-attempts.js';
 import { presenceCodeBodySchema } from './presence-code-body.schema.js';
 
@@ -23,7 +23,7 @@ export class FrontOfficeController {
   @HttpCode(HttpStatus.NO_CONTENT)
   verify(
     @Ip() ip: string,
-    @Body(new ZodBody(presenceCodeBodySchema)) { presenceCode }: PresenceCodeBody,
+    @Body(new ZodPipe(presenceCodeBodySchema)) { presenceCode }: PresenceCodeBody,
   ): Promise<ResponseOf<typeof frontOfficeEndpoints.verifyPresenceCode>> {
     return this.attempts.guard(ip, () => this.verifyPresenceCode.execute(presenceCode));
   }

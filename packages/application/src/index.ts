@@ -45,6 +45,12 @@ export { ScheduleGame } from './game/schedule-game.js';
 export type { ScheduleReader } from './game/schedule-reader.js';
 export { SwapGames } from './game/swap-games.js';
 export { UnscheduleGame } from './game/unschedule-game.js';
+export type {
+  ParticipantReader,
+  ParticipantRecord,
+  ParticipantSignUp,
+} from './participant/participant-reader.js';
+export { ReadParticipantList } from './participant/read-participant-list.js';
 export { AddGameMaster } from './game-master/add-game-master.js';
 export { DeclareAvailability } from './game-master/declare-availability.js';
 export type { GameMasterReader } from './game-master/game-master-reader.js';

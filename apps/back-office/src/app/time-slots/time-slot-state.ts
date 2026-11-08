@@ -3,7 +3,7 @@ import type { TimeSlotStateDto } from '@chimeres/contract';
 import { Icon } from '../ui/icon';
 
 /** Le libellé et l'icône de chaque état d'un créneau (docs/design/patterns.md, Statuts). */
-const STATES: Record<TimeSlotStateDto, { label: string; icon: string }> = {
+export const TIME_SLOT_STATES: Record<TimeSlotStateDto, { label: string; icon: string }> = {
   'sign-ups-open': { label: 'Inscriptions ouvertes', icon: 'lock-open' },
   drawing: { label: 'Tirage provisoire', icon: 'hourglass' },
   published: { label: 'Tirage publié', icon: 'lock' },
@@ -17,31 +17,17 @@ const STATES: Record<TimeSlotStateDto, { label: string; icon: string }> = {
 @Component({
   selector: 'app-time-slot-state',
   imports: [Icon],
-  template: `<span class="state" [class]="state()"
+  template: `<span class="state" [attr.data-time-slot-state]="state()"
     ><app-icon [name]="states[state()].icon" />{{ states[state()].label }}</span
   >`,
   styles: `
     @layer components {
+      /* Sa couleur vient de son état (styles.css). */
       .state {
         display: inline-flex;
         gap: var(--space-xs);
         align-items: center;
-      }
-
-      .sign-ups-open {
-        color: var(--focus);
-      }
-
-      .drawing {
-        color: var(--accent);
-      }
-
-      .published {
-        color: var(--success);
-      }
-
-      .ended {
-        color: var(--text-muted);
+        color: var(--time-slot-state);
       }
     }
   `,
@@ -49,5 +35,5 @@ const STATES: Record<TimeSlotStateDto, { label: string; icon: string }> = {
 export class TimeSlotState {
   readonly state = input.required<TimeSlotStateDto>();
 
-  protected readonly states = STATES;
+  protected readonly states = TIME_SLOT_STATES;
 }

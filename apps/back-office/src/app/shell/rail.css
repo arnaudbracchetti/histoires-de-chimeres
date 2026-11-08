@@ -101,24 +101,6 @@
     color: var(--accent);
   }
 
-  .upcoming {
-    color: var(--text-muted);
-    cursor: default;
-  }
-
-  .soon {
-    display: inline-flex;
-    gap: var(--space-xxs);
-    align-items: center;
-    vertical-align: middle;
-    white-space: nowrap;
-    margin-left: var(--space-xs);
-    padding: 0 var(--space-xs);
-    border-radius: 999px;
-    background: var(--surface-3);
-    font-size: var(--font-size-meta);
-  }
-
   .footer {
     display: flex;
     flex-direction: column;

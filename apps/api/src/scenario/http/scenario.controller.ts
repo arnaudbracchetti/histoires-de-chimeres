@@ -23,7 +23,7 @@ import {
   type ScenarioDto,
 } from '@chimeres/contract';
 import { Refusal } from '@chimeres/domain';
-import { ZodBody } from '../../http/zod-body.pipe.js';
+import { ZodPipe } from '../../http/zod.pipe.js';
 import { SCENARIO_READER } from '../scenario-reader.token.js';
 import { scenarioBodySchema } from './scenario-body.schema.js';
 
@@ -52,7 +52,7 @@ export class ScenarioController {
   @Post(scenarioEndpoints.propose.path)
   async propose(
     @Param('gameMasterId') gameMasterId: string,
-    @Body(new ZodBody(scenarioBodySchema)) body: ScenarioBody,
+    @Body(new ZodPipe(scenarioBodySchema)) body: ScenarioBody,
   ): Promise<ResponseOf<typeof scenarioEndpoints.propose>> {
     const scenarioId = await this.proposeScenario.execute(gameMasterId, body);
     return this.readOrRefuse(scenarioId);
@@ -62,7 +62,7 @@ export class ScenarioController {
   @Put(scenarioEndpoints.update.path)
   async update(
     @Param('scenarioId') scenarioId: string,
-    @Body(new ZodBody(scenarioBodySchema)) body: ScenarioBody,
+    @Body(new ZodPipe(scenarioBodySchema)) body: ScenarioBody,
   ): Promise<ResponseOf<typeof scenarioEndpoints.update>> {
     await this.updateScenario.execute(scenarioId, body);
     return this.readOrRefuse(scenarioId);

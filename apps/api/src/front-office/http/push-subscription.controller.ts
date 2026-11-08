@@ -7,7 +7,7 @@ import {
   type ResponseOf,
 } from '@chimeres/contract';
 import { PushNotConfiguredError } from '../../http/push-not-configured.error.js';
-import { ZodBody } from '../../http/zod-body.pipe.js';
+import { ZodPipe } from '../../http/zod.pipe.js';
 import { PUSH_SETTINGS } from '../../notification/push-settings.token.js';
 import type { PushSettings } from '../../notification/push-settings.js';
 import { linkedPhoneIdOf } from './linked-phone-cookie.js';
@@ -25,7 +25,7 @@ export class PushSubscriptionController {
   @HttpCode(HttpStatus.NO_CONTENT)
   save(
     @Req() request: Request,
-    @Body(new ZodBody(pushSubscriptionBodySchema)) body: PushSubscriptionBody,
+    @Body(new ZodPipe(pushSubscriptionBodySchema)) body: PushSubscriptionBody,
   ): Promise<ResponseOf<typeof pushSubscriptionEndpoints.save>> {
     return this.savePushSubscription.execute(linkedPhoneIdOf(request), body);
   }

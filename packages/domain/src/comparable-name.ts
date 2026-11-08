@@ -24,6 +24,11 @@ export class ComparableName {
     return this.key === other.key;
   }
 
+  /** Le fragment se trouve dans ce nom, selon la même règle : « Élodie » contient « elo ». */
+  contains(fragment: ComparableName): boolean {
+    return this.key.includes(fragment.key);
+  }
+
   /**
    * Pour `sort()` : l'ordre naturel. Deux noms qu'il ne départage pas gardent un ordre stable,
    * celui de leur texte, quel que soit l'ordre de lecture en base.

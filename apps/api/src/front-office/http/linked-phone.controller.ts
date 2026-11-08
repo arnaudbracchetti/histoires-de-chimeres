@@ -14,7 +14,7 @@ import {
 import type { Request, Response } from 'express';
 import { Identify, ReadLinkedPhone, UnlinkPhone } from '@chimeres/application';
 import { linkedPhoneEndpoints, type LinkPhoneBody, type ResponseOf } from '@chimeres/contract';
-import { ZodBody } from '../../http/zod-body.pipe.js';
+import { ZodPipe } from '../../http/zod.pipe.js';
 import { PresenceCodeAttempts } from '../presence-code-attempts.js';
 import { linkPhoneBodySchema } from './link-phone-body.schema.js';
 import {
@@ -45,7 +45,7 @@ export class LinkedPhoneController {
     @Ip() ip: string,
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
-    @Body(new ZodBody(linkPhoneBodySchema)) body: LinkPhoneBody,
+    @Body(new ZodPipe(linkPhoneBodySchema)) body: LinkPhoneBody,
   ): Promise<ResponseOf<typeof linkedPhoneEndpoints.link>> {
     const result = await this.attempts.guard(ip, () =>
       this.identify.execute(body, linkedPhoneIdOf(request)),

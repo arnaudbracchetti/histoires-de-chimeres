@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { CalendarPage } from './schedule/calendar-page';
 import { GameMasterPage } from './game-masters/game-master-page';
 import { GameMastersPage } from './game-masters/game-masters-page';
+import { ParticipantsPage } from './participants/participants-page';
 import { ScenariosPage } from './scenarios/scenarios-page';
 import { SignUpTrackingPage } from './sign-up-tracking/sign-up-tracking-page';
 import { TimeSlotsAndTablesPage } from './convention/time-slots-and-tables-page';
@@ -30,5 +31,6 @@ export const routes: Routes = [
   },
   { path: 'creneaux-et-tables', title: 'Créneaux et tables', component: TimeSlotsAndTablesPage },
   { path: 'pilotage', title: 'Pilotage du jour J', component: SignUpTrackingPage },
+  { path: 'participants', title: 'Participants', component: ParticipantsPage },
   { path: '**', redirectTo: '' },
 ];

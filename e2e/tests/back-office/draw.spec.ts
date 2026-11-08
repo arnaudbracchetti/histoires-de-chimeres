@@ -15,6 +15,7 @@ import {
   type UpdateConventionBody,
 } from '@chimeres/contract';
 import { expect, test } from '../../fixtures.js';
+import { post } from './api.js';
 import { aNickname, identify, identifyAsGameMaster } from '../front-office/identification.js';
 import { gameCard, scheduleTab, timeSlotChip } from '../front-office/schedule.js';
 
@@ -24,12 +25,6 @@ import { gameCard, scheduleTab, timeSlotChip } from '../front-office/schedule.js
  * tests en parallèle, un tirage lancé fermerait les inscriptions de leur créneau 1. Ici, la base
  * est remise à zéro avant le test (fixtures.ts), et le pseudo du téléphone lui reste propre.
  */
-
-async function post<T>(page: Page, url: string, data: object): Promise<T> {
-  const response = await page.request.post(url, { data });
-  expect(response.ok(), await response.text()).toBe(true);
-  return (await response.json()) as T;
-}
 
 /**
  * Par l'API : un créneau, la table « Griffon », et « Les Brumes » de Kaïros, d'une place au moins,
