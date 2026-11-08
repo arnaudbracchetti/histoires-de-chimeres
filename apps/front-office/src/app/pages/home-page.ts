@@ -3,6 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import {
   frontOfficePaths,
   frontOfficeUrls,
+  hasPublishedDraw,
   TIME_SLOT_PARAM,
   type FrontOfficeGameDto,
 } from '@chimeres/contract';
@@ -495,7 +496,7 @@ export class HomePage {
         detail: signedUpGames.length ? fr`${signUps} : ${titles}` : 'Aucune inscription',
       };
     }
-    if (state === 'published') {
+    if (hasPublishedDraw(state)) {
       return {
         icon: 'circle-check',
         tone: 'muted',

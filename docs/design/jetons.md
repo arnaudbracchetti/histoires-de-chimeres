@@ -15,7 +15,7 @@ Un seul thème, sombre. Les jetons sont des **jetons de rôle** en anglais, pos�
 | Texte secondaire | `--text-muted` | métadonnées, heures, aide |
 | Orange | `--accent` | action principale, liens, élément actif, halo |
 | Texte sur orange | `--on-accent` | libellé du bouton principal |
-| Focus | `--focus` | anneau de focus, et rien d'autre |
+| Focus | `--focus` | anneau de focus ; état « Inscriptions ouvertes » d'un créneau |
 | Vert | `--success` | statut correct, complet |
 | Jaune | `--warning` | statut attention |
 | Rouge brique | `--danger` | statut surcharge, erreur, entrée de menu destructrice |
@@ -28,7 +28,7 @@ Un seul thème, sombre. Les jetons sont des **jetons de rôle** en anglais, pos�
 - **L'orange est le même d'une édition à l'autre.** Relevé sur une vignette JPEG de l'affiche (l'aplat du texte orange), il est à confirmer sur le fichier source si on l'obtient.
 - **Le texte blanc sur orange est exclu** (2,27:1) : le bouton principal porte un texte charbon.
 - **Le charbon est neutre, légèrement froid**, comme le fond relevé sur l'affiche.
-- **Le bleu du focus ne sert qu'au focus**, pour ne jamais se confondre avec l'orange des actions. Il n'y a pas de bleu « information ».
+- **Le bleu du focus ne sert qu'au focus**, et à l'état « Inscriptions ouvertes » d'un créneau (voir [patterns.md](patterns.md#statuts)), pour ne jamais se confondre avec l'orange des actions. Il n'y a pas d'autre bleu « information ».
 - **Fond d'un badge de statut** : la couleur du statut à 14 % sur Anthracite 2, `color-mix(in srgb, var(--success) 14%, var(--surface-2))`.
 
 ## Contrastes vérifiés
@@ -51,6 +51,9 @@ Un seul thème, sombre. Les jetons sont des **jetons de rôle** en anglais, pos�
 | Rouge brique sur son badge | 4,64:1 |
 | Focus sur Charbon | 9,32:1 |
 | Focus sur Anthracite 2 | 8,00:1 |
+| Focus sur Anthracite 3 | 7,19:1 |
+| Vert sur Anthracite 2 | 7,03:1 |
+| Vert sur Anthracite 3 | 6,32:1 |
 | Lettrine sur Anthracite 2 | 4,16:1 (décor) |
 | Lettrine sur Anthracite 3 | 3,74:1 (décor) |
 | Gravure relevée sur Anthracite 3 | 2,42:1 (décor) |

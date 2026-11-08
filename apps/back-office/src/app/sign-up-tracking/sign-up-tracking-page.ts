@@ -14,6 +14,7 @@ import { Tab, TabContent, TabList, TabPanel, Tabs } from '@angular/aria/tabs';
 import { RouterLink } from '@angular/router';
 import {
   drawEndpoints,
+  hasPublishedDraw,
   signUpTrackingEndpoints,
   type DrawTrackingDto,
   type ScheduleDto,
@@ -57,6 +58,7 @@ import { Button } from '../ui/button';
 import { Confirmation, type Consequence } from '../ui/confirmation';
 import { EmptyState } from '../ui/empty-state';
 import { Gauge } from '../ui/gauge';
+import { TimeSlotState } from '../time-slots/time-slot-state';
 import { Icon } from '../ui/icon';
 import { MoreMenu, type MoreMenuItem } from '../ui/more-menu';
 import { DrawPlan, type DrawnGame, type ParticipantMove } from './draw-plan';
@@ -72,15 +74,6 @@ import { TrackedReservePanel } from './tracked-reserve-panel';
 
 /** Les onglets du créneau : « Parties du créneau », « Inscrits du créneau » et « Réserve du créneau ». */
 type TabValue = 'games' | 'participants' | 'reserve';
-
-/** L'état d'un créneau lancé, sur sa tuile et dans son résumé, avec son icône. */
-const CLOSED_STATE: Record<
-  Exclude<TimeSlotStateDto, 'sign-ups-open'>,
-  { label: string; icon: string }
-> = {
-  drawing: { label: 'Tirage provisoire', icon: 'hourglass' },
-  published: { label: 'Tirage publié', icon: 'lock' },
-};
 
 /**
  * L'icône de chaque niveau, d'un avertissement de suivi comme d'un signal du tirage
@@ -118,9 +111,10 @@ const WARNING_ACTIONS: Record<
 };
 
 /** Ce que dit le résumé d'un créneau lancé. */
-const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string> = {
+const LAUNCHED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string> = {
   drawing: fr`Les inscriptions du créneau sont fermées. Personne n'est notifié avant la publication.`,
   published: fr`Tirage publié : les participants et les MJ ont reçu leur notification, et le résultat ne change plus.`,
+  ended: fr`Tirage publié : les participants et les MJ ont reçu leur notification, et le résultat ne change plus.`,
 };
 
 /**
@@ -147,6 +141,7 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
     TabList,
     TabPanel,
     Tabs,
+    TimeSlotState,
     TrackedGameSignUps,
     TrackedGamesPanel,
     TrackedParticipantsPanel,
@@ -176,7 +171,7 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
               <button
                 type="button"
                 class="tile"
-                [class.closed]="slot.state === 'published'"
+                [class.ended]="slot.state === 'ended'"
                 [attr.aria-pressed]="slot.id === selected()?.id"
                 (click)="selectedId.set(slot.id)"
               >
@@ -196,6 +191,7 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                     [shortfall]="isShortfall(slot)"
                     overflow="danger"
                   />
+                  <app-time-slot-state [state]="slot.state" />
                   @if (slot.warnings.length) {
                     <span class="warning-count" [class.danger]="isDanger(slot)"
                       ><app-icon [name]="levelIcons[isDanger(slot) ? 'danger' : 'warning']" />{{
@@ -212,11 +208,7 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                     >
                     <span class="legend">placés / participants</span>
                   }
-                  <span class="state" [class]="slot.state"
-                    ><app-icon [name]="closedState[slot.state].icon" />{{
-                      closedState[slot.state].label
-                    }}</span
-                  >
+                  <app-time-slot-state [state]="slot.state" />
                 }
               </button>
             }
@@ -243,6 +235,7 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                       </div>
                     }
                   </div>
+                  <p><app-time-slot-state [state]="slot.state" /></p>
                   @if (slot.state === 'sign-ups-open') {
                     <p class="figures">
                       <span
@@ -294,11 +287,6 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                       </ul>
                     }
                   } @else {
-                    <p class="state" [class]="slot.state">
-                      <app-icon [name]="closedState[slot.state].icon" />{{
-                        closedState[slot.state].label
-                      }}
-                    </p>
                     @if (slot.draw; as draw) {
                       <p class="figures">
                         <span
@@ -334,7 +322,7 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
                         </ul>
                       }
                     }
-                    <p class="quiet">{{ closedSummary[slot.state] }}</p>
+                    <p class="quiet">{{ launchedSummary[slot.state] }}</p>
                     @if (slot.state === 'published' && slot.draw?.tablesWithSeats?.length) {
                       <p>{{ formatSeatsLeft(slot.draw!) }}</p>
                     }
@@ -490,8 +478,12 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
         }
       }
 
-      .tile.closed {
+      .tile.ended {
         opacity: 0.45;
+      }
+
+      .tile app-time-slot-state {
+        margin-top: var(--space-xs);
       }
 
       .rank {
@@ -569,17 +561,6 @@ const CLOSED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string>
         }
       }
 
-      .state {
-        display: inline-flex;
-        gap: var(--space-xs);
-        align-items: center;
-        margin-top: var(--space-xs);
-        color: var(--text-muted);
-
-        &.drawing {
-          color: var(--accent);
-        }
-      }
 
       /* La fiche ouverte rétrécit le créneau. */
       .workspace {
@@ -707,8 +688,7 @@ export class SignUpTrackingPage {
   /** Le suivi, relu toutes les 30 s, au retour sur l'onglet et après chaque geste. */
   protected readonly tracking = liveResource(apiResource(signUpTrackingEndpoints.read));
   protected readonly value = this.tracking.value;
-  protected readonly closedState = CLOSED_STATE;
-  protected readonly closedSummary = CLOSED_SUMMARY;
+  protected readonly launchedSummary = LAUNCHED_SUMMARY;
   protected readonly countOf = countOf;
   protected readonly formatCount = formatCount;
   protected readonly levelIcons = LEVEL_ICONS;
@@ -722,7 +702,7 @@ export class SignUpTrackingPage {
    * tirages se font dans l'ordre de la journée.
    */
   protected readonly drawableSlot = computed(() =>
-    this.value()?.timeSlots.find(({ state }) => state !== 'published'),
+    this.value()?.timeSlots.find(({ state }) => !hasPublishedDraw(state)),
   );
 
   /** Le créneau choisi d'un clic ; avant, le premier dont le tirage n'est pas publié. */

@@ -248,31 +248,28 @@ describe('ParticipantData', () => {
     expect(data.schedule()).toBeUndefined();
   });
 
-  it('cache les créneaux terminés selon l’heure du téléphone, même sans réseau (story 53)', async () => {
-    const data = await opened();
+  /** Le créneau 1 terminé, selon le serveur : son tirage publié, son heure de fin passée. */
+  const firstEnded = situation([], { timeSlotId: 's1', state: 'ended', drawResult: null });
 
-    now = new Date(2027, 2, 14, 11, 30);
-    await vi.advanceTimersByTimeAsync(30_000);
-    await answer('failure');
+  it('cache les créneaux que le serveur dit terminés (story 53)', async () => {
+    const data = await opened(undefined, undefined, firstEnded);
 
     expect(data.schedule()?.timeSlots.map(({ rank }) => rank)).toEqual([2]);
     expect(data.schedule()?.games.map(({ id }) => id)).toEqual(['Néons']);
   });
 
-  it('cache une partie double dès la fin de son premier créneau : elle a commencé', async () => {
-    const data = await opened();
+  it('cache une partie double dès que son premier créneau est terminé : elle a commencé', async () => {
+    const data = await opened(undefined, undefined, firstEnded);
 
-    now = new Date(2027, 2, 14, 14, 0);
-    await vi.advanceTimersByTimeAsync(30_000);
-    await answer('failure');
-
-    expect(data.schedule()?.timeSlots.map(({ rank }) => rank)).toEqual([2]);
     expect(data.schedule()?.games.map(({ id }) => id)).not.toContain('Épice');
   });
 
-  it('ne termine aucun créneau d’une convention sans date', async () => {
-    now = new Date(2099, 0, 1);
-    const data = await opened({ ...schedule([brumes]), date: null, end: null });
+  it('garde un créneau dont l’heure de fin est passée, tant que le serveur ne le dit pas terminé', async () => {
+    const data = await opened();
+
+    now = new Date(2027, 2, 14, 12, 0);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await answer('failure');
 
     expect(data.schedule()?.timeSlots.map(({ rank }) => rank)).toEqual([1, 2]);
   });
@@ -628,9 +625,12 @@ describe('ParticipantData', () => {
         [2, ['Néons']],
       ]);
 
-      now = new Date(2027, 2, 14, 11, 30);
       await vi.advanceTimersByTimeAsync(30_000);
-      await answer('failure');
+      await answer(
+        schedule([brumes, epice, neons]),
+        undefined,
+        situation(['Épice', 'Néons'], { timeSlotId: 's1', state: 'ended', drawResult: null }),
+      );
       expect(signUpsBySlot(data)).toEqual([[2, ['Néons']]]);
     });
 
@@ -701,9 +701,17 @@ describe('ParticipantData', () => {
         { kind: 'assigned', game: epice },
       ]);
 
-      now = new Date(2027, 2, 14, 14, 0);
+      // Le créneau 1 terminé, selon le serveur : la partie se joue encore sur le créneau 2.
       await vi.advanceTimersByTimeAsync(30_000);
-      await answer('failure');
+      await answer(
+        schedule([brumes, epice, neons]),
+        undefined,
+        situation(['Épice', 'Néons'], {
+          timeSlotId: 's1',
+          state: 'ended',
+          drawResult: { kind: 'assigned', gameId: 'Épice' },
+        }),
+      );
       expect(data.myTimeSlots()?.map(({ assignment }) => assignment)).toEqual([
         { kind: 'assigned', game: epice },
       ]);
@@ -824,9 +832,17 @@ describe('ParticipantData', () => {
       await answer('failure');
       expect(data.home()?.card).toMatchObject({ kind: 'assigned', started: true });
 
-      now = new Date(2027, 2, 14, 11, 30);
+      // Le créneau 1 terminé, selon le serveur.
       await vi.advanceTimersByTimeAsync(30_000);
-      await answer('failure');
+      await answer(
+        schedule([brumes, epice, neons]),
+        undefined,
+        situation(['Brumes'], {
+          timeSlotId: 's1',
+          state: 'ended',
+          drawResult: { kind: 'assigned', gameId: 'Brumes' },
+        }),
+      );
       expect(data.home()?.card).toEqual({ kind: 'choose-games' });
       expect(programmeRanks(data)).toEqual([2]);
     });
@@ -1071,7 +1087,9 @@ describe('ParticipantData', () => {
         await vi.advanceTimersByTimeAsync(30_000);
         await answer('failure');
 
+        // Son premier créneau, au tirage pas publié, n'est pas terminé : il reste au programme.
         expect(ledOf(data)).toEqual([
+          { game: epice, started: true, outcome: { kind: 'sign-ups-open' } },
           { game: epice, started: true, outcome: { kind: 'sign-ups-open' } },
         ]);
       });

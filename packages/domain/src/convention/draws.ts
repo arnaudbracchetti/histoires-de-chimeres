@@ -1,6 +1,6 @@
 import { Refusal } from '../refusal.js';
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
-import type { TimeSlotState } from './convention.js';
+import type { DrawStage } from './convention.js';
 import type { Day } from './day.js';
 import type { Game } from './game.js';
 import type { Participant } from './participant.js';
@@ -68,7 +68,7 @@ export class Draws {
   }
 
   /** Sans tirage, inscriptions ouvertes ; tirage provisoire, `drawing` ; tirage publié, `published`. */
-  getTimeSlotState(timeSlotId: string): TimeSlotState {
+  getDrawStage(timeSlotId: string): DrawStage {
     const draw = this.findDrawOfTimeSlot(timeSlotId);
     if (!draw) return 'sign-ups-open';
     return draw.published ? 'published' : 'drawing';
@@ -236,7 +236,7 @@ export class Draws {
    */
   findPublishedTimeSlotRefusal(timeSlotIds: readonly string[], day: Day): Refusal | null {
     const published = timeSlotIds.find(
-      (timeSlotId) => this.getTimeSlotState(timeSlotId) === 'published',
+      (timeSlotId) => this.getDrawStage(timeSlotId) === 'published',
     );
     if (!published) return null;
     return new Refusal('time-slot-published', { rank: day.getTimeSlotRank(published) });
@@ -247,7 +247,7 @@ export class Draws {
    * et il ne se supprime pas (PR-10, PR-11).
    */
   verifyTimeSlotNotDrawn(timeSlotId: string, day: Day): void {
-    const state = this.getTimeSlotState(timeSlotId);
+    const state = this.getDrawStage(timeSlotId);
     if (state === 'sign-ups-open') return;
     throw new Refusal('time-slot-locked-by-draw', {
       rank: day.getTimeSlotRank(timeSlotId),
@@ -267,7 +267,7 @@ export class Draws {
     if (!drawn) return;
     throw new Refusal('time-slot-before-draw', {
       rank: currentDay.getTimeSlotRank(drawn.id),
-      published: this.getTimeSlotState(drawn.id) === 'published',
+      published: this.getDrawStage(drawn.id) === 'published',
     });
   }
 
@@ -293,12 +293,12 @@ export class Draws {
    */
   private verifyDrawLaunchable(timeSlotId: string, day: Day): void {
     const rank = day.getTimeSlotRank(timeSlotId);
-    const state = this.getTimeSlotState(timeSlotId);
+    const state = this.getDrawStage(timeSlotId);
     if (state === 'drawing') throw new Refusal('draw-already-launched', { rank });
     if (state === 'published') throw new Refusal('draw-published', { rank });
     const previous = day.timeSlots
       .slice(0, rank - 1)
-      .find((slot) => this.getTimeSlotState(slot.id) !== 'published');
+      .find((slot) => this.getDrawStage(slot.id) !== 'published');
     if (previous) {
       throw new Refusal('previous-draw-not-published', {
         rank,
@@ -328,7 +328,7 @@ export class Draws {
   private listProvisionalTimeSlotIdsErasedBy(change: ScheduleChange): string[] {
     return change
       .listTimeSlotIdsWithChangedGames()
-      .filter((timeSlotId) => this.getTimeSlotState(timeSlotId) === 'drawing');
+      .filter((timeSlotId) => this.getDrawStage(timeSlotId) === 'drawing');
   }
 
   /** Les Tirages, ce tirage à la place de celui de son créneau. */

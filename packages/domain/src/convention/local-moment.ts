@@ -12,3 +12,10 @@ export function computeLatestEnd(
   if (date === null || !first) return null;
   return { date, time: others.reduce((last, end) => (last.isBefore(end) ? end : last), first) };
 }
+
+/** `now` est à `moment` ou après. Sans `moment` (pas de date, pas de fin), jamais. */
+export function isReachedAt(moment: LocalMoment | null, now: LocalMoment): boolean {
+  if (!moment) return false;
+  if (now.date !== moment.date) return now.date > moment.date;
+  return !now.time.isBefore(moment.time);
+}

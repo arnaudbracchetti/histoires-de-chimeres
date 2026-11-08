@@ -12,6 +12,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs';
 import {
   frontOfficeEndpoints,
+  hasPublishedDraw,
   signUpEndpoints,
   type FrontOfficeGameDto,
   type FrontOfficeScheduleDto,
@@ -182,17 +183,19 @@ export class ParticipantData {
   private readonly ownWithdrawals = new Set<string>();
 
   /**
-   * Le programme sans les créneaux terminés, selon l'heure du téléphone, même hors ligne (story 53),
-   * ni les parties dont le premier créneau est terminé : une partie double commencée ne prend plus
+   * Le programme sans les créneaux que le serveur dit terminés, à sa dernière lecture (story 53), ni
+   * les parties dont le premier créneau est terminé : une partie double commencée ne prend plus
    * d'inscription. `undefined` avant la première lecture réussie.
    */
   readonly schedule = computed<FrontOfficeScheduleDto | undefined>(() => {
     const schedule = this.lastRead();
     if (!schedule) return undefined;
-    const now = this.now();
-    const timeSlots = schedule.timeSlots.filter(
-      (slot) => !schedule.date || !isPast(schedule.date, slot.end, now),
+    const ended = new Set(
+      this.lastSituation()
+        ?.timeSlots.filter(({ state }) => state === 'ended')
+        .map(({ timeSlotId }) => timeSlotId),
     );
+    const timeSlots = schedule.timeSlots.filter((slot) => !ended.has(slot.id));
     const remaining = new Set(timeSlots.map(({ id }) => id));
     return {
       ...schedule,
@@ -330,7 +333,7 @@ export class ParticipantData {
       return { kind: 'leading', game: leading, rank };
     }
     if (slot?.state === 'drawing') return { kind: 'drawing', rank, signedUp };
-    if (slot?.state === 'published') {
+    if (slot && hasPublishedDraw(slot.state)) {
       const result = slot.drawResult;
       if (result?.kind === 'unassigned') return { kind: 'unassigned' };
       if (result?.kind === 'assigned' && result.gameId === game.id)
@@ -510,7 +513,7 @@ function assignedDoubleGames(
   situation: ParticipantSituationDto,
 ): FrontOfficeGameDto[] {
   return situation.timeSlots.flatMap(({ state, drawResult }) => {
-    if (state !== 'published' || drawResult?.kind !== 'assigned') return [];
+    if (!hasPublishedDraw(state) || drawResult?.kind !== 'assigned') return [];
     const game = schedule.games.find(({ id }) => id === drawResult.gameId);
     return game && game.timeSlotIds.length > 1 ? [game] : [];
   });
@@ -532,7 +535,7 @@ function assignmentOf(
   );
   if (held) return { kind: 'assigned', game: held };
   const slot = timeSlotSituationOf(situation, timeSlotId);
-  if (slot?.state !== 'published') return null;
+  if (!slot || !hasPublishedDraw(slot.state)) return null;
   const result = slot.drawResult;
   if (result?.kind === 'unassigned') {
     return { kind: 'unassigned', gamesWithSeats: gamesWithSeatsOn(timeSlotId, schedule) };
@@ -574,7 +577,7 @@ function ledGameOf(
       : first?.state === 'drawing'
         ? { kind: 'drawing' }
         : // Publié sans résultat pour lui : aucun joueur.
-          first?.state === 'published'
+          first && hasPublishedDraw(first.state)
           ? { kind: 'players', players: [] }
           : { kind: 'sign-ups-open' };
   const start = timeSlotsOf(schedule, game)[0]!.start;
@@ -605,7 +608,7 @@ function publishedCardOf(
   now: Date,
 ): HomeCard | null {
   const lastPublished = situation.timeSlots
-    .filter(({ state, drawResult }) => state === 'published' && drawResult)
+    .filter(({ state, drawResult }) => hasPublishedDraw(state) && drawResult)
     .at(-1);
   const lastResult = lastPublished?.drawResult;
   if (lastResult?.kind === 'leading') {

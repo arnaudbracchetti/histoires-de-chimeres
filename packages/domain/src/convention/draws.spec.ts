@@ -141,7 +141,7 @@ function restoreWithDraws(convention: Convention, draws: Draw[]): Convention {
 
 const stateOf = (convention: Convention, timeSlotId: string) =>
   convention
-    .computeParticipantSituation('p1')
+    .computeParticipantSituation('p1', NOW)
     .timeSlots.find((slot) => slot.timeSlotId === timeSlotId)?.state;
 
 describe('Lancer le tirage (TI-1)', () => {
@@ -388,7 +388,7 @@ describe('Lancer le tirage : partie double (TI-3)', () => {
   it('garde actives ses inscriptions du créneau suivant tant que le tirage est provisoire', () => {
     const convention = aConventionWithFirstDraw(false);
 
-    expect(convention.computeParticipantSituation('p1').signedUpGameIds).toEqual([
+    expect(convention.computeParticipantSituation('p1', NOW).signedUpGameIds).toEqual([
       'epice',
       'neons',
     ]);
@@ -397,7 +397,7 @@ describe('Lancer le tirage : partie double (TI-3)', () => {
   it('garde active son inscription à la partie double elle-même', () => {
     const convention = aConventionWithFirstDraw(true);
 
-    expect(convention.computeParticipantSituation('p1').signedUpGameIds).toEqual(['epice']);
+    expect(convention.computeParticipantSituation('p1', NOW).signedUpGameIds).toEqual(['epice']);
   });
 });
 
@@ -766,7 +766,7 @@ describe('Rouvrir les inscriptions (TI-6)', () => {
     expect(convention.draws).toEqual([]);
     expect(stateOf(convention, 's1')).toBe('sign-ups-open');
     convention.signUpForGame('p2', 'brumes', CATALOGUE);
-    expect(convention.computeParticipantSituation('p2').signedUpGameIds).toEqual(['brumes']);
+    expect(convention.computeParticipantSituation('p2', NOW).signedUpGameIds).toEqual(['brumes']);
   });
 
   it('garde les tirages des autres créneaux', () => {
@@ -802,7 +802,7 @@ describe('Rouvrir les inscriptions (TI-6)', () => {
 
     expect(
       convention
-        .computeParticipantSituation('p1')
+        .computeParticipantSituation('p1', NOW)
         .timeSlots.find(({ timeSlotId }) => timeSlotId === 's1')?.withoutGame,
     ).toBe(true);
   });
@@ -902,7 +902,7 @@ describe('Annuler une partie (TI-6)', () => {
 
     convention.cancelGame('epice', CATALOGUE);
 
-    const situation = convention.computeParticipantSituation('p-g2');
+    const situation = convention.computeParticipantSituation('p-g2', NOW);
     expect(situation.signedUpGameIds).toEqual([]);
     expect(situation.timeSlots[0]).toMatchObject({ ledGameId: 'epice', drawResult: null });
   });
@@ -1365,7 +1365,7 @@ describe('Publier un tirage qui a des parties annulées (TI-7)', () => {
     expect(convention.draws[0]!.cancelledGameIds).toEqual([]);
     expect(convention.participantsWithoutGame).toEqual([]);
     expect(convention.signUps.some(({ gameId }) => gameId === 'epice')).toBe(false);
-    expect(convention.computeParticipantSituation('p1').timeSlots[0]!.withoutGame).toBe(false);
+    expect(convention.computeParticipantSituation('p1', NOW).timeSlots[0]!.withoutGame).toBe(false);
   });
 
   it('prévient le MJ resté non placé de l’annulation seulement, sans les notifications de IN-6', () => {
@@ -1436,11 +1436,11 @@ describe('Publier un tirage qui a des parties annulées (TI-7)', () => {
     unassigned.publishDraw('s1', CATALOGUE);
     assigned.publishDraw('s1', CATALOGUE);
 
-    expect(unassigned.computeParticipantSituation('p-g2').timeSlots[0]).toMatchObject({
+    expect(unassigned.computeParticipantSituation('p-g2', NOW).timeSlots[0]).toMatchObject({
       ledGameId: null,
       drawResult: { kind: 'unassigned' },
     });
-    expect(assigned.computeParticipantSituation('p-g2').timeSlots[0]).toMatchObject({
+    expect(assigned.computeParticipantSituation('p-g2', NOW).timeSlots[0]).toMatchObject({
       ledGameId: null,
       drawResult: { kind: 'assigned', gameId: 'brumes' },
     });
@@ -1491,6 +1491,57 @@ describe('Publier le tirage : refus, dans l’ordre', () => {
   });
 });
 
+describe('Créneau terminé : tirage publié et heure de fin passée', () => {
+  /**
+   * La convention du 14 mars 2027, le tirage du créneau 1 (9 h – 11 h 30) lancé : Élodie à
+   * « brumes », Lune à « épice ».
+   */
+  function aLaunchedConventionOnMarch14(): Convention {
+    const convention = aConvention();
+    convention.changeDate('2027-03-14');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'epice', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    return convention;
+  }
+
+  const moment = (date: string, time: string): LocalMoment => ({ date, time: at(time) });
+  const stateAt = (convention: Convention, timeSlotId: string, now: LocalMoment) =>
+    convention
+      .computeParticipantSituation('p1', now)
+      .timeSlots.find((slot) => slot.timeSlotId === timeSlotId)?.state;
+
+  it.each([
+    ['une minute avant la fin', '2027-03-14', '11:29', 'published'],
+    ['à la fin', '2027-03-14', '11:30', 'ended'],
+    ['le lendemain', '2027-03-15', '08:00', 'ended'],
+  ])('termine un créneau publié dès son heure de fin : %s', (_, date, time, state) => {
+    const convention = aLaunchedConventionOnMarch14();
+    convention.publishDraw('s1', CATALOGUE);
+
+    expect(convention.computeTimeSlotStateAt('s1', moment(date, time))).toBe(state);
+    expect(stateAt(convention, 's1', moment(date, time))).toBe(state);
+  });
+
+  it('ne termine pas un créneau dont le tirage n’est pas publié, même son heure passée', () => {
+    const convention = aLaunchedConventionOnMarch14();
+    const nextDay = moment('2027-03-15', '08:00');
+
+    expect(convention.computeTimeSlotStateAt('s1', nextDay)).toBe('drawing');
+    expect(convention.computeTimeSlotStateAt('s2', nextDay)).toBe('sign-ups-open');
+  });
+
+  it('ne termine aucun créneau sans date', () => {
+    const convention = aLaunchedConventionOnMarch14();
+    convention.publishDraw('s1', CATALOGUE);
+    convention.changeDate(null);
+
+    expect(convention.computeTimeSlotStateAt('s1', moment('2030-01-01', '00:00'))).toBe(
+      'published',
+    );
+  });
+});
+
 describe('Résultat du tirage sur le téléphone (§5.3, §5.7)', () => {
   /**
    * Lune et Élodie jouent à « brumes », Zéphyr à « épice » ; Ysé, inscrite à « brumes », n'est pas
@@ -1515,7 +1566,7 @@ describe('Résultat du tirage sur le téléphone (§5.3, §5.7)', () => {
 
   const resultOf = (convention: Convention, participantId: string, timeSlotId: string) =>
     convention
-      .computeParticipantSituation(participantId)
+      .computeParticipantSituation(participantId, NOW)
       .timeSlots.find((slot) => slot.timeSlotId === timeSlotId)?.drawResult;
 
   it('reste caché tant que le tirage est provisoire', () => {
@@ -1605,7 +1656,7 @@ describe('Inscription active après la publication d’une partie double (TI-3, 
     const convention = aConventionWithFirstDraw();
     convention.publishDraw('s1', CATALOGUE);
 
-    expect(convention.computeParticipantSituation('p2').signedUpGameIds).toEqual([
+    expect(convention.computeParticipantSituation('p2', NOW).signedUpGameIds).toEqual([
       'epice',
       'neons',
     ]);
@@ -1626,7 +1677,7 @@ describe('Inscription active après la publication d’une partie double (TI-3, 
       participantsWithoutGame: [new ParticipantWithoutGame('p1', 's2')],
     });
     const isWithoutGame = (candidate: Convention) =>
-      candidate.computeParticipantSituation('p1').timeSlots[1]!.withoutGame;
+      candidate.computeParticipantSituation('p1', NOW).timeSlots[1]!.withoutGame;
 
     expect(isWithoutGame(withoutGame)).toBe(true);
     withoutGame.publishDraw('s1', CATALOGUE);
@@ -1746,7 +1797,7 @@ describe('Gestes de programmation sur un créneau en tirage (TI-6, IN-6)', () =>
       convention.unscheduleGame('orage');
 
       expect(convention.draws).toEqual([]);
-      expect(convention.computeParticipantSituation('p-g1').timeSlots[0]!.ledGameId).toBe('brumes');
+      expect(convention.computeParticipantSituation('p-g1', NOW).timeSlots[0]!.ledGameId).toBe('brumes');
     });
   });
 

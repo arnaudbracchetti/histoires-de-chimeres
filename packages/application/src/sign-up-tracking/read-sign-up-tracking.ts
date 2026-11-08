@@ -1,5 +1,6 @@
 import type { DrawTrackingDto, SignUpTrackingDto, TimeSlotTrackingDto } from '@chimeres/contract';
 import type { DrawSignal, SignUpWarning, TimeSlotReserveEntry } from '@chimeres/domain';
+import type { Clock } from '../clock.js';
 import type { ConventionRepository } from '../convention/convention-repository.js';
 import { readReserve, type ReserveScenario } from '../game/read-schedule.js';
 import type { ScheduleReader } from '../game/schedule-reader.js';
@@ -26,7 +27,7 @@ export type SignUpTracking = Omit<SignUpTrackingDto, 'timeSlots' | 'reserve'> & 
 
 /**
  * Le suivi des inscriptions de chaque créneau, que la convention calcule avec le catalogue entier
- * (§4.4), avec son tirage, les tables de la convention, les parties du programme avec leur suivi, et
+ * (§4.4), son état à cet instant, terminé compris, avec son tirage, les tables de la convention, les parties du programme avec leur suivi, et
  * la réserve.
  */
 export class ReadSignUpTracking {
@@ -34,6 +35,7 @@ export class ReadSignUpTracking {
     private readonly conventions: ConventionRepository,
     private readonly scenarios: ScenarioRepository,
     private readonly reader: ScheduleReader,
+    private readonly clock: Clock,
   ) {}
 
   async execute(): Promise<SignUpTracking> {
@@ -42,6 +44,7 @@ export class ReadSignUpTracking {
       this.scenarios.catalogue(),
       this.reader.games(),
     ]);
+    const now = this.clock.now();
     const slots = new Map(convention.timeSlots.map((slot) => [slot.id, slot]));
     const nicknames = new Map(
       convention.participants.map((participant) => [participant.id, participant.nickname.text]),
@@ -56,12 +59,12 @@ export class ReadSignUpTracking {
     );
     return {
       timeSlots: tracking.map(
-        ({ timeSlotId, state, demand, capacity, participants, warnings, draw, ...slot }) => ({
+        ({ timeSlotId, demand, capacity, participants, warnings, draw, ...slot }) => ({
           id: timeSlotId,
           rank: convention.getTimeSlotRank(timeSlotId),
           start: slots.get(timeSlotId)!.start.toString(),
           end: slots.get(timeSlotId)!.end.toString(),
-          state,
+          state: convention.computeTimeSlotStateAt(timeSlotId, now),
           demand,
           capacity,
           participants: participants.map(({ participantId, gameIds, risk }) => ({

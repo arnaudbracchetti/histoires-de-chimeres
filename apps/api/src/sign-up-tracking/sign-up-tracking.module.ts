@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
 import {
   ReadSignUpTracking,
+  type Clock,
   type ConventionRepository,
   type ScenarioRepository,
   type ScheduleReader,
 } from '@chimeres/application';
+import { CLOCK } from '../clock/clock.token.js';
+import { ParisClock } from '../clock/paris-clock.js';
 import { CONVENTION_REPOSITORY } from '../convention/convention-repository.token.js';
 import { ConventionModule } from '../convention/convention.module.js';
 import { GameModule } from '../game/game.module.js';
@@ -17,14 +20,16 @@ import { SignUpTrackingController } from './http/sign-up-tracking.controller.js'
   imports: [ConventionModule, GameModule, ScenarioModule],
   controllers: [SignUpTrackingController],
   providers: [
+    { provide: CLOCK, useClass: ParisClock },
     {
       provide: ReadSignUpTracking,
       useFactory: (
         conventions: ConventionRepository,
         scenarios: ScenarioRepository,
         reader: ScheduleReader,
-      ) => new ReadSignUpTracking(conventions, scenarios, reader),
-      inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY, SCHEDULE_READER],
+        clock: Clock,
+      ) => new ReadSignUpTracking(conventions, scenarios, reader, clock),
+      inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY, SCHEDULE_READER, CLOCK],
     },
   ],
 })

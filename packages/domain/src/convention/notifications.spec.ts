@@ -186,7 +186,7 @@ describe('Notifications d’une partie programmée (NO-2)', () => {
     convention.scheduleScenario('songe', aScenario('d', 'g3'), 's2', 't3');
 
     expect(convention.signUps.map(({ gameId }) => gameId)).toEqual(['neons']);
-    expect(convention.computeParticipantSituation('p-g3').signedUpGameIds).toEqual([]);
+    expect(convention.computeParticipantSituation('p-g3', NOW).signedUpGameIds).toEqual([]);
   });
 });
 

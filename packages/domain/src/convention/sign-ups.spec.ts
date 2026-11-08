@@ -362,7 +362,7 @@ describe('Un MJ qui mène sur un créneau où il est inscrit (IN-4)', () => {
     return convention;
   }
   const signedUpGameIdsOfMira = (convention: Convention) =>
-    convention.computeParticipantSituation('p-g3').signedUpGameIds;
+    convention.computeParticipantSituation('p-g3', NOW).signedUpGameIds;
 
   it('garde ses inscriptions sur le créneau de sa partie, que sa situation montre en secours', () => {
     const convention = aConventionWithMira();
@@ -371,7 +371,7 @@ describe('Un MJ qui mène sur un créneau où il est inscrit (IN-4)', () => {
 
     expect(signUpsOf(convention)).toEqual(['p-g3 brumes', 'p-g3 neons']);
     expect(signedUpGameIdsOfMira(convention)).toEqual(['neons']);
-    expect(convention.computeParticipantSituation('p-g3').backupGameIds).toEqual(['brumes']);
+    expect(convention.computeParticipantSituation('p-g3', NOW).backupGameIds).toEqual(['brumes']);
   });
 
   it('les lui rend quand sa partie quitte le créneau, et suspend celles du nouveau', () => {
@@ -431,7 +431,7 @@ describe('Un MJ qui s’inscrit sur un créneau où il mène (IN-4)', () => {
     convention.signUpForGame('p-g2', 'brumes', CATALOGUE);
 
     expect(signUpsOf(convention)).toEqual(['p-g2 brumes']);
-    expect(convention.computeParticipantSituation('p-g2')).toMatchObject({
+    expect(convention.computeParticipantSituation('p-g2', NOW)).toMatchObject({
       signedUpGameIds: [],
       backupGameIds: ['brumes'],
     });
@@ -442,7 +442,7 @@ describe('Un MJ qui s’inscrit sur un créneau où il mène (IN-4)', () => {
 
     convention.signUpForGame('p-g2', 'neons', CATALOGUE);
 
-    expect(convention.computeParticipantSituation('p-g2')).toMatchObject({
+    expect(convention.computeParticipantSituation('p-g2', NOW)).toMatchObject({
       signedUpGameIds: [],
       backupGameIds: ['neons'],
     });
@@ -457,7 +457,7 @@ describe('Un MJ qui s’inscrit sur un créneau où il mène (IN-4)', () => {
 
     convention.signUpForGame('p-g3', 'epice', CATALOGUE);
 
-    expect(convention.computeParticipantSituation('p-g3')).toMatchObject({
+    expect(convention.computeParticipantSituation('p-g3', NOW)).toMatchObject({
       signedUpGameIds: [],
       backupGameIds: ['epice'],
     });
@@ -473,7 +473,7 @@ describe('Un MJ qui s’inscrit sur un créneau où il mène (IN-4)', () => {
     convention.signUpForGame('p-g3', 'brumes', CATALOGUE);
 
     expect(signUpsOf(convention)).toEqual(['p-g3 brumes']);
-    expect(convention.computeParticipantSituation('p-g3')).toMatchObject({
+    expect(convention.computeParticipantSituation('p-g3', NOW)).toMatchObject({
       signedUpGameIds: ['brumes'],
       backupGameIds: [],
     });
@@ -496,7 +496,7 @@ describe('Supprimer un MJ (PR-12)', () => {
 /** Les créneaux où le participant est sans partie, d'après sa situation. */
 const timeSlotsWithoutGameOf = (convention: Convention, participantId: string) =>
   convention
-    .computeParticipantSituation(participantId)
+    .computeParticipantSituation(participantId, NOW)
     .timeSlots.filter(({ withoutGame }) => withoutGame)
     .map(({ timeSlotId }) => timeSlotId);
 
@@ -679,7 +679,7 @@ describe('Situation d’un participant', () => {
     convention.signUpForGame('p1', 'epice', CATALOGUE);
     convention.signUpForGame('p2', 'brumes', CATALOGUE);
 
-    expect(convention.computeParticipantSituation('p1')).toEqual({
+    expect(convention.computeParticipantSituation('p1', NOW)).toEqual({
       signedUpGameIds: ['epice'],
       backupGameIds: [],
       timeSlots: [
@@ -705,15 +705,15 @@ describe('Situation d’un participant', () => {
     const convention = aConvention();
 
     expect(
-      convention.computeParticipantSituation('p-g2').timeSlots.map(({ ledGameId }) => ledGameId),
+      convention.computeParticipantSituation('p-g2', NOW).timeSlots.map(({ ledGameId }) => ledGameId),
     ).toEqual(['epice', 'epice']);
     expect(
-      convention.computeParticipantSituation('p-g1').timeSlots.map(({ ledGameId }) => ledGameId),
+      convention.computeParticipantSituation('p-g1', NOW).timeSlots.map(({ ledGameId }) => ledGameId),
     ).toEqual(['brumes', 'neons']);
   });
 
   it('refuse un participant introuvable', () => {
-    expect(refusalOf(() => aConvention().computeParticipantSituation('inconnu')).code).toBe(
+    expect(refusalOf(() => aConvention().computeParticipantSituation('inconnu', NOW)).code).toBe(
       'participant-not-found',
     );
   });

@@ -405,7 +405,9 @@ describe('Pilotage du jour J', () => {
     const { tiles } = await render();
 
     expect(tiles()).toHaveLength(3);
-    expect(text(tiles()[1])).toBe('Créneau 2 13 h 00 – 15 h 30 26 / 22 participants / places');
+    expect(text(tiles()[1])).toBe(
+      'Créneau 2 13 h 00 – 15 h 30 26 / 22 participants / places Inscriptions ouvertes',
+    );
   });
 
   it('montre chaque participant d’un créneau par une case de sa jauge', async () => {
@@ -427,17 +429,65 @@ describe('Pilotage du jour J', () => {
     expect(text(summary()?.querySelector('h2'))).toBe('Créneau 2 · 13 h 00 – 15 h 30');
   });
 
-  it('atténue la tuile d’un créneau publié, avec son état', async () => {
+  /** L'état écrit sur la tuile (ou dans le résumé) : sa classe, son icône et son libellé. */
+  const writtenStateIn = (element: Element | null | undefined) => {
+    const state = element?.querySelector('.state');
+    return {
+      class: state?.classList[1],
+      icon: state?.querySelector('use')?.getAttribute('href'),
+      label: text(state),
+    };
+  };
+
+  it('écrit l’état de chaque créneau sur sa tuile, avec son icône (docs/design/patterns.md, Statuts)', async () => {
+    const { tiles } = await render(DRAWING);
+
+    expect(tiles().map(writtenStateIn)).toEqual([
+      { class: 'published', icon: 'icons.svg#lock', label: 'Tirage publié' },
+      { class: 'drawing', icon: 'icons.svg#hourglass', label: 'Tirage provisoire' },
+      { class: 'sign-ups-open', icon: 'icons.svg#lock-open', label: 'Inscriptions ouvertes' },
+    ]);
+  });
+
+  it('n’atténue pas la tuile d’un créneau publié', async () => {
     const { tiles } = await render();
 
-    expect(tiles()[0]!.classList).toContain('closed');
+    expect(tiles()[0]!.classList).not.toContain('ended');
     expect(text(tiles()[0])).toBe('Créneau 1 9 h 00 – 11 h 30 Tirage publié');
+  });
+
+  it('atténue la tuile d’un créneau terminé, avec « Terminé »', async () => {
+    const { tiles } = await render({
+      ...TRACKING,
+      timeSlots: TRACKING.timeSlots.map((slot) =>
+        slot.id === 's1' ? { ...slot, state: 'ended' } : slot,
+      ),
+    });
+
+    expect(tiles()[0]!.classList).toContain('ended');
+    expect(writtenStateIn(tiles()[0])).toEqual({
+      class: 'ended',
+      icon: 'icons.svg#check',
+      label: 'Terminé',
+    });
+    // Son tirage est publié : la page choisit le créneau suivant.
+    expect(tiles()[1]!.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('écrit l’état du créneau choisi en tête de son résumé', async () => {
+    const { summary } = await render();
+
+    expect(writtenStateIn(summary())).toEqual({
+      class: 'sign-ups-open',
+      icon: 'icons.svg#lock-open',
+      label: 'Inscriptions ouvertes',
+    });
   });
 
   it('montre sur la tuile d’un créneau en tirage les placés face aux participants, sans jauge', async () => {
     const { tiles } = await render(DRAWING);
 
-    expect(tiles()[1]!.classList).not.toContain('closed');
+    expect(tiles()[1]!.classList).not.toContain('ended');
     expect(text(tiles()[1])).toBe(
       'Créneau 2 13 h 00 – 15 h 30 19 / 26 placés / participants Tirage provisoire',
     );
@@ -1090,7 +1140,7 @@ describe('Pilotage du jour J', () => {
       tiles()[1]!.click();
       fixture.detectChanges();
 
-      expect(tiles()[1]!.classList).toContain('closed');
+      expect(tiles()[1]!.classList).not.toContain('ended');
       expect(text(tiles()[1])).toContain('19 / 26 placés / participants Tirage publié');
       expect(text(summary())).toBe(
         'Créneau 2 · 13 h 00 – 15 h 30 Tirage publié 19 / 26 placés 7 non placés 4 / 5 parties au minimum Tirage publié : les participants et les MJ ont reçu leur notification, et le résultat ne change plus. Il reste de la place : Sphinx (3 places). Les non placés vont voir leur MJ.',

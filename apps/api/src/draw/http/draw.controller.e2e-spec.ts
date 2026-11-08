@@ -24,8 +24,10 @@ import {
   type ScheduleDto,
   type SignUpTrackingDto,
 } from '@chimeres/contract';
-import type { DrawAlgorithm } from '@chimeres/domain';
+import type { Clock } from '@chimeres/application';
+import { TimeOfDay, type DrawAlgorithm } from '@chimeres/domain';
 import { startApp } from '../../../test/app.js';
+import { CLOCK } from '../../clock/clock.token.js';
 import { DRAW_ALGORITHM } from '../draw-algorithm.token.js';
 
 describe('Les gestes du tirage (TI-1, TI-6)', () => {
@@ -91,11 +93,17 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
     (await server().get(apiUrl(signUpTrackingEndpoints.read)).expect(200))
       .body as SignUpTrackingDto;
 
-  /** Démarre l'application, avec un autre algorithme de tirage s'il est donné, puis la prépare. */
-  const start = async (algorithm?: DrawAlgorithm) => {
-    app = await startApp((builder) =>
-      algorithm ? builder.overrideProvider(DRAW_ALGORITHM).useValue(algorithm) : builder,
-    );
+  /**
+   * Démarre l'application, avec un autre algorithme de tirage et une autre horloge s'ils sont
+   * donnés, puis la prépare.
+   */
+  const start = async (algorithm?: DrawAlgorithm, clock?: Clock) => {
+    app = await startApp((builder) => {
+      const withAlgorithm = algorithm
+        ? builder.overrideProvider(DRAW_ALGORITHM).useValue(algorithm)
+        : builder;
+      return clock ? withAlgorithm.overrideProvider(CLOCK).useValue(clock) : withAlgorithm;
+    });
     for (const [start, end] of [
       ['09:00', '11:30'],
       ['14:00', '16:30'],
@@ -649,6 +657,41 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
       expect((await scheduleOf(lune)).games[0]!.playerCount).toBe(1);
       const refused = await publish(1).expect(422);
       expect(refused.body).toMatchObject({ code: 'draw-published' });
+    });
+
+    it('termine le créneau publié une fois son heure de fin passée, pour le suivi comme pour le téléphone', async () => {
+      // Le 14 mars 2027 à midi : le créneau 1 (9 h – 11 h 30) a fini, pas le créneau 2.
+      await start(undefined, { now: () => ({ date: '2027-03-14', time: TimeOfDay.parse('12:00') }) });
+      await server()
+        .put(apiUrl(conventionEndpoints.update))
+        .send({ name: convention.name, date: '2027-03-14' })
+        .expect(200);
+      const elodie = await gameMaster('Élodie');
+      const neons = await scheduled(elodie.id, 'Néons', 'Table 10');
+      const lune = await linkedPhone('Lune');
+      await signUp(neons, lune);
+      await server()
+        .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+        .expect(204);
+      expect((await tracking()).timeSlots.map(({ state }) => state)).toEqual([
+        'drawing',
+        'sign-ups-open',
+      ]);
+
+      await publish(1).expect(204);
+
+      expect((await tracking()).timeSlots.map(({ state }) => state)).toEqual([
+        'ended',
+        'sign-ups-open',
+      ]);
+      expect((await situationOf(lune)).timeSlots.map(({ state }) => state)).toEqual([
+        'ended',
+        'sign-ups-open',
+      ]);
+      expect((await situationOf(lune)).timeSlots[0]!.drawResult).toEqual({
+        kind: 'assigned',
+        gameId: neons,
+      });
     });
 
     it('déprogramme une partie annulée : le téléphone ne la voit plus, son scénario revient dans la réserve (TI-7)', async () => {

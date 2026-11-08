@@ -1,5 +1,5 @@
 import { buildParticipantRecipients, type Notification } from '../notification.js';
-import type { TimeSlotState } from './convention.js';
+import type { DrawStage } from './convention.js';
 import type { Day } from './day.js';
 import type { Game } from './game.js';
 import type { Participants } from './participants.js';
@@ -25,8 +25,8 @@ export type ScheduleChangeCollaborators = {
   /** Les inscriptions d'après le geste, avec ce qu'elles lisent dans le Programme d'après. */
   nextSignUps: SignUps;
   nextSignUpCollaborators: SignUpCollaborators;
-  /** L'état de chaque créneau avant le geste : un tirage provisoire qu'il efface rouvre le créneau. */
-  getTimeSlotState(timeSlotId: string): TimeSlotState;
+  /** L'avancement du tirage de chaque créneau avant le geste : un tirage provisoire qu'il efface rouvre le créneau. */
+  getDrawStage(timeSlotId: string): DrawStage;
 };
 
 /**
@@ -182,9 +182,9 @@ export class ScheduleChange {
     moreSpecificRecipients: readonly string[],
     collaborators: ScheduleChangeCollaborators,
   ): Notification[] {
-    const { day, date, tables, participants, getTimeSlotState } = collaborators;
+    const { day, date, tables, participants, getDrawStage } = collaborators;
     return this.listGamesOnNewTimeSlots()
-      .filter((game) => getTimeSlotState(game.timeSlotIds[0]!) !== 'published')
+      .filter((game) => getDrawStage(game.timeSlotIds[0]!) !== 'published')
       .flatMap((game): Notification[] => {
         const gameMastersOnTimeSlots = this.listParticipantIdsLeadingOnTimeSlots(
           game.timeSlotIds,
@@ -319,9 +319,9 @@ function getFirstTimeSlotId(game: Game): string {
 /** Le créneau de la partie était en tirage provisoire : le geste en efface le tirage (TI-6). */
 function isTimeSlotDrawingBeforeChange(
   game: Game,
-  { getTimeSlotState }: ScheduleChangeCollaborators,
+  { getDrawStage }: ScheduleChangeCollaborators,
 ): boolean {
-  return getTimeSlotState(getFirstTimeSlotId(game)) === 'drawing';
+  return getDrawStage(getFirstTimeSlotId(game)) === 'drawing';
 }
 
 /** Le participant du MJ de la partie (ADR 0012). */

@@ -1,5 +1,5 @@
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
-import type { TimeSlotState } from './convention.js';
+import type { DrawStage } from './convention.js';
 import type { Day } from './day.js';
 import type { Draw } from './draw.js';
 import { computeDrawTracking, type DrawTracking } from './draw-tracking.js';
@@ -56,7 +56,7 @@ export type ParticipantTracking = {
  */
 export type TimeSlotTracking = {
   timeSlotId: string;
-  state: TimeSlotState;
+  state: DrawStage;
   demand: number;
   capacity: Capacity;
   games: GameTracking[];
@@ -75,7 +75,7 @@ export type SignUpTrackingCollaborators = {
   participants: readonly Participant[];
   /** Dans l'ordre naturel. */
   tables: readonly Table[];
-  getTimeSlotState(timeSlotId: string): TimeSlotState;
+  getDrawStage(timeSlotId: string): DrawStage;
   /** Le tirage du créneau, ou `undefined` tant qu'il n'est pas lancé. */
   findDrawOfTimeSlot(timeSlotId: string): Draw | undefined;
   /** Le participant du MJ, que le tirage d'une partie nomme. */
@@ -94,10 +94,10 @@ export function computeSignUpTracking(
   catalogue: ScenarioCatalogue,
   collaborators: SignUpTrackingCollaborators,
 ): TimeSlotTracking[] {
-  const { day, signUps, signUpCollaborators, getTimeSlotState, computeReserveOfTimeSlot } =
+  const { day, signUps, signUpCollaborators, getDrawStage, computeReserveOfTimeSlot } =
     collaborators;
   return day.timeSlots.map((slot) => {
-    const state = getTimeSlotState(slot.id);
+    const state = getDrawStage(slot.id);
     const draw = collaborators.findDrawOfTimeSlot(slot.id);
     const demand = signUps.countDemandOnTimeSlot(slot.id, signUpCollaborators);
     const games = signUpCollaborators.schedule.listGamesStartingOnTimeSlot(slot.id);
@@ -153,7 +153,7 @@ export function computeSignUpTracking(
  * ouvert qui a des inscriptions : avant, les parties ne paraissent pas menacées dès leur
  * programmation.
  */
-function isTrackingShortfalls(state: TimeSlotState, demand: number): boolean {
+function isTrackingShortfalls(state: DrawStage, demand: number): boolean {
   return state === 'sign-ups-open' && demand > 0;
 }
 

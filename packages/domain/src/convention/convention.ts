@@ -11,7 +11,7 @@ import { buildDrawPublicationNotifications } from './draw-publication.js';
 import { Draws, type DrawCollaborators } from './draws.js';
 import type { Game } from './game.js';
 import type { GameMaster } from './game-master.js';
-import { computeLatestEnd, type LocalMoment } from './local-moment.js';
+import { computeLatestEnd, isReachedAt, type LocalMoment } from './local-moment.js';
 import type { Participant } from './participant.js';
 import { ParticipantWithoutGame } from './participant-without-game.js';
 import { Participants } from './participants.js';
@@ -146,10 +146,23 @@ export class Convention {
 
   /** La convention est terminée dès sa fin. Sans fin, elle ne se termine pas. */
   hasEndedAt(now: LocalMoment): boolean {
-    const end = this.end;
-    if (!end) return false;
-    if (now.date !== end.date) return now.date > end.date;
-    return !now.time.isBefore(end.time);
+    return isReachedAt(this.end, now);
+  }
+
+  /**
+   * Le créneau est terminé : son tirage est publié, et son heure de fin passée, le jour de la
+   * convention. Sans date, jamais.
+   */
+  hasTimeSlotEndedAt(timeSlotId: string, now: LocalMoment): boolean {
+    return (
+      this.getDrawStage(timeSlotId) === 'published' &&
+      isReachedAt(this.day.computeEndOfTimeSlots(this.state.date, [timeSlotId]), now)
+    );
+  }
+
+  /** L'état du créneau à cet instant : l'avancement de son tirage, ou « terminé ». */
+  computeTimeSlotStateAt(timeSlotId: string, now: LocalMoment): TimeSlotState {
+    return this.hasTimeSlotEndedAt(timeSlotId, now) ? 'ended' : this.getDrawStage(timeSlotId);
   }
 
   /** Refuse ce que la convention ouvre au front office, une fois terminée. */
@@ -580,7 +593,7 @@ export class Convention {
       signUpCollaborators: this.buildSignUpCollaborators(this.gameSchedule),
       participants: this.allParticipants.participants,
       tables: this.tables,
-      getTimeSlotState: (timeSlotId) => this.getTimeSlotState(timeSlotId),
+      getDrawStage: (timeSlotId) => this.getDrawStage(timeSlotId),
       findDrawOfTimeSlot: (timeSlotId) => this.allDraws.findDrawOfTimeSlot(timeSlotId),
       findExistingParticipantIdOfGameMaster: (gameMasterId) =>
         this.findExistingParticipantIdOfGameMaster(gameMasterId),
@@ -647,7 +660,7 @@ export class Convention {
   ): Notification[] {
     return this.gameSchedule.games
       .filter((game) => game.scenarioId === scenario.id)
-      .filter((game) => this.getTimeSlotState(game.timeSlotIds[0]!) === 'sign-ups-open')
+      .filter((game) => this.getDrawStage(game.timeSlotIds[0]!) === 'sign-ups-open')
       .flatMap((game) =>
         this.buildOversubscribedNotifications(
           game,
@@ -837,10 +850,10 @@ export class Convention {
 
   /**
    * La situation du participant : ses inscriptions actives, ses inscriptions de secours (IN-4), puis
-   * l'état de chaque créneau, dans l'ordre de la journée, avec la partie qu'y mène son MJ, le
-   * résultat de son tirage, et s'il y est sans partie.
+   * l'état de chaque créneau à cet instant, dans l'ordre de la journée, avec la partie qu'y mène son
+   * MJ, le résultat de son tirage, et s'il y est sans partie.
    */
-  computeParticipantSituation(participantId: string): ParticipantSituation {
+  computeParticipantSituation(participantId: string, now: LocalMoment): ParticipantSituation {
     const participant = this.allParticipants.findExistingParticipantById(participantId);
     const collaborators = this.buildSignUpCollaborators(this.gameSchedule);
     // Le MJ ne voit rien de l'annulation de sa partie avant la publication (§5.7) : sur ses
@@ -857,7 +870,7 @@ export class Convention {
       backupGameIds,
       timeSlots: this.day.timeSlots.map((slot) => ({
         timeSlotId: slot.id,
-        state: this.getTimeSlotState(slot.id),
+        state: this.computeTimeSlotStateAt(slot.id, now),
         ledGameId: this.findGameLedByParticipantOnTimeSlot(participant.id, slot.id)?.id ?? null,
         drawResult: this.computeDrawResult(participant.id, slot.id),
         withoutGame: this.allSignUps.isParticipantWithoutGameOnTimeSlot(
@@ -954,9 +967,9 @@ export class Convention {
     return { schedule, ledGames, playedTimeSlots };
   }
 
-  /** L'état du créneau, que donnent les Tirages. */
-  private getTimeSlotState(timeSlotId: string): TimeSlotState {
-    return this.allDraws.getTimeSlotState(timeSlotId);
+  /** L'avancement du tirage du créneau, que donnent les Tirages. */
+  private getDrawStage(timeSlotId: string): DrawStage {
+    return this.allDraws.getDrawStage(timeSlotId);
   }
 
   /**
@@ -972,7 +985,7 @@ export class Convention {
 
   /** Refuse un geste du participant sur le créneau une fois son tirage lancé (IN-2). */
   private verifySignUpsOpen(timeSlotId: string): void {
-    if (this.getTimeSlotState(timeSlotId) !== 'sign-ups-open') {
+    if (this.getDrawStage(timeSlotId) !== 'sign-ups-open') {
       throw new Refusal('sign-ups-closed', { rank: this.getTimeSlotRank(timeSlotId) });
     }
   }
@@ -1086,7 +1099,7 @@ export class Convention {
       previousSignUpCollaborators,
       nextSignUps,
       nextSignUpCollaborators,
-      getTimeSlotState: (timeSlotId) => previousDraws.getTimeSlotState(timeSlotId),
+      getDrawStage: (timeSlotId) => previousDraws.getDrawStage(timeSlotId),
     });
     this.allSignUps = nextSignUps;
     this.gameSchedule = next;
@@ -1146,10 +1159,17 @@ export type Identification =
   | { verdict: 'confirm'; confirmation: IdentityConfirmation; nickname: string };
 
 /**
- * L'état d'un créneau : inscriptions ouvertes, tirage lancé (inscriptions fermées, résultat
- * provisoire), ou tirage publié (résultat figé).
+ * L'avancement du tirage d'un créneau : inscriptions ouvertes, tirage lancé (inscriptions fermées,
+ * résultat provisoire), ou tirage publié (résultat figé). Il ne change que par un geste, et les
+ * règles des gestes s'en tiennent à lui.
  */
-export type TimeSlotState = 'sign-ups-open' | 'drawing' | 'published';
+export type DrawStage = 'sign-ups-open' | 'drawing' | 'published';
+
+/**
+ * L'état d'un créneau à un instant : l'avancement de son tirage, ou « terminé », une fois son
+ * tirage publié et son heure de fin passée. Les lectures le servent aux fronts.
+ */
+export type TimeSlotState = DrawStage | 'ended';
 
 /**
  * Le résultat publié du tirage d'un créneau pour un participant : sa partie (`assigned`), ou pas de

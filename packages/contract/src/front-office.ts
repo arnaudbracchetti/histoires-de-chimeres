@@ -72,10 +72,15 @@ export type FrontOfficeScheduleDto = {
 };
 
 /**
- * L'état d'un créneau : inscriptions ouvertes, tirage lancé (inscriptions fermées), ou tirage
- * publié (résultat figé).
+ * L'état d'un créneau : inscriptions ouvertes, tirage lancé (inscriptions fermées), tirage publié
+ * (résultat figé), ou terminé (tirage publié et heure de fin passée).
  */
-export type TimeSlotStateDto = 'sign-ups-open' | 'drawing' | 'published';
+export type TimeSlotStateDto = 'sign-ups-open' | 'drawing' | 'published' | 'ended';
+
+/** Le tirage du créneau est publié : le créneau est publié, ou terminé. */
+export function hasPublishedDraw(state: TimeSlotStateDto): boolean {
+  return state === 'published' || state === 'ended';
+}
 
 /**
  * Le résultat publié du tirage d'un créneau pour le pseudo : sa partie, ou pas de place. Pour un MJ,

@@ -9,6 +9,7 @@ import { ParticipantRiskPill } from './participant-risk-pill';
 const CLOSED: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, string> = {
   drawing: fr`Tirage en cours : les inscriptions sont fermées.`,
   published: fr`Tirage publié : les inscriptions sont fermées.`,
+  ended: fr`Tirage publié : les inscriptions sont fermées.`,
 };
 
 /**

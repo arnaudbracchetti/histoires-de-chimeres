@@ -1,5 +1,6 @@
 import {
   frontOfficeUrls,
+  hasPublishedDraw,
   type FrontOfficeGameDto,
   type FrontOfficeScheduleDto,
   type ParticipantSituationDto,
@@ -50,7 +51,8 @@ function publishedDraws(before: Reading, after: Reading): ChangeNotice[] {
   return after.situation.timeSlots.flatMap(
     ({ timeSlotId, state, drawResult, ledGameId, withoutGame }) => {
       const previous = before.situation.timeSlots.find((slot) => slot.timeSlotId === timeSlotId);
-      if (state !== 'published' || !drawResult || previous?.state === 'published') return [];
+      if (!hasPublishedDraw(state) || !drawResult) return [];
+      if (previous && hasPublishedDraw(previous.state)) return [];
       const tablesWithSeats = tableNamesOf(gamesWithSeatsOn(timeSlotId, schedule));
       if (drawResult.kind === 'unassigned') {
         const rank = schedule.timeSlots.find(({ id }) => id === timeSlotId)?.rank ?? 0;
@@ -95,7 +97,8 @@ function ledGameChanges(before: Reading, after: Reading): ChangeNotice[] {
       if (!game) return [];
       const ranks = ranksOf(before.schedule, game);
       // Une partie annulée quitte le programme à la publication de son créneau (TI-7).
-      if (stateOf(game.timeSlotIds[0]!, after) === 'published') {
+      const state = stateOf(game.timeSlotIds[0]!, after);
+      if (state && hasPublishedDraw(state)) {
         return [
           buildChangeNotice(buildCancelledAlertText(ranks, game.title), frontOfficeUrls.home()),
         ];

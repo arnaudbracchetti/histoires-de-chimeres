@@ -28,6 +28,7 @@ export {
 export {
   PRESENCE_CODE_PARAM,
   frontOfficeEndpoints,
+  hasPublishedDraw,
   type FrontOfficeDto,
   type FrontOfficeGameDto,
   type FrontOfficeScheduleDto,

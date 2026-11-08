@@ -10,6 +10,7 @@ export {
   type MovePlacement,
   type ParticipantSituation,
   type Placement,
+  type DrawStage,
   type TimeSlotState,
   type UnscheduleVerdict,
   type WithdrawalVerdict,

@@ -13,8 +13,11 @@ L'événement dans son ensemble, sur une journée, découpé en créneaux. Elle 
 Plage horaire de la journée, habituellement de 2h30, pendant laquelle se jouent les parties en parallèle. Les créneaux ne se chevauchent pas ; deux créneaux sont consécutifs quand aucun autre ne se place entre eux, même s'ils sont séparés par une pause (repas, etc.).
 _Avoid_: Session, tour, slot (seul)
 
+**Avancement du tirage** · `DrawStage`:
+Où en est le tirage d'un créneau : inscriptions ouvertes, tirage lancé (résultat provisoire) ou tirage publié (résultat figé). Il ne change que par un geste ; les règles des gestes s'en tiennent à lui. L'état d'un créneau (`TimeSlotState`) y ajoute « terminé ».
+
 **Créneau terminé** · `hasEnded`:
-Créneau dont l'heure de fin est passée.
+Créneau dont le tirage est publié et l'heure de fin passée. Le serveur le dit, à chaque lecture. Un créneau dont l'heure de fin est passée sans tirage publié n'est pas terminé.
 _Avoid_: Clos, fini
 
 **Journée** · `Day`:
