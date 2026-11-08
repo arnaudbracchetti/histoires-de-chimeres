@@ -47,6 +47,8 @@ import { TwoSlotBadge } from './two-slot-badge';
           'thumb meta badge'
           'foot foot foot';
         grid-template-columns: 44px minmax(0, 1fr) auto;
+        /* Une carte étirée par sa liste garde son pied en bas. */
+        grid-template-rows: auto auto 1fr;
         gap: var(--space-xs) var(--space-s);
         align-items: center;
         padding: var(--space-s);
@@ -92,6 +94,7 @@ import { TwoSlotBadge } from './two-slot-badge';
         flex-wrap: wrap;
         gap: var(--space-xs) var(--space-s);
         align-items: center;
+        align-self: end;
       }
 
       .action {

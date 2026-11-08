@@ -73,11 +73,16 @@ type ReserveCard = { scenario: ReserveScenarioDto; refusal: VerdictRefusalDto | 
       ul {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+        /* Toutes les cartes ont la hauteur de la plus haute, quel que soit leur texte. */
+        grid-auto-rows: 1fr;
         gap: var(--space-s);
-        align-items: start;
         margin: 0;
         padding: 0;
         list-style: none;
+      }
+
+      li {
+        display: grid;
       }
     }
   `,
