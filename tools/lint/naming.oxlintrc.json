@@ -1,0 +1,7 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  "categories": { "correctness": "off" },
+  "jsPlugins": ["./naming-plugin.js"],
+  "ignorePatterns": ["**/generated/**", "**/dist/**", "**/node_modules/**"],
+  "rules": { "chimeres/no-terse-name": "warn" }
+}

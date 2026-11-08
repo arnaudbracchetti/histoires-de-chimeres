@@ -15,14 +15,16 @@
     "dev:db": "docker compose up -d postgres",
     "build": "pnpm -r build",
     "build:packages": "tsc -b",
-    "lint": "pnpm -r lint",
+    "lint": "pnpm -r lint && pnpm lint:naming",
+    "lint:naming": "oxlint -c tools/lint/naming.oxlintrc.json apps packages",
     "test": "pnpm -r test",
     "format": "prettier --write .",
     "prisma:migrate": "pnpm --filter api exec prisma migrate dev",
     "prisma:seed": "pnpm --filter api exec prisma db seed",
-    "test:e2e": "pnpm build:packages && pnpm --filter e2e test:e2e"
+    "test:e2e": "pnpm build:packages && docker compose rm -sf app-e2e && pnpm --filter e2e test:e2e"
   },
   "devDependencies": {
+    "oxlint": "catalog:",
     "prettier": "^3.8.1",
     "typescript": "catalog:"
   }

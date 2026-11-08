@@ -30,6 +30,8 @@ type rend évident.
 - Jamais `after…` ou `get…After…` pour une méthode qui modifie l'objet : elle prend le verbe du geste.
 - Pas de nom laconique (`with`, `without`, `renamed`, `movedTo`, `of`). Ne pas recopier un nom
   laconique existant par cohérence : le signaler et proposer un nom descriptif.
+  `pnpm lint` les signale (`pnpm lint:naming`, plugin `tools/lint/naming-plugin.js`), en
+  avertissement tant que le code existant en garde.
 - Quand on touche un fichier, on corrige aussi ses noms laconiques.
 - Un appel dont on jette le résultat pour vérifier s'appelle `verify…`.
 - « Mener » se dit `lead` partout (`isGameMasterLeadingOnTimeSlot`, code de refus
@@ -44,6 +46,9 @@ type rend évident.
   l'agrégat, elle reçoit le collaborateur entier et l'interroge elle-même (ADR 0005).
 - Le domaine refuse par une exception typée (`Refusal` : un code et des paramètres, sans texte).
   Le message français est écrit par l'API (ADR 0008).
+- Un front affiche les états et les verdicts que l'API calcule. Il ne combine pas deux données de
+  l'API, ni une donnée et son horloge, pour en tirer un état métier : l'état manque ? L'API le
+  calcule, dans le domaine, et le contrat le porte (exemple : « Terminé » d'un créneau).
 - Pas de code en double entre le back office et le front office : toute logique commune va dans
   `packages/design` (sans framework) ou dans `contract` (voir `CLAUDE.md`).
 
