@@ -1,12 +1,31 @@
 import { readFile } from 'node:fs/promises';
+import { availableParallelism } from 'node:os';
 import { join } from 'node:path';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 
-/** Base dédiée à la suite `test:e2e`, distincte de la base de dev. */
-export const testDatabaseUrl =
-  process.env['TEST_DATABASE_URL'] ??
-  'postgresql://chimeres:chimeres@localhost:5435/chimeres_test?schema=public';
+/**
+ * Nombre de workers de la suite `test:e2e`, un par cœur (`TEST_WORKERS` pour en changer). Chacun a
+ * sa base : ses fichiers s'exécutent en parallèle de ceux des autres, et en série entre eux. Au-delà
+ * d'un worker par cœur, l'API et PostgreSQL se disputent le processeur et les tests expirent.
+ */
+export const testWorkerCount = Number(process.env['TEST_WORKERS'] ?? availableParallelism());
+
+/**
+ * Base du worker `worker` (1 à `testWorkerCount`) : celle de `TEST_DATABASE_URL`, ou
+ * `chimeres_test`, suivie de son numéro. Toujours distincte de la base de dev.
+ */
+export function buildTestDatabaseUrl(worker: number): string {
+  const url = new URL(
+    process.env['TEST_DATABASE_URL'] ??
+      'postgresql://chimeres:chimeres@localhost:5435/chimeres_test?schema=public',
+  );
+  url.pathname = `${url.pathname}_${worker}`;
+  return url.toString();
+}
+
+/** Base du worker courant. Vitest numérote ses workers de 1 à `maxWorkers` (`VITEST_POOL_ID`). */
+export const testDatabaseUrl = buildTestDatabaseUrl(Number(process.env['VITEST_POOL_ID'] ?? 1));
 
 const apiDir = join(import.meta.dirname, '..');
 const resetScripts = [
