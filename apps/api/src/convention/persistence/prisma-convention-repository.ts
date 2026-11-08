@@ -169,48 +169,61 @@ export class PrismaConventionRepository implements ConventionRepository {
       });
       if (count === 0) throw new StaleConventionError();
 
-      await tx.signUp.deleteMany({
-        where: {
-          OR: signUps.removed.map(({ participantId, gameId }) => ({ participantId, gameId })),
-        },
-      });
-      await tx.participantWithoutGame.deleteMany({
-        where: {
-          OR: participantsWithoutGame.removed.map(({ participantId, timeSlotId }) => ({
-            participantId,
-            timeSlotId,
-          })),
-        },
-      });
+      await deleteRowsIfAny(signUps.removed, (rows) =>
+        tx.signUp.deleteMany({
+          where: { OR: rows.map(({ participantId, gameId }) => ({ participantId, gameId })) },
+        }),
+      );
+      await deleteRowsIfAny(participantsWithoutGame.removed, (rows) =>
+        tx.participantWithoutGame.deleteMany({
+          where: {
+            OR: rows.map(({ participantId, timeSlotId }) => ({ participantId, timeSlotId })),
+          },
+        }),
+      );
       // Une affectation retient sa partie (RESTRICT), et un tirage son créneau : ils partent avant.
-      await tx.drawAssignment.deleteMany({
-        where: {
-          OR: drawAssignments.removed.map(({ timeSlotId, participantId }) => ({
-            timeSlotId,
-            participantId,
-          })),
-        },
-      });
-      await tx.cancelledGame.deleteMany({
-        where: { gameId: { in: cancelledGames.removed.map(({ gameId }) => gameId) } },
-      });
-      await tx.draw.deleteMany({
-        where: { timeSlotId: { in: draws.removed.map(({ timeSlotId }) => timeSlotId) } },
-      });
-      await tx.gameTimeSlot.deleteMany({ where: { gameId: ids(moved) } });
-      await tx.game.deleteMany({ where: { id: ids(unscheduled) } });
-      await tx.availability.deleteMany({
-        where: {
-          OR: availabilities.removed.map(({ gameMasterId, timeSlotId }) => ({
-            gameMasterId,
-            timeSlotId,
-          })),
-        },
-      });
-      await tx.timeSlot.deleteMany({ where: { id: ids(timeSlots.removed) } });
-      await tx.table.deleteMany({ where: { id: ids(tables.removed) } });
-      await tx.gameMaster.deleteMany({ where: { id: ids(gameMasters.removed) } });
-      await tx.participant.deleteMany({ where: { id: ids(participants.removed) } });
+      await deleteRowsIfAny(drawAssignments.removed, (rows) =>
+        tx.drawAssignment.deleteMany({
+          where: {
+            OR: rows.map(({ timeSlotId, participantId }) => ({ timeSlotId, participantId })),
+          },
+        }),
+      );
+      await deleteRowsIfAny(cancelledGames.removed, (rows) =>
+        tx.cancelledGame.deleteMany({
+          where: { gameId: { in: rows.map(({ gameId }) => gameId) } },
+        }),
+      );
+      await deleteRowsIfAny(draws.removed, (rows) =>
+        tx.draw.deleteMany({
+          where: { timeSlotId: { in: rows.map(({ timeSlotId }) => timeSlotId) } },
+        }),
+      );
+      await deleteRowsIfAny(moved, (rows) =>
+        tx.gameTimeSlot.deleteMany({ where: { gameId: ids(rows) } }),
+      );
+      await deleteRowsIfAny(unscheduled, (rows) =>
+        tx.game.deleteMany({ where: { id: ids(rows) } }),
+      );
+      await deleteRowsIfAny(availabilities.removed, (rows) =>
+        tx.availability.deleteMany({
+          where: {
+            OR: rows.map(({ gameMasterId, timeSlotId }) => ({ gameMasterId, timeSlotId })),
+          },
+        }),
+      );
+      await deleteRowsIfAny(timeSlots.removed, (rows) =>
+        tx.timeSlot.deleteMany({ where: { id: ids(rows) } }),
+      );
+      await deleteRowsIfAny(tables.removed, (rows) =>
+        tx.table.deleteMany({ where: { id: ids(rows) } }),
+      );
+      await deleteRowsIfAny(gameMasters.removed, (rows) =>
+        tx.gameMaster.deleteMany({ where: { id: ids(rows) } }),
+      );
+      await deleteRowsIfAny(participants.removed, (rows) =>
+        tx.participant.deleteMany({ where: { id: ids(rows) } }),
+      );
 
       const conventionId = convention.id;
       await tx.timeSlot.createMany({
@@ -257,4 +270,15 @@ export class PrismaConventionRepository implements ConventionRepository {
       await tx.cancelledGame.createMany({ data: cancelledGames.added });
     });
   }
+}
+
+/**
+ * Prisma envoie un `DELETE … WHERE 1=0` même pour une liste vide : un aller-retour vers la base
+ * pour rien, à chaque sauvegarde. Sans ligne à supprimer, aucune requête ne part.
+ */
+async function deleteRowsIfAny<Row>(
+  rows: Row[],
+  deleteRows: (rows: Row[]) => Promise<unknown>,
+): Promise<void> {
+  if (rows.length > 0) await deleteRows(rows);
 }
