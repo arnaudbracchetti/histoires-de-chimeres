@@ -1,5 +1,10 @@
-import { Body, Controller, Get, Inject, Param, Post, Query } from '@nestjs/common';
-import { AddParticipant, ReadParticipantList, ReadParticipantSheet } from '@chimeres/application';
+import { Body, Controller, Get, Inject, Param, Post, Put, Query } from '@nestjs/common';
+import {
+  AddParticipant,
+  ReadParticipantList,
+  ReadParticipantSheet,
+  RenameParticipant,
+} from '@chimeres/application';
 import {
   participantEndpoints,
   type ParticipantListQuery,
@@ -17,6 +22,7 @@ export class ParticipantController {
     @Inject(ReadParticipantList) private readonly readParticipantList: ReadParticipantList,
     @Inject(ReadParticipantSheet) private readonly readParticipantSheet: ReadParticipantSheet,
     @Inject(AddParticipant) private readonly addParticipant: AddParticipant,
+    @Inject(RenameParticipant) private readonly renameParticipant: RenameParticipant,
   ) {}
 
   @Get(participantEndpoints.list.path)
@@ -39,6 +45,16 @@ export class ParticipantController {
     @Body(new ZodPipe(participantNicknameBodySchema)) body: ParticipantNicknameBody,
   ): Promise<ResponseOf<typeof participantEndpoints.add>> {
     return this.readSheetOrRefuse(await this.addParticipant.execute(body));
+  }
+
+  /** Rend la fiche relue. */
+  @Put(participantEndpoints.rename.path)
+  async rename(
+    @Param('participantId') participantId: string,
+    @Body(new ZodPipe(participantNicknameBodySchema)) body: ParticipantNicknameBody,
+  ): Promise<ResponseOf<typeof participantEndpoints.rename>> {
+    await this.renameParticipant.execute(participantId, body);
+    return this.readSheetOrRefuse(participantId);
   }
 
   private async readSheetOrRefuse(participantId: string) {

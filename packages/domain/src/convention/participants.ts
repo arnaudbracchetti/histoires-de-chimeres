@@ -138,8 +138,7 @@ export class Participants {
     nickname: string,
   ): Participants {
     const participant = new Participant(participantId, ComparableName.createFromText(nickname));
-    const gameMaster = this.allGameMasters.findItemWithSameName(participant.nickname);
-    if (gameMaster) throw GAME_MASTER_NICKNAME_RULES.refuseTakenName(gameMaster);
+    this.verifyNicknameNotTakenByOtherGameMaster(participant);
     return this.getParticipantsAfterAddingParticipant(participant);
   }
 
@@ -165,17 +164,35 @@ export class Participants {
   }
 
   /**
-   * Les participants après le changement de pseudo d'un MJ, aux mêmes règles qu'à sa création :
-   * celui de son participant, qui garde son identifiant (PR-12).
+   * Les participants après le renommage d'un participant, MJ compris, à tout moment (ID-13). Le
+   * nouveau pseudo est obligatoire, borné et unique, parmi les MJ comme parmi les participants
+   * (ID-4, ID-7) ; le même pseudo, à la casse, aux accents ou aux espaces près, est permis. Un autre
+   * MJ donne son motif au refus. Le participant garde son identifiant, donc ses liens, ses
+   * inscriptions et ses résultats ; l'ancien pseudo redevient libre.
+   */
+  getParticipantsAfterRenamingParticipant(participantId: string, nickname: string): Participants {
+    // Un participant inconnu est refusé comme tel, avant tout pseudo pris.
+    this.allParticipants.verifyItemExists(participantId);
+    const renamed = new Participant(participantId, ComparableName.createFromText(nickname));
+    this.verifyNicknameNotTakenByOtherGameMaster(renamed);
+    return new Participants(
+      this.allParticipants.getCollectionAfterReplacingItem(renamed),
+      this.allGameMasters.getCollectionAfterReplacingEachItem((gameMaster) =>
+        gameMaster.participant.id === participantId
+          ? gameMaster.getGameMasterAfterChangingNickname(renamed.nickname)
+          : gameMaster,
+      ),
+    );
+  }
+
+  /**
+   * Les participants après le changement de pseudo d'un MJ : le renommage de son participant, à la
+   * même règle (PR-12, ID-13).
    */
   getParticipantsAfterChangingGameMasterNickname(id: string, nickname: string): Participants {
-    const renamed = this.allGameMasters
-      .findExistingItemById(id)
-      .getGameMasterAfterChangingNickname(ComparableName.createFromText(nickname));
-    const gameMasters = this.allGameMasters.getCollectionAfterReplacingItem(renamed);
-    return new Participants(
-      this.allParticipants.getCollectionAfterReplacingItem(renamed.participant),
-      gameMasters,
+    return this.getParticipantsAfterRenamingParticipant(
+      this.allGameMasters.findExistingItemById(id).participant.id,
+      nickname,
     );
   }
 
@@ -257,6 +274,17 @@ export class Participants {
     );
   }
 
+  /**
+   * Refuse le pseudo de `participant` s'il est celui d'un autre MJ que le sien : vérifié avant celui
+   * des participants, ce MJ donne son motif au refus (ID-4).
+   */
+  private verifyNicknameNotTakenByOtherGameMaster(participant: Participant): void {
+    const namesake = this.allGameMasters.findItemWithSameName(participant.nickname);
+    if (namesake && namesake.participant.id !== participant.id) {
+      throw GAME_MASTER_NICKNAME_RULES.refuseTakenName(namesake);
+    }
+  }
+
   /** Le participant a un rôle de MJ (ADR 0012). */
   private hasGameMasterRole(participant: Participant): boolean {
     return this.findGameMasterOfParticipant(participant.id) !== undefined;
@@ -296,8 +324,8 @@ const GAME_MASTER_NICKNAME_RULES: NamingRules<GameMaster> = {
 /**
  * Le pseudo d'un participant, MJ compris : obligatoire, borné, unique parmi les participants (ID-1,
  * ID-4, ID-7). `computeIdentification()` relie un pseudo déjà pris au lieu de le refuser ; seuls
- * la création d'un pseudo (ID-12), l'ajout et le renommage d'un MJ le refusent, une fois écarté un
- * autre MJ (PR-12).
+ * la création d'un pseudo (ID-12), l'ajout d'un MJ et le renommage (ID-13) le refusent, une fois
+ * écarté un autre MJ (PR-12).
  */
 const PARTICIPANT_NICKNAME_RULES: NamingRules<Participant> = {
   getName: (participant) => participant.nickname,

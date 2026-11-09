@@ -363,4 +363,68 @@ describe('Liste « Participants » (ID-5)', () => {
       expect(sheet.linkedPhones).toHaveLength(1);
     });
   });
+
+  describe('Renommer un pseudo (ID-13)', () => {
+    const add = async (nickname: string) =>
+      (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
+        .body as ParticipantSheetDto;
+    const rename = (participantId: string, nickname: string) =>
+      server().put(apiUrl(participantEndpoints.rename, { participantId })).send({ nickname });
+
+    it('renomme le pseudo et rend sa fiche ; un téléphone relié lit le nouveau nom', async () => {
+      const elodie = await add('Élodie');
+      const cookie = await linkedPhone('elodie', 'participant');
+
+      const response = await rename(elodie.id, '  Céleste ').expect(200);
+
+      expect(response.body).toMatchObject({ id: elodie.id, nickname: 'Céleste' });
+      const phone = await server()
+        .get(apiUrl(linkedPhoneEndpoints.read))
+        .set('Cookie', cookie)
+        .expect(200);
+      expect(phone.body).toMatchObject({ nickname: 'Céleste' });
+    });
+
+    it('libère l’ancien nom : le saisir sur un téléphone crée un nouveau pseudo', async () => {
+      const elodie = await add('Élodie');
+      await rename(elodie.id, 'Céleste').expect(200);
+
+      const response = await server()
+        .post(apiUrl(linkedPhoneEndpoints.link))
+        .send({ presenceCode: convention.presenceCode, nickname: 'Élodie', confirmation: null })
+        .expect(200);
+
+      expect(response.body).toEqual({ status: 'linked', nickname: 'Élodie' });
+      expect(nicknames(await list())).toEqual(['Céleste', 'Élodie']);
+    });
+
+    it('refuse le pseudo d’un autre : 422, rattaché au pseudo, avec son identifiant', async () => {
+      const elodie = await add('Élodie');
+      const lune = await add('Lune');
+
+      const response = await rename(lune.id, 'ELODIE').expect(422);
+
+      expect(response.body).toMatchObject({
+        code: 'nickname-taken-by-participant',
+        params: { nickname: 'Élodie', participantId: elodie.id },
+        errors: [{ field: 'nickname', code: 'nickname-taken-by-participant' }],
+      });
+    });
+
+    it('renomme le pseudo d’un MJ, que sa fiche de MJ reprend', async () => {
+      const added = await gameMaster('Kaïros');
+      const [kairos] = await list();
+
+      await rename(kairos!.id, 'Brann').expect(200);
+
+      const sheet = await server()
+        .get(apiUrl(gameMasterEndpoints.read, { gameMasterId: added.id }))
+        .expect(200);
+      expect(sheet.body).toMatchObject({ nickname: 'Brann' });
+    });
+
+    it('rend 404 pour un pseudo inconnu', async () => {
+      await rename('inconnu', 'Alix').expect(404);
+    });
+  });
 });

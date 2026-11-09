@@ -219,6 +219,19 @@ export class Convention {
     );
   }
 
+  /**
+   * Renomme un pseudo, de participant ou de MJ, à tout moment, même après la publication (ID-13) :
+   * même règle qu'à sa création (ID-4, ID-7), le même pseudo autrement écrit compris. Le participant
+   * garde ses liens, ses inscriptions et ses résultats ; l'ancien pseudo redevient libre. Personne
+   * n'est notifié (NO-4).
+   */
+  renameParticipant(participantId: string, nickname: string): void {
+    this.allParticipants = this.allParticipants.getParticipantsAfterRenamingParticipant(
+      participantId,
+      nickname,
+    );
+  }
+
   /** Les participants, MJ compris, dans l'ordre naturel de leur pseudo. */
   get participants(): readonly Participant[] {
     return this.allParticipants.participants;
@@ -355,8 +368,8 @@ export class Convention {
   }
 
   /**
-   * Change le pseudo d'un MJ, à tout moment, aux mêmes règles qu'à sa création : celui de son
-   * participant, dont les téléphones restent reliés (PR-12).
+   * Change le pseudo d'un MJ : celui de son participant, renommé par la règle de
+   * `renameParticipant()` (PR-12, ID-13).
    */
   changeGameMasterNickname(id: string, nickname: string): void {
     this.allParticipants = this.allParticipants.getParticipantsAfterChangingGameMasterNickname(

@@ -4,6 +4,7 @@ import {
   AddParticipant,
   ReadParticipantList,
   ReadParticipantSheet,
+  RenameParticipant,
   type Clock,
   type ConventionRepository,
   type ParticipantReader,
@@ -31,6 +32,11 @@ import { PrismaParticipantReader } from './persistence/prisma-participant-reader
     {
       provide: AddParticipant,
       useFactory: (repository: ConventionRepository) => new AddParticipant(repository, randomUUID),
+      inject: [CONVENTION_REPOSITORY],
+    },
+    {
+      provide: RenameParticipant,
+      useFactory: (repository: ConventionRepository) => new RenameParticipant(repository),
       inject: [CONVENTION_REPOSITORY],
     },
     {

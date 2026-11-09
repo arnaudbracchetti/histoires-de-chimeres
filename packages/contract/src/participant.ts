@@ -79,7 +79,7 @@ export type ParticipantSheetDto = {
   linkedPhones: ParticipantLinkedPhoneDto[];
 };
 
-/** Le pseudo d'un participant. Corps de la création par un Organisateur (ID-12). */
+/** Le pseudo d'un participant. Corps de la création (ID-12) et du renommage (ID-13). */
 export type ParticipantNicknameBody = {
   nickname: string;
 };
@@ -87,7 +87,8 @@ export type ParticipantNicknameBody = {
 /**
  * Les pseudos, de participant et de MJ, gérés par un Organisateur (ID-5). La liste les rend dans
  * l'ordre naturel : le front garde cet ordre. `read` : la fiche d'un pseudo, ou 404. `add` crée un
- * pseudo de participant (ID-12) et rend sa fiche.
+ * pseudo de participant (ID-12) et rend sa fiche. `rename` renomme un pseudo, de participant ou de
+ * MJ (ID-13), et rend sa fiche.
  */
 export const participantEndpoints = {
   list: endpoint<ParticipantListEntryDto[], never, never, ParticipantListQuery>(
@@ -99,4 +100,8 @@ export const participantEndpoints = {
     'participants/:participantId',
   ),
   add: endpoint<ParticipantSheetDto, never, ParticipantNicknameBody>('POST', 'participants'),
+  rename: endpoint<ParticipantSheetDto, { participantId: string }, ParticipantNicknameBody>(
+    'PUT',
+    'participants/:participantId',
+  ),
 };

@@ -1,32 +1,81 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  Injector,
+  input,
+  signal,
+} from '@angular/core';
 import { Tab, TabContent, TabList, TabPanel, Tabs } from '@angular/aria/tabs';
 import { participantEndpoints } from '@chimeres/contract';
 import { formatCount, formatTimeOfDay, fr, timeSlotLabel } from '@chimeres/design';
+import { injectApiCall } from '../api-call';
 import { apiResource, currentValue } from '../api-resource';
 import { ConventionStore } from '../convention/convention-store';
+import { NicknameEditor } from '../forms/nickname-editor';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
 import { TIME_SLOT_STATES, TimeSlotState } from '../time-slots/time-slot-state';
+import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { describeParticipantResult } from './participant-result';
 
 type TabValue = 'program' | 'phones';
 
 /**
- * Fiche d'un pseudo, de participant ou de MJ (ID-5, docs/design/patterns.md, Fiche d'un pseudo),
- * en lecture : « Participants › pseudo », « Participant » ou « MJ » dessous, puis deux onglets de
- * classeur. « Programme » : la frise des créneaux, un rond à la couleur et à l'icône de l'état de
- * chacun, et le résultat du pseudo, tirage provisoire compris. « Téléphones » : l'heure de liaison
- * de chacun.
+ * Fiche d'un pseudo, de participant ou de MJ (ID-5, docs/design/patterns.md, Fiche d'un pseudo) :
+ * « Participants › pseudo », que le crayon renomme en place (ID-13), « Participant » ou « MJ »
+ * dessous, puis deux onglets de classeur. « Programme » : la frise des créneaux, un rond à la
+ * couleur et à l'icône de l'état de chacun, et le résultat du pseudo, tirage provisoire compris.
+ * « Téléphones » : l'heure de liaison de chacun.
  */
 @Component({
   selector: 'app-participant-page',
-  imports: [Icon, Loadable, PageHeader, Tab, TabContent, TabList, TabPanel, Tabs, TimeSlotState],
+  imports: [
+    Button,
+    Icon,
+    Loadable,
+    NicknameEditor,
+    PageHeader,
+    Tab,
+    TabContent,
+    TabList,
+    TabPanel,
+    Tabs,
+    TimeSlotState,
+  ],
   template: `
     <app-page-header
       [title]="sheet()?.nickname ?? 'Fiche du pseudo'"
       [trail]="[{ label: 'Participants', link: '/participants' }]"
+      [titleHidden]="editing()"
     >
+      <ng-container ngProjectAs="[appPageTitle]">
+        @if (sheet(); as sheet) {
+          @if (editing()) {
+            <app-nickname-editor
+              [owner]="sheet.gameMaster ? 'game-master' : 'participant'"
+              [nickname]="sheet.nickname"
+              [rename]="rename"
+              (saved)="closeEditor()"
+              (cancelled)="closeEditor()"
+            />
+          } @else {
+            <button
+              type="button"
+              appButton="icon"
+              class="edit-nickname"
+              aria-label="Modifier le pseudo"
+              title="Modifier le pseudo"
+              (click)="editing.set(true)"
+            >
+              <app-icon name="pencil" />
+            </button>
+          }
+        }
+      </ng-container>
       <p appPageSubtitle class="role">
         @if (sheet(); as sheet) {
           {{ sheet.gameMaster ? 'MJ' : 'Participant' }}
@@ -245,7 +294,30 @@ export class ParticipantPage {
   protected readonly states = TIME_SLOT_STATES;
   protected readonly formatCount = formatCount;
 
+  protected readonly editing = signal(false);
+
   private readonly store = inject(ConventionStore);
+  private readonly apiCall = injectApiCall();
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  private readonly injector = inject(Injector);
+
+  /** Renomme le pseudo (ID-13), et garde la fiche relue. */
+  protected readonly rename = async (nickname: string): Promise<void> => {
+    this.resource.set(
+      await this.apiCall(participantEndpoints.rename, {
+        params: { participantId: this.id() },
+        body: { nickname },
+      }),
+    );
+  };
+
+  /** Ferme le champ du pseudo ; le focus revient au crayon. */
+  protected closeEditor(): void {
+    this.editing.set(false);
+    afterNextRender(() => this.host.querySelector<HTMLElement>('.edit-nickname')?.focus(), {
+      injector: this.injector,
+    });
+  }
 
   /** Un créneau par ligne : son libellé, avec ses heures si la convention est lue, et son résultat. */
   protected readonly rows = computed(() => {

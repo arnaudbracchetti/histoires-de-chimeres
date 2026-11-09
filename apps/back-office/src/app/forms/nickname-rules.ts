@@ -9,16 +9,20 @@ const REQUIRED_MESSAGES = {
   participant: 'Donne un pseudo.',
 } as const;
 
+/** Celui qui porte le pseudo. */
+export type NicknameOwner = keyof typeof REQUIRED_MESSAGES;
+
 /**
  * Erreurs locales d'un pseudo, de MJ ou de participant (docs/design/patterns.md, Validation). Le
- * pseudo déjà pris (ID-7) vient de l'API.
+ * pseudo déjà pris (ID-7) vient de l'API. `owner` peut être lu à la validation : une entrée de
+ * composant.
  */
 export function nicknameRules(
   path: SchemaPath<string>,
-  owner: keyof typeof REQUIRED_MESSAGES,
+  owner: NicknameOwner | (() => NicknameOwner),
 ): void {
   textRules(path, NICKNAME_MAX_LENGTH, {
-    required: REQUIRED_MESSAGES[owner],
+    required: () => REQUIRED_MESSAGES[typeof owner === 'function' ? owner() : owner],
     tooLong: fr`Un pseudo fait ${countOf(NICKNAME_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-le.`,
   });
 }

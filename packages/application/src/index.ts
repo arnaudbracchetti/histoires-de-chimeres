@@ -54,6 +54,7 @@ export { ReadParticipantList } from './participant/read-participant-list.js';
 export { ReadParticipantSheet } from './participant/read-participant-sheet.js';
 export { AddGameMaster } from './game-master/add-game-master.js';
 export { AddParticipant } from './participant/add-participant.js';
+export { RenameParticipant } from './participant/rename-participant.js';
 export { DeclareAvailability } from './game-master/declare-availability.js';
 export type { GameMasterReader } from './game-master/game-master-reader.js';
 export { ReadGameMaster, type GameMasterSheet } from './game-master/read-game-master.js';

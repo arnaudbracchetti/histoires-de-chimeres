@@ -189,3 +189,35 @@ test('un pseudo pris est refusé sous le champ, sans rien décaler, avec « Voir
 
   await expect(page.getByRole('heading', { level: 1, name: 'Élodie' })).toBeVisible();
 });
+
+test('l’Organisateur renomme un pseudo en place, même après la publication, et un nom pris est refusé avec « Voir sa fiche » (ID-13)', async ({
+  page,
+  baseURL,
+}) => {
+  const timeSlotId = await prepare(page, baseURL!);
+  for (const endpoint of [drawEndpoints.launch, drawEndpoints.publish]) {
+    await expectOk(page.request.post(apiUrl(endpoint, { timeSlotId })));
+  }
+  await page.goto('/gestion/participants');
+  await page.getByRole('link', { name: 'Élodie' }).click();
+
+  await page.getByRole('button', { name: 'Modifier le pseudo' }).click();
+  const field = page.getByRole('textbox', { name: 'Pseudo du participant' });
+  await expect(field).toBeFocused();
+  await field.fill('sven');
+  await page.keyboard.press('Enter');
+  await expect(field).toHaveAccessibleDescription(/^Le participant «\s*Sven\s*»/);
+  await expect(page.getByRole('link', { name: 'Voir sa fiche' })).toHaveAttribute(
+    'href',
+    /\/gestion\/participants\/.+/,
+  );
+
+  await field.fill('Élodie la Rouge');
+  await page.keyboard.press('Enter');
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Élodie la Rouge' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Modifier le pseudo' })).toBeFocused();
+  await expect(page.getByRole('tabpanel')).toContainText('Table Griffon');
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'Élodie la Rouge' })).toBeVisible();
+});

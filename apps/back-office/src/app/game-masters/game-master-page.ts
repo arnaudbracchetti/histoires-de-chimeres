@@ -12,9 +12,9 @@ import { gameMasterEndpoints, type GameMasterSheetDto } from '@chimeres/contract
 import { injectApiCall } from '../api-call';
 import { apiResource, currentValue } from '../api-resource';
 import { ConventionStore } from '../convention/convention-store';
+import { NicknameEditor } from '../forms/nickname-editor';
 import { availabilitiesConsequences } from './availabilities-consequences';
 import { AvailabilityTimeline } from './availability-timeline';
-import { NicknameEditor } from './nickname-editor';
 import { formatScenarioDuration } from '../scenarios/scenario-format';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
@@ -58,8 +58,10 @@ const MENU: readonly MoreMenuItem[] = [{ value: 'remove', label: 'Supprimer le M
         @if (gameMaster(); as gameMaster) {
           @if (editing()) {
             <app-nickname-editor
-              [gameMaster]="gameMaster"
-              (saved)="onRenamed($event)"
+              owner="game-master"
+              [nickname]="gameMaster.nickname"
+              [rename]="rename"
+              (saved)="closeEditor()"
               (cancelled)="closeEditor()"
             />
           } @else {
@@ -218,10 +220,15 @@ export class GameMasterPage {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
 
-  protected onRenamed(gameMaster: GameMasterSheetDto): void {
-    this.resource.set(gameMaster);
-    this.closeEditor();
-  }
+  /** Renomme le MJ, par la règle de tout pseudo (ID-13), et garde la fiche relue. */
+  protected readonly rename = async (nickname: string): Promise<void> => {
+    this.resource.set(
+      await this.apiCall(gameMasterEndpoints.rename, {
+        params: { gameMasterId: this.id() },
+        body: { nickname },
+      }),
+    );
+  };
 
   /** Ferme le champ du pseudo ; le focus revient au crayon. */
   protected closeEditor(): void {
