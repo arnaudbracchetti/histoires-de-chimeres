@@ -206,6 +206,19 @@ export class Convention {
     return identification;
   }
 
+  /**
+   * Un Organisateur crée un pseudo de participant, à tout moment, pour une personne sans téléphone
+   * (ID-12). Le pseudo est obligatoire, borné et unique selon ID-7, parmi les participants comme
+   * parmi les MJ (ID-4) : un pseudo pris est refusé, avec l'identifiant de son participant, sans
+   * confirmation. Un téléphone s'y relie ensuite comme à tout pseudo existant (ID-1).
+   */
+  addParticipant(participantId: string, nickname: string): void {
+    this.allParticipants = this.allParticipants.getParticipantsAfterCreatingParticipantByOrganizer(
+      participantId,
+      nickname,
+    );
+  }
+
   /** Les participants, MJ compris, dans l'ordre naturel de leur pseudo. */
   get participants(): readonly Participant[] {
     return this.allParticipants.participants;

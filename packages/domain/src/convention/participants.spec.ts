@@ -248,3 +248,75 @@ describe('Identification par le pseudo d’un MJ (ID-3, ID-4)', () => {
     expect(identification).toMatchObject({ verdict: 'confirm', confirmation: 'participant' });
   });
 });
+
+describe('Création d’un pseudo par un Organisateur (ID-12)', () => {
+  it('crée un pseudo de participant, sans les espaces du début et de la fin', () => {
+    const convention = aConvention();
+
+    convention.addParticipant('p1', '  Élodie ');
+
+    expect(participantsOf(convention)).toEqual(['p1 Élodie']);
+  });
+
+  it.each(['elodie', 'ÉLODIE', '  Élodie  '])(
+    'refuse « %s » quand le participant « Élodie » existe, avec son identifiant (ID-7)',
+    (nickname) => {
+      const convention = withElodie();
+
+      const refusal = refusalOf(() => convention.addParticipant('p2', nickname));
+
+      expect(refusal.code).toBe('nickname-taken-by-participant');
+      expect(refusal.params).toEqual({ nickname: 'Élodie', participantId: 'p1' });
+      expect(participantsOf(convention)).toEqual(['p1 Élodie']);
+    },
+  );
+
+  it('refuse le pseudo d’un MJ, avec l’identifiant de son participant (ID-4)', () => {
+    const convention = aConvention();
+    convention.addGameMaster('g1', 'p-g1', 'Kaïros');
+
+    const refusal = refusalOf(() => convention.addParticipant('p2', 'kairos'));
+
+    expect(refusal.code).toBe('nickname-taken');
+    expect(refusal.params).toEqual({ nickname: 'Kaïros', participantId: 'p-g1' });
+    expect(participantsOf(convention)).toEqual(['p-g1 Kaïros']);
+  });
+
+  it('garde la ponctuation : « Jean Luc » est un autre pseudo que « Jean-Luc » (ID-7)', () => {
+    const convention = aConvention();
+    convention.addParticipant('p1', 'Jean-Luc');
+
+    convention.addParticipant('p2', 'Jean Luc');
+
+    expect(participantsOf(convention)).toEqual(['p2 Jean Luc', 'p1 Jean-Luc']);
+  });
+
+  it('refuse un pseudo vide, et un pseudo de plus de 30 caractères', () => {
+    const convention = aConvention();
+
+    expect(refusalOf(() => convention.addParticipant('p1', '   ')).code).toBe('nickname-required');
+    expect(refusalOf(() => convention.addParticipant('p1', 'a'.repeat(31))).params).toEqual({
+      max: 30,
+    });
+    expect(participantsOf(convention)).toEqual([]);
+  });
+
+  it('demande ensuite la confirmation de ID-1 au téléphone qui saisit ce pseudo, puis le relie', () => {
+    const convention = aConvention();
+    convention.addParticipant('p1', 'Élodie');
+
+    const question = convention.identifyByNickname('p2', 'K7M2', 'elodie', null, NOW);
+    const link = convention.identifyByNickname('p2', 'K7M2', 'elodie', 'participant', NOW);
+
+    expect(question).toEqual({
+      verdict: 'confirm',
+      confirmation: 'participant',
+      nickname: 'Élodie',
+    });
+    expect(link).toEqual({
+      verdict: 'link',
+      created: false,
+      participant: expect.objectContaining({ id: 'p1' }),
+    });
+  });
+});

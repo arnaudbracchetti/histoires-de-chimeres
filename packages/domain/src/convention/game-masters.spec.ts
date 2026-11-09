@@ -55,7 +55,7 @@ describe('MJ de la convention', () => {
       const refusal = refusalOf(() => convention.addGameMaster('g2', 'p-g2', nickname));
 
       expect(refusal.code).toBe('nickname-taken');
-      expect(refusal.params).toEqual({ nickname: 'Élodie' });
+      expect(refusal.params).toEqual({ nickname: 'Élodie', participantId: 'p-g1' });
       expect(gameMastersOf(convention)).toEqual(['g1 Élodie']);
     },
   );
@@ -168,7 +168,7 @@ describe('MJ de la convention', () => {
       const refusal = refusalOf(() => convention.addGameMaster('g1', 'p-g1', 'ELODIE'));
 
       expect(refusal.code).toBe('nickname-taken-by-participant');
-      expect(refusal.params).toEqual({ nickname: 'Élodie' });
+      expect(refusal.params).toEqual({ nickname: 'Élodie', participantId: 'p1' });
       expect(convention.gameMasters).toEqual([]);
     });
 

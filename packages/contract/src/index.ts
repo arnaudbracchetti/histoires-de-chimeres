@@ -144,6 +144,7 @@ export {
   type ParticipantListEntryDto,
   type ParticipantLinkedPhoneDto,
   type ParticipantListQuery,
+  type ParticipantNicknameBody,
   type ParticipantResultDto,
   type ParticipantSheetDto,
   type ParticipantTimeSlotDto,

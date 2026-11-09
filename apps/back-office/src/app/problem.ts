@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import type { ProblemDto } from '@chimeres/contract';
+import type { ProblemDto, RefusalParams } from '@chimeres/contract';
 import type { ErrorNotice } from './shell/alerts';
 import { fr } from '@chimeres/design';
 
@@ -32,4 +32,17 @@ export function readProblem(error: unknown): FormProblem {
     };
   }
   return { fieldErrors: [], alert: { title: problem.title, detail: problem.detail } };
+}
+
+/**
+ * L'identifiant du participant qui porte déjà le pseudo refusé, pour le lien « Voir sa fiche »
+ * (ID-12), ou `undefined` si l'erreur n'est pas un pseudo pris.
+ */
+export function readNamesakeParticipantId(error: unknown): string | undefined {
+  if (!(error instanceof HttpErrorResponse)) return undefined;
+  const problem = error.error as Partial<ProblemDto> | null;
+  if (problem?.code !== 'nickname-taken' && problem?.code !== 'nickname-taken-by-participant') {
+    return undefined;
+  }
+  return (problem.params as Partial<RefusalParams[typeof problem.code]> | undefined)?.participantId;
 }

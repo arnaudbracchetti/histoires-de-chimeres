@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import {
+  AddParticipant,
   ReadParticipantList,
   ReadParticipantSheet,
   type Clock,
@@ -26,6 +28,11 @@ import { PrismaParticipantReader } from './persistence/prisma-participant-reader
   providers: [
     { provide: CLOCK, useClass: ParisClock },
     { provide: PARTICIPANT_READER, useClass: PrismaParticipantReader },
+    {
+      provide: AddParticipant,
+      useFactory: (repository: ConventionRepository) => new AddParticipant(repository, randomUUID),
+      inject: [CONVENTION_REPOSITORY],
+    },
     {
       provide: ReadParticipantList,
       useFactory: (conventions: ConventionRepository, reader: ParticipantReader, clock: Clock) =>

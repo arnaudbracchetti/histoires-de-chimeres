@@ -10,7 +10,8 @@ let nextId = 0;
  * `[formField]`, dessiné par `styles.css`. L'erreur s'affiche une fois le champ quitté, ou après un
  * envoi, dans la place réservée sous le champ (une ligne, ou `--field-error-lines`). Dans une carte compacte à un
  * seul champ (`compact`), elle s'affiche en bulle sous la carte (l'ancêtre positionné), sans
- * couvrir ses boutons. Elle ne décale jamais rien. `attempted` à faux tait une valeur manquante
+ * couvrir ses boutons. Elle ne décale jamais rien. Un élément projeté `appFieldErrorAction` (un
+ * lien « Voir sa fiche ») la suit, tant qu'elle s'affiche. `attempted` à faux tait une valeur manquante
  * jusqu'à la tentative d'enregistrement.
  */
 @Component({
@@ -38,7 +39,12 @@ let nextId = 0;
     }
     @if (!compact() || error()) {
       <!-- Ligne réservée, vide sans erreur ; en compact, bulle sous la carte. -->
-      <p class="error" [id]="errorId">{{ error() }}</p>
+      <p class="error" [id]="errorId">
+        {{ error() }}
+        @if (error()) {
+          <ng-content select="[appFieldErrorAction]" />
+        }
+      </p>
     }
   `,
   styles: `

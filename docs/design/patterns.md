@@ -403,6 +403,7 @@ La liste des pseudos, de participant et de MJ (ID-5), dans l'ordre naturel.
   - Inscriptions par créneau : un rond par créneau (`app-pip`), comme les disponibilités des MJ, avec le nombre d'inscriptions dedans (de secours comprises, une partie double sur son premier créneau). Contour à la couleur de l'état du créneau, rond teinté s'il y a au moins une inscription, vide avec « 0 » sinon, atténué pour un créneau terminé. Infobulle et texte pour lecteur d'écran : « Créneau 2 · tirage publié : 1 inscription ».
 - La liste se tient à jour seule, comme le pilotage (§6, Fraîcheur).
 - Le pseudo de chaque ligne mène à sa fiche.
+- **« Créer un pseudo »** (secondaire), sous le tableau, ouvre une ligne « Nouveau pseudo » en dernier, comme « Ajouter un MJ » : le champ, « Créer » (principal) et « Annuler » (discret). Le pseudo créé, sa fiche s'ouvre (ID-12). Un pseudo déjà pris, de participant ou de MJ (ID-4), est refusé en bulle sous la ligne, suivi du lien « Voir sa fiche ». Sans pseudo, l'état vide invite à « Créer le premier pseudo ».
 
 ### Fiche d'un pseudo
 

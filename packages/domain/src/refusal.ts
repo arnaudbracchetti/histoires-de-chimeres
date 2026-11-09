@@ -31,10 +31,16 @@ export type RefusalParams = {
   'participant-not-found': Record<string, never>;
   'nickname-required': Record<string, never>;
   'nickname-too-long': { max: number };
-  /** `nickname` : le pseudo du MJ qui le porte déjà, tel qu'il s'affiche. */
-  'nickname-taken': { nickname: string };
-  /** `nickname` : le pseudo du participant qui le porte déjà, tel qu'il s'affiche (PR-12, ID-4). */
-  'nickname-taken-by-participant': { nickname: string };
+  /**
+   * `nickname` : le pseudo du MJ qui le porte déjà, tel qu'il s'affiche ; `participantId` : son
+   * participant, pour le lien vers sa fiche (ID-12).
+   */
+  'nickname-taken': { nickname: string; participantId: string };
+  /**
+   * `nickname` : le pseudo du participant qui le porte déjà, tel qu'il s'affiche ;
+   * `participantId` : son identifiant, pour le lien vers sa fiche (PR-12, ID-4, ID-12).
+   */
+  'nickname-taken-by-participant': { nickname: string; participantId: string };
   /** `scenarios` : le nombre de scénarios du MJ. */
   'game-master-has-scenarios': { scenarios: number };
   /** `nickname` : le pseudo du MJ ; `rank` : le rang du créneau. */

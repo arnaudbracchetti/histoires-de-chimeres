@@ -143,3 +143,49 @@ test('l’Organisateur ouvre la fiche d’un pseudo et lit son résultat publié
   await page.getByRole('tab', { name: /Téléphones/ }).click();
   await expect(page.getByRole('tabpanel')).toContainText(/^Relié à \d{1,2}\u00a0h\u00a0\d{2}$/);
 });
+
+test('l’Organisateur crée un pseudo et arrive sur sa fiche (ID-12)', async ({ page, baseURL }) => {
+  await prepare(page, baseURL!);
+  await page.goto('/gestion/participants');
+
+  await page.getByRole('button', { name: 'Créer un pseudo' }).click();
+  const field = page.getByRole('textbox', { name: 'Pseudo du nouveau participant' });
+  await expect(field).toBeFocused();
+  await field.fill('Lune');
+  await page.keyboard.press('Enter');
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Lune' })).toBeVisible();
+  await expect(page.getByText('Participant', { exact: true })).toBeVisible();
+  await page.getByRole('navigation', { name: "Fil d'Ariane" }).getByRole('link').click();
+  await expect(nicknames(page)).toHaveText(['Élodie', 'Kaïros', 'Lune', 'Sven']);
+});
+
+test('un pseudo pris est refusé sous le champ, sans rien décaler, avec « Voir sa fiche » (ID-4, ID-12)', async ({
+  page,
+  baseURL,
+}) => {
+  await prepare(page, baseURL!);
+  await page.goto('/gestion/participants');
+  await page.getByRole('button', { name: 'Créer un pseudo' }).click();
+  const field = page.getByRole('textbox', { name: 'Pseudo du nouveau participant' });
+  const cancel = await page.getByRole('button', { name: 'Annuler' }).boundingBox();
+  const sven = await nicknames(page).last().boundingBox();
+
+  await field.fill('kairos');
+  await page.keyboard.press('Enter');
+
+  await expect(field).toHaveAccessibleDescription(/^Le MJ «\s*Kaïros\s*» porte déjà ce pseudo/);
+  expect(await page.getByRole('button', { name: 'Annuler' }).boundingBox()).toEqual(cancel);
+  expect(await nicknames(page).last().boundingBox()).toEqual(sven);
+  await expect(page.getByRole('link', { name: 'Voir sa fiche' })).toHaveAttribute(
+    'href',
+    /\/gestion\/participants\/.+/,
+  );
+
+  await field.fill('ELODIE');
+  await page.keyboard.press('Enter');
+  await expect(field).toHaveAccessibleDescription(/^Le participant «\s*Élodie\s*»/);
+  await page.getByRole('link', { name: 'Voir sa fiche' }).click();
+
+  await expect(page.getByRole('heading', { level: 1, name: 'Élodie' })).toBeVisible();
+});

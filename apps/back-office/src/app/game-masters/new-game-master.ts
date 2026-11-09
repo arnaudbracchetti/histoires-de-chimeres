@@ -8,7 +8,7 @@ import { Announcer } from '../shell/announcer';
 import { fr } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { Field } from '../ui/field';
-import { nicknameRules } from './nickname';
+import { nicknameRules } from '../forms/nickname-rules';
 
 /**
  * Ligne « Nouveau MJ » en bas du tableau des MJ (docs/design/patterns.md, MJ) : « Ajouter », ou
@@ -55,9 +55,13 @@ export class NewGameMaster {
 
   private readonly model = signal({ nickname: '' });
 
-  protected readonly form = form(this.model, (path) => nicknameRules(path.nickname), {
-    submission: submitWith(() => this.write()),
-  });
+  protected readonly form = form(
+    this.model,
+    (path) => nicknameRules(path.nickname, 'game-master'),
+    {
+      submission: submitWith(() => this.write()),
+    },
+  );
 
   protected readonly row = inject(CardForm).attach(this.form);
 

@@ -300,4 +300,67 @@ describe('Liste « Participants » (ID-5)', () => {
       },
     );
   });
+
+  describe('Création d’un pseudo par un Organisateur (ID-12)', () => {
+    const add = (nickname: string) =>
+      server().post(apiUrl(participantEndpoints.add)).send({ nickname });
+
+    it('crée le pseudo et rend sa fiche : 201', async () => {
+      const response = await add('  Élodie ').expect(201);
+
+      const sheet = response.body as ParticipantSheetDto;
+      expect(sheet).toMatchObject({ nickname: 'Élodie', gameMaster: false, linkedPhones: [] });
+      expect(nicknames(await list())).toEqual(['Élodie']);
+    });
+
+    it('refuse un pseudo de participant déjà pris : 422, rattaché au pseudo, avec son identifiant', async () => {
+      const elodie = (await add('Élodie').expect(201)).body as ParticipantSheetDto;
+
+      const response = await add('ELODIE')
+        .expect(422)
+        .expect('Content-Type', /application\/problem\+json/);
+
+      expect(response.body).toMatchObject({
+        code: 'nickname-taken-by-participant',
+        params: { nickname: 'Élodie', participantId: elodie.id },
+        errors: [{ field: 'nickname', code: 'nickname-taken-by-participant' }],
+      });
+      expect(nicknames(await list())).toEqual(['Élodie']);
+    });
+
+    it('refuse le pseudo d’un MJ, avec l’identifiant de son participant (ID-4)', async () => {
+      await gameMaster('Kaïros');
+      const [kairos] = await list();
+
+      const response = await add('kairos').expect(422);
+
+      expect(response.body).toMatchObject({
+        code: 'nickname-taken',
+        params: { nickname: 'Kaïros', participantId: kairos!.id },
+      });
+      expect(response.body.detail).toMatch(/^Le MJ «\s*Kaïros\s*»/);
+    });
+
+    it('relie ensuite un téléphone au pseudo, après la confirmation de ID-1', async () => {
+      const elodie = (await add('Élodie').expect(201)).body as ParticipantSheetDto;
+
+      const question = await server()
+        .post(apiUrl(linkedPhoneEndpoints.link))
+        .send({ presenceCode: convention.presenceCode, nickname: 'elodie', confirmation: null })
+        .expect(200);
+      await linkedPhone('elodie', 'participant');
+
+      expect(question.body).toEqual({
+        status: 'confirmation-needed',
+        confirmation: 'participant',
+        nickname: 'Élodie',
+      });
+      const sheet = (
+        await server()
+          .get(apiUrl(participantEndpoints.read, { participantId: elodie.id }))
+          .expect(200)
+      ).body as ParticipantSheetDto;
+      expect(sheet.linkedPhones).toHaveLength(1);
+    });
+  });
 });

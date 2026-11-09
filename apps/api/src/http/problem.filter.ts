@@ -90,6 +90,7 @@ function problem<C extends ProblemCode>(
     status,
     ...(detail && { detail }),
     code,
+    ...(Object.keys(params).length && { params }),
     ...(message.field && {
       errors: [{ field: message.field, code, message: detail ?? message.title }],
     }),

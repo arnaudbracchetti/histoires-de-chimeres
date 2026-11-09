@@ -8,7 +8,7 @@ import { Announcer } from '../shell/announcer';
 import { fr } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { Field } from '../ui/field';
-import { nicknameRules } from './nickname';
+import { nicknameRules } from '../forms/nickname-rules';
 
 /**
  * Le pseudo d'un MJ, en place dans l'en-tête de sa fiche (docs/design/patterns.md, MJ) :
@@ -58,9 +58,13 @@ export class NicknameEditor {
 
   private readonly model = linkedSignal(() => ({ nickname: this.gameMaster().nickname }));
 
-  protected readonly form = form(this.model, (path) => nicknameRules(path.nickname), {
-    submission: submitWith(() => this.write()),
-  });
+  protected readonly form = form(
+    this.model,
+    (path) => nicknameRules(path.nickname, 'game-master'),
+    {
+      submission: submitWith(() => this.write()),
+    },
+  );
 
   protected readonly editor = inject(CardForm).attach(this.form);
 

@@ -31,10 +31,16 @@ export type RefusalParams = {
   'participant-not-found': Record<string, never>;
   'nickname-required': Record<string, never>;
   'nickname-too-long': { max: number };
-  /** `nickname` : le pseudo du MJ qui le porte déjà, tel qu'il s'affiche. */
-  'nickname-taken': { nickname: string };
-  /** `nickname` : le pseudo du participant qui le porte déjà, tel qu'il s'affiche (PR-12, ID-4). */
-  'nickname-taken-by-participant': { nickname: string };
+  /**
+   * `nickname` : le pseudo du MJ qui le porte déjà, tel qu'il s'affiche ; `participantId` : son
+   * participant, pour le lien vers sa fiche (ID-12).
+   */
+  'nickname-taken': { nickname: string; participantId: string };
+  /**
+   * `nickname` : le pseudo du participant qui le porte déjà, tel qu'il s'affiche ;
+   * `participantId` : son identifiant, pour le lien vers sa fiche (PR-12, ID-4, ID-12).
+   */
+  'nickname-taken-by-participant': { nickname: string; participantId: string };
   /** `scenarios` : le nombre de scénarios du MJ. */
   'game-master-has-scenarios': { scenarios: number };
   /** `nickname` : le pseudo du MJ ; `rank` : le rang du créneau. */
@@ -148,12 +154,20 @@ export type FieldErrorDto = {
   message: string;
 };
 
-/** Problem Details (RFC 9457), servi en `application/problem+json`, avec les extensions `code` et `errors`. */
+/**
+ * Problem Details (RFC 9457), servi en `application/problem+json`, avec les extensions `code`,
+ * `params` et `errors`.
+ */
 export type ProblemDto = {
   type: string;
   title: string;
   status: number;
   detail?: string;
   code: ProblemCode;
+  /**
+   * Les paramètres d'un refus du domaine, ceux de `RefusalParams[code]`. Le front n'y lit que de
+   * quoi décider d'un comportement : l'identifiant d'un pseudo pris, pour le lien vers sa fiche.
+   */
+  params?: Record<string, unknown>;
   errors?: FieldErrorDto[];
 };

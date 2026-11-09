@@ -128,6 +128,22 @@ export class Participants {
   }
 
   /**
+   * Les participants après la création d'un pseudo par un Organisateur (ID-12) : obligatoire, borné
+   * et unique, parmi les MJ comme parmi les participants (ID-4, ID-7). Un pseudo pris est refusé, pas
+   * relié : à la différence de `computeIdentification()`, aucune confirmation. Le pseudo d'un MJ
+   * donne son motif au refus.
+   */
+  getParticipantsAfterCreatingParticipantByOrganizer(
+    participantId: string,
+    nickname: string,
+  ): Participants {
+    const participant = new Participant(participantId, ComparableName.createFromText(nickname));
+    const gameMaster = this.allGameMasters.findItemWithSameName(participant.nickname);
+    if (gameMaster) throw GAME_MASTER_NICKNAME_RULES.refuseTakenName(gameMaster);
+    return this.getParticipantsAfterAddingParticipant(participant);
+  }
+
+  /**
    * Les participants après l'ajout d'un MJ, avec son participant (`participantId`), au pseudo
    * obligatoire, borné et unique, parmi les MJ comme parmi les participants (PR-12, ID-4, ID-7). Le
    * pseudo est vérifié d'abord parmi les MJ : un autre MJ donne son motif au refus.
@@ -271,13 +287,17 @@ const GAME_MASTER_NICKNAME_RULES: NamingRules<GameMaster> = {
   refuseEmptyName: () => new Refusal('nickname-required', {}),
   refuseTooLongName: (max) => new Refusal('nickname-too-long', { max }),
   refuseTakenName: (namesake) =>
-    new Refusal('nickname-taken', { nickname: namesake.nickname.text }),
+    new Refusal('nickname-taken', {
+      nickname: namesake.nickname.text,
+      participantId: namesake.participant.id,
+    }),
 };
 
 /**
  * Le pseudo d'un participant, MJ compris : obligatoire, borné, unique parmi les participants (ID-1,
  * ID-4, ID-7). `computeIdentification()` relie un pseudo déjà pris au lieu de le refuser ; seuls
- * l'ajout et le renommage d'un MJ le refusent, une fois écarté un autre MJ (PR-12).
+ * la création d'un pseudo (ID-12), l'ajout et le renommage d'un MJ le refusent, une fois écarté un
+ * autre MJ (PR-12).
  */
 const PARTICIPANT_NICKNAME_RULES: NamingRules<Participant> = {
   getName: (participant) => participant.nickname,
@@ -286,5 +306,8 @@ const PARTICIPANT_NICKNAME_RULES: NamingRules<Participant> = {
   refuseEmptyName: () => new Refusal('nickname-required', {}),
   refuseTooLongName: (max) => new Refusal('nickname-too-long', { max }),
   refuseTakenName: (namesake) =>
-    new Refusal('nickname-taken-by-participant', { nickname: namesake.nickname.text }),
+    new Refusal('nickname-taken-by-participant', {
+      nickname: namesake.nickname.text,
+      participantId: namesake.id,
+    }),
 };
