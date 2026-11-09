@@ -108,7 +108,7 @@ const MENU: readonly MoreMenuItem[] = [{ value: 'remove', label: 'Supprimer le M
             />
           } @else {
             <p class="none">
-              Aucun créneau pour l'instant&nbsp;: les disponibilités attendent la journée.
+              Aucun créneau pour l'instant&nbsp;: les disponibilités se saisissent une fois les créneaux de la journée définis.
             </p>
           }
         </section>
