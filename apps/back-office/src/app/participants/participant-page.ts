@@ -21,14 +21,17 @@ import { TIME_SLOT_STATES, TimeSlotState } from '../time-slots/time-slot-state';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { describeParticipantResult } from './participant-result';
+import { ParticipantSignUps } from './participant-sign-ups';
 
-type TabValue = 'program' | 'phones';
+type TabValue = 'program' | 'sign-ups' | 'phones';
 
 /**
  * Fiche d'un pseudo, de participant ou de MJ (ID-5, docs/design/patterns.md, Fiche d'un pseudo) :
  * « Participants › pseudo », que le crayon renomme en place (ID-13), « Participant » ou « MJ »
- * dessous, puis deux onglets de classeur. « Programme » : la frise des créneaux, un rond à la
- * couleur et à l'icône de l'état de chacun, et le résultat du pseudo, tirage provisoire compris.
+ * dessous, puis trois onglets de classeur. « Programme » : la frise des créneaux, un rond à la
+ * couleur et à l'icône de l'état de chacun, et le résultat du pseudo, tirage provisoire compris ;
+ * « Modifier les inscriptions » sur un créneau ouvert ouvre l'onglet suivant sur ce créneau.
+ * « Inscriptions » : ses parties des créneaux ouverts, à cocher à sa place (ID-12).
  * « Téléphones » : l'heure de liaison de chacun.
  */
 @Component({
@@ -39,6 +42,7 @@ type TabValue = 'program' | 'phones';
     Loadable,
     NicknameEditor,
     PageHeader,
+    ParticipantSignUps,
     Tab,
     TabContent,
     TabList,
@@ -93,6 +97,10 @@ type TabValue = 'program' | 'phones';
             <button ngTab id="tab-program" type="button" value="program">
               <app-icon name="calendar" />Programme
             </button>
+            <button ngTab id="tab-sign-ups" type="button" value="sign-ups">
+              <app-icon name="circle-check" />Inscriptions
+              <span class="count">{{ formatCount(openSignUpCount()) }}</span>
+            </button>
             <button ngTab id="tab-phones" type="button" value="phones">
               <app-icon name="smartphone" />Téléphones
               <span class="count">{{ formatCount(sheet.linkedPhones.length) }}</span>
@@ -120,12 +128,33 @@ type TabValue = 'program' | 'phones';
                           <span class="detail">{{ detail }}</span>
                         }
                       </span>
+                      @if (row.state === 'sign-ups-open') {
+                        <button
+                          type="button"
+                          appButton="secondary"
+                          class="act"
+                          [attr.aria-label]="editSignUpsLabel(row.label)"
+                          (click)="openSignUps(row.timeSlotId)"
+                        >
+                          <app-icon name="pencil" />Modifier les inscriptions
+                        </button>
+                      }
                     </li>
                   }
                 </ol>
               } @else {
                 <p class="none">Aucun créneau pour l'instant.</p>
               }
+            </ng-template>
+          </div>
+          <div ngTabPanel value="sign-ups" class="panel">
+            <ng-template ngTabContent>
+              <app-participant-sign-ups
+                [sheet]="sheet"
+                [(timeSlotId)]="signUpsTimeSlotId"
+                (changed)="resource.set($event)"
+                (refused)="resource.reload()"
+              />
             </ng-template>
           </div>
           <div ngTabPanel value="phones" class="panel">
@@ -249,7 +278,12 @@ type TabValue = 'program' | 'phones';
 
       .result {
         display: flex;
+        flex: 1;
         flex-direction: column;
+      }
+
+      .act {
+        flex: none;
       }
 
       .main {
@@ -295,6 +329,27 @@ export class ParticipantPage {
   protected readonly formatCount = formatCount;
 
   protected readonly editing = signal(false);
+  /** Le créneau choisi dans l'onglet « Inscriptions ». */
+  protected readonly signUpsTimeSlotId = signal<string | undefined>(undefined);
+
+  /** Ses inscriptions sur les créneaux ouverts, de secours comprises. */
+  protected readonly openSignUpCount = computed(() =>
+    (this.sheet()?.timeSlots ?? []).reduce(
+      (total, { result }) => total + (result.kind === 'signed-up' ? result.signUpCount : 0),
+      0,
+    ),
+  );
+
+  /** « Modifier les inscriptions, Créneau 2 · 14 h 00 – 16 h 30 », pour le lecteur d'écran. */
+  protected editSignUpsLabel(label: string): string {
+    return fr`Modifier les inscriptions, ${label}`;
+  }
+
+  /** Ouvre l'onglet « Inscriptions » sur ce créneau. */
+  protected openSignUps(timeSlotId: string): void {
+    this.signUpsTimeSlotId.set(timeSlotId);
+    this.selectedTab.set('sign-ups');
+  }
 
   private readonly store = inject(ConventionStore);
   private readonly apiCall = injectApiCall();

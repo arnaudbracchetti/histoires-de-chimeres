@@ -257,6 +257,8 @@ describe('Liste « Participants » (ID-5)', () => {
         id: expect.any(String),
         nickname: 'Lune',
         gameMaster: false,
+        signedUpGameIds: [neons],
+        backupGameIds: [],
         timeSlots: [
           {
             timeSlotId: slot(1),
@@ -268,12 +270,16 @@ describe('Liste « Participants » (ID-5)', () => {
               title: 'Néons',
               gameMasterNickname: 'Élodie',
             },
+            ledGameId: null,
+            withoutGame: false,
           },
           {
             timeSlotId: slot(2),
             rank: 2,
             state: 'sign-ups-open',
             result: { kind: 'signed-up', signUpCount: 0 },
+            ledGameId: null,
+            withoutGame: false,
           },
         ],
         linkedPhones: [
@@ -425,6 +431,126 @@ describe('Liste « Participants » (ID-5)', () => {
 
     it('rend 404 pour un pseudo inconnu', async () => {
       await rename('inconnu', 'Alix').expect(404);
+    });
+  });
+
+  describe('Inscrire à la place d’un participant (ID-12)', () => {
+    const add = async (nickname: string) =>
+      (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
+        .body as ParticipantSheetDto;
+    const signUpOnBehalf = (participantId: string, gameId: string) =>
+      server().put(apiUrl(participantEndpoints.signUp, { participantId, gameId }));
+    const withdrawOnBehalf = (participantId: string, gameId: string) =>
+      server().delete(apiUrl(participantEndpoints.withdraw, { participantId, gameId }));
+    const withdrawFromDrawOnBehalf = (participantId: string, timeSlotId: string) =>
+      server().delete(apiUrl(participantEndpoints.withdrawFromDraw, { participantId, timeSlotId }));
+    const readSheet = async (participantId: string) =>
+      (await server().get(apiUrl(participantEndpoints.read, { participantId })).expect(200))
+        .body as ParticipantSheetDto;
+
+    it('inscrit le pseudo et rend sa fiche ; une inscription répétée ne change rien', async () => {
+      const elodie = await gameMaster('Élodie');
+      const neons = await scheduled(elodie.id, 'Néons', 'Dragon');
+      const lune = await add('Lune');
+
+      const response = await signUpOnBehalf(lune.id, neons).expect(200);
+      await signUpOnBehalf(lune.id, neons).expect(200);
+
+      expect(response.body).toMatchObject({
+        id: lune.id,
+        signedUpGameIds: [neons],
+        backupGameIds: [],
+        timeSlots: [
+          { result: { kind: 'signed-up', signUpCount: 1 }, ledGameId: null, withoutGame: false },
+          { result: { kind: 'signed-up', signUpCount: 0 } },
+        ],
+      });
+      expect((await list())[1]).toMatchObject({
+        nickname: 'Lune',
+        signUpCounts: [{ count: 1 }, { count: 0 }],
+      });
+    });
+
+    it('désinscrit le pseudo ; une partie déjà quittée ne change rien', async () => {
+      const elodie = await gameMaster('Élodie');
+      const neons = await scheduled(elodie.id, 'Néons', 'Dragon');
+      const lune = await add('Lune');
+      await signUpOnBehalf(lune.id, neons).expect(200);
+
+      const response = await withdrawOnBehalf(lune.id, neons).expect(200);
+      await withdrawOnBehalf(lune.id, neons).expect(200);
+
+      expect(response.body).toMatchObject({ signedUpGameIds: [] });
+      expect((await readSheet(lune.id)).signedUpGameIds).toEqual([]);
+    });
+
+    it('inscrit un MJ en secours sur un créneau où il mène, et refuse sa propre partie (IN-4)', async () => {
+      const elodie = await gameMaster('Élodie');
+      const kairos = await gameMaster('Kaïros');
+      const neons = await scheduled(elodie.id, 'Néons', 'Dragon');
+      const brumes = await scheduled(kairos.id, 'Brumes', 'Licorne');
+      const kairosId = (await list()).find(({ nickname }) => nickname === 'Kaïros')!.id;
+
+      const backup = await signUpOnBehalf(kairosId, neons).expect(200);
+      const own = await signUpOnBehalf(kairosId, brumes).expect(422);
+
+      expect(backup.body).toMatchObject({
+        signedUpGameIds: [],
+        backupGameIds: [neons],
+        timeSlots: [{ ledGameId: brumes }, { ledGameId: null }],
+      });
+      expect(own.body).toMatchObject({ code: 'game-led-by-participant' });
+      expect((await readSheet(kairosId)).backupGameIds).toEqual([neons]);
+    });
+
+    it('refuse une fois le tirage du créneau lancé : 422, rien ne change', async () => {
+      const elodie = await gameMaster('Élodie');
+      const neons = await scheduled(elodie.id, 'Néons', 'Dragon');
+      const lune = await add('Lune');
+      await signUp(neons, await linkedPhone('Sven'));
+      await server()
+        .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+        .expect(204);
+
+      const response = await signUpOnBehalf(lune.id, neons).expect(422);
+      const withdrawn = await withdrawOnBehalf(lune.id, neons).expect(422);
+      const withdrawnFromDraw = await withdrawFromDrawOnBehalf(lune.id, slot(1)).expect(422);
+
+      expect(response.body).toMatchObject({
+        code: 'sign-ups-closed',
+        detail: 'Le tirage du créneau 1 est lancé : ses inscriptions sont fermées.',
+      });
+      expect(withdrawn.body).toMatchObject({ code: 'sign-ups-closed' });
+      expect(withdrawnFromDraw.body).toMatchObject({ code: 'sign-ups-closed' });
+      expect((await readSheet(lune.id)).signedUpGameIds).toEqual([]);
+    });
+
+    it('retire du tirage le pseudo sans partie sur le créneau (IN-6)', async () => {
+      const elodie = await gameMaster('Élodie');
+      const neons = await scheduled(elodie.id, 'Néons', 'Dragon');
+      const lune = await add('Lune');
+      await signUpOnBehalf(lune.id, neons).expect(200);
+      await server().delete(apiUrl(scheduleEndpoints.unschedule, { gameId: neons })).expect(200);
+      const before = await readSheet(lune.id);
+
+      const response = await withdrawFromDrawOnBehalf(lune.id, slot(1)).expect(200);
+      await withdrawFromDrawOnBehalf(lune.id, slot(1)).expect(200);
+
+      expect(before.timeSlots[0]!.withoutGame).toBe(true);
+      expect((response.body as ParticipantSheetDto).timeSlots[0]!.withoutGame).toBe(false);
+    });
+
+    it('rend 404 pour un pseudo ou une partie inconnus', async () => {
+      const elodie = await gameMaster('Élodie');
+      const neons = await scheduled(elodie.id, 'Néons', 'Dragon');
+      const lune = await add('Lune');
+
+      expect((await signUpOnBehalf('inconnu', neons).expect(404)).body).toMatchObject({
+        code: 'participant-not-found',
+      });
+      expect(
+        (await signUpOnBehalf(lune.id, '00000000-0000-4000-8000-000000000000').expect(404)).body,
+      ).toMatchObject({ code: 'game-not-found' });
     });
   });
 });

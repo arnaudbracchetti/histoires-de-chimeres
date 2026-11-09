@@ -408,13 +408,15 @@ La liste des pseudos, de participant et de MJ (ID-5), dans l'ordre naturel.
 ### Fiche d'un pseudo
 
 - **En-tête** : « Participants › pseudo », et dessous « Participant » ou « MJ ». Le crayon renomme le pseudo en place, comme sur la [fiche du MJ](#mj), à tout moment (ID-13). Un nom déjà pris par un autre pseudo est refusé sous le champ, suivi de « Voir sa fiche » ; le même refus, avec son lien, vaut sur la fiche du MJ.
-- Deux [onglets de classeur](#onglets-de-classeur) : **Programme** (`calendar`) et **Téléphones** (`smartphone`), avec leur nombre.
+- Trois [onglets de classeur](#onglets-de-classeur) : **Programme** (`calendar`), **Inscriptions** (`circle-check`), avec ses inscriptions sur les créneaux ouverts, et **Téléphones** (`smartphone`), avec leur nombre.
 - **Programme** : une frise verticale, un créneau par ligne. Le rond prend la couleur et l'icône de l'état du créneau ([Statuts](#statuts)). Le trait qui relie les ronds est plein pour ce qui est figé (tirage publié, terminé), en pointillés pour ce qui peut encore changer. Puis « Créneau 2 · 14 h 00 – 16 h 30 » et l'état, puis le résultat, en deux lignes, celui d'un tirage provisoire comme celui d'un tirage publié :
   - placé : « Table Dragon », puis « Néons, avec Élodie » ; une partie double sur ses deux créneaux ;
   - non placé : « Non placé » en rouge brique, puis « Il reste de la place à Dragon (3), Licorne (1). », ou « Toutes les parties du créneau sont complètes. » ;
   - MJ : « Mène Néons », puis « Table Dragon » ;
   - créneau tiré sans lui : « Pas dans le tirage » ;
   - créneau ouvert : « 2 inscriptions », ou « Aucune inscription » en gris.
+  Sur un créneau ouvert, « ✎ Modifier les inscriptions » (secondaire) ouvre l'onglet Inscriptions sur ce créneau.
+- **Inscriptions** : l'Organisateur inscrit le pseudo à sa place (ID-12), aux règles du téléphone (IN-2 à IN-4, IN-6). Une pilule par créneau ouvert, puis une case par partie qui y commence, enregistrée dès qu'on la coche ou la décoche, sans confirmation (IN-5 ne s'applique pas) ; pendant l'écriture, la ligne est atténuée, et un refus part en alerte. Sous chaque partie, la [jauge](#jauge) et « 8 inscrits · 4 à 6 places · très demandée », ou « · 1 manquant » en jaune sous le minimum. La partie d'un MJ est grisée, case désactivée, « sa partie » ; sur un créneau où il mène : « Mène « Néons » : ses inscriptions sur ce créneau sont de secours. » Sans partie sur le créneau : « Sans partie sur ce créneau. », en rouge brique, avec « Retirer du tirage ». Sans créneau ouvert : « Aucun créneau n'a ses inscriptions ouvertes. »
 - **Téléphones** : « Relié à 9 h 12 », un par ligne, rien sur l'appareil. Sans téléphone : « Aucun téléphone relié : la personne lit ses résultats à l'accueil. »
 
 ## Onglets de classeur

@@ -9,6 +9,7 @@ import {
   drawEndpoints,
   gameMasterEndpoints,
   linkedPhoneEndpoints,
+  participantEndpoints,
   scenarioEndpoints,
   scheduleEndpoints,
   signUpEndpoints,
@@ -18,6 +19,7 @@ import {
   type ConventionDto,
   type GameMasterDto,
   type IdentityConfirmationDto,
+  type ParticipantListEntryDto,
   type PushSubscriptionBody,
   type ScenarioDto,
   type ScheduleDto,
@@ -620,6 +622,41 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
         expect(push.received.map(({ endpoint }) => endpoint)).toEqual([lune.endpoint]);
         expect(message).toMatchObject({ notification: oversubscribed });
         expect(headers.topic).toBe('oversubscribed-1');
+      });
+
+      it('une inscription par un Organisateur prévient les autres inscrits, pas le pseudo (NO-4)', async () => {
+        await changeMaxSeats(1);
+        await quietPeriod();
+        const participants = (await server().get(apiUrl(participantEndpoints.list)).expect(200))
+          .body as ParticipantListEntryDto[];
+        const svenId = participants.find(({ nickname }) => nickname === 'Sven')!.id;
+
+        await server()
+          .put(apiUrl(participantEndpoints.signUp, { participantId: svenId, gameId }))
+          .expect(200);
+
+        const [{ message }] = (await push.receivedAtLeast(1)) as [ReceivedPush];
+        await quietPeriod();
+        expect(push.received.map(({ endpoint }) => endpoint)).toEqual([lune.endpoint]);
+        expect(message).toMatchObject({ notification: oversubscribed });
+      });
+
+      it('une désinscription par un Organisateur ne prévient personne (NO-4)', async () => {
+        await changeMaxSeats(1);
+        await signUp(svenPhone);
+        await push.receivedAtLeast(1);
+        await quietPeriod();
+        const before = push.received.length;
+        const participants = (await server().get(apiUrl(participantEndpoints.list)).expect(200))
+          .body as ParticipantListEntryDto[];
+        const svenId = participants.find(({ nickname }) => nickname === 'Sven')!.id;
+
+        await server()
+          .delete(apiUrl(participantEndpoints.withdraw, { participantId: svenId, gameId }))
+          .expect(200);
+
+        await quietPeriod();
+        expect(push.received).toHaveLength(before);
       });
 
       it('une baisse des places de son scénario prévient ses inscrits', async () => {

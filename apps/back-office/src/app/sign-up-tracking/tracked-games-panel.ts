@@ -1,8 +1,8 @@
 import { Component, computed, input, output } from '@angular/core';
 import type { TableDto, TimeSlotTrackingDto, TrackedGameDto } from '@chimeres/contract';
-import { countOf, formatCount, formatSeats } from '@chimeres/design';
+import { countOf, formatCount } from '@chimeres/design';
 import { Button } from '../ui/button';
-import { Gauge } from '../ui/gauge';
+import { GameSignUpFigures } from '../ui/game-sign-up-figures';
 import { ScenarioIllustration } from '../ui/scenario-illustration';
 import { GameBadges } from './game-badges';
 
@@ -17,13 +17,12 @@ type TableRow = { table: TableDto } & (
 /**
  * L'onglet « Parties du créneau » (docs/design/patterns.md, Pilotage du jour J) : le nombre de
  * tables libres, puis une ligne par table, dans l'ordre des tables. Une partie montre ses inscrits
- * face à ses places, avec leur écart (« 11 de trop », « 1 manquant »), d'après les chiffres et les
- * drapeaux reçus. Un clic sur sa ligne ouvre sa fiche ; au clavier, son titre en est le bouton. Une
+ * face à ses places, avec leur écart (`app-game-sign-up-figures`). Un clic sur sa ligne ouvre sa fiche ; au clavier, son titre en est le bouton. Une
  * table libre offre « Programmer ici… ».
  */
 @Component({
   selector: 'app-tracked-games-panel',
-  imports: [Button, GameBadges, Gauge, ScenarioIllustration],
+  imports: [Button, GameBadges, GameSignUpFigures, ScenarioIllustration],
   template: `
     <p class="free-tables">{{ countOf(freeTableCount(), 'table libre', 'tables libres') }}</p>
     <ul>
@@ -53,25 +52,7 @@ type TableRow = { table: TableDto } & (
                 >
               </div>
               <div class="figures">
-                <app-gauge
-                  [count]="game.signUpCount"
-                  [min]="game.seats.min"
-                  [max]="game.seats.max"
-                  [shortfall]="game.belowMinimum"
-                />
-                <span
-                  >{{ countOf(game.signUpCount, 'inscrit', 'inscrits') }} ·
-                  {{ formatSeats(game.seats) }}
-                  @if (game.surplusSignUpCount) {
-                    · <strong>{{ formatCount(game.surplusSignUpCount) }}&nbsp;de trop</strong>
-                  }
-                  @if (game.missingSignUpCount) {
-                    ·
-                    <strong class="missing">{{
-                      countOf(game.missingSignUpCount, 'manquant', 'manquants')
-                    }}</strong>
-                  }
-                </span>
+                <app-game-sign-up-figures [game]="game" />
                 @if (game.withoutOtherSignUpCount) {
                   <span class="meta"
                     >dont {{ formatCount(game.withoutOtherSignUpCount) }} sans autre inscription sur
@@ -175,9 +156,8 @@ type TableRow = { table: TableDto } & (
         min-width: 0;
       }
 
-      .figures app-gauge {
+      .figures app-game-sign-up-figures {
         align-self: stretch;
-        margin-bottom: var(--space-xxs);
       }
 
       .title {
@@ -194,14 +174,6 @@ type TableRow = { table: TableDto } & (
         &:hover {
           text-decoration: underline;
         }
-      }
-
-      strong {
-        font-weight: 600;
-      }
-
-      .missing {
-        color: var(--warning);
       }
 
       .meta {
@@ -227,7 +199,6 @@ export class TrackedGamesPanel {
 
   protected readonly countOf = countOf;
   protected readonly formatCount = formatCount;
-  protected readonly formatSeats = formatSeats;
   protected readonly rowIdOf = rowIdOf;
 
   /** L'id du nom de la table, dans sa ligne : il décrit « Programmer ici… ». */

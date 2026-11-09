@@ -139,7 +139,7 @@ Participant qui reste dans le tirage d'un créneau sans aucune inscription activ
 _Avoid_: Inscription au créneau, en attente
 
 **Se retirer du tirage** · `withdrawFromDraw`:
-Geste du participant sans partie qui quitte le tirage d'un créneau, sur son téléphone, tant que ses inscriptions sont ouvertes.
+Geste du participant sans partie qui quitte le tirage d'un créneau, sur son téléphone, tant que ses inscriptions sont ouvertes. Un Organisateur peut le faire à sa place, depuis le back office (ID-12).
 _Avoid_: Se désinscrire (réservé à une inscription)
 
 **Capacité** · `Capacity`:

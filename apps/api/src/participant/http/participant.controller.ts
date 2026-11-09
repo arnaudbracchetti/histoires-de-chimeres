@@ -1,9 +1,12 @@
-import { Body, Controller, Get, Inject, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Param, Post, Put, Query } from '@nestjs/common';
 import {
   AddParticipant,
   ReadParticipantList,
   ReadParticipantSheet,
   RenameParticipant,
+  SignUpParticipantForGame,
+  WithdrawParticipantFromDraw,
+  WithdrawParticipantFromGame,
 } from '@chimeres/application';
 import {
   participantEndpoints,
@@ -23,6 +26,12 @@ export class ParticipantController {
     @Inject(ReadParticipantSheet) private readonly readParticipantSheet: ReadParticipantSheet,
     @Inject(AddParticipant) private readonly addParticipant: AddParticipant,
     @Inject(RenameParticipant) private readonly renameParticipant: RenameParticipant,
+    @Inject(SignUpParticipantForGame)
+    private readonly signUpParticipantForGame: SignUpParticipantForGame,
+    @Inject(WithdrawParticipantFromGame)
+    private readonly withdrawParticipantFromGame: WithdrawParticipantFromGame,
+    @Inject(WithdrawParticipantFromDraw)
+    private readonly withdrawParticipantFromDraw: WithdrawParticipantFromDraw,
   ) {}
 
   @Get(participantEndpoints.list.path)
@@ -54,6 +63,36 @@ export class ParticipantController {
     @Body(new ZodPipe(participantNicknameBodySchema)) body: ParticipantNicknameBody,
   ): Promise<ResponseOf<typeof participantEndpoints.rename>> {
     await this.renameParticipant.execute(participantId, body);
+    return this.readSheetOrRefuse(participantId);
+  }
+
+  /** Inscrit le pseudo à la partie, à sa place (ID-12), et rend la fiche relue. */
+  @Put(participantEndpoints.signUp.path)
+  async signUp(
+    @Param('participantId') participantId: string,
+    @Param('gameId') gameId: string,
+  ): Promise<ResponseOf<typeof participantEndpoints.signUp>> {
+    await this.signUpParticipantForGame.execute(participantId, gameId);
+    return this.readSheetOrRefuse(participantId);
+  }
+
+  /** Désinscrit le pseudo de la partie, à sa place (ID-12), et rend la fiche relue. */
+  @Delete(participantEndpoints.withdraw.path)
+  async withdraw(
+    @Param('participantId') participantId: string,
+    @Param('gameId') gameId: string,
+  ): Promise<ResponseOf<typeof participantEndpoints.withdraw>> {
+    await this.withdrawParticipantFromGame.execute(participantId, gameId);
+    return this.readSheetOrRefuse(participantId);
+  }
+
+  /** Retire du tirage du créneau le pseudo sans partie, à sa place (IN-6), et rend la fiche relue. */
+  @Delete(participantEndpoints.withdrawFromDraw.path)
+  async withdrawFromDraw(
+    @Param('participantId') participantId: string,
+    @Param('timeSlotId') timeSlotId: string,
+  ): Promise<ResponseOf<typeof participantEndpoints.withdrawFromDraw>> {
+    await this.withdrawParticipantFromDraw.execute(participantId, timeSlotId);
     return this.readSheetOrRefuse(participantId);
   }
 

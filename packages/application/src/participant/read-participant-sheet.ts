@@ -8,7 +8,8 @@ import type { ParticipantReader } from './participant-reader.js';
 
 /**
  * La fiche d'un pseudo (ID-5) : son résultat sur chaque créneau, que la convention calcule avec le
- * catalogue entier, tirage provisoire compris, et ses téléphones reliés.
+ * catalogue entier, tirage provisoire compris, ses inscriptions, actives et de secours, d'après sa
+ * situation, et ses téléphones reliés.
  */
 export class ReadParticipantSheet {
   constructor(
@@ -32,19 +33,26 @@ export class ReadParticipantSheet {
     ]);
     const titles = new Map(games.map(({ id, scenario }) => [id, scenario.title]));
     const findGameTitle = (gameId: string) => titles.get(gameId)!;
+    const now = this.clock.now();
+    const situation = convention.computeParticipantSituation(participant.id, now);
+    const situationSlots = new Map(situation.timeSlots.map((slot) => [slot.timeSlotId, slot]));
     return {
       id: participant.id,
       nickname: participant.nickname.text,
       gameMaster: convention.gameMasters.some(
         (gameMaster) => gameMaster.participant.id === participant.id,
       ),
+      signedUpGameIds: situation.signedUpGameIds,
+      backupGameIds: situation.backupGameIds,
       timeSlots: convention
-        .computeParticipantResults(participant.id, this.clock.now(), catalogue)
+        .computeParticipantResults(participant.id, now, catalogue)
         .map(({ timeSlotId, state, result }) => ({
           timeSlotId,
           rank: convention.getTimeSlotRank(timeSlotId),
           state,
           result: toResultDto(result, findGameTitle),
+          ledGameId: situationSlots.get(timeSlotId)!.ledGameId,
+          withoutGame: situationSlots.get(timeSlotId)!.withoutGame,
         })),
       linkedPhones,
     };

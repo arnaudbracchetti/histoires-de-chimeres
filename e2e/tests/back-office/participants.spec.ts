@@ -221,3 +221,50 @@ test('l’Organisateur renomme un pseudo en place, même après la publication, 
   await page.reload();
   await expect(page.getByRole('heading', { level: 1, name: 'Élodie la Rouge' })).toBeVisible();
 });
+
+test('l’Organisateur inscrit un pseudo depuis sa fiche, puis le désinscrit, sans confirmation (ID-12)', async ({
+  page,
+  baseURL,
+}) => {
+  await prepare(page, baseURL!);
+  await page.goto('/gestion/participants');
+  await page.getByRole('link', { name: 'Sven' }).click();
+
+  await expect(page.getByRole('tabpanel')).toContainText('Aucune inscription');
+  await page.getByRole('button', { name: /^Modifier les inscriptions/ }).click();
+
+  const signUps = page.getByRole('tabpanel');
+  await expect(page.getByRole('tab', { name: /Inscriptions/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(signUps.getByRole('radio', { name: /Créneau 1/ })).toBeChecked();
+  const brumes = signUps.getByRole('checkbox', { name: 'Les Brumes' });
+  await expect(signUps).toContainText('1 inscrit · 1 à 5 places');
+  await brumes.check();
+  await expect(signUps).toContainText('2 inscrits · 1 à 5 places');
+  await expect(page.getByRole('tab', { name: /Inscriptions/ })).toContainText('1');
+
+  await brumes.uncheck();
+  await expect(signUps).toContainText('1 inscrit · 1 à 5 places');
+  await page.getByRole('tab', { name: /Programme/ }).click();
+  await expect(page.getByRole('tabpanel')).toContainText('Aucune inscription');
+});
+
+test('la partie d’un MJ est grisée, « sa partie », sur la fiche de son pseudo (IN-4)', async ({
+  page,
+  baseURL,
+}) => {
+  await prepare(page, baseURL!);
+  await page.goto('/gestion/participants');
+  await page.getByRole('link', { name: 'Kaïros' }).click();
+
+  await page.getByRole('tab', { name: /Inscriptions/ }).click();
+
+  const signUps = page.getByRole('tabpanel');
+  await expect(signUps.getByRole('checkbox', { name: /Les Brumes/ })).toBeDisabled();
+  await expect(signUps).toContainText('sa partie');
+  await expect(signUps).toContainText(
+    'Mène « Les Brumes » : ses inscriptions sur ce créneau sont de secours.',
+  );
+});

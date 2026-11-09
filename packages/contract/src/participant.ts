@@ -53,12 +53,18 @@ export type ParticipantResultDto =
   | { kind: 'not-in-draw' }
   | { kind: 'signed-up'; signUpCount: number };
 
-/** Le résultat d'un pseudo sur un créneau, avec le rang du créneau et son état à cet instant. */
+/**
+ * Le résultat d'un pseudo sur un créneau, avec le rang du créneau et son état à cet instant. Puis
+ * la partie qu'il y mène, sur ses deux créneaux pour une partie double, ou `null` : là où il mène,
+ * ses inscriptions sont de secours (IN-4). Enfin, s'il y est sans partie (IN-6).
+ */
 export type ParticipantTimeSlotDto = {
   timeSlotId: string;
   rank: number;
   state: TimeSlotStateDto;
   result: ParticipantResultDto;
+  ledGameId: string | null;
+  withoutGame: boolean;
 };
 
 /** Un téléphone relié au pseudo : l'heure de sa liaison, rien sur l'appareil (ID-8). */
@@ -73,6 +79,10 @@ export type ParticipantSheetDto = {
   /** Le pseudo tel qu'il a été saisi (ID-7). */
   nickname: string;
   gameMaster: boolean;
+  /** Les parties où son inscription est active (IN-4). */
+  signedUpGameIds: string[];
+  /** Ses inscriptions de secours, sur les créneaux où il mène (IN-4). */
+  backupGameIds: string[];
   /** Un par créneau, dans l'ordre de la journée. */
   timeSlots: ParticipantTimeSlotDto[];
   /** Dans l'ordre de leur liaison. */
@@ -88,7 +98,9 @@ export type ParticipantNicknameBody = {
  * Les pseudos, de participant et de MJ, gérés par un Organisateur (ID-5). La liste les rend dans
  * l'ordre naturel : le front garde cet ordre. `read` : la fiche d'un pseudo, ou 404. `add` crée un
  * pseudo de participant (ID-12) et rend sa fiche. `rename` renomme un pseudo, de participant ou de
- * MJ (ID-13), et rend sa fiche.
+ * MJ (ID-13), et rend sa fiche. `signUp`, `withdraw` et `withdrawFromDraw` inscrivent le pseudo
+ * à une partie, l'en désinscrivent, ou le retirent du tirage d'un créneau où il est sans partie, à
+ * sa place (ID-12), aux règles du téléphone ; répétés, ils ne changent rien. Chacun rend la fiche.
  */
 export const participantEndpoints = {
   list: endpoint<ParticipantListEntryDto[], never, never, ParticipantListQuery>(
@@ -103,5 +115,17 @@ export const participantEndpoints = {
   rename: endpoint<ParticipantSheetDto, { participantId: string }, ParticipantNicknameBody>(
     'PUT',
     'participants/:participantId',
+  ),
+  signUp: endpoint<ParticipantSheetDto, { participantId: string; gameId: string }>(
+    'PUT',
+    'participants/:participantId/games/:gameId/sign-up',
+  ),
+  withdraw: endpoint<ParticipantSheetDto, { participantId: string; gameId: string }>(
+    'DELETE',
+    'participants/:participantId/games/:gameId/sign-up',
+  ),
+  withdrawFromDraw: endpoint<ParticipantSheetDto, { participantId: string; timeSlotId: string }>(
+    'DELETE',
+    'participants/:participantId/time-slots/:timeSlotId/draw-participation',
   ),
 };
