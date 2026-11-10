@@ -633,4 +633,55 @@ describe('Liste « Participants » (ID-5)', () => {
       });
     });
   });
+
+  describe('Couper les liens d’un pseudo (ID-5, ID-8)', () => {
+    const add = async (nickname: string) =>
+      (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
+        .body as ParticipantSheetDto;
+    const unlinkPhones = (participantId: string) =>
+      server().delete(apiUrl(participantEndpoints.unlinkPhones, { participantId }));
+    const readPhone = (cookie: string) =>
+      server().get(apiUrl(linkedPhoneEndpoints.read)).set('Cookie', cookie);
+
+    it('coupe tous les liens du pseudo et rend sa fiche ; ses téléphones reviennent à l’identification', async () => {
+      const elodie = await add('Élodie');
+      const first = await linkedPhone('Élodie', 'participant');
+      const second = await linkedPhone('Élodie', 'participant');
+      await add('Lune');
+      const lune = await linkedPhone('Lune', 'participant');
+
+      const response = await unlinkPhones(elodie.id).expect(200);
+
+      expect(response.body).toMatchObject({ id: elodie.id, nickname: 'Élodie', linkedPhones: [] });
+      expect((await readPhone(first).expect(401)).body).toMatchObject({ code: 'phone-not-linked' });
+      await readPhone(second).expect(401);
+      await readPhone(lune).expect(200);
+    });
+
+    it('laisse le pseudo libre d’être relié de nouveau, sans verrou', async () => {
+      const elodie = await add('Élodie');
+      await linkedPhone('Élodie', 'participant');
+      await unlinkPhones(elodie.id).expect(200);
+
+      const cookie = await linkedPhone('Élodie', 'participant');
+
+      expect((await readPhone(cookie).expect(200)).body).toMatchObject({ nickname: 'Élodie' });
+    });
+
+    it('coupe les liens du pseudo d’un MJ', async () => {
+      await gameMaster('Kaïros');
+      const [kairos] = await list();
+      const cookie = await linkedPhone('Kaïros', 'game-master');
+
+      await unlinkPhones(kairos!.id).expect(200);
+
+      await readPhone(cookie).expect(401);
+    });
+
+    it('rend 404 pour un pseudo inconnu', async () => {
+      expect((await unlinkPhones('inconnu').expect(404)).body).toMatchObject({
+        code: 'participant-not-found',
+      });
+    });
+  });
 });

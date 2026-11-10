@@ -5,6 +5,7 @@ import {
   ReadParticipantList,
   ReadParticipantSheet,
   RenameParticipant,
+  UnlinkParticipantPhones,
   SignUpParticipantForGame,
   WithdrawParticipantFromDraw,
   WithdrawParticipantFromGame,
@@ -35,6 +36,8 @@ export class ParticipantController {
     private readonly withdrawParticipantFromDraw: WithdrawParticipantFromDraw,
     @Inject(AddLatecomerToPublishedDraw)
     private readonly addLatecomerToPublishedDraw: AddLatecomerToPublishedDraw,
+    @Inject(UnlinkParticipantPhones)
+    private readonly unlinkParticipantPhones: UnlinkParticipantPhones,
   ) {}
 
   @Get(participantEndpoints.list.path)
@@ -106,6 +109,15 @@ export class ParticipantController {
     @Param('timeSlotId') timeSlotId: string,
   ): Promise<ResponseOf<typeof participantEndpoints.addLatecomer>> {
     await this.addLatecomerToPublishedDraw.execute(participantId, timeSlotId);
+    return this.readSheetOrRefuse(participantId);
+  }
+
+  /** Coupe tous les liens du pseudo (ID-8), et rend la fiche relue. */
+  @Delete(participantEndpoints.unlinkPhones.path)
+  async unlinkPhones(
+    @Param('participantId') participantId: string,
+  ): Promise<ResponseOf<typeof participantEndpoints.unlinkPhones>> {
+    await this.unlinkParticipantPhones.execute(participantId);
     return this.readSheetOrRefuse(participantId);
   }
 

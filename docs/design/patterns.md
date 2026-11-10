@@ -409,6 +409,7 @@ La liste des pseudos, de participant et de MJ (ID-5), dans l'ordre naturel.
 ### Fiche d'un pseudo
 
 - **En-tête** : « Participants › pseudo », et dessous « Participant » ou « MJ ». Le crayon renomme le pseudo en place, comme sur la [fiche du MJ](#mj), à tout moment (ID-13). Un nom déjà pris par un autre pseudo est refusé sous le champ, suivi de « Voir sa fiche » ; le même refus, avec son lien, vaut sur la fiche du MJ.
+- **Menu « ⋯ »** de l'en-tête (« Autres actions sur le pseudo ») : « Couper les liens », seulement si le pseudo a au moins un téléphone. Le geste coupe tous ses liens, sans confirmation ni verrou : le pseudo peut être relié de nouveau (ID-8). Le focus va ensuite à l'onglet Téléphones. Sans entrée, le menu n'apparaît pas.
 - Trois [onglets de classeur](#onglets-de-classeur) : **Programme** (`calendar`), **Inscriptions** (`circle-check`), avec ses inscriptions sur les créneaux ouverts, et **Téléphones** (`smartphone`), avec leur nombre.
 - **Programme** : une frise verticale, un créneau par ligne. Le rond prend la couleur et l'icône de l'état du créneau ([Statuts](#statuts)). Le trait qui relie les ronds est plein pour ce qui est figé (tirage publié, terminé), en pointillés pour ce qui peut encore changer. Puis « Créneau 2 · 14 h 00 – 16 h 30 » et l'état, puis le résultat, en deux lignes, celui d'un tirage provisoire comme celui d'un tirage publié :
   - placé : « Table Dragon », puis « Néons, avec Élodie » ; une partie double sur ses deux créneaux ;

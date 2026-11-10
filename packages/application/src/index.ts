@@ -56,6 +56,7 @@ export { AddGameMaster } from './game-master/add-game-master.js';
 export { AddLatecomerToPublishedDraw } from './participant/add-latecomer-to-published-draw.js';
 export { AddParticipant } from './participant/add-participant.js';
 export { RenameParticipant } from './participant/rename-participant.js';
+export { UnlinkParticipantPhones } from './participant/unlink-participant-phones.js';
 export { SignUpParticipantForGame } from './participant/sign-up-participant-for-game.js';
 export { WithdrawParticipantFromDraw } from './participant/withdraw-participant-from-draw.js';
 export { WithdrawParticipantFromGame } from './participant/withdraw-participant-from-game.js';

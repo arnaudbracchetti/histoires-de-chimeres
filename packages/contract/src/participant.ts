@@ -102,6 +102,8 @@ export type ParticipantNicknameBody = {
  * à une partie, l'en désinscrivent, ou le retirent du tirage d'un créneau où il est sans partie, à
  * sa place (ID-12), aux règles du téléphone ; répétés, ils ne changent rien. `addLatecomer` ajoute
  * le pseudo au tirage publié d'un créneau, non placé, et le notifie (ID-14). Chacun rend la fiche.
+ * `unlinkPhones` coupe tous les liens du pseudo, sans verrou : il peut être relié de nouveau
+ * (ID-8). Il rend la fiche.
  */
 export const participantEndpoints = {
   list: endpoint<ParticipantListEntryDto[], never, never, ParticipantListQuery>(
@@ -132,5 +134,9 @@ export const participantEndpoints = {
   addLatecomer: endpoint<ParticipantSheetDto, { participantId: string; timeSlotId: string }>(
     'PUT',
     'participants/:participantId/time-slots/:timeSlotId/latecomer',
+  ),
+  unlinkPhones: endpoint<ParticipantSheetDto, { participantId: string }>(
+    'DELETE',
+    'participants/:participantId/linked-phones',
   ),
 };
