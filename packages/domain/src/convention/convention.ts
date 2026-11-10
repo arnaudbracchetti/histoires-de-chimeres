@@ -232,6 +232,11 @@ export class Convention {
     );
   }
 
+  /** Refuse un participant inconnu, MJ compris. */
+  verifyParticipantExists(participantId: string): void {
+    this.allParticipants.verifyParticipantExists(participantId);
+  }
+
   /** Les participants, MJ compris, dans l'ordre naturel de leur pseudo. */
   get participants(): readonly Participant[] {
     return this.allParticipants.participants;

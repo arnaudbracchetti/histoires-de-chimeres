@@ -73,6 +73,10 @@ export class Participants {
     return this.allGameMasters.findExistingItemById(id);
   }
 
+  verifyParticipantExists(id: string): void {
+    this.allParticipants.verifyItemExists(id);
+  }
+
   verifyGameMasterExists(id: string): void {
     this.allGameMasters.verifyItemExists(id);
   }

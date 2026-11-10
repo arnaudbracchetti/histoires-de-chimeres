@@ -18,6 +18,8 @@ export interface LinkedPhoneRepository {
   find(phoneId: string): Promise<LinkedPhone | null>;
   /** Coupe le lien du téléphone ; sans effet s'il n'en a pas. */
   unlink(phoneId: string): Promise<void>;
+  /** Coupe les liens de tous les téléphones du participant ; sans effet s'il n'en a pas (ID-8). */
+  unlinkAllPhonesOfParticipant(participantId: string): Promise<void>;
   /**
    * Range l'abonnement push du téléphone, à la place du précédent. Un endpoint n'appartient qu'à
    * un seul téléphone relié : le ranger ici l'enlève d'un autre.

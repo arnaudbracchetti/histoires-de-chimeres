@@ -18,6 +18,7 @@ import { injectApiCall } from '../api-call';
 import { apiResource, currentValue } from '../api-resource';
 import { ConventionStore } from '../convention/convention-store';
 import { NicknameEditor } from '../forms/nickname-editor';
+import { injectGesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
@@ -33,17 +34,24 @@ import { removalConsequences } from './removal-consequences';
 
 type TabValue = 'program' | 'sign-ups' | 'phones';
 
+/** « Couper les liens », pour un pseudo qui a au moins un téléphone (ID-8). */
+const UNLINK_PHONES: MoreMenuItem = { value: 'unlink-phones', label: 'Couper les liens' };
+
+/** « Supprimer le pseudo », pour un participant, pas un MJ (ID-10, PR-12). */
+const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', danger: true };
+
 /**
  * Fiche d'un pseudo, de participant ou de MJ (ID-5, docs/design/patterns.md, Fiche d'un pseudo) :
  * « Participants › pseudo », que le crayon renomme en place (ID-13), « Participant » ou « MJ »
- * dessous, et le menu « ⋯ », qui supprime le pseudo d'un participant (ID-10), pas d'un MJ (PR-12) ;
- * puis trois onglets de classeur. « Programme » : la frise des créneaux, un rond à la
+ * dessous, puis trois onglets de classeur. « Programme » : la frise des créneaux, un rond à la
  * couleur et à l'icône de l'état de chacun, et le résultat du pseudo, tirage provisoire compris ;
  * « Modifier les inscriptions » sur un créneau ouvert ouvre l'onglet suivant sur ce créneau ;
  * « Rouvrir les inscriptions » sur un tirage provisoire où il n'est pas, et qu'il ne mène
  * pas, reprend le geste du pilotage.
  * « Inscriptions » : ses parties des créneaux ouverts, à cocher à sa place (ID-12).
  * « Téléphones » : l'heure de liaison de chacun.
+ * Le menu « ⋯ » de l'en-tête coupe tous les liens d'un pseudo qui a au moins un téléphone (ID-8),
+ * et supprime le pseudo d'un participant, pas d'un MJ (ID-10, PR-12).
  */
 @Component({
   selector: 'app-participant-page',
@@ -97,14 +105,12 @@ type TabValue = 'program' | 'sign-ups' | 'phones';
           {{ sheet.gameMaster ? 'MJ' : 'Participant' }}
         }
       </p>
-      @if (sheet(); as sheet) {
-        @if (menu().length) {
-          <app-more-menu
-            label="Autres actions sur le pseudo"
-            [items]="menu()"
-            (selected)="onMenu($event, sheet)"
-          />
-        }
+      @if (menu().length) {
+        <app-more-menu
+          label="Autres actions sur le pseudo"
+          [items]="menu()"
+          (selected)="onMenu($event)"
+        />
       }
     </app-page-header>
     <app-loadable
@@ -372,6 +378,47 @@ export class ParticipantPage {
     ),
   );
 
+  /**
+   * Les entrées du menu « ⋯ » : aucune, le menu disparaît. Un MJ ne se supprime pas ici, mais par
+   * sa fiche de MJ (PR-12).
+   */
+  protected readonly menu = computed<readonly MoreMenuItem[]>(() => {
+    const sheet = this.sheet();
+    if (!sheet) return [];
+    return [
+      ...(sheet.linkedPhones.length ? [UNLINK_PHONES] : []),
+      ...(sheet.gameMaster ? [] : [REMOVE]),
+    ];
+  });
+
+  protected onMenu(value: string): void {
+    const sheet = this.sheet();
+    if (!sheet) return;
+    if (value === UNLINK_PHONES.value) void this.unlinkPhones(sheet);
+    if (value === REMOVE.value) void this.remove(sheet);
+  }
+
+  /** Un geste du menu à la fois ; un refus part en alerte. */
+  private readonly menuGestures = injectGesture({ alert: true });
+
+  /**
+   * Coupe tous les liens du pseudo, sans confirmation : il peut être relié de nouveau (ID-8).
+   * « Couper les liens » disparaît avec son dernier téléphone, et le menu entier pour un MJ : le
+   * focus va à l'onglet « Téléphones », qui en compte zéro.
+   */
+  private async unlinkPhones({ id, nickname }: ParticipantSheetDto): Promise<void> {
+    const outcome = await this.menuGestures.run(() =>
+      this.apiCall(participantEndpoints.unlinkPhones, { params: { participantId: id } }),
+    );
+    if (outcome.status === 'refused' && outcome.refusal.stale) this.resource.reload();
+    if (outcome.status !== 'done') return;
+    this.resource.set(outcome.value);
+    this.announcer.announce(fr`Liens du pseudo « ${nickname} » coupés.`);
+    afterNextRender(() => this.host.querySelector<HTMLElement>('#tab-phones')?.focus(), {
+      injector: this.injector,
+    });
+  }
+
   /** « Modifier les inscriptions, Créneau 2 · 14 h 00 – 16 h 30 », pour le lecteur d'écran. */
   protected editSignUpsLabel(label: string): string {
     return fr`Modifier les inscriptions, ${label}`;
@@ -440,17 +487,6 @@ export class ParticipantPage {
       }),
     );
   };
-
-  /** Le menu « ⋯ » : un MJ ne se supprime pas ici, mais par sa fiche de MJ (PR-12). */
-  protected readonly menu = computed<MoreMenuItem[]>(() => {
-    const sheet = this.sheet();
-    if (!sheet || sheet.gameMaster) return [];
-    return [{ value: 'remove', label: 'Supprimer le pseudo', danger: true }];
-  });
-
-  protected onMenu(value: string, sheet: ParticipantSheetDto): void {
-    if (value === 'remove') void this.remove(sheet);
-  }
 
   /** Supprime le pseudo après confirmation (ID-10), puis revient à la liste. */
   private async remove(sheet: ParticipantSheetDto): Promise<void> {

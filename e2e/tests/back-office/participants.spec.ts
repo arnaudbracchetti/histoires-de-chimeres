@@ -336,3 +336,40 @@ test('l’Organisateur supprime un pseudo, même après la publication, et revie
   await expect(page).toHaveURL(/\/gestion\/participants$/);
   await expect(nicknames(page)).toHaveText(['Kaïros', 'Sven']);
 });
+
+test('l’Organisateur coupe les liens d’un pseudo depuis le menu « ⋯ » ; son téléphone revient à l’identification (ID-5, ID-8)', async ({
+  page,
+  baseURL,
+}) => {
+  await prepare(page, baseURL!);
+  const { presenceCode } = (await (
+    await expectOk(page.request.get(apiUrl(conventionEndpoints.read)))
+  ).json()) as ConventionDto;
+  const phone = await request.newContext({ baseURL });
+  await expectOk(
+    phone.post(apiUrl(linkedPhoneEndpoints.link), {
+      data: { presenceCode, nickname: 'Élodie', confirmation: 'participant' },
+    }),
+  );
+  const menu = page.getByRole('button', { name: 'Autres actions sur le pseudo' });
+  const phonesTab = page.getByRole('tab', { name: /Téléphones/ });
+  await page.goto('/gestion/participants');
+  await page.getByRole('link', { name: 'Kaïros' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Kaïros' })).toBeVisible();
+  await expect(menu).toHaveCount(0);
+
+  await page.goto('/gestion/participants');
+  await page.getByRole('link', { name: 'Élodie' }).click();
+  await expect(phonesTab).toContainText('2');
+  await menu.click();
+  await page.getByRole('menuitem', { name: 'Couper les liens' }).click();
+
+  await expect(phonesTab).toContainText('0');
+  await expect(phonesTab).toBeFocused();
+  await expect(page.getByRole('tabpanel')).toContainText('Aucun téléphone relié');
+  await menu.click();
+  await expect(page.getByRole('menuitem', { name: 'Supprimer le pseudo' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Couper les liens' })).toHaveCount(0);
+  expect((await phone.get(apiUrl(linkedPhoneEndpoints.read))).status()).toBe(401);
+  await phone.dispose();
+});

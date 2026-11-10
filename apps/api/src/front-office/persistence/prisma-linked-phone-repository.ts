@@ -24,6 +24,10 @@ export class PrismaLinkedPhoneRepository implements LinkedPhoneRepository {
     await this.prisma.linkedPhone.deleteMany({ where: { id: phoneId } });
   }
 
+  async unlinkAllPhonesOfParticipant(participantId: string): Promise<void> {
+    await this.prisma.linkedPhone.deleteMany({ where: { participantId } });
+  }
+
   async savePushSubscription(
     phoneId: string,
     { endpoint, keys }: PushSubscriptionBody,
