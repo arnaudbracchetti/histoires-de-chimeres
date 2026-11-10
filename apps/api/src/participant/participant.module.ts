@@ -5,11 +5,13 @@ import {
   ReadParticipantList,
   ReadParticipantSheet,
   RenameParticipant,
+  UnlinkParticipantPhones,
   SignUpParticipantForGame,
   WithdrawParticipantFromDraw,
   WithdrawParticipantFromGame,
   type Clock,
   type ConventionRepository,
+  type LinkedPhoneRepository,
   type NotificationSender,
   type ParticipantReader,
   type ScenarioRepository,
@@ -19,6 +21,8 @@ import { CLOCK } from '../clock/clock.token.js';
 import { ParisClock } from '../clock/paris-clock.js';
 import { CONVENTION_REPOSITORY } from '../convention/convention-repository.token.js';
 import { ConventionModule } from '../convention/convention.module.js';
+import { LINKED_PHONE_REPOSITORY } from '../front-office/linked-phone-repository.token.js';
+import { PrismaLinkedPhoneRepository } from '../front-office/persistence/prisma-linked-phone-repository.js';
 import { NOTIFICATION_SENDER } from '../notification/notification-sender.token.js';
 import { NotificationModule } from '../notification/notification.module.js';
 import { SCHEDULE_READER } from '../game/schedule-reader.token.js';
@@ -35,6 +39,7 @@ import { PrismaParticipantReader } from './persistence/prisma-participant-reader
   providers: [
     { provide: CLOCK, useClass: ParisClock },
     { provide: PARTICIPANT_READER, useClass: PrismaParticipantReader },
+    { provide: LINKED_PHONE_REPOSITORY, useClass: PrismaLinkedPhoneRepository },
     {
       provide: AddParticipant,
       useFactory: (repository: ConventionRepository) => new AddParticipant(repository, randomUUID),
@@ -65,6 +70,12 @@ import { PrismaParticipantReader } from './persistence/prisma-participant-reader
       useFactory: (conventions: ConventionRepository) =>
         new WithdrawParticipantFromDraw(conventions),
       inject: [CONVENTION_REPOSITORY],
+    },
+    {
+      provide: UnlinkParticipantPhones,
+      useFactory: (conventions: ConventionRepository, phones: LinkedPhoneRepository) =>
+        new UnlinkParticipantPhones(conventions, phones),
+      inject: [CONVENTION_REPOSITORY, LINKED_PHONE_REPOSITORY],
     },
     {
       provide: ReadParticipantList,

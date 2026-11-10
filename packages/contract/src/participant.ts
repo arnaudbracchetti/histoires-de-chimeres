@@ -101,6 +101,8 @@ export type ParticipantNicknameBody = {
  * MJ (ID-13), et rend sa fiche. `signUp`, `withdraw` et `withdrawFromDraw` inscrivent le pseudo
  * à une partie, l'en désinscrivent, ou le retirent du tirage d'un créneau où il est sans partie, à
  * sa place (ID-12), aux règles du téléphone ; répétés, ils ne changent rien. Chacun rend la fiche.
+ * `unlinkPhones` coupe tous les liens du pseudo, sans verrou : il peut être relié de nouveau
+ * (ID-8). Il rend la fiche.
  */
 export const participantEndpoints = {
   list: endpoint<ParticipantListEntryDto[], never, never, ParticipantListQuery>(
@@ -127,5 +129,9 @@ export const participantEndpoints = {
   withdrawFromDraw: endpoint<ParticipantSheetDto, { participantId: string; timeSlotId: string }>(
     'DELETE',
     'participants/:participantId/time-slots/:timeSlotId/draw-participation',
+  ),
+  unlinkPhones: endpoint<ParticipantSheetDto, { participantId: string }>(
+    'DELETE',
+    'participants/:participantId/linked-phones',
   ),
 };
