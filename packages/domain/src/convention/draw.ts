@@ -129,6 +129,16 @@ export class Draw {
     );
   }
 
+  /** Le même tirage, le participant en plus, non placé, sans la marque « déplacé à la main ». */
+  getDrawAfterAddingUnassignedParticipant(participantId: string): Draw {
+    return new Draw(
+      this.timeSlotId,
+      this.published,
+      [...this.assignments, new Assignment(participantId, null, false)],
+      this.cancelledGameIds,
+    );
+  }
+
   /** Le même tirage, sans l'affectation du participant, qui disparaît (PR-12). */
   getDrawAfterRemovingParticipant(participantId: string): Draw {
     return new Draw(

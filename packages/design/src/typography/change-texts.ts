@@ -198,6 +198,20 @@ function formatWithoutGameUnassignedBody(tablesWithSeats: readonly string[]): st
   return fr`${noSignUp} ${formatSeatsLeft(tablesWithSeats)} : va voir ${formatGameMasters(tablesWithSeats)}.`;
 }
 
+/**
+ * Retardataire ajouté au tirage publié, non placé (ID-14) : le tirage est fait ;
+ * `tablesWithSeats`, où il reste de la place.
+ */
+export function buildLatecomerText(rank: number, tablesWithSeats: readonly string[]): ChangeText {
+  const drawDone = 'Le tirage de ce créneau est déjà fait.';
+  return {
+    title: fr`${formatCapitalizedTimeSlotRanks([rank])} : pas de place pour toi`,
+    body: tablesWithSeats.length
+      ? fr`${drawDone} ${formatSeatsLeft(tablesWithSeats)} : va voir ${formatGameMasters(tablesWithSeats)}.`
+      : fr`${drawDone} ${formatSeatsLeft(tablesWithSeats)}`,
+  };
+}
+
 /** Publication : le MJ mène sa partie avec ses joueurs. */
 export function buildLeadingText(
   ranks: readonly number[],

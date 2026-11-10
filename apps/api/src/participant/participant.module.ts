@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import {
+  AddLatecomerToPublishedDraw,
   AddParticipant,
   ReadParticipantList,
   ReadParticipantSheet,
@@ -76,6 +77,16 @@ import { PrismaParticipantReader } from './persistence/prisma-participant-reader
       useFactory: (conventions: ConventionRepository) =>
         new WithdrawParticipantFromDraw(conventions),
       inject: [CONVENTION_REPOSITORY],
+    },
+    {
+      provide: AddLatecomerToPublishedDraw,
+      useFactory: (
+        conventions: ConventionRepository,
+        scenarios: ScenarioRepository,
+        notifications: NotificationSender,
+        clock: Clock,
+      ) => new AddLatecomerToPublishedDraw(conventions, scenarios, notifications, clock),
+      inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY, NOTIFICATION_SENDER, CLOCK],
     },
     {
       provide: UnlinkParticipantPhones,

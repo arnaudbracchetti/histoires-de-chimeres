@@ -7,7 +7,10 @@ import type { Seats } from '../scenario/seats.js';
 import { Day } from './day.js';
 import type { Draw } from './draw.js';
 import type { DrawAlgorithm, RandomSource } from './draw-algorithm.js';
-import { buildDrawPublicationNotifications } from './draw-publication.js';
+import {
+  buildDrawPublicationNotifications,
+  buildLatecomerNotification,
+} from './draw-publication.js';
 import { Draws, type DrawCollaborators } from './draws.js';
 import type { Game } from './game.js';
 import type { GameMaster } from './game-master.js';
@@ -154,10 +157,7 @@ export class Convention {
    * convention. Sans date, jamais.
    */
   hasTimeSlotEndedAt(timeSlotId: string, now: LocalMoment): boolean {
-    return (
-      this.getDrawStage(timeSlotId) === 'published' &&
-      isReachedAt(this.day.computeEndOfTimeSlots(this.state.date, [timeSlotId]), now)
-    );
+    return this.allDraws.hasTimeSlotEndedAt(timeSlotId, now, this.day, this.state.date);
   }
 
   /** L'état du créneau à cet instant : l'avancement de son tirage, ou « terminé ». */
@@ -873,6 +873,38 @@ export class Convention {
     this.gameSchedule = this.gameSchedule.getScheduleAfterUnschedulingGames(cancelled);
     this.allSignUps = this.allSignUps.getSignUpsAfterUnschedulingGames(cancelled);
     return notifications;
+  }
+
+  /**
+   * Ajoute le retardataire au tirage publié du créneau, non placé (ID-14) : il va voir les MJ des
+   * tables où il reste de la place. Les places restantes ne changent pas. Refuse un créneau sans
+   * tirage publié ou terminé à cet instant, un participant déjà dans ce tirage, un MJ qui y mène
+   * (IN-4), un joueur d'une partie double tirée au créneau précédent (TI-3). Rend « retardataire »
+   * au participant (NO-2), avec ces tables ; le catalogue, entier, donne les places maximum.
+   */
+  addLatecomerToPublishedDraw(
+    participantId: string,
+    timeSlotId: string,
+    now: LocalMoment,
+    catalogue: ScenarioCatalogue,
+  ): Notification[] {
+    const participant = this.allParticipants.findExistingParticipantById(participantId);
+    this.day.verifyTimeSlotExists(timeSlotId);
+    this.allDraws = this.allDraws.getDrawsAfterAddingLatecomer(participant, timeSlotId, now, {
+      day: this.day,
+      date: this.state.date,
+      schedule: this.gameSchedule,
+      ledGames: this.buildSignUpCollaborators(this.gameSchedule).ledGames,
+    });
+    return [
+      buildLatecomerNotification(this.allDraws.findDrawOfTimeSlot(timeSlotId)!, participant.id, {
+        day: this.day,
+        date: this.state.date,
+        schedule: this.gameSchedule,
+        tables: this.allTables,
+        catalogue,
+      }),
+    ];
   }
 
   /** Ce que le tirage lit hors des Tirages, avec ce catalogue, entier. */

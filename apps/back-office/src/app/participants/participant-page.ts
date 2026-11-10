@@ -47,7 +47,8 @@ const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', da
  * couleur et à l'icône de l'état de chacun, et le résultat du pseudo, tirage provisoire compris ;
  * « Modifier les inscriptions » sur un créneau ouvert ouvre l'onglet suivant sur ce créneau ;
  * « Rouvrir les inscriptions » sur un tirage provisoire où il n'est pas, et qu'il ne mène
- * pas, reprend le geste du pilotage.
+ * pas, reprend le geste du pilotage. « Ajouter comme non placé » sur un tirage publié, pas terminé,
+ * où il n'est pas, l'y ajoute après une confirmation orange (ID-14).
  * « Inscriptions » : ses parties des créneaux ouverts, à cocher à sa place (ID-12).
  * « Téléphones » : l'heure de liaison de chacun.
  * Le menu « ⋯ » de l'en-tête coupe tous les liens d'un pseudo qui a au moins un téléphone (ID-8),
@@ -175,6 +176,16 @@ const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', da
                           (click)="reopenSignUps(row)"
                         >
                           <app-icon name="lock-open" />Rouvrir les inscriptions
+                        </button>
+                      } @else if (row.state === 'published' && row.result.kind === 'not-in-draw') {
+                        <button
+                          type="button"
+                          appButton="secondary"
+                          class="act"
+                          [attr.aria-label]="addLatecomerLabel(row.label)"
+                          (click)="addLatecomer(sheet.nickname, row)"
+                        >
+                          <app-icon name="plus" />Ajouter comme non placé
                         </button>
                       }
                     </li>
@@ -450,6 +461,40 @@ export class ParticipantPage {
     this.editSignUpsToFocus.set(timeSlot.timeSlotId);
   }
 
+  /** « Ajouter comme non placé, Créneau 2 · 14 h 00 – 16 h 30 », pour le lecteur d'écran. */
+  protected addLatecomerLabel(label: string): string {
+    return fr`Ajouter comme non placé, ${label}`;
+  }
+
+  /**
+   * Ajoute le pseudo au tirage publié du créneau, non placé (ID-14), après une confirmation orange :
+   * l'ajout n'efface rien, mais ne se défait pas. La fiche relue remplace l'ancienne ; le geste est
+   * annoncé.
+   */
+  protected async addLatecomer(
+    nickname: string,
+    timeSlot: { timeSlotId: string; rank: number },
+  ): Promise<void> {
+    const { timeSlotId, rank } = timeSlot;
+    const added = await this.confirmation.ask({
+      question: fr`Ajouter « ${nickname} » au tirage publié du créneau ${rank} ?`,
+      consequences: [
+        fr`« ${nickname} » y entre comme non placé : sans prendre la place de personne.`,
+        fr`« ${nickname} » reçoit la notification « pas de place pour toi », avec les tables où il reste de la place. L'ajout ne se défait pas.`,
+      ],
+      confirmLabel: 'Ajouter comme non placé',
+      tone: 'primary',
+      action: async () =>
+        this.resource.set(
+          await this.apiCall(participantEndpoints.addLatecomer, {
+            params: { participantId: this.id(), timeSlotId },
+          }),
+        ),
+      onStale: () => this.resource.reload(),
+    });
+    if (added) this.announcer.announce(fr`Ajout au tirage du créneau ${rank}, comme non placé.`);
+  }
+
   /** Le créneau dont « Modifier les inscriptions » prend le focus, une fois la fiche relue. */
   private readonly editSignUpsToFocus = signal<string | undefined>(undefined);
 
@@ -471,10 +516,10 @@ export class ParticipantPage {
 
   private readonly reopenSignUpsAfterConfirmation = injectReopenSignUps();
   private readonly store = inject(ConventionStore);
-  private readonly apiCall = injectApiCall();
-  private readonly announcer = inject(Announcer);
   private readonly confirmation = inject(Confirmation);
+  private readonly announcer = inject(Announcer);
   private readonly router = inject(Router);
+  private readonly apiCall = injectApiCall();
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
 

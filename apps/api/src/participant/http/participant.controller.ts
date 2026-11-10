@@ -12,6 +12,7 @@ import {
   Query,
 } from '@nestjs/common';
 import {
+  AddLatecomerToPublishedDraw,
   AddParticipant,
   ReadParticipantList,
   ReadParticipantSheet,
@@ -47,6 +48,8 @@ export class ParticipantController {
     private readonly withdrawParticipantFromGame: WithdrawParticipantFromGame,
     @Inject(WithdrawParticipantFromDraw)
     private readonly withdrawParticipantFromDraw: WithdrawParticipantFromDraw,
+    @Inject(AddLatecomerToPublishedDraw)
+    private readonly addLatecomerToPublishedDraw: AddLatecomerToPublishedDraw,
     @Inject(UnlinkParticipantPhones)
     private readonly unlinkParticipantPhones: UnlinkParticipantPhones,
   ) {}
@@ -118,6 +121,16 @@ export class ParticipantController {
     @Param('timeSlotId') timeSlotId: string,
   ): Promise<ResponseOf<typeof participantEndpoints.withdrawFromDraw>> {
     await this.withdrawParticipantFromDraw.execute(participantId, timeSlotId);
+    return this.readSheetOrRefuse(participantId);
+  }
+
+  /** Ajoute le pseudo au tirage publié du créneau, non placé (ID-14), et rend la fiche relue. */
+  @Put(participantEndpoints.addLatecomer.path)
+  async addLatecomer(
+    @Param('participantId') participantId: string,
+    @Param('timeSlotId') timeSlotId: string,
+  ): Promise<ResponseOf<typeof participantEndpoints.addLatecomer>> {
+    await this.addLatecomerToPublishedDraw.execute(participantId, timeSlotId);
     return this.readSheetOrRefuse(participantId);
   }
 

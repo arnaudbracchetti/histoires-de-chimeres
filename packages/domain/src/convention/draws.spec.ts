@@ -2481,3 +2481,169 @@ describe('Créneaux tirés (PR-10, PR-11)', () => {
     });
   });
 });
+
+describe('Ajouter un retardataire à un tirage publié (ID-14)', () => {
+  /**
+   * Au créneau 1, Élodie et Lune jouent à « brumes », Zéphyr à « épice », la partie double ; au
+   * créneau 2, Lune joue à « néons ». Les deux tirages sont publiés. Mira, créée par un
+   * Organisateur, n'est dans aucun tirage.
+   */
+  function aPublishedConvention(): Convention {
+    const convention = aConvention();
+    convention.addParticipant('p4', 'Mira');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.signUpForGame('p2', 'brumes', CATALOGUE);
+    convention.signUpForGame('p3', 'epice', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+    convention.publishDraw('s1', CATALOGUE);
+    convention.signUpForGame('p2', 'neons', CATALOGUE);
+    convention.launchDraw('s2', CATALOGUE, FIRST_GAME, RANDOM);
+    convention.publishDraw('s2', CATALOGUE);
+    return convention;
+  }
+
+  const findResultOfTimeSlot = (
+    convention: Convention,
+    participantId: string,
+    timeSlotId: string,
+  ) =>
+    convention
+      .computeParticipantResults(participantId, NOW, CATALOGUE)
+      .find((slot) => slot.timeSlotId === timeSlotId)?.result;
+
+  it('l’ajoute au tirage publié, sans table, et son téléphone le montre non placé', () => {
+    const convention = aPublishedConvention();
+
+    convention.addLatecomerToPublishedDraw('p4', 's1', NOW, CATALOGUE);
+
+    expect(assignmentsOf(convention, 's1')).toEqual(['p1 brumes', 'p2 brumes', 'p3 epice', 'p4 -']);
+    expect(stateOf(convention, 's1')).toBe('published');
+    expect(convention.computeParticipantSituation('p4', NOW).timeSlots[0]!.drawResult).toEqual({
+      kind: 'unassigned',
+    });
+  });
+
+  it('ne change pas les places restantes', () => {
+    const convention = aPublishedConvention();
+
+    convention.addLatecomerToPublishedDraw('p4', 's1', NOW, CATALOGUE);
+
+    expect(findResultOfTimeSlot(convention, 'p4', 's1')).toEqual({
+      kind: 'unassigned',
+      tablesWithSeats: [
+        { tableName: 'Table 1', freeSeatCount: 3 },
+        { tableName: 'Table 2', freeSeatCount: 3 },
+      ],
+    });
+  });
+
+  it('lui envoie « retardataire », avec les tables où il reste de la place, jusqu’à la fin du créneau (NO-2, NO-3)', () => {
+    const convention = aPublishedConvention();
+    convention.changeDate('2027-03-14');
+
+    const notifications = convention.addLatecomerToPublishedDraw('p4', 's2', NOW, CATALOGUE);
+
+    expect(notifications).toEqual([
+      {
+        code: 'latecomer-unassigned',
+        params: { rank: 2, tablesWithSeats: ['Table 1'] },
+        recipients: { kind: 'participants', participantIds: ['p4'] },
+        deadline: { date: '2027-03-14', time: at('16:30') },
+      },
+    ]);
+  });
+
+  it('ne nomme aucune table quand toutes les parties du créneau sont complètes', () => {
+    const full = ScenarioCatalogue.restore([
+      { id: 'a', gameMasterId: 'g1', duration: 1, minSeats: 1, maxSeats: 2 },
+      { id: 'b', gameMasterId: 'g2', duration: 2, minSeats: 1, maxSeats: 1 },
+      { id: 'c', gameMasterId: 'g1', duration: 1, minSeats: 1, maxSeats: 5 },
+    ]);
+    const convention = aPublishedConvention();
+
+    const [notification] = convention.addLatecomerToPublishedDraw('p4', 's1', NOW, full);
+
+    expect(notification?.params).toEqual({ rank: 1, tablesWithSeats: [] });
+  });
+
+  it.each([
+    ['sans tirage', 's3', 'p4', 'draw-not-published', { rank: 3 }],
+    [
+      'déjà placé dans ce tirage',
+      's1',
+      'p1',
+      'latecomer-already-in-draw',
+      { nickname: 'Élodie', rank: 1 },
+    ],
+    [
+      'MJ qui mène sur le créneau (IN-4)',
+      's2',
+      'p-g1',
+      'latecomer-leads-on-time-slot',
+      { nickname: 'Brann', rank: 2 },
+    ],
+    [
+      'MJ d’une partie double qui s’y poursuit (IN-4)',
+      's2',
+      'p-g2',
+      'latecomer-leads-on-time-slot',
+      { nickname: 'Kaïros', rank: 2 },
+    ],
+    [
+      'joueur d’une partie double tirée au créneau précédent (TI-3)',
+      's2',
+      'p3',
+      'latecomer-plays-two-slot-game',
+      { nickname: 'Zéphyr', rank: 2 },
+    ],
+  ])('refuse un pseudo %s', (_, timeSlotId, participantId, code, params) => {
+    const convention = aPublishedConvention();
+
+    const refusal = refusalOf(() =>
+      convention.addLatecomerToPublishedDraw(participantId, timeSlotId, NOW, CATALOGUE),
+    );
+
+    expect({ code: refusal.code, params: refusal.params }).toEqual({ code, params });
+  });
+
+  it('refuse un pseudo déjà non placé dans ce tirage : l’ajout ne se répète pas', () => {
+    const convention = aPublishedConvention();
+    convention.addLatecomerToPublishedDraw('p4', 's1', NOW, CATALOGUE);
+
+    expect(
+      refusalOf(() => convention.addLatecomerToPublishedDraw('p4', 's1', NOW, CATALOGUE)).code,
+    ).toBe('latecomer-already-in-draw');
+  });
+
+  it('refuse un tirage provisoire', () => {
+    const convention = aConvention();
+    convention.addParticipant('p4', 'Mira');
+    convention.signUpForGame('p1', 'brumes', CATALOGUE);
+    convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
+
+    expect(
+      refusalOf(() => convention.addLatecomerToPublishedDraw('p4', 's1', NOW, CATALOGUE)),
+    ).toEqual(new Refusal('draw-not-published', { rank: 1 }));
+  });
+
+  it('refuse un créneau terminé, dès son heure de fin', () => {
+    const convention = aPublishedConvention();
+    convention.changeDate('2027-03-14');
+    const atEnd: LocalMoment = { date: '2027-03-14', time: at('11:30') };
+
+    expect(
+      refusalOf(() => convention.addLatecomerToPublishedDraw('p4', 's1', atEnd, CATALOGUE)),
+    ).toEqual(new Refusal('time-slot-ended', { rank: 1 }));
+  });
+
+  it('refuse un pseudo ou un créneau inconnu', () => {
+    const convention = aPublishedConvention();
+
+    expect(
+      refusalOf(() => convention.addLatecomerToPublishedDraw('inconnu', 's1', NOW, CATALOGUE)).code,
+    ).toBe('participant-not-found');
+    expect(
+      refusalOf(() => convention.addLatecomerToPublishedDraw('p4', 'inconnu', NOW, CATALOGUE)).code,
+    ).toBe('time-slot-not-found');
+  });
+});

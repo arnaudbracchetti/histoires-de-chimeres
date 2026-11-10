@@ -95,6 +95,11 @@ export type NotificationParams = {
   'game-cancelled': { scenarioId: string; ranks: number[]; tablesWithSeats: string[] };
   /** Publication (TI-7) : au MJ d'une partie, qu'il mène avec `playerCount` joueurs. */
   'draw-leading': { scenarioId: string; ranks: number[]; tableName: string; playerCount: number };
+  /**
+   * Au retardataire ajouté, non placé, au tirage publié du créneau de rang `rank` (ID-14).
+   * `tablesWithSeats` : comme pour `draw-unassigned`.
+   */
+  'latecomer-unassigned': { rank: number; tablesWithSeats: string[] };
 };
 
 export type NotificationCode = keyof NotificationParams;
