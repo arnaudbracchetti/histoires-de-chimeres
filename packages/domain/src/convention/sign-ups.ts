@@ -2,10 +2,11 @@ import { Refusal } from '../refusal.js';
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import type { Scenario } from '../scenario/scenario.js';
 import type { Seats } from '../scenario/seats.js';
+import type { Draws } from './draws.js';
 import type { Game } from './game.js';
 import { ParticipantWithoutGame } from './participant-without-game.js';
 import type { Schedule } from './schedule.js';
-import type { SignUp } from './sign-up.js';
+import { SignUp } from './sign-up.js';
 
 /** Les parties que mène chaque participant, par son rôle de MJ (ADR 0012). */
 export type LedGames = {
@@ -29,6 +30,19 @@ export type SignUpFigures = { signUpCount: number; withoutOtherSignUpCount: numb
 
 /** Les inscriptions qu'un geste retire à une partie (IN-6) : les chiffres de ses inscriptions. */
 export type RemovedSignUps = { gameId: string } & SignUpFigures;
+
+/** Le sort d'un élément de la source dans une fusion (ID-11) : passé à la destination, ou perdu. */
+export type MergeOutcome = 'transferred' | 'lost';
+
+/**
+ * Ce que la fusion d'un pseudo fait de ses inscriptions et de ses états sans partie (ID-11), dans
+ * l'ordre où ils sont rangés. Ce que la destination a déjà n'y est pas : rien ne passe, rien ne se
+ * perd.
+ */
+export type SignUpMerge = {
+  signUps: { gameId: string; outcome: MergeOutcome }[];
+  withoutGame: { timeSlotId: string; outcome: MergeOutcome }[];
+};
 
 /**
  * Ce que les règles des inscriptions lisent hors d'elles : le Programme, qui y mène quoi, et qui
@@ -165,6 +179,93 @@ export class SignUps {
       this.signUps.filter((signUp) => signUp.participantId !== participantId),
       this.participantsWithoutGame.filter((recorded) => recorded.participantId !== participantId),
     );
+  }
+
+  /**
+   * Ce que la fusion de la source dans la destination fait de ses inscriptions et de ses états sans
+   * partie (ID-11). `draws` : les tirages d'avant la fusion. Une inscription de la source est perdue
+   * à une partie que mène la destination, ou qui commence sur un créneau où la destination est
+   * placée ; sinon elle passe, de secours là où la destination mène (IN-4), sauf si la destination
+   * l'a déjà. Un état sans partie passe si la destination, sur ce créneau, n'est pas placée, n'y
+   * mène pas et n'y a aucune inscription active, celles reçues de la source comprises.
+   */
+  computeSignUpMerge(
+    sourceId: string,
+    destinationId: string,
+    draws: Draws,
+    collaborators: SignUpCollaborators,
+  ): SignUpMerge {
+    const { schedule, ledGames } = collaborators;
+    const led = ledGames.listGamesLedByParticipant(destinationId);
+    const isDestinationPlacedOn = (timeSlotId: string) =>
+      draws.isParticipantPlacedOnTimeSlot(destinationId, timeSlotId, schedule);
+    const signUps = this.signUps
+      .filter(
+        (signUp) =>
+          signUp.participantId === sourceId &&
+          !this.hasSignUp(new SignUp(destinationId, signUp.gameId)),
+      )
+      .map(({ gameId }) => {
+        const firstTimeSlotId = schedule.findExistingGameById(gameId).timeSlotIds[0]!;
+        const lost =
+          led.some((game) => game.id === gameId) || isDestinationPlacedOn(firstTimeSlotId);
+        return { gameId, outcome: lost ? ('lost' as const) : ('transferred' as const) };
+      });
+    const received = new SignUps(
+      [
+        ...this.signUps,
+        ...signUps
+          .filter(({ outcome }) => outcome === 'transferred')
+          .map(({ gameId }) => new SignUp(destinationId, gameId)),
+      ],
+      this.participantsWithoutGame,
+    );
+    const withoutGame = this.participantsWithoutGame
+      .filter(
+        ({ participantId, timeSlotId }) =>
+          participantId === sourceId &&
+          !this.hasParticipantWithoutGame(new ParticipantWithoutGame(destinationId, timeSlotId)),
+      )
+      .map(({ timeSlotId }) => {
+        const lost =
+          isDestinationPlacedOn(timeSlotId) ||
+          isLeadingOnTimeSlot(destinationId, timeSlotId, ledGames) ||
+          received.hasActiveSignUpOnTimeSlot(destinationId, timeSlotId, collaborators);
+        return { timeSlotId, outcome: lost ? ('lost' as const) : ('transferred' as const) };
+      });
+    return { signUps, withoutGame };
+  }
+
+  /**
+   * Les inscriptions après la fusion de la source dans la destination (ID-11), selon
+   * `computeSignUpMerge()` : les inscriptions qui passent sont prises à la suite des autres, comme
+   * des inscriptions nouvelles, et la source n'a plus rien.
+   */
+  getSignUpsAfterMergingParticipant(
+    sourceId: string,
+    destinationId: string,
+    draws: Draws,
+    collaborators: SignUpCollaborators,
+  ): SignUps {
+    const merge = this.computeSignUpMerge(sourceId, destinationId, draws, collaborators);
+    const transferredTimeSlotIds = new Set(
+      merge.withoutGame
+        .filter(({ outcome }) => outcome === 'transferred')
+        .map(({ timeSlotId }) => timeSlotId),
+    );
+    const signUps = [
+      ...this.signUps.filter((signUp) => signUp.participantId !== sourceId),
+      ...merge.signUps
+        .filter(({ outcome }) => outcome === 'transferred')
+        .map(({ gameId }) => new SignUp(destinationId, gameId)),
+    ];
+    const participantsWithoutGame = this.participantsWithoutGame.flatMap((recorded) => {
+      if (recorded.participantId !== sourceId) return [recorded];
+      return transferredTimeSlotIds.has(recorded.timeSlotId)
+        ? [new ParticipantWithoutGame(destinationId, recorded.timeSlotId)]
+        : [];
+    });
+    return new SignUps(signUps, participantsWithoutGame);
   }
 
   /**

@@ -127,7 +127,11 @@ export const problemCatalogue: Catalogue = {
   'participant-is-game-master': {
     title: 'Pseudo de MJ',
     detail: ({ nickname }) =>
-      fr`${nickname} est MJ : supprime-le depuis sa fiche de MJ, dans « MJ ».`,
+      fr`${nickname} est MJ : son pseudo se gère depuis sa fiche de MJ, dans « MJ ».`,
+  },
+  'merge-into-itself': {
+    title: 'Même pseudo',
+    detail: () => 'Choisis un autre pseudo que celui à fusionner.',
   },
   'nickname-required': {
     title: 'Pseudo obligatoire',

@@ -15,7 +15,7 @@ import type {
 } from './draw-algorithm.js';
 import type { Schedule } from './schedule.js';
 import type { ScheduleChange } from './schedule-change.js';
-import type { LedGames, SignUpCollaborators, SignUps } from './sign-ups.js';
+import type { LedGames, MergeOutcome, SignUpCollaborators, SignUps } from './sign-ups.js';
 
 /**
  * Ce que le lancement lit hors des Tirages : la Journée, les Inscriptions et leurs collaborateurs,
@@ -48,6 +48,24 @@ export type LatecomerCollaborators = {
   date: string | null;
   schedule: Schedule;
   ledGames: LedGames;
+};
+
+/**
+ * Ce que la fusion d'un pseudo lit hors des Tirages : le Programme, qui donne les créneaux des
+ * parties doubles, et les parties non annulées que mène chaque participant (IN-4).
+ */
+export type MergeCollaborators = { schedule: Schedule; ledGames: LedGames };
+
+/**
+ * Ce que la fusion d'un pseudo fait de son affectation dans le tirage d'un créneau (ID-11) : sa
+ * partie, ou `null` s'il n'est pas placé, et son sort. `destinationLeftTimeSlotIds` : les créneaux
+ * dont la destination quitte le tirage, parce qu'elle prend la partie double de la source (TI-3).
+ */
+export type AssignmentMerge = {
+  timeSlotId: string;
+  gameId: string | null;
+  outcome: MergeOutcome;
+  destinationLeftTimeSlotIds: string[];
 };
 
 /** Ce que le rétablissement d'une partie lit hors des Tirages. */
@@ -162,6 +180,21 @@ export class Draws {
       .flatMap((draw) => draw.assignments)
       .filter((assignment) => assignment.participantId === participantId && assignment.gameId)
       .flatMap(({ gameId }) => schedule.findGameById(gameId!)?.timeSlotIds.slice(1) ?? []);
+  }
+
+  /**
+   * Le participant est placé sur le créneau : dans une partie du tirage, provisoire ou publié, de ce
+   * créneau, ou dans une partie double qui s'y poursuit (TI-3).
+   */
+  isParticipantPlacedOnTimeSlot(
+    participantId: string,
+    timeSlotId: string,
+    schedule: Schedule,
+  ): boolean {
+    return Boolean(
+      this.findDrawOfTimeSlot(timeSlotId)?.findAssignmentOfParticipant(participantId)?.gameId ||
+      this.findAssignmentContinuingOnTimeSlot(participantId, timeSlotId, schedule),
+    );
   }
 
   /**
@@ -354,6 +387,74 @@ export class Draws {
   /** La partie est annulée dans un tirage : son MJ n'y mène plus (IN-4). */
   isGameCancelled(gameId: string): boolean {
     return this.draws.some((draw) => draw.isGameCancelled(gameId));
+  }
+
+  /**
+   * Ce que la fusion de la source dans la destination fait des affectations de la source (ID-11),
+   * un par tirage où elle en a une, dans l'ordre des tirages. Elle est perdue si la destination,
+   * sur l'un des créneaux de sa partie, ou sur le créneau pour la source non placée, mène une
+   * partie non annulée ou est placée, dans une partie double qui s'y poursuit comprise ; ou si
+   * toutes deux sont non placées : la destination garde la sienne. Sinon la destination la reprend
+   * entière, marque « déplacé à la main » comprise : une seule affectation reste. Prenant une partie double, la destination quitte le tirage de ses créneaux suivants, où
+   * elle était non placée (TI-3).
+   */
+  computeAssignmentMerge(
+    sourceId: string,
+    destinationId: string,
+    { schedule, ledGames }: MergeCollaborators,
+  ): AssignmentMerge[] {
+    const led = ledGames.listGamesLedByParticipant(destinationId);
+    const isDestinationTakenOn = (timeSlotId: string) =>
+      led.some((game) => game.isOnTimeSlot(timeSlotId)) ||
+      this.isParticipantPlacedOnTimeSlot(destinationId, timeSlotId, schedule);
+    return this.draws.flatMap((draw): AssignmentMerge[] => {
+      const assignment = draw.findAssignmentOfParticipant(sourceId);
+      if (!assignment) return [];
+      const timeSlotIds = assignment.gameId
+        ? schedule.findExistingGameById(assignment.gameId).timeSlotIds
+        : [draw.timeSlotId];
+      const lost =
+        timeSlotIds.some(isDestinationTakenOn) ||
+        (!assignment.gameId && draw.hasParticipant(destinationId));
+      return [
+        {
+          timeSlotId: draw.timeSlotId,
+          gameId: assignment.gameId,
+          outcome: lost ? 'lost' : 'transferred',
+          destinationLeftTimeSlotIds: lost
+            ? []
+            : timeSlotIds
+                .slice(1)
+                .filter((timeSlotId) =>
+                  this.findDrawOfTimeSlot(timeSlotId)?.hasParticipant(destinationId),
+                ),
+        },
+      ];
+    });
+  }
+
+  /**
+   * Les Tirages après la fusion de la source dans la destination (ID-11), selon
+   * `computeAssignmentMerge()` : la source n'y est plus.
+   */
+  getDrawsAfterMergingParticipant(
+    sourceId: string,
+    destinationId: string,
+    collaborators: MergeCollaborators,
+  ): Draws {
+    const merges = this.computeAssignmentMerge(sourceId, destinationId, collaborators);
+    const left = new Set(merges.flatMap((merge) => merge.destinationLeftTimeSlotIds));
+    return new Draws(
+      this.draws.map((draw) => {
+        const merge = merges.find(({ timeSlotId }) => timeSlotId === draw.timeSlotId);
+        let next = draw;
+        if (left.has(draw.timeSlotId)) next = next.getDrawAfterRemovingParticipant(destinationId);
+        if (merge?.outcome === 'transferred') {
+          next = next.getDrawAfterGivingAssignment(sourceId, destinationId);
+        }
+        return next.getDrawAfterRemovingParticipant(sourceId);
+      }),
+    );
   }
 
   /** Les Tirages sans les affectations du participant, qui disparaît (PR-12). */

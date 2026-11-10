@@ -33,6 +33,7 @@ import { computeSignUpTracking, type TimeSlotTracking } from './sign-up-tracking
 import {
   SignUps,
   type LedGames,
+  type MergeOutcome,
   type PlayedTimeSlots,
   type RemovedSignUps,
   type SignUpCollaborators,
@@ -408,6 +409,71 @@ export class Convention {
     this.allParticipants =
       this.allParticipants.getParticipantsAfterRemovingParticipant(participantId);
     this.removeParticipantFromSignUpsAndDraws(participantId);
+  }
+
+  /**
+   * Fusionne le pseudo source dans le pseudo destination, à tout moment (ID-11) : la destination
+   * reçoit ses inscriptions, son état sans partie et ses affectations, selon les règles des
+   * Inscriptions et des Tirages, lues sur l'état d'avant la fusion. La source est supprimée : ses
+   * téléphones reliés perdent leur lien. Refuse une source ou une destination inconnue, une source
+   * égale à la destination, une source MJ (PR-12). Personne n'est notifié (NO-4).
+   */
+  mergeParticipant(sourceId: string, destinationId: string): void {
+    const participants = this.allParticipants.getParticipantsAfterMergingParticipant(
+      sourceId,
+      destinationId,
+    );
+    const collaborators = this.buildSignUpCollaborators(this.gameSchedule);
+    this.allSignUps = this.allSignUps.getSignUpsAfterMergingParticipant(
+      sourceId,
+      destinationId,
+      this.allDraws,
+      collaborators,
+    );
+    this.allDraws = this.allDraws.getDrawsAfterMergingParticipant(sourceId, destinationId, {
+      schedule: this.gameSchedule,
+      ledGames: collaborators.ledGames,
+    });
+    this.allParticipants = participants;
+  }
+
+  /**
+   * Ce que `mergeParticipant()` fera, créneau par créneau, dans l'ordre de la journée, sans rien
+   * changer : le même calcul que la fusion. Refuse comme elle.
+   */
+  computeMergeVerdict(sourceId: string, destinationId: string): MergeTimeSlotVerdict[] {
+    this.allParticipants.getParticipantsAfterMergingParticipant(sourceId, destinationId);
+    const collaborators = this.buildSignUpCollaborators(this.gameSchedule);
+    const signUpMerge = this.allSignUps.computeSignUpMerge(
+      sourceId,
+      destinationId,
+      this.allDraws,
+      collaborators,
+    );
+    const assignmentMerges = this.allDraws.computeAssignmentMerge(sourceId, destinationId, {
+      schedule: this.gameSchedule,
+      ledGames: collaborators.ledGames,
+    });
+    const startsOn = (gameId: string, timeSlotId: string) =>
+      this.gameSchedule.findExistingGameById(gameId).timeSlotIds[0] === timeSlotId;
+    const signUpGameIds = (timeSlotId: string, outcome: MergeOutcome) =>
+      signUpMerge.signUps
+        .filter((merge) => merge.outcome === outcome && startsOn(merge.gameId, timeSlotId))
+        .map(({ gameId }) => gameId);
+    return this.day.timeSlots.map(({ id: timeSlotId }) => {
+      const assignment = assignmentMerges.find((merge) => merge.timeSlotId === timeSlotId);
+      return {
+        timeSlotId,
+        assignment: assignment ? { gameId: assignment.gameId, outcome: assignment.outcome } : null,
+        destinationLeavesDraw: assignmentMerges.some((merge) =>
+          merge.destinationLeftTimeSlotIds.includes(timeSlotId),
+        ),
+        transferredSignUpGameIds: signUpGameIds(timeSlotId, 'transferred'),
+        lostSignUpGameIds: signUpGameIds(timeSlotId, 'lost'),
+        withoutGame:
+          signUpMerge.withoutGame.find((merge) => merge.timeSlotId === timeSlotId)?.outcome ?? null,
+      };
+    });
   }
 
   /** Le MJ se déclare disponible sur un créneau existant (PR-2). Déclarer deux fois ne change rien. */
@@ -1422,6 +1488,23 @@ export type MovePlacement = Placement & {
  * tirage provisoire qu'elle effacerait.
  */
 export type UnscheduleVerdict = DrawErasure & { removedSignUps: RemovedSignUps[] };
+
+/**
+ * Ce que la fusion d'un pseudo fera sur un créneau (ID-11). `assignment` : l'affectation de la
+ * source dans son tirage, sa partie ou `null` non placée, passée à la destination ou perdue ; `null`
+ * si la source n'y est pas. `destinationLeavesDraw` : la destination quitte ce tirage, en prenant la
+ * partie double de la source (TI-3). Les inscriptions de la source aux parties qui commencent sur le
+ * créneau, passées ou perdues, sans celles que la destination a déjà. `withoutGame` : le sort de
+ * l'état sans partie de la source, ou `null` sans cet état (IN-6).
+ */
+export type MergeTimeSlotVerdict = {
+  timeSlotId: string;
+  assignment: { gameId: string | null; outcome: MergeOutcome } | null;
+  destinationLeavesDraw: boolean;
+  transferredSignUpGameIds: string[];
+  lostSignUpGameIds: string[];
+  withoutGame: MergeOutcome | null;
+};
 
 /** Le verdict de retrait d'une disponibilité : le refus d'écriture, ou `null`. */
 export type WithdrawalVerdict = { timeSlotId: string; refusal: Refusal | null };

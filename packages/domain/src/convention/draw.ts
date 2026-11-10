@@ -139,6 +139,23 @@ export class Draw {
     );
   }
 
+  /**
+   * Le même tirage, l'affectation de la source donnée à la destination, entière et à sa place : la
+   * destination n'en a pas d'autre (ID-11).
+   */
+  getDrawAfterGivingAssignment(sourceId: string, destinationId: string): Draw {
+    return new Draw(
+      this.timeSlotId,
+      this.published,
+      this.assignments.flatMap((assignment) => {
+        if (assignment.participantId === destinationId) return [];
+        if (assignment.participantId !== sourceId) return [assignment];
+        return [new Assignment(destinationId, assignment.gameId, assignment.movedByHand)];
+      }),
+      this.cancelledGameIds,
+    );
+  }
+
   /** Le même tirage, sans l'affectation du participant, qui disparaît (PR-12). */
   getDrawAfterRemovingParticipant(participantId: string): Draw {
     return new Draw(

@@ -7,6 +7,7 @@ export {
   type Identification,
   type IdentityConfirmation,
   type DrawResult,
+  type MergeTimeSlotVerdict,
   type MovePlacement,
   type ParticipantResult,
   type ParticipantSituation,
@@ -46,7 +47,12 @@ export { GameMaster } from './convention/game-master.js';
 export { Participant } from './convention/participant.js';
 export { ParticipantWithoutGame } from './convention/participant-without-game.js';
 export { SignUp } from './convention/sign-up.js';
-export { SignUps, type RemovedSignUps, type SignUpFigures } from './convention/sign-ups.js';
+export {
+  SignUps,
+  type MergeOutcome,
+  type RemovedSignUps,
+  type SignUpFigures,
+} from './convention/sign-ups.js';
 export type {
   Capacity,
   GameTracking,

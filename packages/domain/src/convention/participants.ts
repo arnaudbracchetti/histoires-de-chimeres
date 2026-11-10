@@ -229,6 +229,18 @@ export class Participants {
     );
   }
 
+  /**
+   * Les participants sans la source, fusionnée dans la destination (ID-11), dont le pseudo redevient
+   * libre. Refuse, dans l'ordre : une source ou une destination inconnue, une source égale à la
+   * destination, une source MJ, qui se gère par sa fiche de MJ (PR-12). La destination peut être MJ.
+   */
+  getParticipantsAfterMergingParticipant(sourceId: string, destinationId: string): Participants {
+    const source = this.allParticipants.findExistingItemById(sourceId);
+    this.allParticipants.verifyItemExists(destinationId);
+    if (source.id === destinationId) throw new Refusal('merge-into-itself', {});
+    return this.getParticipantsAfterRemovingParticipant(source.id);
+  }
+
   /** Le MJ se déclare disponible sur un créneau existant (PR-2). Déclarer deux fois ne change rien. */
   getParticipantsAfterDeclaringAvailability(
     gameMasterId: string,
