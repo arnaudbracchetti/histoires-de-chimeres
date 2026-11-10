@@ -699,6 +699,30 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
         expect(push.received).toHaveLength(before);
       });
 
+      it('une fusion de pseudos ne prévient personne (NO-4)', async () => {
+        await changeMaxSeats(1);
+        await signUp(svenPhone);
+        await push.receivedAtLeast(1);
+        await quietPeriod();
+        const before = push.received.length;
+        const participants = (await server().get(apiUrl(participantEndpoints.list)).expect(200))
+          .body as ParticipantListEntryDto[];
+        const idOf = (nickname: string) =>
+          participants.find((participant) => participant.nickname === nickname)!.id;
+
+        await server()
+          .post(
+            apiUrl(participantEndpoints.merge, {
+              participantId: idOf('Sven'),
+              destinationId: idOf('Lune'),
+            }),
+          )
+          .expect(200);
+
+        await quietPeriod();
+        expect(push.received).toHaveLength(before);
+      });
+
       it('une baisse des places de son scénario prévient ses inscrits', async () => {
         await signUp(svenPhone);
 

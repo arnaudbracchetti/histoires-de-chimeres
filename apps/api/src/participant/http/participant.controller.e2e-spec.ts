@@ -18,6 +18,7 @@ import {
   type ConventionDto,
   type GameMasterDto,
   type IdentityConfirmationDto,
+  type MergeVerdictDto,
   type ParticipantListEntryDto,
   type ParticipantSheetDto,
   type ScenarioDto,
@@ -732,6 +733,125 @@ describe('Liste « Participants » (ID-5)', () => {
       expect((await unlinkPhones('inconnu').expect(404)).body).toMatchObject({
         code: 'participant-not-found',
       });
+    });
+  });
+
+  describe('Fusionner deux pseudos (ID-11)', () => {
+    const add = async (nickname: string) =>
+      (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
+        .body as ParticipantSheetDto;
+    const merge = (participantId: string, destinationId: string) =>
+      server().post(apiUrl(participantEndpoints.merge, { participantId, destinationId }));
+    const readMergeVerdict = (participantId: string, destinationId: string) =>
+      server().get(apiUrl(participantEndpoints.readMergeVerdict, { participantId, destinationId }));
+
+    it('dit ce que la fusion fera, sans rien changer', async () => {
+      const elodie = await gameMaster('Élodie');
+      const neons = await scheduled(elodie.id, 'Néons', 'Dragon');
+      const lune = await add('Lune');
+      await signUp(neons, await linkedPhone('Sven'));
+      const sven = (await list()).find(({ nickname }) => nickname === 'Sven')!;
+
+      const response = await readMergeVerdict(sven.id, lune.id).expect(200);
+
+      expect(response.body).toEqual({
+        timeSlots: [
+          {
+            timeSlotId: slot(1),
+            rank: 1,
+            assignment: null,
+            destinationLeavesDraw: false,
+            transferredSignUpTitles: ['Néons'],
+            lostSignUpTitles: [],
+            withoutGame: null,
+          },
+          {
+            timeSlotId: slot(2),
+            rank: 2,
+            assignment: null,
+            destinationLeavesDraw: false,
+            transferredSignUpTitles: [],
+            lostSignUpTitles: [],
+            withoutGame: null,
+          },
+        ],
+      });
+      expect(nicknames(await list())).toEqual(['Élodie', 'Lune', 'Sven']);
+    });
+
+    it('donne l’affectation de la source dans le verdict, avec sa partie et sa table', async () => {
+      const elodie = await gameMaster('Élodie');
+      const neons = await scheduled(elodie.id, 'Néons', 'Dragon');
+      const lune = await add('Lune');
+      await signUp(neons, await linkedPhone('Sven'));
+      const sven = (await list()).find(({ nickname }) => nickname === 'Sven')!;
+      await server()
+        .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))
+        .expect(204);
+
+      const response = await readMergeVerdict(sven.id, lune.id).expect(200);
+
+      expect((response.body as MergeVerdictDto).timeSlots[0]!.assignment).toEqual({
+        title: 'Néons',
+        tableName: 'Dragon',
+        outcome: 'transferred',
+      });
+    });
+
+    it('fusionne, rend la fiche de la destination, supprime la source et coupe ses liens', async () => {
+      const elodie = await gameMaster('Élodie');
+      const neons = await scheduled(elodie.id, 'Néons', 'Dragon');
+      const lune = await add('Lune');
+      const cookie = await linkedPhone('Sven');
+      await signUp(neons, cookie);
+      const sven = (await list()).find(({ nickname }) => nickname === 'Sven')!;
+
+      const response = await merge(sven.id, lune.id).expect(200);
+
+      expect(response.body).toMatchObject({
+        id: lune.id,
+        nickname: 'Lune',
+        signedUpGameIds: [neons],
+      });
+      expect(nicknames(await list())).toEqual(['Élodie', 'Lune']);
+      await server().get(apiUrl(linkedPhoneEndpoints.read)).set('Cookie', cookie).expect(401);
+    });
+
+    it('fusionne dans le pseudo d’un MJ', async () => {
+      await gameMaster('Kaïros');
+      const kairos = (await list()).find(({ nickname }) => nickname === 'Kaïros')!;
+      const lune = await add('Lune');
+
+      const response = await merge(lune.id, kairos.id).expect(200);
+
+      expect(response.body).toMatchObject({ id: kairos.id, gameMaster: true });
+    });
+
+    it('refuse une source MJ, ou la fusion d’un pseudo dans lui-même : 422', async () => {
+      await gameMaster('Kaïros');
+      const kairos = (await list()).find(({ nickname }) => nickname === 'Kaïros')!;
+      const lune = await add('Lune');
+
+      const fromGameMaster = await merge(kairos.id, lune.id).expect(422);
+      const intoItself = await merge(lune.id, lune.id).expect(422);
+      const verdict = await readMergeVerdict(lune.id, lune.id).expect(422);
+
+      expect(fromGameMaster.body).toMatchObject({
+        code: 'participant-is-game-master',
+        detail:
+          'Kaïros est MJ\u00a0: son pseudo se gère depuis sa fiche de MJ, dans «\u00a0MJ\u00a0».',
+      });
+      expect(intoItself.body).toMatchObject({ code: 'merge-into-itself' });
+      expect(verdict.body).toMatchObject({ code: 'merge-into-itself' });
+      expect(nicknames(await list())).toEqual(['Kaïros', 'Lune']);
+    });
+
+    it('rend 404 pour un pseudo inconnu', async () => {
+      const lune = await add('Lune');
+
+      await merge('inconnu', lune.id).expect(404);
+      await merge(lune.id, 'inconnu').expect(404);
+      await readMergeVerdict(lune.id, 'inconnu').expect(404);
     });
   });
 });

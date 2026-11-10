@@ -3,6 +3,8 @@ import { Module } from '@nestjs/common';
 import {
   AddLatecomerToPublishedDraw,
   AddParticipant,
+  MergeParticipant,
+  ReadMergeVerdict,
   ReadParticipantList,
   ReadParticipantSheet,
   RemoveParticipant,
@@ -56,6 +58,17 @@ import { PrismaParticipantReader } from './persistence/prisma-participant-reader
       provide: RemoveParticipant,
       useFactory: (repository: ConventionRepository) => new RemoveParticipant(repository),
       inject: [CONVENTION_REPOSITORY],
+    },
+    {
+      provide: MergeParticipant,
+      useFactory: (repository: ConventionRepository) => new MergeParticipant(repository),
+      inject: [CONVENTION_REPOSITORY],
+    },
+    {
+      provide: ReadMergeVerdict,
+      useFactory: (conventions: ConventionRepository, schedule: ScheduleReader) =>
+        new ReadMergeVerdict(conventions, schedule),
+      inject: [CONVENTION_REPOSITORY, SCHEDULE_READER],
     },
     {
       provide: SignUpParticipantForGame,

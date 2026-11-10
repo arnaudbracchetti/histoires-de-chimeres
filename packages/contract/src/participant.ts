@@ -94,6 +94,34 @@ export type ParticipantNicknameBody = {
   nickname: string;
 };
 
+/** Le sort d'un élément du pseudo fusionné (ID-11) : passé à la destination, ou perdu. */
+export type MergeOutcomeDto = 'transferred' | 'lost';
+
+/**
+ * Ce que la fusion d'un pseudo fera sur un créneau (ID-11), avec le rang du créneau.
+ * `assignment` : l'affectation de la source dans son tirage, sa partie et sa table (`null` non
+ * placée), passée à la destination ou perdue ; `null` si la source n'y est pas.
+ * `destinationLeavesDraw` : la destination quitte ce tirage, en prenant la partie double de la
+ * source (TI-3). Les titres des parties qui commencent sur le créneau où les inscriptions de la
+ * source passent, ou se perdent, sans celles que la destination a déjà. `withoutGame` : le sort de
+ * l'état sans partie de la source (IN-6), ou `null`.
+ */
+export type MergeTimeSlotVerdictDto = {
+  timeSlotId: string;
+  rank: number;
+  assignment: { title: string | null; tableName: string | null; outcome: MergeOutcomeDto } | null;
+  destinationLeavesDraw: boolean;
+  transferredSignUpTitles: string[];
+  lostSignUpTitles: string[];
+  withoutGame: MergeOutcomeDto | null;
+};
+
+/** Ce que la fusion fera : un par créneau, dans l'ordre de la journée. */
+export type MergeVerdictDto = { timeSlots: MergeTimeSlotVerdictDto[] };
+
+/** La source (`participantId`) et la destination d'une fusion (ID-11). */
+export type MergeParams = { participantId: string; destinationId: string };
+
 /**
  * Les pseudos, de participant et de MJ, gérés par un Organisateur (ID-5). La liste les rend dans
  * l'ordre naturel : le front garde cet ordre. `read` : la fiche d'un pseudo, ou 404. `add` crée un
@@ -104,7 +132,9 @@ export type ParticipantNicknameBody = {
  * sa place (ID-12), aux règles du téléphone ; répétés, ils ne changent rien. `addLatecomer` ajoute
  * le pseudo au tirage publié d'un créneau, non placé, et le notifie (ID-14). Chacun rend la fiche.
  * `unlinkPhones` coupe tous les liens du pseudo, sans verrou : il peut être relié de nouveau
- * (ID-8). Il rend la fiche.
+ * (ID-8). Il rend la fiche. `merge` fusionne le pseudo dans la destination, participant ou MJ, et
+ * rend la fiche de la destination ; le pseudo fusionné est supprimé (ID-11). `readMergeVerdict` dit
+ * ce que la fusion fera, sans rien changer.
  */
 export const participantEndpoints = {
   list: endpoint<ParticipantListEntryDto[], never, never, ParticipantListQuery>(
@@ -136,6 +166,14 @@ export const participantEndpoints = {
   addLatecomer: endpoint<ParticipantSheetDto, { participantId: string; timeSlotId: string }>(
     'PUT',
     'participants/:participantId/time-slots/:timeSlotId/latecomer',
+  ),
+  merge: endpoint<ParticipantSheetDto, MergeParams>(
+    'POST',
+    'participants/:participantId/merge/:destinationId',
+  ),
+  readMergeVerdict: endpoint<MergeVerdictDto, MergeParams>(
+    'GET',
+    'participants/:participantId/merge-verdict/:destinationId',
   ),
   unlinkPhones: endpoint<ParticipantSheetDto, { participantId: string }>(
     'DELETE',

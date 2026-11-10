@@ -14,6 +14,8 @@ import {
 import {
   AddLatecomerToPublishedDraw,
   AddParticipant,
+  MergeParticipant,
+  ReadMergeVerdict,
   ReadParticipantList,
   ReadParticipantSheet,
   RemoveParticipant,
@@ -42,6 +44,8 @@ export class ParticipantController {
     @Inject(AddParticipant) private readonly addParticipant: AddParticipant,
     @Inject(RenameParticipant) private readonly renameParticipant: RenameParticipant,
     @Inject(RemoveParticipant) private readonly removeParticipant: RemoveParticipant,
+    @Inject(MergeParticipant) private readonly mergeParticipant: MergeParticipant,
+    @Inject(ReadMergeVerdict) private readonly readMergeVerdict: ReadMergeVerdict,
     @Inject(SignUpParticipantForGame)
     private readonly signUpParticipantForGame: SignUpParticipantForGame,
     @Inject(WithdrawParticipantFromGame)
@@ -92,6 +96,25 @@ export class ParticipantController {
     @Param('participantId') participantId: string,
   ): Promise<ResponseOf<typeof participantEndpoints.remove>> {
     return this.removeParticipant.execute(participantId);
+  }
+
+  /** Fusionne le pseudo dans la destination (ID-11), et rend la fiche de la destination. */
+  @Post(participantEndpoints.merge.path)
+  @HttpCode(HttpStatus.OK)
+  async merge(
+    @Param('participantId') participantId: string,
+    @Param('destinationId') destinationId: string,
+  ): Promise<ResponseOf<typeof participantEndpoints.merge>> {
+    await this.mergeParticipant.execute(participantId, destinationId);
+    return this.readSheetOrRefuse(destinationId);
+  }
+
+  @Get(participantEndpoints.readMergeVerdict.path)
+  mergeVerdict(
+    @Param('participantId') participantId: string,
+    @Param('destinationId') destinationId: string,
+  ): Promise<ResponseOf<typeof participantEndpoints.readMergeVerdict>> {
+    return this.readMergeVerdict.execute(participantId, destinationId);
   }
 
   /** Inscrit le pseudo à la partie, à sa place (ID-12), et rend la fiche relue. */
