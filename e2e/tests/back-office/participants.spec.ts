@@ -301,7 +301,10 @@ test('l’Organisateur rouvre les inscriptions d’un tirage provisoire depuis l
   await expect(dialog).toBeHidden();
   await expect(program).toContainText('Inscriptions ouvertes');
   await expect(program).toContainText('Aucune inscription');
-  await page.getByRole('button', { name: /^Modifier les inscriptions/ }).click();
+  const editSignUps = page.getByRole('button', { name: /^Modifier les inscriptions/ });
+  await expect(editSignUps).toBeFocused();
+  expect(await editSignUps.evaluate((button) => button.matches(':focus-visible'))).toBe(true);
+  await editSignUps.click();
   await page.getByRole('tabpanel').getByRole('checkbox', { name: 'Les Brumes' }).check();
   await expect(page.getByRole('tabpanel')).toContainText('2 inscrits · 1 à 5 places');
 });

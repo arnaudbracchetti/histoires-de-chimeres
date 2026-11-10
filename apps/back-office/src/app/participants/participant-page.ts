@@ -2,11 +2,13 @@ import {
   afterNextRender,
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
   Injector,
   input,
   signal,
+  untracked,
 } from '@angular/core';
 import { Tab, TabContent, TabList, TabPanel, Tabs } from '@angular/aria/tabs';
 import { participantEndpoints } from '@chimeres/contract';
@@ -136,6 +138,7 @@ type TabValue = 'program' | 'sign-ups' | 'phones';
                           type="button"
                           appButton="secondary"
                           class="act"
+                          [attr.data-time-slot-id]="row.timeSlotId"
                           [attr.aria-label]="editSignUpsLabel(row.label)"
                           (click)="openSignUps(row.timeSlotId)"
                         >
@@ -372,14 +375,35 @@ export class ParticipantPage {
   /**
    * Rouvre les inscriptions d'un créneau en tirage provisoire où le pseudo n'est pas (TI-6), par le
    * geste du pilotage, sa confirmation comprise. La fiche se relit : le créneau y passe en
-   * inscriptions ouvertes.
+   * inscriptions ouvertes, et le focus va à son « Modifier les inscriptions », pour enchaîner.
    */
   protected async reopenSignUps(timeSlot: { timeSlotId: string; rank: number }): Promise<void> {
     const reopened = await this.reopenSignUpsAfterConfirmation(
       { id: timeSlot.timeSlotId, rank: timeSlot.rank },
       () => this.resource.reload(),
     );
-    if (reopened) this.resource.reload();
+    if (!reopened) return;
+    this.resource.reload();
+    this.editSignUpsToFocus.set(timeSlot.timeSlotId);
+  }
+
+  /** Le créneau dont « Modifier les inscriptions » prend le focus, une fois la fiche relue. */
+  private readonly editSignUpsToFocus = signal<string | undefined>(undefined);
+
+  constructor() {
+    effect(() => {
+      const timeSlotId = this.editSignUpsToFocus();
+      if (!timeSlotId || this.resource.isLoading()) return;
+      untracked(() => this.editSignUpsToFocus.set(undefined));
+      // L'anneau s'affiche même après un clic : sans lui, le focus déplacé passerait inaperçu.
+      afterNextRender(
+        () =>
+          this.host
+            .querySelector<HTMLElement>(`.act[data-time-slot-id="${timeSlotId}"]`)
+            ?.focus({ focusVisible: true }),
+        { injector: this.injector },
+      );
+    });
   }
 
   private readonly reopenSignUpsAfterConfirmation = injectReopenSignUps();
