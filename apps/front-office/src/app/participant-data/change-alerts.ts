@@ -11,6 +11,7 @@ import {
   buildCancelledAlertText,
   buildGameMovedText,
   buildGameUnscheduledText,
+  buildLatecomerText,
   buildLeadingText,
   buildOwnGameScheduledText,
   buildOwnGameUnscheduledText,
@@ -35,6 +36,7 @@ export function changesBetween(
 ): ChangeNotice[] {
   return [
     ...publishedDraws(before, after),
+    ...latecomerAdditions(before, after),
     ...removedSignUps(before, after, ownWithdrawals),
     ...ledGameChanges(before, after),
   ];
@@ -71,6 +73,22 @@ function publishedDraws(before: Reading, after: Reading): ChangeNotice[] {
       return [buildChangeNotice(text, see)];
     },
   );
+}
+
+/**
+ * Ajouté non placé au tirage d'un créneau déjà publié, où il n'était pas (ID-14) : « pas de place
+ * pour toi », avec les tables où il reste de la place, comme la notification « retardataire ».
+ */
+function latecomerAdditions(before: Reading, after: Reading): ChangeNotice[] {
+  const { schedule } = after;
+  return after.situation.timeSlots.flatMap(({ timeSlotId, state, drawResult }) => {
+    const previous = before.situation.timeSlots.find((slot) => slot.timeSlotId === timeSlotId);
+    if (!previous || !hasPublishedDraw(previous.state) || previous.drawResult) return [];
+    if (!hasPublishedDraw(state) || drawResult?.kind !== 'unassigned') return [];
+    const rank = schedule.timeSlots.find(({ id }) => id === timeSlotId)?.rank ?? 0;
+    const tablesWithSeats = tableNamesOf(gamesWithSeatsOn(timeSlotId, schedule));
+    return [buildChangeNotice(buildLatecomerText(rank, tablesWithSeats), frontOfficeUrls.home())];
+  });
 }
 
 /**

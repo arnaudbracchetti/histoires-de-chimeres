@@ -1311,6 +1311,23 @@ describe('ParticipantData', () => {
         ]);
       });
 
+      it('signale au retardataire ajouté au tirage déjà publié qu’il n’est pas placé (ID-14)', async () => {
+        await opened(schedule([full, withSeats]), now, situation([], published(null)));
+
+        await rereadWith(
+          schedule([full, withSeats]),
+          situation([], published({ kind: 'unassigned' })),
+        );
+
+        expect(changeAlerts()).toEqual([
+          {
+            title: `Créneau 1${NBSP}: pas de place pour toi`,
+            detail: `Le tirage de ce créneau est déjà fait. Il reste de la place à la table Licorne${NBSP}: va voir son MJ.`,
+            see: '/',
+          },
+        ]);
+      });
+
       it('signale au participant sans partie qu’il n’avait plus d’inscription', async () => {
         await opened(
           schedule([brumes, epice]),
