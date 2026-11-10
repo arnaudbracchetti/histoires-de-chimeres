@@ -17,11 +17,13 @@ import { injectApiCall } from '../api-call';
 import { apiResource, currentValue } from '../api-resource';
 import { ConventionStore } from '../convention/convention-store';
 import { NicknameEditor } from '../forms/nickname-editor';
+import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
 import { injectReopenSignUps } from '../time-slots/reopen-sign-ups';
 import { TIME_SLOT_STATES, TimeSlotState } from '../time-slots/time-slot-state';
 import { Button } from '../ui/button';
+import { Confirmation } from '../ui/confirmation';
 import { Icon } from '../ui/icon';
 import { describeParticipantResult } from './participant-result';
 import { ParticipantSignUps } from './participant-sign-ups';
@@ -35,7 +37,8 @@ type TabValue = 'program' | 'sign-ups' | 'phones';
  * couleur et à l'icône de l'état de chacun, et le résultat du pseudo, tirage provisoire compris ;
  * « Modifier les inscriptions » sur un créneau ouvert ouvre l'onglet suivant sur ce créneau ;
  * « Rouvrir les inscriptions » sur un tirage provisoire où il n'est pas, et qu'il ne mène
- * pas, reprend le geste du pilotage.
+ * pas, reprend le geste du pilotage. « Ajouter comme non placé » sur un tirage publié, pas terminé,
+ * où il n'est pas, l'y ajoute après une confirmation orange (ID-14).
  * « Inscriptions » : ses parties des créneaux ouverts, à cocher à sa place (ID-12).
  * « Téléphones » : l'heure de liaison de chacun.
  */
@@ -153,6 +156,16 @@ type TabValue = 'program' | 'sign-ups' | 'phones';
                           (click)="reopenSignUps(row)"
                         >
                           <app-icon name="lock-open" />Rouvrir les inscriptions
+                        </button>
+                      } @else if (row.state === 'published' && row.result.kind === 'not-in-draw') {
+                        <button
+                          type="button"
+                          appButton="secondary"
+                          class="act"
+                          [attr.aria-label]="addLatecomerLabel(row.label)"
+                          (click)="addLatecomer(sheet.nickname, row)"
+                        >
+                          <app-icon name="plus" />Ajouter comme non placé
                         </button>
                       }
                     </li>
@@ -387,6 +400,40 @@ export class ParticipantPage {
     this.editSignUpsToFocus.set(timeSlot.timeSlotId);
   }
 
+  /** « Ajouter comme non placé, Créneau 2 · 14 h 00 – 16 h 30 », pour le lecteur d'écran. */
+  protected addLatecomerLabel(label: string): string {
+    return fr`Ajouter comme non placé, ${label}`;
+  }
+
+  /**
+   * Ajoute le pseudo au tirage publié du créneau, non placé (ID-14), après une confirmation orange :
+   * l'ajout n'efface rien, mais ne se défait pas. La fiche relue remplace l'ancienne ; le geste est
+   * annoncé.
+   */
+  protected async addLatecomer(
+    nickname: string,
+    timeSlot: { timeSlotId: string; rank: number },
+  ): Promise<void> {
+    const { timeSlotId, rank } = timeSlot;
+    const added = await this.confirmation.ask({
+      question: fr`Ajouter « ${nickname} » au tirage publié du créneau ${rank} ?`,
+      consequences: [
+        fr`« ${nickname} » y entre comme non placé : sans prendre la place de personne.`,
+        fr`« ${nickname} » reçoit la notification « pas de place pour toi », avec les tables où il reste de la place. L'ajout ne se défait pas.`,
+      ],
+      confirmLabel: 'Ajouter comme non placé',
+      tone: 'primary',
+      action: async () =>
+        this.resource.set(
+          await this.apiCall(participantEndpoints.addLatecomer, {
+            params: { participantId: this.id(), timeSlotId },
+          }),
+        ),
+      onStale: () => this.resource.reload(),
+    });
+    if (added) this.announcer.announce(fr`Ajout au tirage du créneau ${rank}, comme non placé.`);
+  }
+
   /** Le créneau dont « Modifier les inscriptions » prend le focus, une fois la fiche relue. */
   private readonly editSignUpsToFocus = signal<string | undefined>(undefined);
 
@@ -408,6 +455,8 @@ export class ParticipantPage {
 
   private readonly reopenSignUpsAfterConfirmation = injectReopenSignUps();
   private readonly store = inject(ConventionStore);
+  private readonly confirmation = inject(Confirmation);
+  private readonly announcer = inject(Announcer);
   private readonly apiCall = injectApiCall();
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);

@@ -260,6 +260,28 @@ export const problemCatalogue: Catalogue = {
     title: 'Tirage pas lancé',
     detail: ({ rank }) => fr`Le tirage du créneau ${rank} n'est pas lancé.`,
   },
+  'draw-not-published': {
+    title: 'Tirage pas publié',
+    detail: ({ rank }) =>
+      fr`Le tirage du créneau ${rank} n'est pas publié : on n'y ajoute pas de retardataire.`,
+  },
+  'time-slot-ended': {
+    title: 'Créneau terminé',
+    detail: ({ rank }) => fr`Le créneau ${rank} est terminé.`,
+  },
+  'latecomer-already-in-draw': {
+    title: 'Déjà dans le tirage',
+    detail: ({ nickname, rank }) => fr`${nickname} est déjà dans le tirage du créneau ${rank}.`,
+  },
+  'latecomer-leads-on-time-slot': {
+    title: 'MJ sur ce créneau',
+    detail: ({ nickname, rank }) => fr`${nickname} mène une partie sur le créneau ${rank}.`,
+  },
+  'latecomer-plays-two-slot-game': {
+    title: 'Partie double en cours',
+    detail: ({ nickname, rank }) =>
+      fr`${nickname} joue sur le créneau ${rank} la partie double où le tirage du créneau précédent l'a placé.`,
+  },
   'previous-draw-not-published': {
     title: 'Tirage précédent à publier',
     detail: ({ rank, previousRank }) =>

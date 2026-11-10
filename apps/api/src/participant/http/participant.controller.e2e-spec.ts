@@ -12,6 +12,7 @@ import {
   scenarioEndpoints,
   scheduleEndpoints,
   signUpEndpoints,
+  signUpTrackingEndpoints,
   tableEndpoints,
   timeSlotEndpoints,
   type ConventionDto,
@@ -21,6 +22,7 @@ import {
   type ParticipantSheetDto,
   type ScenarioDto,
   type ScheduleDto,
+  type SignUpTrackingDto,
 } from '@chimeres/contract';
 import { startApp } from '../../../test/app.js';
 
@@ -530,7 +532,9 @@ describe('Liste « Participants » (ID-5)', () => {
       const neons = await scheduled(elodie.id, 'Néons', 'Dragon');
       const lune = await add('Lune');
       await signUpOnBehalf(lune.id, neons).expect(200);
-      await server().delete(apiUrl(scheduleEndpoints.unschedule, { gameId: neons })).expect(200);
+      await server()
+        .delete(apiUrl(scheduleEndpoints.unschedule, { gameId: neons }))
+        .expect(200);
       const before = await readSheet(lune.id);
 
       const response = await withdrawFromDrawOnBehalf(lune.id, slot(1)).expect(200);
@@ -551,6 +555,82 @@ describe('Liste « Participants » (ID-5)', () => {
       expect(
         (await signUpOnBehalf(lune.id, '00000000-0000-4000-8000-000000000000').expect(404)).body,
       ).toMatchObject({ code: 'game-not-found' });
+    });
+  });
+
+  describe('Ajouter un retardataire à un tirage publié (ID-14)', () => {
+    const add = async (nickname: string) =>
+      (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
+        .body as ParticipantSheetDto;
+    const addLatecomer = (participantId: string, timeSlotId: string) =>
+      server().put(apiUrl(participantEndpoints.addLatecomer, { participantId, timeSlotId }));
+    const drawOfFirstTimeSlot = async () =>
+      (
+        (await server().get(apiUrl(signUpTrackingEndpoints.read)).expect(200))
+          .body as SignUpTrackingDto
+      ).timeSlots[0]!.draw!;
+
+    /** « Néons » d'Élodie au créneau 1, de 1 à 4 places, où Sven joue ; le tirage est publié. */
+    const publishFirstTimeSlot = async () => {
+      const elodie = await gameMaster('Élodie');
+      const neons = await scheduled(elodie.id, 'Néons', 'Dragon');
+      await signUp(neons, await linkedPhone('Sven'));
+      for (const endpoint of [drawEndpoints.launch, drawEndpoints.publish]) {
+        await server()
+          .post(apiUrl(endpoint, { timeSlotId: slot(1) }))
+          .expect(204);
+      }
+    };
+
+    it('l’ajoute non placé et rend sa fiche ; le résumé compte un non placé de plus, les places ne changent pas', async () => {
+      await publishFirstTimeSlot();
+      const lune = await add('Lune');
+      const before = await drawOfFirstTimeSlot();
+
+      const response = await addLatecomer(lune.id, slot(1)).expect(200);
+
+      expect((response.body as ParticipantSheetDto).timeSlots[0]).toMatchObject({
+        state: 'published',
+        result: {
+          kind: 'unassigned',
+          tablesWithSeats: [{ tableName: 'Dragon', freeSeatCount: 3 }],
+        },
+      });
+      const after = await drawOfFirstTimeSlot();
+      expect(after.unassignedCount).toBe(before.unassignedCount + 1);
+      expect(after.freeSeatCount).toBe(before.freeSeatCount);
+    });
+
+    it('refuse un pseudo déjà dans le tirage, puis un tirage pas publié : 422', async () => {
+      await publishFirstTimeSlot();
+      const lune = await add('Lune');
+      await addLatecomer(lune.id, slot(1)).expect(200);
+
+      const again = await addLatecomer(lune.id, slot(1)).expect(422);
+      const notPublished = await addLatecomer(lune.id, slot(2)).expect(422);
+
+      expect(again.body).toMatchObject({
+        code: 'latecomer-already-in-draw',
+        detail: 'Lune est déjà dans le tirage du créneau 1.',
+      });
+      expect(notPublished.body).toMatchObject({ code: 'draw-not-published' });
+    });
+
+    it('refuse le MJ qui mène sur le créneau (IN-4)', async () => {
+      await publishFirstTimeSlot();
+      const elodieId = (await list()).find(({ nickname }) => nickname === 'Élodie')!.id;
+
+      const response = await addLatecomer(elodieId, slot(1)).expect(422);
+
+      expect(response.body).toMatchObject({ code: 'latecomer-leads-on-time-slot' });
+    });
+
+    it('rend 404 pour un pseudo inconnu', async () => {
+      await publishFirstTimeSlot();
+
+      expect((await addLatecomer('inconnu', slot(1)).expect(404)).body).toMatchObject({
+        code: 'participant-not-found',
+      });
     });
   });
 });

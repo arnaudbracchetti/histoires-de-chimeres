@@ -53,6 +53,7 @@ export type {
 export { ReadParticipantList } from './participant/read-participant-list.js';
 export { ReadParticipantSheet } from './participant/read-participant-sheet.js';
 export { AddGameMaster } from './game-master/add-game-master.js';
+export { AddLatecomerToPublishedDraw } from './participant/add-latecomer-to-published-draw.js';
 export { AddParticipant } from './participant/add-participant.js';
 export { RenameParticipant } from './participant/rename-participant.js';
 export { SignUpParticipantForGame } from './participant/sign-up-participant-for-game.js';

@@ -294,6 +294,46 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
       ]);
     });
 
+    it('l’ajout d’un retardataire au tirage publié le prévient, lui seul (ID-14, NO-2)', async () => {
+      for (const endpoint of [drawEndpoints.launch, drawEndpoints.publish]) {
+        await server()
+          .post(apiUrl(endpoint, { timeSlotId: slot(1) }))
+          .expect(204);
+      }
+      await push.receivedAtLeast(2);
+      await quietPeriod();
+      const before = push.received.length;
+      const participants = (await server().get(apiUrl(participantEndpoints.list)).expect(200))
+        .body as ParticipantListEntryDto[];
+      const svenId = participants.find(({ nickname }) => nickname === 'Sven')!.id;
+
+      await server()
+        .put(
+          apiUrl(participantEndpoints.addLatecomer, { participantId: svenId, timeSlotId: slot(1) }),
+        )
+        .expect(200);
+
+      const received = (await push.receivedAtLeast(before + 1)).slice(before);
+      await quietPeriod();
+      expect(push.received.length).toBe(before + 1);
+      expect(
+        filterReceivedBySubscription(received, sven).map(({ message }) => {
+          const { title, body, navigate } = (
+            message as { notification: { title: string; body: string; navigate: string } }
+          ).notification;
+          return { title, body, navigate };
+        }),
+      ).toEqual([
+        {
+          title: 'Créneau 1 : pas de place pour toi',
+          body:
+            'Le tirage de ce créneau est déjà fait. Il reste de la place à la table Griffon : ' +
+            'va voir son MJ.',
+          navigate: `${PUBLIC_URL}/programme?creneau=1`,
+        },
+      ]);
+    });
+
     it('la publication prévient le MJ d’une partie annulée, sans les notifications de IN-6 (TI-7)', async () => {
       await server()
         .post(apiUrl(drawEndpoints.launch, { timeSlotId: slot(1) }))

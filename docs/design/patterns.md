@@ -186,6 +186,7 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 | Programmer depuis la réserve un créneau en tirage | oui : le tirage provisoire est effacé |
 | Annuler une partie dans le tirage | oui : ses joueurs passent dans les non placés ; « Garder la partie » ferme |
 | Rétablir une partie annulée | non : elle revient sans joueur, rien d'autre ne part |
+| Ajouter un retardataire à un tirage publié | oui, en orange (principal) : le geste n'efface rien, mais ne se défait pas (ID-14) |
 | Retirer une disponibilité | non : c'est une case à cocher |
 | Revenir aux places du scénario | non |
 
@@ -415,7 +416,7 @@ La liste des pseudos, de participant et de MJ (ID-5), dans l'ordre naturel.
   - MJ : « Mène Néons », puis « Table Dragon » ;
   - créneau tiré sans lui : « Pas dans le tirage » ;
   - créneau ouvert : « 2 inscriptions », ou « Aucune inscription » en gris.
-  Au plus un geste par ligne, en secondaire. Sur un créneau ouvert, « ✎ Modifier les inscriptions » ouvre l'onglet Inscriptions sur ce créneau. Sur un tirage provisoire où le pseudo n'est pas, et qu'il ne mène pas, « Rouvrir les inscriptions » (`lock-open`) reprend le geste du pilotage et sa confirmation rouge, mot pour mot, sans nommer le pseudo (TI-6) ; le créneau repasse en inscriptions ouvertes dans la frise.
+  Au plus un geste par ligne, en secondaire. Sur un créneau ouvert, « ✎ Modifier les inscriptions » ouvre l'onglet Inscriptions sur ce créneau. Sur un tirage provisoire où le pseudo n'est pas, et qu'il ne mène pas, « Rouvrir les inscriptions » (`lock-open`) reprend le geste du pilotage et sa confirmation rouge, mot pour mot, sans nommer le pseudo (TI-6) ; le créneau repasse en inscriptions ouvertes dans la frise. Sur un tirage publié, pas terminé, où le pseudo n'est pas, et qu'il ne mène pas, « + Ajouter comme non placé » (`plus`) ouvre une confirmation orange (principal) : « Ajouter « Sven » au tirage publié du créneau 1 ? », « « Sven » y entre comme non placé : sans prendre la place de personne. », « « Sven » reçoit la notification « pas de place pour toi », avec les tables où il reste de la place. L'ajout ne se défait pas. » ; Annuler · **Ajouter comme non placé** (ID-14). La frise montre alors « Non placé », avec les tables où il reste de la place.
 - **Inscriptions** : l'Organisateur inscrit le pseudo à sa place (ID-12), aux règles du téléphone (IN-2 à IN-4, IN-6). Une pilule par créneau ouvert, puis une case par partie qui y commence, enregistrée dès qu'on la coche ou la décoche, sans confirmation (IN-5 ne s'applique pas) ; pendant l'écriture, la ligne est atténuée, et un refus part en alerte. Sous chaque partie, la [jauge](#jauge) et « 8 inscrits · 4 à 6 places · très demandée », ou « · 1 manquant » en jaune sous le minimum. La partie d'un MJ est grisée, case désactivée, « sa partie » ; sur un créneau où il mène : « Mène « Néons » : ses inscriptions sur ce créneau sont de secours. » Sans partie sur le créneau : « Sans partie sur ce créneau. », en rouge brique, avec « Retirer du tirage ». Sans créneau ouvert : « Aucun créneau n'a ses inscriptions ouvertes. »
 - **Téléphones** : « Relié à 9 h 12 », un par ligne, rien sur l'appareil. Sans téléphone : « Aucun téléphone relié : la personne lit ses résultats à l'accueil. »
 

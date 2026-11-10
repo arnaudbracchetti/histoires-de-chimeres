@@ -100,7 +100,8 @@ export type ParticipantNicknameBody = {
  * pseudo de participant (ID-12) et rend sa fiche. `rename` renomme un pseudo, de participant ou de
  * MJ (ID-13), et rend sa fiche. `signUp`, `withdraw` et `withdrawFromDraw` inscrivent le pseudo
  * à une partie, l'en désinscrivent, ou le retirent du tirage d'un créneau où il est sans partie, à
- * sa place (ID-12), aux règles du téléphone ; répétés, ils ne changent rien. Chacun rend la fiche.
+ * sa place (ID-12), aux règles du téléphone ; répétés, ils ne changent rien. `addLatecomer` ajoute
+ * le pseudo au tirage publié d'un créneau, non placé, et le notifie (ID-14). Chacun rend la fiche.
  */
 export const participantEndpoints = {
   list: endpoint<ParticipantListEntryDto[], never, never, ParticipantListQuery>(
@@ -127,5 +128,9 @@ export const participantEndpoints = {
   withdrawFromDraw: endpoint<ParticipantSheetDto, { participantId: string; timeSlotId: string }>(
     'DELETE',
     'participants/:participantId/time-slots/:timeSlotId/draw-participation',
+  ),
+  addLatecomer: endpoint<ParticipantSheetDto, { participantId: string; timeSlotId: string }>(
+    'PUT',
+    'participants/:participantId/time-slots/:timeSlotId/latecomer',
   ),
 };

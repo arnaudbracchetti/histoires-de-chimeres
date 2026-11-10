@@ -202,3 +202,6 @@ _Avoid_: Placement (réservé au verdict de placement), assignation
 
 **Non placé** · `Unassigned`:
 Participant du tirage d'un créneau, inscrit ou sans partie, qui n'a obtenu aucune affectation.
+
+**Retardataire** · `Latecomer`:
+Pseudo qu'un Organisateur ajoute au tirage publié d'un créneau, comme non placé, parce qu'il est arrivé après la publication (ID-14). Il reçoit les tables où il reste de la place ; l'ajout ne se défait pas.

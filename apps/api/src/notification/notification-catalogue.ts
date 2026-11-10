@@ -8,6 +8,7 @@ import {
   buildNewGameText,
   buildOwnGameScheduledText,
   buildOwnGameUnscheduledText,
+  buildLatecomerText,
   buildUnassignedText,
   buildLeadingText,
   type ChangeText,
@@ -83,5 +84,9 @@ export const notificationCatalogue: {
   'draw-leading': ({ ranks, tableName, playerCount }, { title }) => ({
     ...buildLeadingText(ranks, { title, tableName }, playerCount),
     url: frontOfficeUrls.myGamesOnTimeSlot(ranks[0]!),
+  }),
+  'latecomer-unassigned': ({ rank, tablesWithSeats }) => ({
+    ...buildLatecomerText(rank, tablesWithSeats),
+    url: frontOfficeUrls.timeSlotGames(rank),
   }),
 };

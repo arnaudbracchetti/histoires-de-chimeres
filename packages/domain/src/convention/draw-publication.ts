@@ -120,3 +120,30 @@ export function buildDrawPublicationNotifications(
 
   return [...cancelled, ...assigned, ...unassigned, ...leading];
 }
+
+/** Ce que la notification du retardataire lit hors du tirage. */
+export type LatecomerNotificationCollaborators = Pick<
+  DrawPublicationCollaborators,
+  'day' | 'date' | 'schedule' | 'tables' | 'catalogue'
+>;
+
+/**
+ * « Retardataire » au participant ajouté, non placé, au tirage publié (ID-14, NO-2) : les tables où
+ * il reste de la place, dans l'ordre naturel, calculées comme à la publication. Elle court jusqu'à
+ * la fin du créneau (NO-3).
+ */
+export function buildLatecomerNotification(
+  draw: Draw,
+  participantId: string,
+  { day, date, schedule, tables, catalogue }: LatecomerNotificationCollaborators,
+): Notification {
+  const tablesWithSeats = draw
+    .listTablesWithSeats({ schedule, tables: tables.itemsInNaturalOrder, catalogue })
+    .map(({ tableId }) => tables.findExistingItemById(tableId).name.text);
+  return {
+    code: 'latecomer-unassigned',
+    params: { rank: day.getTimeSlotRank(draw.timeSlotId), tablesWithSeats },
+    recipients: buildParticipantRecipients([participantId]),
+    deadline: day.computeEndOfTimeSlots(date, [draw.timeSlotId]),
+  };
+}

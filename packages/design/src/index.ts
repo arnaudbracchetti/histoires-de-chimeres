@@ -35,6 +35,7 @@ export {
   buildNewGameText,
   buildOwnGameScheduledText,
   buildOwnGameUnscheduledText,
+  buildLatecomerText,
   buildUnassignedText,
   formatCapitalizedTimeSlotRanks,
   formatPlayerCount,

@@ -85,6 +85,16 @@ export type RefusalParams = {
   'draw-published': { rank: number };
   /** `rank` : le rang du créneau, dont le tirage n'est pas lancé. */
   'draw-not-launched': { rank: number };
+  /** `rank` : le rang du créneau, dont le tirage n'est pas publié, ou pas lancé (ID-14). */
+  'draw-not-published': { rank: number };
+  /** `rank` : le rang du créneau, terminé. */
+  'time-slot-ended': { rank: number };
+  /** `nickname` : le pseudo ; `rank` : le rang du créneau, dont il est déjà dans le tirage (ID-14). */
+  'latecomer-already-in-draw': { nickname: string; rank: number };
+  /** Le pseudo est un MJ qui mène une partie sur ce créneau (ID-14, IN-4). */
+  'latecomer-leads-on-time-slot': { nickname: string; rank: number };
+  /** Le pseudo joue sur ce créneau une partie double tirée au créneau précédent (ID-14, TI-3). */
+  'latecomer-plays-two-slot-game': { nickname: string; rank: number };
   /**
    * `rank` : le rang du créneau ; `previousRank` : celui du premier créneau d'avant dont le tirage
    * n'est pas publié. Les tirages se lancent dans l'ordre de la journée.

@@ -2,6 +2,7 @@ import { Refusal } from '../refusal.js';
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import type { DrawStage } from './convention.js';
 import type { Day } from './day.js';
+import { isReachedAt, type LocalMoment } from './local-moment.js';
 import type { Game } from './game.js';
 import type { Participant } from './participant.js';
 import { Assignment, Draw } from './draw.js';
@@ -14,7 +15,7 @@ import type {
 } from './draw-algorithm.js';
 import type { Schedule } from './schedule.js';
 import type { ScheduleChange } from './schedule-change.js';
-import type { SignUpCollaborators, SignUps } from './sign-ups.js';
+import type { LedGames, SignUpCollaborators, SignUps } from './sign-ups.js';
 
 /**
  * Ce que le lancement lit hors des Tirages : la Journée, les Inscriptions et leurs collaborateurs,
@@ -35,6 +36,18 @@ export type GameCancellationCollaborators = {
   day: Day;
   catalogue: ScenarioCatalogue;
   gameMasterParticipantId: string;
+};
+
+/**
+ * Ce que l'ajout d'un retardataire lit hors des Tirages : la Journée et la date de la convention,
+ * qui disent si le créneau est terminé, le Programme, qui donne les créneaux des parties doubles,
+ * et les parties que mène chaque participant (IN-4).
+ */
+export type LatecomerCollaborators = {
+  day: Day;
+  date: string | null;
+  schedule: Schedule;
+  ledGames: LedGames;
 };
 
 /** Ce que le rétablissement d'une partie lit hors des Tirages. */
@@ -293,6 +306,49 @@ export class Draws {
   findPublishedDrawOfTimeSlot(timeSlotId: string): Draw | undefined {
     const draw = this.findDrawOfTimeSlot(timeSlotId);
     return draw?.published ? draw : undefined;
+  }
+
+  /**
+   * Le créneau est terminé : son tirage est publié, et son heure de fin passée, le jour de la
+   * convention. Sans date, jamais.
+   */
+  hasTimeSlotEndedAt(timeSlotId: string, now: LocalMoment, day: Day, date: string | null): boolean {
+    return (
+      this.getDrawStage(timeSlotId) === 'published' &&
+      isReachedAt(day.computeEndOfTimeSlots(date, [timeSlotId]), now)
+    );
+  }
+
+  /**
+   * Les Tirages après l'ajout du retardataire au tirage publié du créneau, sans partie (ID-14). Les
+   * places restantes ne changent pas. Refuse, dans l'ordre : un créneau dont le tirage n'est pas
+   * publié, un créneau terminé, un participant déjà dans ce tirage, placé ou non, un MJ qui mène une
+   * partie sur ce créneau (IN-4), un joueur placé dans une partie double qui s'y poursuit (TI-3).
+   */
+  getDrawsAfterAddingLatecomer(
+    participant: Participant,
+    timeSlotId: string,
+    now: LocalMoment,
+    { day, date, schedule, ledGames }: LatecomerCollaborators,
+  ): Draws {
+    const rank = day.getTimeSlotRank(timeSlotId);
+    const draw = this.findPublishedDrawOfTimeSlot(timeSlotId);
+    if (!draw) throw new Refusal('draw-not-published', { rank });
+    if (this.hasTimeSlotEndedAt(timeSlotId, now, day, date)) {
+      throw new Refusal('time-slot-ended', { rank });
+    }
+    const params = { nickname: participant.nickname.text, rank };
+    if (draw.hasParticipant(participant.id)) throw new Refusal('latecomer-already-in-draw', params);
+    const leads = ledGames
+      .listGamesLedByParticipant(participant.id)
+      .some((game) => game.timeSlotIds.includes(timeSlotId));
+    if (leads) throw new Refusal('latecomer-leads-on-time-slot', params);
+    if (this.findAssignmentContinuingOnTimeSlot(participant.id, timeSlotId, schedule)) {
+      throw new Refusal('latecomer-plays-two-slot-game', params);
+    }
+    return this.getDrawsAfterReplacingDraw(
+      draw.getDrawAfterAddingUnassignedParticipant(participant.id),
+    );
   }
 
   /** La partie est annulée dans un tirage : son MJ n'y mène plus (IN-4). */

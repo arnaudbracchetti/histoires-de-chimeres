@@ -308,3 +308,43 @@ test('l’Organisateur rouvre les inscriptions d’un tirage provisoire depuis l
   await page.getByRole('tabpanel').getByRole('checkbox', { name: 'Les Brumes' }).check();
   await expect(page.getByRole('tabpanel')).toContainText('2 inscrits · 1 à 5 places');
 });
+
+test('l’Organisateur ajoute un retardataire à un tirage publié, comme non placé (ID-14)', async ({
+  page,
+  baseURL,
+}) => {
+  const timeSlotId = await prepare(page, baseURL!);
+  for (const endpoint of [drawEndpoints.launch, drawEndpoints.publish]) {
+    await expectOk(page.request.post(apiUrl(endpoint, { timeSlotId })));
+  }
+  const addLatecomer = page.getByRole('button', { name: /^Ajouter comme non placé/ });
+  await page.goto('/gestion/participants');
+  await page.getByRole('link', { name: 'Élodie' }).click();
+  await expect(page.getByRole('tabpanel')).toContainText('Table Griffon');
+  await expect(addLatecomer).toHaveCount(0);
+
+  await page.goto('/gestion/participants');
+  await page.getByRole('link', { name: 'Kaïros' }).click();
+  await expect(page.getByRole('tabpanel')).toContainText(/Mène «?\s*Les Brumes/);
+  await expect(addLatecomer).toHaveCount(0);
+
+  await page.goto('/gestion/participants');
+  await page.getByRole('link', { name: 'Sven' }).click();
+  const program = page.getByRole('tabpanel');
+  await expect(program).toContainText('Pas dans le tirage');
+  await addLatecomer.click();
+
+  const dialog = page.getByRole('alertdialog', {
+    name: 'Ajouter « Sven » au tirage publié du créneau 1 ?',
+  });
+  await expect(dialog).toContainText("L'ajout ne se défait pas.");
+  await dialog.getByRole('button', { name: 'Ajouter comme non placé' }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect(program).toContainText('Non placé');
+  await expect(program).toContainText('Il reste de la place à Griffon (4).');
+  await expect(addLatecomer).toHaveCount(0);
+
+  await page.goto('/gestion/pilotage');
+  await expect(page.getByText('1 non placé', { exact: true })).toBeVisible();
+});

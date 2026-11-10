@@ -5,6 +5,7 @@ import {
   buildCancelledAlertText,
   buildNewGameText,
   buildOwnGameUnscheduledText,
+  buildLatecomerText,
   buildUnassignedText,
 } from './change-texts.js';
 import { fr } from './french.js';
@@ -29,9 +30,9 @@ describe('Textes d’un geste qui rouvre les inscriptions d’un créneau en tir
     expect(buildGameUnscheduledText([2], 'Néons', true, true).body).toBe(
       fr`Néons est retirée : ton inscription est supprimée. Tu restes dans le tirage du créneau 2 : inscris-toi à une autre partie pour avoir une table. ${REOPENED}`,
     );
-    expect(buildOwnGameUnscheduledText([2], 'Néons', { reopened: true, backupSignUps: false }).body).toBe(
-      fr`Néons est retirée : tu peux t'inscrire sur ce créneau. ${REOPENED}`,
-    );
+    expect(
+      buildOwnGameUnscheduledText([2], 'Néons', { reopened: true, backupSignUps: false }).body,
+    ).toBe(fr`Néons est retirée : tu peux t'inscrire sur ce créneau. ${REOPENED}`);
   });
 
   it('« partie déplacée » finit par la réouverture', () => {
@@ -42,7 +43,9 @@ describe('Textes d’un geste qui rouvre les inscriptions d’un créneau en tir
 
   it('sans réouverture, le corps ne change pas', () => {
     expect(buildGameMovedText([2], [3], 'Néons', false, false).body).not.toContain(REOPENED);
-    expect(buildOwnGameUnscheduledText([2], 'Néons', { reopened: false, backupSignUps: false }).body).not.toContain(REOPENED);
+    expect(
+      buildOwnGameUnscheduledText([2], 'Néons', { reopened: false, backupSignUps: false }).body,
+    ).not.toContain(REOPENED);
   });
 });
 
@@ -61,7 +64,9 @@ describe('Textes pour le MJ qui mène sur le créneau (NO-2, IN-4)', () => {
   });
 
   it('« partie retirée du programme » lui dit que ses inscriptions de secours comptent désormais', () => {
-    expect(buildOwnGameUnscheduledText([2], 'Néons', { reopened: false, backupSignUps: true })).toEqual({
+    expect(
+      buildOwnGameUnscheduledText([2], 'Néons', { reopened: false, backupSignUps: true }),
+    ).toEqual({
       title: fr`Créneau 2 : partie retirée du programme`,
       body: fr`Néons est retirée : tes inscriptions de secours sur ce créneau comptent désormais.`,
     });
@@ -74,6 +79,21 @@ describe('Alerte du MJ dont la partie annulée quitte le programme à la publica
       title: fr`Créneaux 2 et 3 : ta partie est annulée`,
       body: fr`Sc Double n'a pas atteint son minimum.`,
     });
+  });
+});
+
+describe('« Pas de place pour toi » au retardataire (ID-14, NO-2)', () => {
+  it('lui dit que le tirage est fait, et où il reste de la place', () => {
+    expect(buildLatecomerText(2, ['T1', 'T3'])).toEqual({
+      title: fr`Créneau 2 : pas de place pour toi`,
+      body: fr`Le tirage de ce créneau est déjà fait. Il reste de la place aux tables T1 et T3 : va voir leur MJ.`,
+    });
+  });
+
+  it('lui dit que toutes les parties sont complètes', () => {
+    expect(buildLatecomerText(1, []).body).toBe(
+      fr`Le tirage de ce créneau est déjà fait. Toutes les parties du créneau sont complètes.`,
+    );
   });
 });
 
