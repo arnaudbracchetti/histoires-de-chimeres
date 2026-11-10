@@ -58,6 +58,7 @@ import { Button } from '../ui/button';
 import { Confirmation, type Consequence } from '../ui/confirmation';
 import { EmptyState } from '../ui/empty-state';
 import { Gauge } from '../ui/gauge';
+import { injectReopenSignUps } from '../time-slots/reopen-sign-ups';
 import { TimeSlotState } from '../time-slots/time-slot-state';
 import { Icon } from '../ui/icon';
 import { MoreMenu, type MoreMenuItem } from '../ui/more-menu';
@@ -686,6 +687,7 @@ export class SignUpTrackingPage {
   /** Le déplacement d'un participant, sans confirmation : son refus part en alerte. */
   private readonly moving = injectGesture({ alert: true, refreshes: true });
   private readonly confirmation = inject(Confirmation);
+  private readonly reopenSignUpsAfterConfirmation = injectReopenSignUps();
   private readonly apiCall = injectApiCall();
   private readonly placements = inject(Placements);
   private readonly cellPlacements = inject(CellPlacements);
@@ -900,18 +902,7 @@ export class SignUpTrackingPage {
    * région `aria-live` l'annonce.
    */
   protected async reopenSignUps(slot: TimeSlotTrackingDto) {
-    const reopened = await this.confirmation.ask({
-      question: fr`Rouvrir les inscriptions du créneau ${slot.rank} ?`,
-      consequences: [
-        fr`Le résultat provisoire sera effacé, avec ses déplacements et ses parties annulées.`,
-        fr`Personne n'est notifié : chacun retrouve ses inscriptions, et peut en changer jusqu'au prochain tirage.`,
-      ],
-      confirmLabel: 'Rouvrir les inscriptions',
-      action: () => this.apiCall(drawEndpoints.reopenSignUps, { params: { timeSlotId: slot.id } }),
-      onStale: () => this.tracking.reload(),
-    });
-    if (!reopened) return;
-    this.announcer.announce(fr`Inscriptions du créneau ${slot.rank} rouvertes.`);
+    if (!(await this.reopenSignUpsAfterConfirmation(slot, () => this.tracking.reload()))) return;
     this.focusAfterReading.set('summary-title');
     this.tracking.reload();
   }

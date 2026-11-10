@@ -17,6 +17,7 @@ import { ConventionStore } from '../convention/convention-store';
 import { NicknameEditor } from '../forms/nickname-editor';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
+import { injectReopenSignUps } from '../time-slots/reopen-sign-ups';
 import { TIME_SLOT_STATES, TimeSlotState } from '../time-slots/time-slot-state';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
@@ -30,7 +31,9 @@ type TabValue = 'program' | 'sign-ups' | 'phones';
  * « Participants › pseudo », que le crayon renomme en place (ID-13), « Participant » ou « MJ »
  * dessous, puis trois onglets de classeur. « Programme » : la frise des créneaux, un rond à la
  * couleur et à l'icône de l'état de chacun, et le résultat du pseudo, tirage provisoire compris ;
- * « Modifier les inscriptions » sur un créneau ouvert ouvre l'onglet suivant sur ce créneau.
+ * « Modifier les inscriptions » sur un créneau ouvert ouvre l'onglet suivant sur ce créneau ;
+ * « Rouvrir les inscriptions » sur un tirage provisoire où il n'est pas, et qu'il ne mène
+ * pas, reprend le geste du pilotage.
  * « Inscriptions » : ses parties des créneaux ouverts, à cocher à sa place (ID-12).
  * « Téléphones » : l'heure de liaison de chacun.
  */
@@ -137,6 +140,16 @@ type TabValue = 'program' | 'sign-ups' | 'phones';
                           (click)="openSignUps(row.timeSlotId)"
                         >
                           <app-icon name="pencil" />Modifier les inscriptions
+                        </button>
+                      } @else if (row.state === 'drawing' && row.result.kind === 'not-in-draw') {
+                        <button
+                          type="button"
+                          appButton="secondary"
+                          class="act"
+                          [attr.aria-label]="reopenSignUpsLabel(row.label)"
+                          (click)="reopenSignUps(row)"
+                        >
+                          <app-icon name="lock-open" />Rouvrir les inscriptions
                         </button>
                       }
                     </li>
@@ -351,6 +364,25 @@ export class ParticipantPage {
     this.selectedTab.set('sign-ups');
   }
 
+  /** « Rouvrir les inscriptions, Créneau 2 · 14 h 00 – 16 h 30 », pour le lecteur d'écran. */
+  protected reopenSignUpsLabel(label: string): string {
+    return fr`Rouvrir les inscriptions, ${label}`;
+  }
+
+  /**
+   * Rouvre les inscriptions d'un créneau en tirage provisoire où le pseudo n'est pas (TI-6), par le
+   * geste du pilotage, sa confirmation comprise. La fiche se relit : le créneau y passe en
+   * inscriptions ouvertes.
+   */
+  protected async reopenSignUps(timeSlot: { timeSlotId: string; rank: number }): Promise<void> {
+    const reopened = await this.reopenSignUpsAfterConfirmation(
+      { id: timeSlot.timeSlotId, rank: timeSlot.rank },
+      () => this.resource.reload(),
+    );
+    if (reopened) this.resource.reload();
+  }
+
+  private readonly reopenSignUpsAfterConfirmation = injectReopenSignUps();
   private readonly store = inject(ConventionStore);
   private readonly apiCall = injectApiCall();
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;

@@ -268,3 +268,40 @@ test('la partie d’un MJ est grisée, « sa partie », sur la fiche de son pseu
     'Mène « Les Brumes » : ses inscriptions sur ce créneau sont de secours.',
   );
 });
+
+test('l’Organisateur rouvre les inscriptions d’un tirage provisoire depuis la fiche, puis inscrit le retardataire (TI-6, ID-12)', async ({
+  page,
+  baseURL,
+}) => {
+  const timeSlotId = await prepare(page, baseURL!);
+  await expectOk(page.request.post(apiUrl(drawEndpoints.launch, { timeSlotId })));
+  await page.goto('/gestion/participants');
+  await page.getByRole('link', { name: 'Élodie' }).click();
+  await expect(page.getByRole('tabpanel')).toContainText('Table Griffon');
+  await expect(page.getByRole('button', { name: /^Rouvrir les inscriptions/ })).toHaveCount(0);
+
+  await page.goto('/gestion/participants');
+  await page.getByRole('link', { name: 'Kaïros' }).click();
+  await expect(page.getByRole('tabpanel')).toContainText(/Mène «?\s*Les Brumes/);
+  await expect(page.getByRole('button', { name: /^Rouvrir les inscriptions/ })).toHaveCount(0);
+
+  await page.goto('/gestion/participants');
+  await page.getByRole('link', { name: 'Sven' }).click();
+  const program = page.getByRole('tabpanel');
+  await expect(program).toContainText('Pas dans le tirage');
+  await page.getByRole('button', { name: /^Rouvrir les inscriptions/ }).click();
+
+  const dialog = page.getByRole('alertdialog', { name: 'Rouvrir les inscriptions du créneau 1 ?' });
+  await expect(dialog).toContainText(
+    'Le résultat provisoire sera effacé, avec ses déplacements et ses parties annulées.',
+  );
+  await expect(dialog).not.toContainText('Sven');
+  await dialog.getByRole('button', { name: 'Rouvrir les inscriptions' }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect(program).toContainText('Inscriptions ouvertes');
+  await expect(program).toContainText('Aucune inscription');
+  await page.getByRole('button', { name: /^Modifier les inscriptions/ }).click();
+  await page.getByRole('tabpanel').getByRole('checkbox', { name: 'Les Brumes' }).check();
+  await expect(page.getByRole('tabpanel')).toContainText('2 inscrits · 1 à 5 places');
+});
