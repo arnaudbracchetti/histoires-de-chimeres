@@ -366,6 +366,7 @@ test('l’Organisateur coupe les liens d’un pseudo depuis le menu « ⋯ » ; 
 
   await expect(phonesTab).toContainText('0');
   await expect(phonesTab).toBeFocused();
+  await phonesTab.click();
   await expect(page.getByRole('tabpanel')).toContainText('Aucun téléphone relié');
   await menu.click();
   await expect(page.getByRole('menuitem', { name: 'Supprimer le pseudo' })).toBeVisible();
