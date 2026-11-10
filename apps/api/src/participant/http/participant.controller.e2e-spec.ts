@@ -275,6 +275,7 @@ describe('Liste « Participants » (ID-5)', () => {
             },
             ledGameId: null,
             withoutGame: false,
+            latecomerAdditionAllowed: false,
           },
           {
             timeSlotId: slot(2),
@@ -283,6 +284,7 @@ describe('Liste « Participants » (ID-5)', () => {
             result: { kind: 'signed-up', signUpCount: 0 },
             ledGameId: null,
             withoutGame: false,
+            latecomerAdditionAllowed: false,
           },
         ],
         linkedPhones: [
@@ -652,6 +654,29 @@ describe('Liste « Participants » (ID-5)', () => {
       expect(after.freeSeatCount).toBe(before.freeSeatCount);
     });
 
+    it('la fiche dit où l’ajout est possible : sur un tirage publié où il n’est pas, plus après l’ajout', async () => {
+      await publishFirstTimeSlot();
+      const lune = await add('Lune');
+      const readSheet = async () =>
+        (
+          await server()
+            .get(apiUrl(participantEndpoints.read, { participantId: lune.id }))
+            .expect(200)
+        ).body as ParticipantSheetDto;
+
+      expect(
+        (await readSheet()).timeSlots.map((timeSlot) => timeSlot.latecomerAdditionAllowed),
+      ).toEqual([true, false]);
+
+      const response = await addLatecomer(lune.id, slot(1)).expect(200);
+
+      expect(
+        (response.body as ParticipantSheetDto).timeSlots.map(
+          (slot) => slot.latecomerAdditionAllowed,
+        ),
+      ).toEqual([false, false]);
+    });
+
     it('refuse un pseudo déjà dans le tirage, puis un tirage pas publié : 422', async () => {
       await publishFirstTimeSlot();
       const lune = await add('Lune');
@@ -762,6 +787,7 @@ describe('Liste « Participants » (ID-5)', () => {
             assignment: null,
             destinationLeavesDraw: false,
             transferredSignUpTitles: ['Néons'],
+            backupSignUpTitles: [],
             lostSignUpTitles: [],
             withoutGame: null,
           },
@@ -771,6 +797,7 @@ describe('Liste « Participants » (ID-5)', () => {
             assignment: null,
             destinationLeavesDraw: false,
             transferredSignUpTitles: [],
+            backupSignUpTitles: [],
             lostSignUpTitles: [],
             withoutGame: null,
           },

@@ -16,21 +16,27 @@ export class ReadMergeVerdict {
   async execute(sourceId: string, destinationId: string): Promise<MergeVerdictDto> {
     const convention = await this.conventions.get();
     const verdict = convention.computeMergeVerdict(sourceId, destinationId);
-    const games = new Map((await this.schedule.games()).map((game) => [game.id, game]));
     const tableNames = new Map(convention.tables.map(({ id, name }) => [id, name.text]));
-    const findGameTitle = (gameId: string) => games.get(gameId)!.scenario.title;
+    const games = new Map(
+      (await this.schedule.games()).map(({ id, scenario, tableId }) => [
+        id,
+        { title: scenario.title, tableName: tableNames.get(tableId)! },
+      ]),
+    );
+    const findGame = (gameId: string) => games.get(gameId)!;
+    const listTitles = (gameIds: string[]) => gameIds.map((gameId) => findGame(gameId).title);
     return {
       timeSlots: verdict.map(({ assignment, ...slot }) => ({
         timeSlotId: slot.timeSlotId,
         rank: convention.getTimeSlotRank(slot.timeSlotId),
         assignment: assignment && {
-          title: assignment.gameId && findGameTitle(assignment.gameId),
-          tableName: assignment.gameId && tableNames.get(games.get(assignment.gameId)!.tableId)!,
+          ...(assignment.gameId ? findGame(assignment.gameId) : { title: null, tableName: null }),
           outcome: assignment.outcome,
         },
         destinationLeavesDraw: slot.destinationLeavesDraw,
-        transferredSignUpTitles: slot.transferredSignUpGameIds.map(findGameTitle),
-        lostSignUpTitles: slot.lostSignUpGameIds.map(findGameTitle),
+        transferredSignUpTitles: listTitles(slot.transferredSignUpGameIds),
+        backupSignUpTitles: listTitles(slot.backupSignUpGameIds),
+        lostSignUpTitles: listTitles(slot.lostSignUpGameIds),
         withoutGame: slot.withoutGame,
       })),
     };

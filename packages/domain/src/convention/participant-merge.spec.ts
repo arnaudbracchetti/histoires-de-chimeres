@@ -303,6 +303,22 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         new Assignment('p-g2', 'brumes', false),
       ]);
     });
+
+    it('dont la partie est annulée (TI-6) : l’inscription de la source à cette partie est perdue, il n’y est jamais inscrit', () => {
+      // Kaïros (p-g2) mène « épice », annulée dans le tirage provisoire du créneau 1.
+      const convention = buildConventionWithState({
+        signUps: [new SignUp('p1', 'epice'), new SignUp('p1', 'brumes')],
+        draws: [new Draw('s1', false, [new Assignment('p-g2', null, false)], ['epice'])],
+      });
+
+      expect(convention.computeMergeVerdict('p1', 'p-g2')[0]).toMatchObject({
+        lostSignUpGameIds: ['epice'],
+      });
+
+      convention.mergeParticipant('p1', 'p-g2');
+
+      expect(listSignUps(convention)).toEqual(['p-g2 brumes']);
+    });
   });
 
   describe('état sans partie (IN-6)', () => {
@@ -382,6 +398,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
           assignment: { gameId: 'epice', outcome: 'transferred' },
           destinationLeavesDraw: false,
           transferredSignUpGameIds: ['brumes'],
+          backupSignUpGameIds: [],
           lostSignUpGameIds: [],
           withoutGame: null,
         },
@@ -390,6 +407,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
           assignment: null,
           destinationLeavesDraw: true,
           transferredSignUpGameIds: ['neons'],
+          backupSignUpGameIds: [],
           lostSignUpGameIds: [],
           withoutGame: null,
         },
@@ -406,7 +424,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
       expect(listSignUps(convention)).toEqual(['p2 epice', 'p2 brumes', 'p2 neons']);
     });
 
-    it('annonce les pertes : affectation, inscriptions et état sans partie', () => {
+    it('annonce les pertes et les inscriptions passées en secours : affectation, inscriptions et état sans partie', () => {
       // Brann (p-g1) mène « brumes » au créneau 1 et « néons » au créneau 2.
       const convention = buildConventionWithState({
         signUps: [new SignUp('p1', 'brumes'), new SignUp('p1', 'epice')],
@@ -421,7 +439,8 @@ describe('Fusionner deux pseudos (ID-11)', () => {
           timeSlotId: 's1',
           assignment: { gameId: null, outcome: 'lost' },
           destinationLeavesDraw: false,
-          transferredSignUpGameIds: ['epice'],
+          transferredSignUpGameIds: [],
+          backupSignUpGameIds: ['epice'],
           lostSignUpGameIds: ['brumes'],
           withoutGame: null,
         },
@@ -430,6 +449,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
           assignment: null,
           destinationLeavesDraw: false,
           transferredSignUpGameIds: [],
+          backupSignUpGameIds: [],
           lostSignUpGameIds: [],
           withoutGame: 'lost',
         },

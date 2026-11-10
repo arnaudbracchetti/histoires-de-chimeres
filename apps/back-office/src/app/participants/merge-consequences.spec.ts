@@ -11,6 +11,7 @@ const slot = (
   assignment: null,
   destinationLeavesDraw: false,
   transferredSignUpTitles: [],
+  backupSignUpTitles: [],
   lostSignUpTitles: [],
   withoutGame: null,
   ...verdict,
@@ -78,6 +79,22 @@ describe('mergeConsequences', () => {
       `Créneau 1${NBSP}: ses inscriptions à Néons et Brumes sont perdues.`,
       `Créneau 2${NBSP}: «${NBSP}Lune${NBSP}» reprend sa place de non placé dans le tirage.`,
       "Son téléphone relié reviendra à l'identification.",
+      `«${NBSP}Sven${NBSP}» sera supprimé, et son pseudo redeviendra libre.`,
+    ]);
+  });
+
+  it('dit les inscriptions qui passent en secours, là où la destination mène (IN-4)', () => {
+    expect(
+      mergeConsequences(
+        buildVerdict(
+          slot(1, { backupSignUpTitles: ['Épice'] }),
+          slot(2, { backupSignUpTitles: ['Néons', 'Brumes'] }),
+        ),
+        { source: 'Sven', destination: 'Brann', phones: 0 },
+      ),
+    ).toEqual([
+      `Créneau 1${NBSP}: son inscription à Épice passe à «${NBSP}Brann${NBSP}», en secours.`,
+      `Créneau 2${NBSP}: ses inscriptions à Néons et Brumes passent à «${NBSP}Brann${NBSP}», en secours.`,
       `«${NBSP}Sven${NBSP}» sera supprimé, et son pseudo redeviendra libre.`,
     ]);
   });

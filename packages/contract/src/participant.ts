@@ -56,7 +56,9 @@ export type ParticipantResultDto =
 /**
  * Le résultat d'un pseudo sur un créneau, avec le rang du créneau et son état à cet instant. Puis
  * la partie qu'il y mène, sur ses deux créneaux pour une partie double, ou `null` : là où il mène,
- * ses inscriptions sont de secours (IN-4). Enfin, s'il y est sans partie (IN-6).
+ * ses inscriptions sont de secours (IN-4). Puis s'il y est sans partie (IN-6). Enfin, si on peut
+ * l'ajouter comme non placé au tirage publié du créneau (ID-14) : `addLatecomer` ne le refuserait
+ * pas à cet instant ; le front n'en déduit rien d'autre.
  */
 export type ParticipantTimeSlotDto = {
   timeSlotId: string;
@@ -65,6 +67,7 @@ export type ParticipantTimeSlotDto = {
   result: ParticipantResultDto;
   ledGameId: string | null;
   withoutGame: boolean;
+  latecomerAdditionAllowed: boolean;
 };
 
 /** Un téléphone relié au pseudo : l'heure de sa liaison, rien sur l'appareil (ID-8). */
@@ -103,8 +106,9 @@ export type MergeOutcomeDto = 'transferred' | 'lost';
  * placée), passée à la destination ou perdue ; `null` si la source n'y est pas.
  * `destinationLeavesDraw` : la destination quitte ce tirage, en prenant la partie double de la
  * source (TI-3). Les titres des parties qui commencent sur le créneau où les inscriptions de la
- * source passent, ou se perdent, sans celles que la destination a déjà. `withoutGame` : le sort de
- * l'état sans partie de la source (IN-6), ou `null`.
+ * source passent, passent en secours, là où la destination mène une autre partie (IN-4), ou se
+ * perdent, sans celles que la destination a déjà. `withoutGame` : le sort de l'état sans partie de
+ * la source (IN-6), ou `null`.
  */
 export type MergeTimeSlotVerdictDto = {
   timeSlotId: string;
@@ -112,6 +116,7 @@ export type MergeTimeSlotVerdictDto = {
   assignment: { title: string | null; tableName: string | null; outcome: MergeOutcomeDto } | null;
   destinationLeavesDraw: boolean;
   transferredSignUpTitles: string[];
+  backupSignUpTitles: string[];
   lostSignUpTitles: string[];
   withoutGame: MergeOutcomeDto | null;
 };

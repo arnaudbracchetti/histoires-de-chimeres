@@ -2606,6 +2606,19 @@ describe('Ajouter un retardataire à un tirage publié (ID-14)', () => {
     expect({ code: refusal.code, params: refusal.params }).toEqual({ code, params });
   });
 
+  it('dit, pour la fiche, si l’ajout est possible : le même verdict que le geste', () => {
+    const convention = aPublishedConvention();
+    convention.changeDate('2027-03-14');
+    const atEnd: LocalMoment = { date: '2027-03-14', time: at('11:30') };
+
+    expect(convention.isLatecomerAdditionAllowed('p4', 's1', NOW)).toBe(true);
+    expect(convention.isLatecomerAdditionAllowed('p4', 's1', atEnd)).toBe(false);
+    expect(convention.isLatecomerAdditionAllowed('p4', 's3', NOW)).toBe(false);
+    expect(convention.isLatecomerAdditionAllowed('p1', 's1', NOW)).toBe(false);
+    expect(convention.isLatecomerAdditionAllowed('p-g1', 's2', NOW)).toBe(false);
+    expect(convention.isLatecomerAdditionAllowed('p3', 's2', NOW)).toBe(false);
+  });
+
   it('refuse un pseudo déjà non placé dans ce tirage : l’ajout ne se répète pas', () => {
     const convention = aPublishedConvention();
     convention.addLatecomerToPublishedDraw('p4', 's1', NOW, CATALOGUE);

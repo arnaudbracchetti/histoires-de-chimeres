@@ -15,7 +15,8 @@ import type {
 } from './draw-algorithm.js';
 import type { Schedule } from './schedule.js';
 import type { ScheduleChange } from './schedule-change.js';
-import type { LedGames, MergeOutcome, SignUpCollaborators, SignUps } from './sign-ups.js';
+import type { LedGames } from './led-games.js';
+import type { MergeOutcome, SignUpCollaborators, SignUps } from './sign-ups.js';
 
 /**
  * Ce que le lancement lit hors des Tirages : la Journée, les Inscriptions et leurs collaborateurs,
@@ -353,34 +354,51 @@ export class Draws {
   }
 
   /**
+   * Le refus d'ajouter le retardataire au tirage publié du créneau (ID-14), ou `undefined`. Refuse,
+   * dans l'ordre : un créneau dont le tirage n'est pas publié, un créneau terminé, un participant
+   * déjà dans ce tirage, placé ou non, un MJ qui mène une partie sur ce créneau (IN-4), un joueur
+   * placé dans une partie double qui s'y poursuit (TI-3).
+   */
+  findLatecomerRefusal(
+    participant: Participant,
+    timeSlotId: string,
+    now: LocalMoment,
+    { day, date, schedule, ledGames }: LatecomerCollaborators,
+  ): Refusal | undefined {
+    const rank = day.getTimeSlotRank(timeSlotId);
+    const draw = this.findPublishedDrawOfTimeSlot(timeSlotId);
+    if (!draw) return new Refusal('draw-not-published', { rank });
+    if (this.hasTimeSlotEndedAt(timeSlotId, now, day, date)) {
+      return new Refusal('time-slot-ended', { rank });
+    }
+    const params = { nickname: participant.nickname.text, rank };
+    if (draw.hasParticipant(participant.id))
+      return new Refusal('latecomer-already-in-draw', params);
+    if (ledGames.isParticipantLeadingOnTimeSlot(participant.id, timeSlotId)) {
+      return new Refusal('latecomer-leads-on-time-slot', params);
+    }
+    if (this.findAssignmentContinuingOnTimeSlot(participant.id, timeSlotId, schedule)) {
+      return new Refusal('latecomer-plays-two-slot-game', params);
+    }
+    return undefined;
+  }
+
+  /**
    * Les Tirages après l'ajout du retardataire au tirage publié du créneau, sans partie (ID-14). Les
-   * places restantes ne changent pas. Refuse, dans l'ordre : un créneau dont le tirage n'est pas
-   * publié, un créneau terminé, un participant déjà dans ce tirage, placé ou non, un MJ qui mène une
-   * partie sur ce créneau (IN-4), un joueur placé dans une partie double qui s'y poursuit (TI-3).
+   * places restantes ne changent pas. Refuse comme `findLatecomerRefusal()`.
    */
   getDrawsAfterAddingLatecomer(
     participant: Participant,
     timeSlotId: string,
     now: LocalMoment,
-    { day, date, schedule, ledGames }: LatecomerCollaborators,
+    collaborators: LatecomerCollaborators,
   ): Draws {
-    const rank = day.getTimeSlotRank(timeSlotId);
-    const draw = this.findPublishedDrawOfTimeSlot(timeSlotId);
-    if (!draw) throw new Refusal('draw-not-published', { rank });
-    if (this.hasTimeSlotEndedAt(timeSlotId, now, day, date)) {
-      throw new Refusal('time-slot-ended', { rank });
-    }
-    const params = { nickname: participant.nickname.text, rank };
-    if (draw.hasParticipant(participant.id)) throw new Refusal('latecomer-already-in-draw', params);
-    const leads = ledGames
-      .listGamesLedByParticipant(participant.id)
-      .some((game) => game.timeSlotIds.includes(timeSlotId));
-    if (leads) throw new Refusal('latecomer-leads-on-time-slot', params);
-    if (this.findAssignmentContinuingOnTimeSlot(participant.id, timeSlotId, schedule)) {
-      throw new Refusal('latecomer-plays-two-slot-game', params);
-    }
+    const refusal = this.findLatecomerRefusal(participant, timeSlotId, now, collaborators);
+    if (refusal) throw refusal;
     return this.getDrawsAfterReplacingDraw(
-      draw.getDrawAfterAddingUnassignedParticipant(participant.id),
+      this.findPublishedDrawOfTimeSlot(timeSlotId)!.getDrawAfterAddingUnassignedParticipant(
+        participant.id,
+      ),
     );
   }
 
@@ -395,17 +413,17 @@ export class Draws {
    * sur l'un des créneaux de sa partie, ou sur le créneau pour la source non placée, mène une
    * partie non annulée ou est placée, dans une partie double qui s'y poursuit comprise ; ou si
    * toutes deux sont non placées : la destination garde la sienne. Sinon la destination la reprend
-   * entière, marque « déplacé à la main » comprise : une seule affectation reste. Prenant une partie double, la destination quitte le tirage de ses créneaux suivants, où
-   * elle était non placée (TI-3).
+   * entière, marque « déplacé à la main » comprise : une seule affectation reste. Prenant une partie
+   * double, la destination quitte le tirage de ses créneaux suivants, où elle était non placée
+   * (TI-3).
    */
-  computeAssignmentMerge(
+  computeAssignmentMerges(
     sourceId: string,
     destinationId: string,
     { schedule, ledGames }: MergeCollaborators,
   ): AssignmentMerge[] {
-    const led = ledGames.listGamesLedByParticipant(destinationId);
     const isDestinationTakenOn = (timeSlotId: string) =>
-      led.some((game) => game.isOnTimeSlot(timeSlotId)) ||
+      ledGames.isParticipantLeadingOnTimeSlot(destinationId, timeSlotId) ||
       this.isParticipantPlacedOnTimeSlot(destinationId, timeSlotId, schedule);
     return this.draws.flatMap((draw): AssignmentMerge[] => {
       const assignment = draw.findAssignmentOfParticipant(sourceId);
@@ -435,14 +453,14 @@ export class Draws {
 
   /**
    * Les Tirages après la fusion de la source dans la destination (ID-11), selon
-   * `computeAssignmentMerge()` : la source n'y est plus.
+   * `computeAssignmentMerges()` : la source n'y est plus.
    */
   getDrawsAfterMergingParticipant(
     sourceId: string,
     destinationId: string,
     collaborators: MergeCollaborators,
   ): Draws {
-    const merges = this.computeAssignmentMerge(sourceId, destinationId, collaborators);
+    const merges = this.computeAssignmentMerges(sourceId, destinationId, collaborators);
     const left = new Set(merges.flatMap((merge) => merge.destinationLeftTimeSlotIds));
     return new Draws(
       this.draws.map((draw) => {

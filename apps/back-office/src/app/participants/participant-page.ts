@@ -182,7 +182,7 @@ const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', da
                         >
                           <app-icon name="lock-open" />Rouvrir les inscriptions
                         </button>
-                      } @else if (row.state === 'published' && row.result.kind === 'not-in-draw') {
+                      } @else if (row.latecomerAdditionAllowed) {
                         <button
                           type="button"
                           appButton="secondary"

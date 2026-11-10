@@ -4,14 +4,10 @@ import type { Scenario } from '../scenario/scenario.js';
 import type { Seats } from '../scenario/seats.js';
 import type { Draws } from './draws.js';
 import type { Game } from './game.js';
+import type { LedGames } from './led-games.js';
 import { ParticipantWithoutGame } from './participant-without-game.js';
 import type { Schedule } from './schedule.js';
 import { SignUp } from './sign-up.js';
-
-/** Les parties que mène chaque participant, par son rôle de MJ (ADR 0012). */
-export type LedGames = {
-  listGamesLedByParticipant(participantId: string): readonly Game[];
-};
 
 /**
  * Les créneaux que chaque participant occupe comme joueur d'une partie double, placé par un tirage
@@ -35,13 +31,28 @@ export type RemovedSignUps = { gameId: string } & SignUpFigures;
 export type MergeOutcome = 'transferred' | 'lost';
 
 /**
+ * Le sort d'une inscription de la source dans une fusion (ID-11) : passée à la destination, passée
+ * en secours, là où la destination mène une autre partie (IN-4), ou perdue.
+ */
+export type SignUpMergeOutcome = MergeOutcome | 'backup';
+
+/**
  * Ce que la fusion d'un pseudo fait de ses inscriptions et de ses états sans partie (ID-11), dans
- * l'ordre où ils sont rangés. Ce que la destination a déjà n'y est pas : rien ne passe, rien ne se
- * perd.
+ * l'ordre où ils sont rangés. Une inscription porte le premier créneau de sa partie, où elle
+ * compte. Ce que la destination a déjà n'y est pas : rien ne passe, rien ne se perd.
  */
 export type SignUpMerge = {
-  signUps: { gameId: string; outcome: MergeOutcome }[];
+  signUps: { gameId: string; timeSlotId: string; outcome: SignUpMergeOutcome }[];
   withoutGame: { timeSlotId: string; outcome: MergeOutcome }[];
+};
+
+/**
+ * Ce que la fusion lit hors des Inscriptions, en plus de leurs collaborateurs : les parties que
+ * mène chaque participant, annulées comprises. Une partie annulée reste celle de son MJ : il ne
+ * s'y inscrit jamais (IN-4).
+ */
+export type SignUpMergeCollaborators = SignUpCollaborators & {
+  ledGamesCancelledIncluded: LedGames;
 };
 
 /**
@@ -139,8 +150,7 @@ export class SignUps {
    * celui où elle commence, fait cesser d'être sans partie sur ce créneau.
    */
   getSignUpsAfterSigningUp(signUp: SignUp, { schedule, ledGames }: SignUpCollaborators): SignUps {
-    const led = ledGames.listGamesLedByParticipant(signUp.participantId);
-    if (led.some((game) => game.id === signUp.gameId)) {
+    if (ledGames.isGameLedByParticipant(signUp.gameId, signUp.participantId)) {
       throw new Refusal('game-led-by-participant', {});
     }
     if (this.hasSignUp(signUp)) return this;
@@ -184,19 +194,19 @@ export class SignUps {
   /**
    * Ce que la fusion de la source dans la destination fait de ses inscriptions et de ses états sans
    * partie (ID-11). `draws` : les tirages d'avant la fusion. Une inscription de la source est perdue
-   * à une partie que mène la destination, ou qui commence sur un créneau où la destination est
-   * placée ; sinon elle passe, de secours là où la destination mène (IN-4), sauf si la destination
-   * l'a déjà. Un état sans partie passe si la destination, sur ce créneau, n'est pas placée, n'y
-   * mène pas et n'y a aucune inscription active, celles reçues de la source comprises.
+   * à une partie que mène la destination, annulée comprise, ou qui commence sur un créneau où la
+   * destination est placée ; sinon elle passe, de secours là où la destination mène une autre partie
+   * non annulée (IN-4), sauf si la destination l'a déjà. Un état sans partie passe si la
+   * destination, sur ce créneau, n'est pas placée, n'y mène pas et n'y a aucune inscription active,
+   * celles reçues de la source comprises.
    */
   computeSignUpMerge(
     sourceId: string,
     destinationId: string,
     draws: Draws,
-    collaborators: SignUpCollaborators,
+    collaborators: SignUpMergeCollaborators,
   ): SignUpMerge {
-    const { schedule, ledGames } = collaborators;
-    const led = ledGames.listGamesLedByParticipant(destinationId);
+    const { schedule, ledGames, ledGamesCancelledIncluded } = collaborators;
     const isDestinationPlacedOn = (timeSlotId: string) =>
       draws.isParticipantPlacedOnTimeSlot(destinationId, timeSlotId, schedule);
     const signUps = this.signUps
@@ -206,18 +216,19 @@ export class SignUps {
           !this.hasSignUp(new SignUp(destinationId, signUp.gameId)),
       )
       .map(({ gameId }) => {
-        const firstTimeSlotId = schedule.findExistingGameById(gameId).timeSlotIds[0]!;
-        const lost =
-          led.some((game) => game.id === gameId) || isDestinationPlacedOn(firstTimeSlotId);
-        return { gameId, outcome: lost ? ('lost' as const) : ('transferred' as const) };
+        const timeSlotId = schedule.findExistingGameById(gameId).timeSlotIds[0]!;
+        const received = new SignUp(destinationId, gameId);
+        const outcome: SignUpMergeOutcome =
+          ledGamesCancelledIncluded.isGameLedByParticipant(gameId, destinationId) ||
+          isDestinationPlacedOn(timeSlotId)
+            ? 'lost'
+            : this.isBackup(received, collaborators)
+              ? 'backup'
+              : 'transferred';
+        return { gameId, timeSlotId, outcome };
       });
     const received = new SignUps(
-      [
-        ...this.signUps,
-        ...signUps
-          .filter(({ outcome }) => outcome === 'transferred')
-          .map(({ gameId }) => new SignUp(destinationId, gameId)),
-      ],
+      [...this.signUps, ...listSignUpsReceivedByDestination(signUps, destinationId)],
       this.participantsWithoutGame,
     );
     const withoutGame = this.participantsWithoutGame
@@ -226,26 +237,27 @@ export class SignUps {
           participantId === sourceId &&
           !this.hasParticipantWithoutGame(new ParticipantWithoutGame(destinationId, timeSlotId)),
       )
-      .map(({ timeSlotId }) => {
-        const lost =
+      .map(({ timeSlotId }) => ({
+        timeSlotId,
+        outcome: buildMergeOutcome(
           isDestinationPlacedOn(timeSlotId) ||
-          isLeadingOnTimeSlot(destinationId, timeSlotId, ledGames) ||
-          received.hasActiveSignUpOnTimeSlot(destinationId, timeSlotId, collaborators);
-        return { timeSlotId, outcome: lost ? ('lost' as const) : ('transferred' as const) };
-      });
+            ledGames.isParticipantLeadingOnTimeSlot(destinationId, timeSlotId) ||
+            received.hasActiveSignUpOnTimeSlot(destinationId, timeSlotId, collaborators),
+        ),
+      }));
     return { signUps, withoutGame };
   }
 
   /**
    * Les inscriptions après la fusion de la source dans la destination (ID-11), selon
-   * `computeSignUpMerge()` : les inscriptions qui passent sont prises à la suite des autres, comme
-   * des inscriptions nouvelles, et la source n'a plus rien.
+   * `computeSignUpMerge()` : les inscriptions qui passent, de secours comprises, sont prises à la
+   * suite des autres, comme des inscriptions nouvelles, et la source n'a plus rien.
    */
   getSignUpsAfterMergingParticipant(
     sourceId: string,
     destinationId: string,
     draws: Draws,
-    collaborators: SignUpCollaborators,
+    collaborators: SignUpMergeCollaborators,
   ): SignUps {
     const merge = this.computeSignUpMerge(sourceId, destinationId, draws, collaborators);
     const transferredTimeSlotIds = new Set(
@@ -255,9 +267,7 @@ export class SignUps {
     );
     const signUps = [
       ...this.signUps.filter((signUp) => signUp.participantId !== sourceId),
-      ...merge.signUps
-        .filter(({ outcome }) => outcome === 'transferred')
-        .map(({ gameId }) => new SignUp(destinationId, gameId)),
+      ...listSignUpsReceivedByDestination(merge.signUps, destinationId),
     ];
     const participantsWithoutGame = this.participantsWithoutGame.flatMap((recorded) => {
       if (recorded.participantId !== sourceId) return [recorded];
@@ -313,7 +323,7 @@ export class SignUps {
       .filter(
         ({ participantId, timeSlotId }) =>
           !remaining.hasActiveSignUpOnTimeSlot(participantId, timeSlotId, next) &&
-          !isLeadingOnTimeSlot(participantId, timeSlotId, next.ledGames),
+          !next.ledGames.isParticipantLeadingOnTimeSlot(participantId, timeSlotId),
       );
     let result = remaining;
     for (const candidate of becomingWithoutGame) {
@@ -510,7 +520,6 @@ export class SignUps {
     return next.hasGameOnSameTimeSlots(game);
   }
 
-  /** L'inscription est active : voir `SignUps.isSignUpActive()`. */
   /**
    * L'inscription est de secours : son participant mène, sur l'un des créneaux de la partie, une
    * autre partie (IN-4).
@@ -525,6 +534,7 @@ export class SignUps {
       .some((led) => led.id !== gameId && game.timeSlotIds.some((id) => led.isOnTimeSlot(id)));
   }
 
+  /** L'inscription est active : voir `SignUps.isSignUpActive()`. */
   private isActive(
     signUp: SignUp,
     { schedule, ledGames, playedTimeSlots }: SignUpCollaborators,
@@ -537,15 +547,19 @@ export class SignUps {
   }
 }
 
-/** Le MJ du participant mène une partie sur le créneau (IN-4). */
-function isLeadingOnTimeSlot(
-  participantId: string,
-  timeSlotId: string,
-  ledGames: LedGames,
-): boolean {
-  return ledGames
-    .listGamesLedByParticipant(participantId)
-    .some((game) => game.isOnTimeSlot(timeSlotId));
+/** Le sort d'un élément de la source dans une fusion (ID-11), selon qu'il est perdu. */
+function buildMergeOutcome(lost: boolean): MergeOutcome {
+  return lost ? 'lost' : 'transferred';
+}
+
+/** Les inscriptions que la destination reçoit d'une fusion (ID-11) : toutes, sauf les perdues. */
+function listSignUpsReceivedByDestination(
+  merges: SignUpMerge['signUps'],
+  destinationId: string,
+): SignUp[] {
+  return merges
+    .filter(({ outcome }) => outcome !== 'lost')
+    .map(({ gameId }) => new SignUp(destinationId, gameId));
 }
 
 /**
@@ -558,7 +572,7 @@ function isTakenOnTimeSlot(
   { ledGames, playedTimeSlots }: SignUpCollaborators,
 ): boolean {
   return (
-    isLeadingOnTimeSlot(participantId, timeSlotId, ledGames) ||
+    ledGames.isParticipantLeadingOnTimeSlot(participantId, timeSlotId) ||
     playedTimeSlots.listTimeSlotIdsPlayedByParticipant(participantId).includes(timeSlotId)
   );
 }

@@ -9,6 +9,7 @@ const slot = (result: ParticipantTimeSlotDto['result']): ParticipantTimeSlotDto 
   result,
   ledGameId: null,
   withoutGame: false,
+  latecomerAdditionAllowed: false,
 });
 
 const aSheet = (sheet: Partial<ParticipantSheetDto>): ParticipantSheetDto => ({
@@ -69,5 +70,15 @@ describe('removalConsequences', () => {
       "Son téléphone relié reviendra à l'identification.",
       'Le pseudo redeviendra libre.',
     ]);
+  });
+
+  it('compte un créneau terminé comme un tirage publié', () => {
+    expect(
+      removalConsequences(
+        aSheet({
+          timeSlots: [{ ...slot({ kind: 'unassigned', tablesWithSeats: [] }), state: 'ended' }],
+        }),
+      ),
+    ).toEqual(['Il sort des tirages, publiés compris.', 'Le pseudo redeviendra libre.']);
   });
 });

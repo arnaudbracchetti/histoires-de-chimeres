@@ -230,15 +230,26 @@ export class Participants {
   }
 
   /**
-   * Les participants sans la source, fusionnée dans la destination (ID-11), dont le pseudo redevient
-   * libre. Refuse, dans l'ordre : une source ou une destination inconnue, une source égale à la
-   * destination, une source MJ, qui se gère par sa fiche de MJ (PR-12). La destination peut être MJ.
+   * Refuse de fusionner la source dans la destination (ID-11), dans l'ordre : une source ou une
+   * destination inconnue, une source égale à la destination, une source MJ, qui se gère par sa fiche
+   * de MJ (PR-12). La destination peut être MJ.
    */
-  getParticipantsAfterMergingParticipant(sourceId: string, destinationId: string): Participants {
+  verifyMergeAllowed(sourceId: string, destinationId: string): void {
     const source = this.allParticipants.findExistingItemById(sourceId);
     this.allParticipants.verifyItemExists(destinationId);
     if (source.id === destinationId) throw new Refusal('merge-into-itself', {});
-    return this.getParticipantsAfterRemovingParticipant(source.id);
+    if (this.hasGameMasterRole(source)) {
+      throw new Refusal('participant-is-game-master', { nickname: source.nickname.text });
+    }
+  }
+
+  /**
+   * Les participants sans la source, fusionnée dans la destination (ID-11), dont le pseudo redevient
+   * libre. Refuse comme `verifyMergeAllowed()`.
+   */
+  getParticipantsAfterMergingParticipant(sourceId: string, destinationId: string): Participants {
+    this.verifyMergeAllowed(sourceId, destinationId);
+    return this.getParticipantsAfterRemovingParticipant(sourceId);
   }
 
   /** Le MJ se déclare disponible sur un créneau existant (PR-2). Déclarer deux fois ne change rien. */

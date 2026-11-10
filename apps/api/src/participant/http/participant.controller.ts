@@ -45,7 +45,7 @@ export class ParticipantController {
     @Inject(RenameParticipant) private readonly renameParticipant: RenameParticipant,
     @Inject(RemoveParticipant) private readonly removeParticipant: RemoveParticipant,
     @Inject(MergeParticipant) private readonly mergeParticipant: MergeParticipant,
-    @Inject(ReadMergeVerdict) private readonly readMergeVerdict: ReadMergeVerdict,
+    @Inject(ReadMergeVerdict) private readonly readMergeVerdictQuery: ReadMergeVerdict,
     @Inject(SignUpParticipantForGame)
     private readonly signUpParticipantForGame: SignUpParticipantForGame,
     @Inject(WithdrawParticipantFromGame)
@@ -110,11 +110,11 @@ export class ParticipantController {
   }
 
   @Get(participantEndpoints.readMergeVerdict.path)
-  mergeVerdict(
+  readMergeVerdict(
     @Param('participantId') participantId: string,
     @Param('destinationId') destinationId: string,
   ): Promise<ResponseOf<typeof participantEndpoints.readMergeVerdict>> {
-    return this.readMergeVerdict.execute(participantId, destinationId);
+    return this.readMergeVerdictQuery.execute(participantId, destinationId);
   }
 
   /** Inscrit le pseudo à la partie, à sa place (ID-12), et rend la fiche relue. */

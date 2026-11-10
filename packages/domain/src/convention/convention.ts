@@ -11,8 +11,9 @@ import {
   buildDrawPublicationNotifications,
   buildLatecomerNotification,
 } from './draw-publication.js';
-import { Draws, type DrawCollaborators } from './draws.js';
+import { Draws, type DrawCollaborators, type LatecomerCollaborators } from './draws.js';
 import type { Game } from './game.js';
+import { LedGames } from './led-games.js';
 import type { GameMaster } from './game-master.js';
 import { computeLatestEnd, isReachedAt, type LocalMoment } from './local-moment.js';
 import type { Participant } from './participant.js';
@@ -32,11 +33,12 @@ import { SignUp } from './sign-up.js';
 import { computeSignUpTracking, type TimeSlotTracking } from './sign-up-tracking.js';
 import {
   SignUps,
-  type LedGames,
   type MergeOutcome,
   type PlayedTimeSlots,
   type RemovedSignUps,
   type SignUpCollaborators,
+  type SignUpMergeCollaborators,
+  type SignUpMergeOutcome,
 } from './sign-ups.js';
 import type { TimeOfDay } from './time-of-day.js';
 import type { TimeSlot } from './time-slot.js';
@@ -423,17 +425,18 @@ export class Convention {
       sourceId,
       destinationId,
     );
-    const collaborators = this.buildSignUpCollaborators(this.gameSchedule);
+    const collaborators = this.buildSignUpMergeCollaborators();
     this.allSignUps = this.allSignUps.getSignUpsAfterMergingParticipant(
       sourceId,
       destinationId,
       this.allDraws,
       collaborators,
     );
-    this.allDraws = this.allDraws.getDrawsAfterMergingParticipant(sourceId, destinationId, {
-      schedule: this.gameSchedule,
-      ledGames: collaborators.ledGames,
-    });
+    this.allDraws = this.allDraws.getDrawsAfterMergingParticipant(
+      sourceId,
+      destinationId,
+      collaborators,
+    );
     this.allParticipants = participants;
   }
 
@@ -442,23 +445,22 @@ export class Convention {
    * changer : le même calcul que la fusion. Refuse comme elle.
    */
   computeMergeVerdict(sourceId: string, destinationId: string): MergeTimeSlotVerdict[] {
-    this.allParticipants.getParticipantsAfterMergingParticipant(sourceId, destinationId);
-    const collaborators = this.buildSignUpCollaborators(this.gameSchedule);
+    this.allParticipants.verifyMergeAllowed(sourceId, destinationId);
+    const collaborators = this.buildSignUpMergeCollaborators();
     const signUpMerge = this.allSignUps.computeSignUpMerge(
       sourceId,
       destinationId,
       this.allDraws,
       collaborators,
     );
-    const assignmentMerges = this.allDraws.computeAssignmentMerge(sourceId, destinationId, {
-      schedule: this.gameSchedule,
-      ledGames: collaborators.ledGames,
-    });
-    const startsOn = (gameId: string, timeSlotId: string) =>
-      this.gameSchedule.findExistingGameById(gameId).timeSlotIds[0] === timeSlotId;
-    const signUpGameIds = (timeSlotId: string, outcome: MergeOutcome) =>
+    const assignmentMerges = this.allDraws.computeAssignmentMerges(
+      sourceId,
+      destinationId,
+      collaborators,
+    );
+    const signUpGameIds = (timeSlotId: string, outcome: SignUpMergeOutcome) =>
       signUpMerge.signUps
-        .filter((merge) => merge.outcome === outcome && startsOn(merge.gameId, timeSlotId))
+        .filter((merge) => merge.timeSlotId === timeSlotId && merge.outcome === outcome)
         .map(({ gameId }) => gameId);
     return this.day.timeSlots.map(({ id: timeSlotId }) => {
       const assignment = assignmentMerges.find((merge) => merge.timeSlotId === timeSlotId);
@@ -469,6 +471,7 @@ export class Convention {
           merge.destinationLeftTimeSlotIds.includes(timeSlotId),
         ),
         transferredSignUpGameIds: signUpGameIds(timeSlotId, 'transferred'),
+        backupSignUpGameIds: signUpGameIds(timeSlotId, 'backup'),
         lostSignUpGameIds: signUpGameIds(timeSlotId, 'lost'),
         withoutGame:
           signUpMerge.withoutGame.find((merge) => merge.timeSlotId === timeSlotId)?.outcome ?? null,
@@ -956,24 +959,52 @@ export class Convention {
   ): Notification[] {
     const participant = this.allParticipants.findExistingParticipantById(participantId);
     this.day.verifyTimeSlotExists(timeSlotId);
-    this.allDraws = this.allDraws.getDrawsAfterAddingLatecomer(participant, timeSlotId, now, {
-      day: this.day,
-      date: this.state.date,
-      schedule: this.gameSchedule,
-      ledGames: this.buildSignUpCollaborators(this.gameSchedule).ledGames,
-    });
+    const collaborators = {
+      ...this.buildLatecomerCollaborators(),
+      tables: this.allTables,
+      catalogue,
+    };
+    this.allDraws = this.allDraws.getDrawsAfterAddingLatecomer(
+      participant,
+      timeSlotId,
+      now,
+      collaborators,
+    );
     return [
-      buildLatecomerNotification(this.allDraws.findDrawOfTimeSlot(timeSlotId)!, participant.id, {
-        day: this.day,
-        date: this.state.date,
-        schedule: this.gameSchedule,
-        tables: this.allTables,
-        catalogue,
-      }),
+      buildLatecomerNotification(
+        this.allDraws.findDrawOfTimeSlot(timeSlotId)!,
+        participant.id,
+        collaborators,
+      ),
     ];
   }
 
-  /** Ce que le tirage lit hors des Tirages, avec ce catalogue, entier. */
+  /**
+   * On peut ajouter le participant au tirage publié du créneau, non placé : `addLatecomerToPublishedDraw()`
+   * ne le refuserait pas à cet instant. Pour la fiche du pseudo (ID-14), qui ne propose le geste que
+   * là.
+   */
+  isLatecomerAdditionAllowed(participantId: string, timeSlotId: string, now: LocalMoment): boolean {
+    const participant = this.allParticipants.findExistingParticipantById(participantId);
+    this.day.verifyTimeSlotExists(timeSlotId);
+    return !this.allDraws.findLatecomerRefusal(
+      participant,
+      timeSlotId,
+      now,
+      this.buildLatecomerCollaborators(),
+    );
+  }
+
+  /** Ce que l'ajout d'un retardataire lit hors des Tirages (ID-14). */
+  private buildLatecomerCollaborators(): LatecomerCollaborators {
+    return {
+      day: this.day,
+      date: this.state.date,
+      schedule: this.gameSchedule,
+      ledGames: this.buildLedGames(this.gameSchedule),
+    };
+  }
+
   /**
    * Retire un participant supprimé de ses inscriptions, de son état sans partie et de ses
    * affectations de tous les tirages : commun à la suppression d'un MJ et à celle d'un pseudo.
@@ -983,6 +1014,7 @@ export class Convention {
     this.allDraws = this.allDraws.getDrawsAfterRemovingParticipant(participantId);
   }
 
+  /** Ce que le tirage lit hors des Tirages, avec ce catalogue, entier. */
   private buildDrawCollaborators(catalogue: ScenarioCatalogue): DrawCollaborators {
     return {
       day: this.day,
@@ -1168,37 +1200,50 @@ export class Convention {
     ];
   }
 
-  /**
-   * Ce que lisent les règles des inscriptions : ce Programme, les parties que mène chaque
-   * participant par son MJ (ADR 0012), tirées du même Programme, sans celles qu'un tirage annule
-   * (TI-6), et les créneaux qu'il occupe comme joueur d'une partie double publiée, tirés des
-   * Tirages (TI-3).
-   */
   /** Les parties que mène chaque participant au Programme, annulées par un tirage comprises. */
   private buildLedGamesCancelledIncluded(): LedGames {
-    return {
-      listGamesLedByParticipant: (participantId) => {
-        const gameMaster = this.allParticipants.findGameMasterOfParticipant(participantId);
-        return gameMaster ? this.gameSchedule.listGamesLedByGameMaster(gameMaster.id) : [];
-      },
-    };
+    return LedGames.createFromLister((participantId) => {
+      const gameMaster = this.allParticipants.findGameMasterOfParticipant(participantId);
+      return gameMaster ? this.gameSchedule.listGamesLedByGameMaster(gameMaster.id) : [];
+    });
   }
 
+  /**
+   * Les parties que mène chaque participant par son MJ (ADR 0012), tirées de ce Programme, sans
+   * celles qu'un tirage annule (TI-6).
+   */
+  private buildLedGames(schedule: Schedule): LedGames {
+    return LedGames.createFromLister((participantId) => {
+      const gameMaster = this.allParticipants.findGameMasterOfParticipant(participantId);
+      if (!gameMaster) return [];
+      return schedule
+        .listGamesLedByGameMaster(gameMaster.id)
+        .filter((game) => !this.allDraws.isGameCancelled(game.id));
+    });
+  }
+
+  /**
+   * Ce que lisent les règles des inscriptions : ce Programme, les parties que mène chaque
+   * participant (`buildLedGames()`), et les créneaux qu'il occupe comme joueur d'une partie double
+   * publiée, tirés des Tirages (TI-3).
+   */
   private buildSignUpCollaborators(schedule: Schedule): SignUpCollaborators {
-    const ledGames: LedGames = {
-      listGamesLedByParticipant: (participantId) => {
-        const gameMaster = this.allParticipants.findGameMasterOfParticipant(participantId);
-        if (!gameMaster) return [];
-        return schedule
-          .listGamesLedByGameMaster(gameMaster.id)
-          .filter((game) => !this.allDraws.isGameCancelled(game.id));
-      },
-    };
+    const ledGames = this.buildLedGames(schedule);
     const playedTimeSlots: PlayedTimeSlots = {
       listTimeSlotIdsPlayedByParticipant: (participantId) =>
         this.allDraws.listTimeSlotIdsPlayedByParticipant(participantId, schedule),
     };
     return { schedule, ledGames, playedTimeSlots };
+  }
+  /**
+   * Ce que lit la fusion d'un pseudo (ID-11) : les collaborateurs des inscriptions, et les parties
+   * menées, annulées comprises.
+   */
+  private buildSignUpMergeCollaborators(): SignUpMergeCollaborators {
+    return {
+      ...this.buildSignUpCollaborators(this.gameSchedule),
+      ledGamesCancelledIncluded: this.buildLedGamesCancelledIncluded(),
+    };
   }
 
   /** L'avancement du tirage du créneau, que donnent les Tirages. */
@@ -1494,14 +1539,16 @@ export type UnscheduleVerdict = DrawErasure & { removedSignUps: RemovedSignUps[]
  * source dans son tirage, sa partie ou `null` non placée, passée à la destination ou perdue ; `null`
  * si la source n'y est pas. `destinationLeavesDraw` : la destination quitte ce tirage, en prenant la
  * partie double de la source (TI-3). Les inscriptions de la source aux parties qui commencent sur le
- * créneau, passées ou perdues, sans celles que la destination a déjà. `withoutGame` : le sort de
- * l'état sans partie de la source, ou `null` sans cet état (IN-6).
+ * créneau, passées, passées en secours là où la destination mène une autre partie (IN-4), ou
+ * perdues, sans celles que la destination a déjà. `withoutGame` : le sort de l'état sans partie de
+ * la source, ou `null` sans cet état (IN-6).
  */
 export type MergeTimeSlotVerdict = {
   timeSlotId: string;
   assignment: { gameId: string | null; outcome: MergeOutcome } | null;
   destinationLeavesDraw: boolean;
   transferredSignUpGameIds: string[];
+  backupSignUpGameIds: string[];
   lostSignUpGameIds: string[];
   withoutGame: MergeOutcome | null;
 };

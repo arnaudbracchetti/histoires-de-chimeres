@@ -53,6 +53,11 @@ export class ReadParticipantSheet {
           result: toResultDto(result, findGameTitle),
           ledGameId: situationSlots.get(timeSlotId)!.ledGameId,
           withoutGame: situationSlots.get(timeSlotId)!.withoutGame,
+          latecomerAdditionAllowed: convention.isLatecomerAdditionAllowed(
+            participant.id,
+            timeSlotId,
+            now,
+          ),
         })),
       linkedPhones,
     };

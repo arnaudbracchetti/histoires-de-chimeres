@@ -193,9 +193,16 @@ export function buildUnassignedText(
 
 /** « Pas de place pour toi », au participant sans partie : il n'avait plus d'inscription. */
 function formatWithoutGameUnassignedBody(tablesWithSeats: readonly string[]): string {
-  const noSignUp = "Tu n'avais plus d'inscription sur ce créneau.";
-  if (!tablesWithSeats.length) return fr`${noSignUp} ${formatSeatsLeft(tablesWithSeats)}`;
-  return fr`${noSignUp} ${formatSeatsLeft(tablesWithSeats)} : va voir ${formatGameMasters(tablesWithSeats)}.`;
+  return formatSeatsLeftAfter(fr`Tu n'avais plus d'inscription sur ce créneau.`, tablesWithSeats);
+}
+
+/**
+ * La phrase d'en-tête, puis les tables où il reste de la place et leurs MJ à aller voir ; sans
+ * table, que toutes les parties du créneau sont complètes.
+ */
+function formatSeatsLeftAfter(header: string, tablesWithSeats: readonly string[]): string {
+  if (!tablesWithSeats.length) return fr`${header} ${formatSeatsLeft(tablesWithSeats)}`;
+  return fr`${header} ${formatSeatsLeft(tablesWithSeats)} : va voir ${formatGameMasters(tablesWithSeats)}.`;
 }
 
 /**
@@ -203,12 +210,9 @@ function formatWithoutGameUnassignedBody(tablesWithSeats: readonly string[]): st
  * `tablesWithSeats`, où il reste de la place.
  */
 export function buildLatecomerText(rank: number, tablesWithSeats: readonly string[]): ChangeText {
-  const drawDone = 'Le tirage de ce créneau est déjà fait.';
   return {
     title: fr`${formatCapitalizedTimeSlotRanks([rank])} : pas de place pour toi`,
-    body: tablesWithSeats.length
-      ? fr`${drawDone} ${formatSeatsLeft(tablesWithSeats)} : va voir ${formatGameMasters(tablesWithSeats)}.`
-      : fr`${drawDone} ${formatSeatsLeft(tablesWithSeats)}`,
+    body: formatSeatsLeftAfter(fr`Le tirage de ce créneau est déjà fait.`, tablesWithSeats),
   };
 }
 
