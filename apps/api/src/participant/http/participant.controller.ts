@@ -1,8 +1,21 @@
-import { Body, Controller, Delete, Get, Inject, Param, Post, Put, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import {
   AddParticipant,
   ReadParticipantList,
   ReadParticipantSheet,
+  RemoveParticipant,
   RenameParticipant,
   SignUpParticipantForGame,
   WithdrawParticipantFromDraw,
@@ -26,6 +39,7 @@ export class ParticipantController {
     @Inject(ReadParticipantSheet) private readonly readParticipantSheet: ReadParticipantSheet,
     @Inject(AddParticipant) private readonly addParticipant: AddParticipant,
     @Inject(RenameParticipant) private readonly renameParticipant: RenameParticipant,
+    @Inject(RemoveParticipant) private readonly removeParticipant: RemoveParticipant,
     @Inject(SignUpParticipantForGame)
     private readonly signUpParticipantForGame: SignUpParticipantForGame,
     @Inject(WithdrawParticipantFromGame)
@@ -64,6 +78,14 @@ export class ParticipantController {
   ): Promise<ResponseOf<typeof participantEndpoints.rename>> {
     await this.renameParticipant.execute(participantId, body);
     return this.readSheetOrRefuse(participantId);
+  }
+
+  @Delete(participantEndpoints.remove.path)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(
+    @Param('participantId') participantId: string,
+  ): Promise<ResponseOf<typeof participantEndpoints.remove>> {
+    return this.removeParticipant.execute(participantId);
   }
 
   /** Inscrit le pseudo à la partie, à sa place (ID-12), et rend la fiche relue. */

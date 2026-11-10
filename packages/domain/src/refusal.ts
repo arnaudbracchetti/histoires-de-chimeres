@@ -29,6 +29,8 @@ export type RefusalParams = {
   'table-has-games': { name: string; games: number };
   'game-master-not-found': Record<string, never>;
   'participant-not-found': Record<string, never>;
+  /** `nickname` : le pseudo du MJ, qui se supprime par sa fiche de MJ (PR-12, ID-10). */
+  'participant-is-game-master': { nickname: string };
   'nickname-required': Record<string, never>;
   'nickname-too-long': { max: number };
   /**

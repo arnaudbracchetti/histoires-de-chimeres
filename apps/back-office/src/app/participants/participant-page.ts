@@ -11,27 +11,33 @@ import {
   untracked,
 } from '@angular/core';
 import { Tab, TabContent, TabList, TabPanel, Tabs } from '@angular/aria/tabs';
-import { participantEndpoints } from '@chimeres/contract';
+import { Router } from '@angular/router';
+import { participantEndpoints, type ParticipantSheetDto } from '@chimeres/contract';
 import { formatCount, formatTimeOfDay, fr, timeSlotLabel } from '@chimeres/design';
 import { injectApiCall } from '../api-call';
 import { apiResource, currentValue } from '../api-resource';
 import { ConventionStore } from '../convention/convention-store';
 import { NicknameEditor } from '../forms/nickname-editor';
+import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
 import { injectReopenSignUps } from '../time-slots/reopen-sign-ups';
 import { TIME_SLOT_STATES, TimeSlotState } from '../time-slots/time-slot-state';
 import { Button } from '../ui/button';
+import { Confirmation } from '../ui/confirmation';
 import { Icon } from '../ui/icon';
+import { MoreMenu, type MoreMenuItem } from '../ui/more-menu';
 import { describeParticipantResult } from './participant-result';
 import { ParticipantSignUps } from './participant-sign-ups';
+import { removalConsequences } from './removal-consequences';
 
 type TabValue = 'program' | 'sign-ups' | 'phones';
 
 /**
  * Fiche d'un pseudo, de participant ou de MJ (ID-5, docs/design/patterns.md, Fiche d'un pseudo) :
  * « Participants › pseudo », que le crayon renomme en place (ID-13), « Participant » ou « MJ »
- * dessous, puis trois onglets de classeur. « Programme » : la frise des créneaux, un rond à la
+ * dessous, et le menu « ⋯ », qui supprime le pseudo d'un participant (ID-10), pas d'un MJ (PR-12) ;
+ * puis trois onglets de classeur. « Programme » : la frise des créneaux, un rond à la
  * couleur et à l'icône de l'état de chacun, et le résultat du pseudo, tirage provisoire compris ;
  * « Modifier les inscriptions » sur un créneau ouvert ouvre l'onglet suivant sur ce créneau ;
  * « Rouvrir les inscriptions » sur un tirage provisoire où il n'est pas, et qu'il ne mène
@@ -45,6 +51,7 @@ type TabValue = 'program' | 'sign-ups' | 'phones';
     Button,
     Icon,
     Loadable,
+    MoreMenu,
     NicknameEditor,
     PageHeader,
     ParticipantSignUps,
@@ -90,6 +97,15 @@ type TabValue = 'program' | 'sign-ups' | 'phones';
           {{ sheet.gameMaster ? 'MJ' : 'Participant' }}
         }
       </p>
+      @if (sheet(); as sheet) {
+        @if (menu().length) {
+          <app-more-menu
+            label="Autres actions sur le pseudo"
+            [items]="menu()"
+            (selected)="onMenu($event, sheet)"
+          />
+        }
+      }
     </app-page-header>
     <app-loadable
       [resource]="resource"
@@ -409,6 +425,9 @@ export class ParticipantPage {
   private readonly reopenSignUpsAfterConfirmation = injectReopenSignUps();
   private readonly store = inject(ConventionStore);
   private readonly apiCall = injectApiCall();
+  private readonly announcer = inject(Announcer);
+  private readonly confirmation = inject(Confirmation);
+  private readonly router = inject(Router);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
 
@@ -421,6 +440,32 @@ export class ParticipantPage {
       }),
     );
   };
+
+  /** Le menu « ⋯ » : un MJ ne se supprime pas ici, mais par sa fiche de MJ (PR-12). */
+  protected readonly menu = computed<MoreMenuItem[]>(() => {
+    const sheet = this.sheet();
+    if (!sheet || sheet.gameMaster) return [];
+    return [{ value: 'remove', label: 'Supprimer le pseudo', danger: true }];
+  });
+
+  protected onMenu(value: string, sheet: ParticipantSheetDto): void {
+    if (value === 'remove') void this.remove(sheet);
+  }
+
+  /** Supprime le pseudo après confirmation (ID-10), puis revient à la liste. */
+  private async remove(sheet: ParticipantSheetDto): Promise<void> {
+    const removed = await this.confirmation.ask({
+      question: fr`Supprimer le pseudo « ${sheet.nickname} » ?`,
+      consequences: removalConsequences(sheet),
+      confirmLabel: 'Supprimer le pseudo',
+      action: () =>
+        this.apiCall(participantEndpoints.remove, { params: { participantId: sheet.id } }),
+      onStale: () => this.resource.reload(),
+    });
+    if (!removed) return;
+    this.announcer.announce(fr`Pseudo « ${sheet.nickname} » supprimé.`);
+    await this.router.navigate(['/participants']);
+  }
 
   /** Ferme le champ du pseudo ; le focus revient au crayon. */
   protected closeEditor(): void {

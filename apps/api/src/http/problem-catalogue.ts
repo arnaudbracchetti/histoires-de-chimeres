@@ -124,6 +124,11 @@ export const problemCatalogue: Catalogue = {
     detail: () => fr`Ce pseudo n'existe plus : tape-le à nouveau.`,
     status: 404,
   },
+  'participant-is-game-master': {
+    title: 'Pseudo de MJ',
+    detail: ({ nickname }) =>
+      fr`${nickname} est MJ : supprime-le depuis sa fiche de MJ, dans « MJ ».`,
+  },
   'nickname-required': {
     title: 'Pseudo obligatoire',
     detail: () => 'Tape un pseudo.',

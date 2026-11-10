@@ -3,6 +3,7 @@ import { Refusal } from '../refusal.js';
 import { Convention } from './convention.js';
 import { Assignment, Draw } from './draw.js';
 import type { LocalMoment } from './local-moment.js';
+import { ParticipantWithoutGame } from './participant-without-game.js';
 import { PresenceCode } from './presence-code.js';
 import { SignUp } from './sign-up.js';
 import { TimeOfDay } from './time-of-day.js';
@@ -436,5 +437,80 @@ describe('Renommer un pseudo (ID-13)', () => {
     expect(participantsOf(published)).toEqual(['p1 Céleste']);
     expect(published.signUps).toEqual([new SignUp('p1', 'brumes')]);
     expect(published.draws[0]?.assignments).toEqual([new Assignment('p1', null, false)]);
+  });
+});
+
+describe('Supprimer un pseudo (ID-10)', () => {
+  /**
+   * Élodie (p1) et Lune (p2), inscrites à « brumes » au créneau 1 ; Élodie, sans partie au créneau 2.
+   * Le tirage du créneau 1 est publié, celui du créneau 2 est provisoire.
+   */
+  function buildConventionWithTwoDraws(): Convention {
+    const convention = withElodie();
+    convention.addParticipant('p2', 'Lune');
+    return Convention.restore({
+      id: convention.id,
+      name: convention.name,
+      date: convention.date,
+      timeSlots: [],
+      tables: [],
+      gameMasters: [],
+      participants: [...convention.participants],
+      signUps: [new SignUp('p1', 'brumes'), new SignUp('p2', 'brumes')],
+      participantsWithoutGame: [new ParticipantWithoutGame('p1', 's2')],
+      draws: [
+        new Draw('s1', true, [
+          new Assignment('p1', 'brumes', false),
+          new Assignment('p2', 'brumes', true),
+        ]),
+        new Draw('s2', false, [
+          new Assignment('p1', null, false),
+          new Assignment('p2', null, false),
+        ]),
+      ],
+      games: [],
+      version: convention.version,
+      presenceCode: convention.presenceCode,
+    });
+  }
+
+  it('retire le pseudo, ses inscriptions, son état sans partie et ses résultats, même après la publication', () => {
+    const convention = buildConventionWithTwoDraws();
+
+    convention.removeParticipant('p1');
+
+    expect(participantsOf(convention)).toEqual(['p2 Lune']);
+    expect(convention.signUps).toEqual([new SignUp('p2', 'brumes')]);
+    expect(convention.participantsWithoutGame).toEqual([]);
+    expect(convention.draws).toEqual([
+      new Draw('s1', true, [new Assignment('p2', 'brumes', true)]),
+      new Draw('s2', false, [new Assignment('p2', null, false)]),
+    ]);
+  });
+
+  it('libère le pseudo : qui le saisit ensuite crée un nouveau pseudo (ID-1)', () => {
+    const convention = withElodie();
+    convention.removeParticipant('p1');
+
+    const identification = convention.identifyByNickname('p2', 'K7M2', 'Élodie', null, NOW);
+
+    expect(identification).toMatchObject({ verdict: 'link', created: true });
+  });
+
+  it('refuse de supprimer un MJ, qui se supprime par sa fiche de MJ (PR-12)', () => {
+    const convention = aConvention();
+    convention.addGameMaster('g1', 'p-g1', 'Kaïros');
+
+    const refusal = refusalOf(() => convention.removeParticipant('p-g1'));
+
+    expect(refusal.code).toBe('participant-is-game-master');
+    expect(participantsOf(convention)).toEqual(['p-g1 Kaïros']);
+    expect(convention.gameMasters).toHaveLength(1);
+  });
+
+  it('refuse de supprimer un participant inconnu', () => {
+    expect(refusalOf(() => aConvention().removeParticipant('x')).code).toBe(
+      'participant-not-found',
+    );
   });
 });

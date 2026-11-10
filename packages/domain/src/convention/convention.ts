@@ -389,8 +389,20 @@ export class Convention {
       id,
       catalogue,
     );
-    this.allSignUps = this.allSignUps.getSignUpsAfterRemovingParticipant(participantId);
-    this.allDraws = this.allDraws.getDrawsAfterRemovingParticipant(participantId);
+    this.removeParticipantFromSignUpsAndDraws(participantId);
+  }
+
+  /**
+   * Supprime un pseudo de participant, à tout moment, même après la publication (ID-10) : il perd
+   * ses téléphones reliés, ses inscriptions, son état sans partie et son résultat dans tous les
+   * tirages, puis son pseudo redevient libre. Une partie publiée compte un joueur de moins, sans
+   * proposer la place à personne. Un MJ est refusé : il se supprime par `removeGameMaster()`
+   * (PR-12). Personne n'est notifié (NO-4).
+   */
+  removeParticipant(participantId: string): void {
+    this.allParticipants =
+      this.allParticipants.getParticipantsAfterRemovingParticipant(participantId);
+    this.removeParticipantFromSignUpsAndDraws(participantId);
   }
 
   /** Le MJ se déclare disponible sur un créneau existant (PR-2). Déclarer deux fois ne change rien. */
@@ -859,6 +871,15 @@ export class Convention {
   }
 
   /** Ce que le tirage lit hors des Tirages, avec ce catalogue, entier. */
+  /**
+   * Retire un participant supprimé de ses inscriptions, de son état sans partie et de ses
+   * affectations de tous les tirages : commun à la suppression d'un MJ et à celle d'un pseudo.
+   */
+  private removeParticipantFromSignUpsAndDraws(participantId: string): void {
+    this.allSignUps = this.allSignUps.getSignUpsAfterRemovingParticipant(participantId);
+    this.allDraws = this.allDraws.getDrawsAfterRemovingParticipant(participantId);
+  }
+
   private buildDrawCollaborators(catalogue: ScenarioCatalogue): DrawCollaborators {
     return {
       day: this.day,

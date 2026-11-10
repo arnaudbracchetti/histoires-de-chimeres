@@ -308,3 +308,31 @@ test('l’Organisateur rouvre les inscriptions d’un tirage provisoire depuis l
   await page.getByRole('tabpanel').getByRole('checkbox', { name: 'Les Brumes' }).check();
   await expect(page.getByRole('tabpanel')).toContainText('2 inscrits · 1 à 5 places');
 });
+
+test('l’Organisateur supprime un pseudo, même après la publication, et revient à la liste ; pas un MJ (ID-10, PR-12)', async ({
+  page,
+  baseURL,
+}) => {
+  const timeSlotId = await prepare(page, baseURL!);
+  for (const endpoint of [drawEndpoints.launch, drawEndpoints.publish]) {
+    await expectOk(page.request.post(apiUrl(endpoint, { timeSlotId })));
+  }
+  await page.goto('/gestion/participants');
+  await page.getByRole('link', { name: 'Kaïros' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Kaïros' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Autres actions sur le pseudo' })).toHaveCount(0);
+
+  await page.goto('/gestion/participants');
+  await page.getByRole('link', { name: 'Élodie' }).click();
+  await page.getByRole('button', { name: 'Autres actions sur le pseudo' }).click();
+  await page.getByRole('menuitem', { name: 'Supprimer le pseudo' }).click();
+  const dialog = page.getByRole('alertdialog', { name: /^Supprimer le pseudo «\s*Élodie\s*»/ });
+  await expect(dialog.getByRole('button', { name: 'Annuler' })).toBeFocused();
+  await expect(dialog).toContainText('Son inscription sera supprimée.');
+  await expect(dialog).toContainText('sa partie comptera un joueur de moins');
+  await expect(dialog).toContainText("Son téléphone relié reviendra à l'identification.");
+  await dialog.getByRole('button', { name: 'Supprimer le pseudo' }).click();
+
+  await expect(page).toHaveURL(/\/gestion\/participants$/);
+  await expect(nicknames(page)).toHaveText(['Kaïros', 'Sven']);
+});

@@ -530,7 +530,9 @@ describe('Liste « Participants » (ID-5)', () => {
       const neons = await scheduled(elodie.id, 'Néons', 'Dragon');
       const lune = await add('Lune');
       await signUpOnBehalf(lune.id, neons).expect(200);
-      await server().delete(apiUrl(scheduleEndpoints.unschedule, { gameId: neons })).expect(200);
+      await server()
+        .delete(apiUrl(scheduleEndpoints.unschedule, { gameId: neons }))
+        .expect(200);
       const before = await readSheet(lune.id);
 
       const response = await withdrawFromDrawOnBehalf(lune.id, slot(1)).expect(200);
@@ -551,6 +553,56 @@ describe('Liste « Participants » (ID-5)', () => {
       expect(
         (await signUpOnBehalf(lune.id, '00000000-0000-4000-8000-000000000000').expect(404)).body,
       ).toMatchObject({ code: 'game-not-found' });
+    });
+  });
+
+  describe('Supprimer un pseudo (ID-10)', () => {
+    const add = async (nickname: string) =>
+      (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
+        .body as ParticipantSheetDto;
+    const remove = (participantId: string) =>
+      server().delete(apiUrl(participantEndpoints.remove, { participantId }));
+
+    it('supprime le pseudo, même après la publication : 204, téléphone plus relié, pseudo libre', async () => {
+      const elodie = await gameMaster('Élodie');
+      const neons = await scheduled(elodie.id, 'Néons', 'Dragon');
+      const lune = await add('Lune');
+      const cookie = await linkedPhone('Lune', 'participant');
+      await signUp(neons, cookie);
+      for (const endpoint of [drawEndpoints.launch, drawEndpoints.publish]) {
+        await server()
+          .post(apiUrl(endpoint, { timeSlotId: slot(1) }))
+          .expect(204);
+      }
+
+      await remove(lune.id).expect(204);
+
+      await server()
+        .get(apiUrl(participantEndpoints.read, { participantId: lune.id }))
+        .expect(404);
+      await server().get(apiUrl(linkedPhoneEndpoints.read)).set('Cookie', cookie).expect(401);
+      const relinked = await server()
+        .post(apiUrl(linkedPhoneEndpoints.link))
+        .send({ presenceCode: convention.presenceCode, nickname: 'Lune', confirmation: null })
+        .expect(200);
+      expect(relinked.body).toEqual({ status: 'linked', nickname: 'Lune' });
+    });
+
+    it('refuse le pseudo d’un MJ : 422 participant-is-game-master', async () => {
+      await gameMaster('Kaïros');
+      const [kairos] = await list();
+
+      const response = await remove(kairos!.id).expect(422);
+
+      expect(response.body).toMatchObject({
+        code: 'participant-is-game-master',
+        params: { nickname: 'Kaïros' },
+      });
+      expect(nicknames(await list())).toEqual(['Kaïros']);
+    });
+
+    it('rend 404 pour un pseudo inconnu', async () => {
+      await remove('inconnu').expect(404);
     });
   });
 });

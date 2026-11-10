@@ -4,6 +4,7 @@ import {
   AddParticipant,
   ReadParticipantList,
   ReadParticipantSheet,
+  RemoveParticipant,
   RenameParticipant,
   SignUpParticipantForGame,
   WithdrawParticipantFromDraw,
@@ -43,6 +44,11 @@ import { PrismaParticipantReader } from './persistence/prisma-participant-reader
     {
       provide: RenameParticipant,
       useFactory: (repository: ConventionRepository) => new RenameParticipant(repository),
+      inject: [CONVENTION_REPOSITORY],
+    },
+    {
+      provide: RemoveParticipant,
+      useFactory: (repository: ConventionRepository) => new RemoveParticipant(repository),
       inject: [CONVENTION_REPOSITORY],
     },
     {

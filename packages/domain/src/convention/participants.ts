@@ -210,6 +210,21 @@ export class Participants {
     );
   }
 
+  /**
+   * Les participants sans ce participant, dont le pseudo redevient libre (ID-10). Un MJ est refusé :
+   * il se supprime par sa fiche de MJ, avec ses règles (PR-12).
+   */
+  getParticipantsAfterRemovingParticipant(participantId: string): Participants {
+    const participant = this.allParticipants.findExistingItemById(participantId);
+    if (this.hasGameMasterRole(participant)) {
+      throw new Refusal('participant-is-game-master', { nickname: participant.nickname.text });
+    }
+    return new Participants(
+      this.allParticipants.getCollectionAfterRemovingItem(participantId),
+      this.allGameMasters,
+    );
+  }
+
   /** Le MJ se déclare disponible sur un créneau existant (PR-2). Déclarer deux fois ne change rien. */
   getParticipantsAfterDeclaringAvailability(
     gameMasterId: string,

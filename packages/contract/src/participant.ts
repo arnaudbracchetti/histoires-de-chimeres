@@ -98,7 +98,8 @@ export type ParticipantNicknameBody = {
  * Les pseudos, de participant et de MJ, gérés par un Organisateur (ID-5). La liste les rend dans
  * l'ordre naturel : le front garde cet ordre. `read` : la fiche d'un pseudo, ou 404. `add` crée un
  * pseudo de participant (ID-12) et rend sa fiche. `rename` renomme un pseudo, de participant ou de
- * MJ (ID-13), et rend sa fiche. `signUp`, `withdraw` et `withdrawFromDraw` inscrivent le pseudo
+ * MJ (ID-13), et rend sa fiche. `remove` supprime un pseudo de participant, pas de MJ (ID-10,
+ * PR-12), et ne rend rien. `signUp`, `withdraw` et `withdrawFromDraw` inscrivent le pseudo
  * à une partie, l'en désinscrivent, ou le retirent du tirage d'un créneau où il est sans partie, à
  * sa place (ID-12), aux règles du téléphone ; répétés, ils ne changent rien. Chacun rend la fiche.
  */
@@ -116,6 +117,7 @@ export const participantEndpoints = {
     'PUT',
     'participants/:participantId',
   ),
+  remove: endpoint<void, { participantId: string }>('DELETE', 'participants/:participantId'),
   signUp: endpoint<ParticipantSheetDto, { participantId: string; gameId: string }>(
     'PUT',
     'participants/:participantId/games/:gameId/sign-up',

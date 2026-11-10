@@ -174,7 +174,7 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 
 | Action | Confirmation |
 |---|---|
-| Supprimer un créneau, une table, un MJ, un scénario | oui |
+| Supprimer un créneau, une table, un MJ, un scénario, un pseudo | oui |
 | Retirer l'image d'un scénario | oui |
 | Programmer une partie | oui, sur un créneau en tirage provisoire, qu'elle efface (TI-6) ; sinon, non |
 | Déprogrammer une partie | oui, si elle a des inscrits, ou si son créneau est en tirage provisoire ; sinon, non |
@@ -408,6 +408,7 @@ La liste des pseudos, de participant et de MJ (ID-5), dans l'ordre naturel.
 ### Fiche d'un pseudo
 
 - **En-tête** : « Participants › pseudo », et dessous « Participant » ou « MJ ». Le crayon renomme le pseudo en place, comme sur la [fiche du MJ](#mj), à tout moment (ID-13). Un nom déjà pris par un autre pseudo est refusé sous le champ, suivi de « Voir sa fiche » ; le même refus, avec son lien, vaut sur la fiche du MJ.
+- **Menu « ⋯ »** : sur la fiche d'un participant, « Supprimer le pseudo », en rouge brique, avec une confirmation (ID-10) : « Supprimer le pseudo « Lune » ? », puis ce qui part avec lui (« Ses 2 inscriptions seront supprimées. », « Il sort des tirages, publiés compris : sa partie comptera un joueur de moins, et sa place ne sera proposée à personne. », « Son téléphone relié reviendra à l'identification. »), et « Le pseudo redeviendra libre. ». L'Organisateur revient ensuite à la liste. Absent de la fiche d'un MJ, qui se supprime par sa fiche de MJ (PR-12).
 - Trois [onglets de classeur](#onglets-de-classeur) : **Programme** (`calendar`), **Inscriptions** (`circle-check`), avec ses inscriptions sur les créneaux ouverts, et **Téléphones** (`smartphone`), avec leur nombre.
 - **Programme** : une frise verticale, un créneau par ligne. Le rond prend la couleur et l'icône de l'état du créneau ([Statuts](#statuts)). Le trait qui relie les ronds est plein pour ce qui est figé (tirage publié, terminé), en pointillés pour ce qui peut encore changer. Puis « Créneau 2 · 14 h 00 – 16 h 30 » et l'état, puis le résultat, en deux lignes, celui d'un tirage provisoire comme celui d'un tirage publié :
   - placé : « Table Dragon », puis « Néons, avec Élodie » ; une partie double sur ses deux créneaux ;
