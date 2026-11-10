@@ -18,19 +18,19 @@ export class ReadMergeVerdict {
     const verdict = convention.computeMergeVerdict(sourceId, destinationId);
     const games = new Map((await this.schedule.games()).map((game) => [game.id, game]));
     const tableNames = new Map(convention.tables.map(({ id, name }) => [id, name.text]));
-    const titleOf = (gameId: string) => games.get(gameId)!.scenario.title;
+    const findGameTitle = (gameId: string) => games.get(gameId)!.scenario.title;
     return {
       timeSlots: verdict.map(({ assignment, ...slot }) => ({
         timeSlotId: slot.timeSlotId,
         rank: convention.getTimeSlotRank(slot.timeSlotId),
         assignment: assignment && {
-          title: assignment.gameId && titleOf(assignment.gameId),
+          title: assignment.gameId && findGameTitle(assignment.gameId),
           tableName: assignment.gameId && tableNames.get(games.get(assignment.gameId)!.tableId)!,
           outcome: assignment.outcome,
         },
         destinationLeavesDraw: slot.destinationLeavesDraw,
-        transferredSignUpTitles: slot.transferredSignUpGameIds.map(titleOf),
-        lostSignUpTitles: slot.lostSignUpGameIds.map(titleOf),
+        transferredSignUpTitles: slot.transferredSignUpGameIds.map(findGameTitle),
+        lostSignUpTitles: slot.lostSignUpGameIds.map(findGameTitle),
         withoutGame: slot.withoutGame,
       })),
     };

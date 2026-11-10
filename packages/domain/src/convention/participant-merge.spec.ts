@@ -65,7 +65,7 @@ function aConvention(): Convention {
 }
 
 /** La convention de `aConvention()`, avec ces inscriptions, ces états sans partie et ces tirages. */
-function withState(state: {
+function buildConventionWithState(state: {
   signUps?: SignUp[];
   participantsWithoutGame?: ParticipantWithoutGame[];
   draws?: Draw[];
@@ -88,7 +88,7 @@ function withState(state: {
   });
 }
 
-function refusalOf(action: () => void): Refusal {
+function catchRefusal(action: () => void): Refusal {
   try {
     action();
   } catch (error) {
@@ -99,30 +99,30 @@ function refusalOf(action: () => void): Refusal {
 }
 
 /** Les participants, en « identifiant pseudo ». */
-const participantsOf = (convention: Convention) =>
+const listParticipants = (convention: Convention) =>
   convention.participants.map((participant) => `${participant.id} ${participant.nickname.text}`);
 
 /** Les inscriptions, en « participant partie ». */
-const signUpsOf = (convention: Convention) =>
+const listSignUps = (convention: Convention) =>
   convention.signUps.map(({ participantId, gameId }) => `${participantId} ${gameId}`);
 
 /** Le tirage du créneau. */
-const drawOf = (convention: Convention, timeSlotId: string) =>
+const findDraw = (convention: Convention, timeSlotId: string) =>
   convention.draws.find((draw) => draw.timeSlotId === timeSlotId);
 
 describe('Fusionner deux pseudos (ID-11)', () => {
   describe('refus', () => {
     it('refuse une source ou une destination inconnue', () => {
-      expect(refusalOf(() => aConvention().mergeParticipant('x', 'p2')).code).toBe(
+      expect(catchRefusal(() => aConvention().mergeParticipant('x', 'p2')).code).toBe(
         'participant-not-found',
       );
-      expect(refusalOf(() => aConvention().mergeParticipant('p1', 'x')).code).toBe(
+      expect(catchRefusal(() => aConvention().mergeParticipant('p1', 'x')).code).toBe(
         'participant-not-found',
       );
     });
 
     it('refuse de fusionner un pseudo dans lui-même', () => {
-      const refusal = refusalOf(() => aConvention().mergeParticipant('p1', 'p1'));
+      const refusal = catchRefusal(() => aConvention().mergeParticipant('p1', 'p1'));
 
       expect(refusal.code).toBe('merge-into-itself');
     });
@@ -130,30 +130,30 @@ describe('Fusionner deux pseudos (ID-11)', () => {
     it('refuse une source MJ, qui se gère depuis sa fiche de MJ (PR-12)', () => {
       const convention = aConvention();
 
-      const refusal = refusalOf(() => convention.mergeParticipant('p-g1', 'p2'));
+      const refusal = catchRefusal(() => convention.mergeParticipant('p-g1', 'p2'));
 
       expect(refusal).toMatchObject({
         code: 'participant-is-game-master',
         params: { nickname: 'Brann' },
       });
-      expect(participantsOf(convention)).toContain('p-g1 Brann');
+      expect(listParticipants(convention)).toContain('p-g1 Brann');
     });
   });
 
   it('supprime la source et passe ses inscriptions à la destination, sans doublon par partie, à la suite des autres', () => {
-    const convention = withState({
+    const convention = buildConventionWithState({
       signUps: [new SignUp('p1', 'brumes'), new SignUp('p1', 'epice'), new SignUp('p2', 'brumes')],
     });
 
     convention.mergeParticipant('p1', 'p2');
 
-    expect(participantsOf(convention)).toEqual(['p-g1 Brann', 'p-g2 Kaïros', 'p2 Lune']);
-    expect(signUpsOf(convention)).toEqual(['p2 brumes', 'p2 epice']);
+    expect(listParticipants(convention)).toEqual(['p-g1 Brann', 'p-g2 Kaïros', 'p2 Lune']);
+    expect(listSignUps(convention)).toEqual(['p2 brumes', 'p2 epice']);
   });
 
   describe('tirages', () => {
     it('destination placée : la source perd son affectation et ses inscriptions du créneau', () => {
-      const convention = withState({
+      const convention = buildConventionWithState({
         signUps: [new SignUp('p1', 'epice'), new SignUp('p1', 'neons'), new SignUp('p2', 'brumes')],
         draws: [
           new Draw('s1', false, [
@@ -165,14 +165,14 @@ describe('Fusionner deux pseudos (ID-11)', () => {
 
       convention.mergeParticipant('p1', 'p2');
 
-      expect(drawOf(convention, 's1')?.assignments).toEqual([
+      expect(findDraw(convention, 's1')?.assignments).toEqual([
         new Assignment('p2', 'brumes', false),
       ]);
-      expect(signUpsOf(convention)).toEqual(['p2 brumes', 'p2 neons']);
+      expect(listSignUps(convention)).toEqual(['p2 brumes', 'p2 neons']);
     });
 
     it('source placée, destination non placée : la destination reprend l’affectation entière, marque « déplacé à la main » comprise', () => {
-      const convention = withState({
+      const convention = buildConventionWithState({
         draws: [
           new Draw('s1', true, [
             new Assignment('p2', null, false),
@@ -183,11 +183,13 @@ describe('Fusionner deux pseudos (ID-11)', () => {
 
       convention.mergeParticipant('p1', 'p2');
 
-      expect(drawOf(convention, 's1')?.assignments).toEqual([new Assignment('p2', 'brumes', true)]);
+      expect(findDraw(convention, 's1')?.assignments).toEqual([
+        new Assignment('p2', 'brumes', true),
+      ]);
     });
 
     it('destination absente du tirage : l’affectation de la source passe à la destination', () => {
-      const convention = withState({
+      const convention = buildConventionWithState({
         draws: [
           new Draw('s1', true, [
             new Assignment('p1', null, true),
@@ -198,14 +200,14 @@ describe('Fusionner deux pseudos (ID-11)', () => {
 
       convention.mergeParticipant('p1', 'p2');
 
-      expect(drawOf(convention, 's1')?.assignments).toEqual([
+      expect(findDraw(convention, 's1')?.assignments).toEqual([
         new Assignment('p2', null, true),
         new Assignment('p-g1', 'epice', false),
       ]);
     });
 
     it('toutes deux non placées : une seule affectation reste, celle de la destination', () => {
-      const convention = withState({
+      const convention = buildConventionWithState({
         draws: [
           new Draw('s1', false, [
             new Assignment('p1', null, true),
@@ -216,11 +218,11 @@ describe('Fusionner deux pseudos (ID-11)', () => {
 
       convention.mergeParticipant('p1', 'p2');
 
-      expect(drawOf(convention, 's1')?.assignments).toEqual([new Assignment('p2', null, false)]);
+      expect(findDraw(convention, 's1')?.assignments).toEqual([new Assignment('p2', null, false)]);
     });
 
     it('partie double : la source placée dans « épice » la perd si la destination est placée au second créneau', () => {
-      const convention = withState({
+      const convention = buildConventionWithState({
         draws: [
           new Draw('s1', true, [new Assignment('p1', 'epice', false)]),
           new Draw('s2', false, [new Assignment('p2', 'neons', false)]),
@@ -236,7 +238,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
     });
 
     it('partie double : la destination non placée au second créneau prend « épice » et quitte le tirage du second créneau (TI-3)', () => {
-      const convention = withState({
+      const convention = buildConventionWithState({
         draws: [
           new Draw('s1', true, [new Assignment('p1', 'epice', false)]),
           new Draw('s2', false, [
@@ -255,7 +257,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
     });
 
     it('destination placée dans une partie double qui se poursuit sur le créneau : la source y perd son affectation', () => {
-      const convention = withState({
+      const convention = buildConventionWithState({
         draws: [
           new Draw('s1', true, [new Assignment('p2', 'epice', false)]),
           new Draw('s2', false, [new Assignment('p1', 'neons', false)]),
@@ -264,27 +266,27 @@ describe('Fusionner deux pseudos (ID-11)', () => {
 
       convention.mergeParticipant('p1', 'p2');
 
-      expect(drawOf(convention, 's2')?.assignments).toEqual([]);
+      expect(findDraw(convention, 's2')?.assignments).toEqual([]);
     });
   });
 
   describe('destination MJ (IN-4)', () => {
     it('qui mène sur le créneau : résultat de la source perdu, inscriptions passées en secours, sauf celle à sa propre partie, perdue', () => {
       // Brann (p-g1) mène « brumes » au créneau 1.
-      const convention = withState({
+      const convention = buildConventionWithState({
         signUps: [new SignUp('p1', 'brumes'), new SignUp('p1', 'epice')],
         draws: [new Draw('s1', false, [new Assignment('p1', 'epice', false)])],
       });
 
       convention.mergeParticipant('p1', 'p-g1');
 
-      expect(signUpsOf(convention)).toEqual(['p-g1 epice']);
-      expect(drawOf(convention, 's1')?.assignments).toEqual([]);
+      expect(listSignUps(convention)).toEqual(['p-g1 epice']);
+      expect(findDraw(convention, 's1')?.assignments).toEqual([]);
       expect(convention.computeParticipantSituation('p-g1', NOW).backupGameIds).toEqual(['epice']);
     });
 
     it('dont la partie est annulée (TI-6) : il n’y mène plus, la destination reprend l’affectation de la source', () => {
-      const convention = withState({
+      const convention = buildConventionWithState({
         draws: [
           new Draw(
             's1',
@@ -297,7 +299,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
 
       convention.mergeParticipant('p1', 'p-g2');
 
-      expect(drawOf(convention, 's1')?.assignments).toEqual([
+      expect(findDraw(convention, 's1')?.assignments).toEqual([
         new Assignment('p-g2', 'brumes', false),
       ]);
     });
@@ -305,7 +307,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
 
   describe('état sans partie (IN-6)', () => {
     it('passe à la destination sans inscription active sur le créneau', () => {
-      const convention = withState({
+      const convention = buildConventionWithState({
         signUps: [new SignUp('p2', 'brumes')],
         participantsWithoutGame: [new ParticipantWithoutGame('p1', 's2')],
       });
@@ -316,7 +318,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
     });
 
     it('se perd si la destination a une inscription active sur le créneau', () => {
-      const convention = withState({
+      const convention = buildConventionWithState({
         signUps: [new SignUp('p2', 'neons')],
         participantsWithoutGame: [new ParticipantWithoutGame('p1', 's2')],
       });
@@ -327,7 +329,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
     });
 
     it('se perd si la destination mène sur le créneau', () => {
-      const convention = withState({
+      const convention = buildConventionWithState({
         participantsWithoutGame: [new ParticipantWithoutGame('p1', 's2')],
       });
 
@@ -337,7 +339,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
     });
 
     it('n’est pas en double si la destination l’a déjà', () => {
-      const convention = withState({
+      const convention = buildConventionWithState({
         participantsWithoutGame: [
           new ParticipantWithoutGame('p1', 's2'),
           new ParticipantWithoutGame('p2', 's2'),
@@ -355,7 +357,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
       // Créneau 1 publié : Élodie placée dans « épice », partie double ; Lune non placée.
       // Créneau 2 provisoire : Lune non placée, elle le quitte en prenant « épice ».
       // Élodie est inscrite à « épice » (Lune aussi), à « brumes » et à « néons ».
-      const convention = withState({
+      const convention = buildConventionWithState({
         signUps: [
           new SignUp('p1', 'epice'),
           new SignUp('p1', 'brumes'),
@@ -392,7 +394,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
           withoutGame: null,
         },
       ]);
-      expect(participantsOf(convention)).toContain('p1 Élodie');
+      expect(listParticipants(convention)).toContain('p1 Élodie');
       expect(convention.version).toBe(before);
 
       convention.mergeParticipant('p1', 'p2');
@@ -401,12 +403,12 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         new Draw('s1', true, [new Assignment('p2', 'epice', true)]),
         new Draw('s2', false, []),
       ]);
-      expect(signUpsOf(convention)).toEqual(['p2 epice', 'p2 brumes', 'p2 neons']);
+      expect(listSignUps(convention)).toEqual(['p2 epice', 'p2 brumes', 'p2 neons']);
     });
 
     it('annonce les pertes : affectation, inscriptions et état sans partie', () => {
       // Brann (p-g1) mène « brumes » au créneau 1 et « néons » au créneau 2.
-      const convention = withState({
+      const convention = buildConventionWithState({
         signUps: [new SignUp('p1', 'brumes'), new SignUp('p1', 'epice')],
         participantsWithoutGame: [new ParticipantWithoutGame('p1', 's2')],
         draws: [new Draw('s1', false, [new Assignment('p1', null, false)])],
@@ -436,12 +438,12 @@ describe('Fusionner deux pseudos (ID-11)', () => {
       convention.mergeParticipant('p1', 'p-g1');
 
       expect(convention.draws).toEqual([new Draw('s1', false, [])]);
-      expect(signUpsOf(convention)).toEqual(['p-g1 epice']);
+      expect(listSignUps(convention)).toEqual(['p-g1 epice']);
       expect(convention.participantsWithoutGame).toEqual([]);
     });
 
     it('refuse comme la fusion', () => {
-      expect(refusalOf(() => aConvention().computeMergeVerdict('p1', 'p1')).code).toBe(
+      expect(catchRefusal(() => aConvention().computeMergeVerdict('p1', 'p1')).code).toBe(
         'merge-into-itself',
       );
     });

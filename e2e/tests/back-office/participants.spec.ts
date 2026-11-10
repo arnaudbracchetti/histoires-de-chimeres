@@ -414,3 +414,44 @@ test('l’Organisateur ajoute un retardataire à un tirage publié, comme non pl
   await page.goto('/gestion/pilotage');
   await expect(page.getByText('1 non placé', { exact: true })).toBeVisible();
 });
+
+test('l’Organisateur fusionne un pseudo dans un autre, après avoir lu ce que la fusion fera, et arrive sur la fiche de la destination (ID-11)', async ({
+  page,
+  baseURL,
+}) => {
+  const timeSlotId = await prepare(page, baseURL!);
+  for (const endpoint of [drawEndpoints.launch, drawEndpoints.publish]) {
+    await expectOk(page.request.post(apiUrl(endpoint, { timeSlotId })));
+  }
+  await page.goto('/gestion/participants');
+  await page.getByRole('link', { name: 'Élodie' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Élodie' })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Autres actions sur le pseudo' }).click();
+  await page.getByRole('menuitem', { name: 'Fusionner dans un autre pseudo…' }).click();
+  const dialog = page.getByRole('dialog', {
+    name: /^Fusionner «\s*Élodie\s*» dans un autre pseudo$/,
+  });
+  const destinations = dialog.getByRole('radio');
+  await expect(destinations).toHaveCount(2);
+  await expect(dialog.getByRole('radio', { name: /Kaïros/ })).toBeVisible();
+  await dialog.getByRole('searchbox', { name: 'Chercher la destination' }).fill('sv');
+  await expect(destinations).toHaveCount(1);
+  await dialog.getByRole('radio', { name: 'Sven' }).check();
+
+  await expect(dialog).toContainText(
+    'Créneau 1\u00a0: «\u00a0Sven\u00a0» prend sa place à Les Brumes, table Griffon.',
+  );
+  await expect(dialog).toContainText("Son téléphone relié reviendra à l'identification.");
+  await expect(dialog).toContainText('«\u00a0Élodie\u00a0» sera supprimé');
+  await dialog.getByRole('button', { name: /^Fusionner dans «\s*Sven\s*»$/ }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect(page.getByRole('heading', { level: 1, name: 'Sven' })).toBeVisible();
+  const program = page.getByRole('tabpanel');
+  await expect(program).toContainText('Table Griffon');
+  await expect(program).toContainText('Les Brumes, avec Kaïros');
+
+  await page.goto('/gestion/participants');
+  await expect(nicknames(page)).toHaveText(['Kaïros', 'Sven']);
+});

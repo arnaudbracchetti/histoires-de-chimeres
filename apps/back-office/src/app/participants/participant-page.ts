@@ -30,12 +30,16 @@ import { Icon } from '../ui/icon';
 import { MoreMenu, type MoreMenuItem } from '../ui/more-menu';
 import { describeParticipantResult } from './participant-result';
 import { ParticipantSignUps } from './participant-sign-ups';
+import { ParticipantMerge } from './merge-dialog';
 import { removalConsequences } from './removal-consequences';
 
 type TabValue = 'program' | 'sign-ups' | 'phones';
 
 /** « Couper les liens », pour un pseudo qui a au moins un téléphone (ID-8). */
 const UNLINK_PHONES: MoreMenuItem = { value: 'unlink-phones', label: 'Couper les liens' };
+
+/** « Fusionner dans un autre pseudo… », pour un participant, pas un MJ (ID-11, PR-12). */
+const MERGE: MoreMenuItem = { value: 'merge', label: 'Fusionner dans un autre pseudo…' };
 
 /** « Supprimer le pseudo », pour un participant, pas un MJ (ID-10, PR-12). */
 const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', danger: true };
@@ -52,7 +56,8 @@ const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', da
  * « Inscriptions » : ses parties des créneaux ouverts, à cocher à sa place (ID-12).
  * « Téléphones » : l'heure de liaison de chacun.
  * Le menu « ⋯ » de l'en-tête coupe tous les liens d'un pseudo qui a au moins un téléphone (ID-8),
- * et supprime le pseudo d'un participant, pas d'un MJ (ID-10, PR-12).
+ * puis fusionne dans un autre pseudo (ID-11) et supprime le pseudo d'un participant, pas d'un MJ
+ * (ID-10, PR-12).
  */
 @Component({
   selector: 'app-participant-page',
@@ -390,15 +395,15 @@ export class ParticipantPage {
   );
 
   /**
-   * Les entrées du menu « ⋯ » : aucune, le menu disparaît. Un MJ ne se supprime pas ici, mais par
-   * sa fiche de MJ (PR-12).
+   * Les entrées du menu « ⋯ » : aucune, le menu disparaît. Un MJ ne se fusionne ni ne se supprime
+   * ici : il se gère par sa fiche de MJ (PR-12).
    */
   protected readonly menu = computed<readonly MoreMenuItem[]>(() => {
     const sheet = this.sheet();
     if (!sheet) return [];
     return [
       ...(sheet.linkedPhones.length ? [UNLINK_PHONES] : []),
-      ...(sheet.gameMaster ? [] : [REMOVE]),
+      ...(sheet.gameMaster ? [] : [MERGE, REMOVE]),
     ];
   });
 
@@ -406,6 +411,7 @@ export class ParticipantPage {
     const sheet = this.sheet();
     if (!sheet) return;
     if (value === UNLINK_PHONES.value) void this.unlinkPhones(sheet);
+    if (value === MERGE.value) void this.merge(sheet);
     if (value === REMOVE.value) void this.remove(sheet);
   }
 
@@ -517,6 +523,7 @@ export class ParticipantPage {
   private readonly reopenSignUpsAfterConfirmation = injectReopenSignUps();
   private readonly store = inject(ConventionStore);
   private readonly confirmation = inject(Confirmation);
+  private readonly participantMerge = inject(ParticipantMerge);
   private readonly announcer = inject(Announcer);
   private readonly router = inject(Router);
   private readonly apiCall = injectApiCall();
@@ -532,6 +539,19 @@ export class ParticipantPage {
       }),
     );
   };
+
+  /**
+   * Fusionne le pseudo dans un autre, choisi dans le dialogue (ID-11), puis ouvre la fiche de la
+   * destination.
+   */
+  private async merge(sheet: ParticipantSheetDto): Promise<void> {
+    const destination = await this.participantMerge.mergeIntoAnotherParticipant(sheet);
+    if (!destination) return;
+    this.announcer.announce(
+      fr`Pseudo « ${sheet.nickname} » fusionné dans « ${destination.nickname} ».`,
+    );
+    await this.router.navigate(['/participants', destination.id]);
+  }
 
   /** Supprime le pseudo après confirmation (ID-10), puis revient à la liste. */
   private async remove(sheet: ParticipantSheetDto): Promise<void> {
