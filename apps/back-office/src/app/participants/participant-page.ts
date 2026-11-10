@@ -11,22 +11,28 @@ import {
   untracked,
 } from '@angular/core';
 import { Tab, TabContent, TabList, TabPanel, Tabs } from '@angular/aria/tabs';
-import { participantEndpoints } from '@chimeres/contract';
+import { participantEndpoints, type ParticipantSheetDto } from '@chimeres/contract';
 import { formatCount, formatTimeOfDay, fr, timeSlotLabel } from '@chimeres/design';
 import { injectApiCall } from '../api-call';
 import { apiResource, currentValue } from '../api-resource';
 import { ConventionStore } from '../convention/convention-store';
 import { NicknameEditor } from '../forms/nickname-editor';
+import { injectGesture } from '../gesture';
+import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
 import { injectReopenSignUps } from '../time-slots/reopen-sign-ups';
 import { TIME_SLOT_STATES, TimeSlotState } from '../time-slots/time-slot-state';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
+import { MoreMenu, type MoreMenuItem } from '../ui/more-menu';
 import { describeParticipantResult } from './participant-result';
 import { ParticipantSignUps } from './participant-sign-ups';
 
 type TabValue = 'program' | 'sign-ups' | 'phones';
+
+/** « Couper les liens », pour un pseudo qui a au moins un téléphone (ID-8). */
+const UNLINK_PHONES: MoreMenuItem = { value: 'unlink-phones', label: 'Couper les liens' };
 
 /**
  * Fiche d'un pseudo, de participant ou de MJ (ID-5, docs/design/patterns.md, Fiche d'un pseudo) :
@@ -38,6 +44,7 @@ type TabValue = 'program' | 'sign-ups' | 'phones';
  * pas, reprend le geste du pilotage.
  * « Inscriptions » : ses parties des créneaux ouverts, à cocher à sa place (ID-12).
  * « Téléphones » : l'heure de liaison de chacun.
+ * Le menu « ⋯ » de l'en-tête coupe tous les liens d'un pseudo qui a au moins un téléphone (ID-8).
  */
 @Component({
   selector: 'app-participant-page',
@@ -45,6 +52,7 @@ type TabValue = 'program' | 'sign-ups' | 'phones';
     Button,
     Icon,
     Loadable,
+    MoreMenu,
     NicknameEditor,
     PageHeader,
     ParticipantSignUps,
@@ -90,6 +98,13 @@ type TabValue = 'program' | 'sign-ups' | 'phones';
           {{ sheet.gameMaster ? 'MJ' : 'Participant' }}
         }
       </p>
+      @if (menu().length) {
+        <app-more-menu
+          label="Autres actions sur le pseudo"
+          [items]="menu()"
+          (selected)="onMenu($event)"
+        />
+      }
     </app-page-header>
     <app-loadable
       [resource]="resource"
@@ -356,6 +371,37 @@ export class ParticipantPage {
     ),
   );
 
+  /** Les entrées du menu « ⋯ » : aucune, le menu disparaît. */
+  protected readonly menu = computed<readonly MoreMenuItem[]>(() =>
+    this.sheet()?.linkedPhones.length ? [UNLINK_PHONES] : [],
+  );
+
+  protected onMenu(value: string): void {
+    const sheet = this.sheet();
+    if (value === UNLINK_PHONES.value && sheet) void this.unlinkPhones(sheet);
+  }
+
+  /** Un geste du menu à la fois ; un refus part en alerte. */
+  private readonly menuGestures = injectGesture({ alert: true });
+
+  /**
+   * Coupe tous les liens du pseudo, sans confirmation : il peut être relié de nouveau (ID-8). Le
+   * menu disparaît avec son dernier téléphone : le focus va à l'onglet « Téléphones », qui en
+   * compte zéro.
+   */
+  private async unlinkPhones({ id, nickname }: ParticipantSheetDto): Promise<void> {
+    const outcome = await this.menuGestures.run(() =>
+      this.apiCall(participantEndpoints.unlinkPhones, { params: { participantId: id } }),
+    );
+    if (outcome.status === 'refused' && outcome.refusal.stale) this.resource.reload();
+    if (outcome.status !== 'done') return;
+    this.resource.set(outcome.value);
+    this.announcer.announce(fr`Liens du pseudo « ${nickname} » coupés.`);
+    afterNextRender(() => this.host.querySelector<HTMLElement>('#tab-phones')?.focus(), {
+      injector: this.injector,
+    });
+  }
+
   /** « Modifier les inscriptions, Créneau 2 · 14 h 00 – 16 h 30 », pour le lecteur d'écran. */
   protected editSignUpsLabel(label: string): string {
     return fr`Modifier les inscriptions, ${label}`;
@@ -409,6 +455,7 @@ export class ParticipantPage {
   private readonly reopenSignUpsAfterConfirmation = injectReopenSignUps();
   private readonly store = inject(ConventionStore);
   private readonly apiCall = injectApiCall();
+  private readonly announcer = inject(Announcer);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
   private readonly injector = inject(Injector);
 
