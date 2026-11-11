@@ -49,6 +49,7 @@ const MENU: readonly MoreMenuItem[] = [
           <a [routerLink]="['/mj', scenario.gameMaster.id]">{{ scenario.gameMaster.nickname }}</a>
         </p>
         <app-scenario-image
+          [gameMasterId]="scenario.gameMaster.id"
           [scenarioId]="scenario.id"
           [title]="scenario.title"
           [imageUrl]="imageUrl()"
@@ -97,8 +98,14 @@ export class ScenarioPage implements UnsavedChanges {
   /** Posé une fois le scénario supprimé : rien ne reste à enregistrer en quittant la page. */
   private removed = false;
 
-  protected readonly update = (body: ScenarioBody) =>
-    this.apiCall(scenarioEndpoints.update, { params: { scenarioId: this.id() }, body });
+  /** Appelé par le formulaire, qui n'existe qu'une fois le scénario chargé. */
+  protected readonly update = (body: ScenarioBody) => {
+    const { id, gameMaster } = this.scenario()!;
+    return this.apiCall(scenarioEndpoints.update, {
+      params: { gameMasterId: gameMaster.id, scenarioId: id },
+      body,
+    });
+  };
 
   hasUnsavedChanges(): boolean {
     return !this.removed && (this.form()?.hasUnsavedChanges() ?? false);
@@ -113,11 +120,14 @@ export class ScenarioPage implements UnsavedChanges {
     if (value === 'remove') void this.remove(scenario);
   }
 
-  private async remove({ id, title }: ScenarioDto) {
+  private async remove({ id, gameMaster, title }: ScenarioDto) {
     const removed = await this.confirmation.ask({
       question: fr`Supprimer le scénario « ${title} » ?`,
       confirmLabel: 'Supprimer le scénario',
-      action: () => this.apiCall(scenarioEndpoints.remove, { params: { scenarioId: id } }),
+      action: () =>
+        this.apiCall(scenarioEndpoints.remove, {
+          params: { gameMasterId: gameMaster.id, scenarioId: id },
+        }),
       onStale: () => this.resource.reload(),
     });
     if (!removed) return;

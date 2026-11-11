@@ -5,7 +5,7 @@ import type { NotificationSender } from '../notification/notification-sender.js'
 import type { ScenarioRepository } from './scenario-repository.js';
 
 /**
- * Modifier un scénario : son contenu, ses places et sa durée (PR-14). La convention est lue avant
+ * Modifier un scénario d'un MJ : son contenu, ses places et sa durée (PR-14). La convention est lue avant
  * l'enregistrement : une partie programmée entre les deux ne bloque pas la durée. Une baisse des
  * places prévient les inscrits des parties qui passent en très demandées (NO-2, ADR 0010).
  */
@@ -16,8 +16,12 @@ export class UpdateScenario {
     private readonly notifications: NotificationSender,
   ) {}
 
-  async execute(scenarioId: string, { seats, duration, ...content }: ScenarioBody): Promise<void> {
-    const scenario = await this.scenarios.findById(scenarioId);
+  async execute(
+    gameMasterId: string,
+    scenarioId: string,
+    { seats, duration, ...content }: ScenarioBody,
+  ): Promise<void> {
+    const scenario = await this.scenarios.findScenarioOfGameMaster(gameMasterId, scenarioId);
     if (!scenario) throw new Refusal('scenario-not-found', {});
     const convention = await this.conventions.get();
     const previousSeats = scenario.seats;

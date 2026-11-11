@@ -47,10 +47,11 @@ async function aScenario(page: Page): Promise<ScenarioDto> {
 }
 
 /** Envoie une image par l'API. */
-async function sendImage(page: Page, scenarioId: string): Promise<ScenarioDto> {
-  const response = await page.request.put(apiUrl(scenarioEndpoints.changeImage, { scenarioId }), {
-    multipart: { image: await jpeg(900, 600) },
-  });
+async function sendImage(page: Page, { id, gameMaster }: ScenarioDto): Promise<ScenarioDto> {
+  const response = await page.request.put(
+    apiUrl(scenarioEndpoints.changeImage, { gameMasterId: gameMaster.id, scenarioId: id }),
+    { multipart: { image: await jpeg(900, 600) } },
+  );
   expect(response.ok()).toBe(true);
   return (await response.json()) as ScenarioDto;
 }
@@ -134,9 +135,9 @@ test('refuser une image trop lourde, puis un GIF, sous la zone', async ({ page }
 });
 
 test("remplacer l'image : une nouvelle URL", async ({ page }) => {
-  const { id } = await aScenario(page);
-  const { imageUrl } = await sendImage(page, id);
-  await page.goto(`/gestion/scenarios/${id}`);
+  const scenario = await aScenario(page);
+  const { imageUrl } = await sendImage(page, scenario);
+  await page.goto(`/gestion/scenarios/${scenario.id}`);
   const image = zone(page);
   await expect(image.image).toHaveAttribute('src', imageUrl!);
 
@@ -149,9 +150,9 @@ test("remplacer l'image : une nouvelle URL", async ({ page }) => {
 test("retirer l'image après confirmation : l'illustration par défaut et sa lettrine", async ({
   page,
 }) => {
-  const { id } = await aScenario(page);
-  await sendImage(page, id);
-  await page.goto(`/gestion/scenarios/${id}`);
+  const scenario = await aScenario(page);
+  await sendImage(page, scenario);
+  await page.goto(`/gestion/scenarios/${scenario.id}`);
   const image = zone(page);
 
   await image.remove.click();
@@ -170,8 +171,7 @@ test("retirer l'image après confirmation : l'illustration par défaut et sa let
 });
 
 test('la vignette du scénario dans la liste', async ({ page }) => {
-  const { id } = await aScenario(page);
-  const { imageUrl } = await sendImage(page, id);
+  const { imageUrl } = await sendImage(page, await aScenario(page));
 
   await page.goto('/gestion/scenarios');
 
@@ -182,11 +182,11 @@ test('la vignette du scénario dans la liste', async ({ page }) => {
 test("une image qui ne se charge pas laisse place à l'illustration par défaut", async ({
   page,
 }) => {
-  const { id } = await aScenario(page);
-  await sendImage(page, id);
+  const scenario = await aScenario(page);
+  await sendImage(page, scenario);
   await page.route('**/images/**', (route) => route.fulfill({ status: 503 }));
 
-  await page.goto(`/gestion/scenarios/${id}`);
+  await page.goto(`/gestion/scenarios/${scenario.id}`);
 
   await expect(zone(page).preview.locator('text')).toHaveText('T');
   await expect(page.locator('app-scenario-illustration img')).toHaveCount(0);

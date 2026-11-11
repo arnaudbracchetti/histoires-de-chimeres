@@ -343,7 +343,7 @@ describe('Programme', () => {
     const gameId = await scheduleNeons();
     const update = (duration: 1 | 2) =>
       server()
-        .put(apiUrl(scenarioEndpoints.update, { scenarioId: neons.id }))
+        .put(apiUrl(scenarioEndpoints.update, { gameMasterId: neons.gameMaster.id, scenarioId: neons.id }))
         .send({
           title: 'Néons',
           system: 'Cthulhu',
@@ -353,7 +353,7 @@ describe('Programme', () => {
           duration,
         });
     const remove = () =>
-      server().delete(apiUrl(scenarioEndpoints.remove, { scenarioId: neons.id }));
+      server().delete(apiUrl(scenarioEndpoints.remove, { gameMasterId: neons.gameMaster.id, scenarioId: neons.id }));
 
     const duration = await update(2).expect(422);
     expect(duration.body).toMatchObject({

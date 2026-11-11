@@ -95,7 +95,7 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
   /** Fixe les places de « Néons » : de 1 à `max`. */
   const changeMaxSeats = (max: number) =>
     server()
-      .put(apiUrl(scenarioEndpoints.update, { scenarioId: scenario.id }))
+      .put(apiUrl(scenarioEndpoints.update, { gameMasterId, scenarioId: scenario.id }))
       .send({
         title: scenario.title,
         system: scenario.system,

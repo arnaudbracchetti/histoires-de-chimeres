@@ -121,6 +121,7 @@ import { ScenarioIllustration } from '../ui/scenario-illustration';
   `,
 })
 export class ScenarioImage {
+  readonly gameMasterId = input.required<string>();
   readonly scenarioId = input.required<string>();
   readonly title = input.required<string>();
   readonly imageUrl = input.required<string | null>();
@@ -163,7 +164,7 @@ export class ScenarioImage {
       this.progress.set(0);
       try {
         return await this.apiUpload(scenarioEndpoints.changeImage, {
-          params: { scenarioId: this.scenarioId() },
+          params: { gameMasterId: this.gameMasterId(), scenarioId: this.scenarioId() },
           file,
           field: 'image',
           progress: (fraction) => this.progress.set(fraction),
@@ -185,7 +186,7 @@ export class ScenarioImage {
       confirmLabel: "Retirer l'image",
       action: async () => {
         scenario = await this.apiCall(scenarioEndpoints.removeImage, {
-          params: { scenarioId: this.scenarioId() },
+          params: { gameMasterId: this.gameMasterId(), scenarioId: this.scenarioId() },
         });
       },
     });

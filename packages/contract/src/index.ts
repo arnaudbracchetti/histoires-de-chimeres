@@ -67,6 +67,7 @@ export {
   SYSTEM_MAX_LENGTH,
   scenarioEndpoints,
   type DurationDto,
+  type GameMasterScenarioParams,
   type ScenarioBody,
   type ScenarioDto,
   type ScenarioGameMasterDto,

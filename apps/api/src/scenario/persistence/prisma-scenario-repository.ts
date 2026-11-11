@@ -7,6 +7,7 @@ import {
   Seats,
   type Duration,
 } from '@chimeres/domain';
+import type { Scenario as ScenarioRow } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { UUID } from '../../prisma/uuid.js';
 
@@ -17,7 +18,16 @@ export class PrismaScenarioRepository implements ScenarioRepository {
   async findById(scenarioId: string): Promise<Scenario | null> {
     if (!UUID.test(scenarioId)) return null;
     const row = await this.prisma.scenario.findUnique({ where: { id: scenarioId } });
-    if (!row) return null;
+    return row && this.restore(row);
+  }
+
+  async findScenarioOfGameMaster(gameMasterId: string, scenarioId: string): Promise<Scenario | null> {
+    if (!UUID.test(gameMasterId) || !UUID.test(scenarioId)) return null;
+    const row = await this.prisma.scenario.findUnique({ where: { id: scenarioId, gameMasterId } });
+    return row && this.restore(row);
+  }
+
+  private restore(row: ScenarioRow): Scenario {
     return Scenario.restore({
       id: row.id,
       gameMasterId: row.gameMasterId,

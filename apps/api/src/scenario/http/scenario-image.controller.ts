@@ -41,20 +41,22 @@ export class ScenarioImageController {
   @Put(scenarioEndpoints.changeImage.path)
   @UseInterceptors(FileInterceptor('image', { limits: { fileSize: IMAGE_MAX_BYTES, files: 1 } }))
   async change(
+    @Param('gameMasterId') gameMasterId: string,
     @Param('scenarioId') scenarioId: string,
     @UploadedFile() file: { buffer: Buffer } | undefined,
   ): Promise<ResponseOf<typeof scenarioEndpoints.changeImage>> {
     if (!file) throw new MalformedRequestError('Aucun fichier au champ « image ».');
-    await this.changeScenarioImage.execute(scenarioId, file.buffer);
+    await this.changeScenarioImage.execute(gameMasterId, scenarioId, file.buffer);
     return this.readOrRefuse(scenarioId);
   }
 
   /** Renvoie le scénario relu, sans image. */
   @Delete(scenarioEndpoints.removeImage.path)
   async remove(
+    @Param('gameMasterId') gameMasterId: string,
     @Param('scenarioId') scenarioId: string,
   ): Promise<ResponseOf<typeof scenarioEndpoints.removeImage>> {
-    await this.removeScenarioImage.execute(scenarioId);
+    await this.removeScenarioImage.execute(gameMasterId, scenarioId);
     return this.readOrRefuse(scenarioId);
   }
 

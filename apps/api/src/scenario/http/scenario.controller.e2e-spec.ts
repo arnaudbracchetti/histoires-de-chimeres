@@ -46,12 +46,22 @@ describe('Scénarios', () => {
   const propose = (body: ScenarioBody | object, gameMasterId = gameMaster.id) =>
     server().post(apiUrl(scenarioEndpoints.propose, { gameMasterId })).send(body);
   const read = (scenarioId: string) => server().get(apiUrl(scenarioEndpoints.read, { scenarioId }));
-  const update = (scenarioId: string, body: ScenarioBody | object) =>
-    server().put(apiUrl(scenarioEndpoints.update, { scenarioId })).send(body);
+  const update = (
+    scenarioId: string,
+    body: ScenarioBody | object,
+    gameMasterId = gameMaster.id,
+  ) => server().put(apiUrl(scenarioEndpoints.update, { gameMasterId, scenarioId })).send(body);
   const list = async () =>
     (await server().get(apiUrl(scenarioEndpoints.list)).expect(200)).body as ScenarioListItemDto[];
-  const remove = (scenarioId: string) =>
-    server().delete(apiUrl(scenarioEndpoints.remove, { scenarioId }));
+  const remove = (scenarioId: string, gameMasterId = gameMaster.id) =>
+    server().delete(apiUrl(scenarioEndpoints.remove, { gameMasterId, scenarioId }));
+  const addGameMaster = async (nickname: string) => {
+    const { body } = await server()
+      .post(apiUrl(gameMasterEndpoints.add))
+      .send({ nickname })
+      .expect(201);
+    return (body as GameMasterDto[]).find((added) => added.nickname === nickname)!;
+  };
   const removeGameMaster = (gameMasterId = gameMaster.id) =>
     server().delete(apiUrl(gameMasterEndpoints.remove, { gameMasterId }));
   const readGameMaster = async () =>
@@ -174,11 +184,7 @@ describe('Scénarios', () => {
   });
 
   it('liste tous les scénarios, dans l’ordre naturel de leur titre, avec leur MJ', async () => {
-    const { body: other } = await server()
-      .post(apiUrl(gameMasterEndpoints.add))
-      .send({ nickname: 'Élodie' })
-      .expect(201);
-    const elodie = (other as GameMasterDto[]).find(({ nickname }) => nickname === 'Élodie')!;
+    const elodie = await addGameMaster('Élodie');
     await propose(aBody({ title: 'Scénario 10' })).expect(201);
     await propose(aBody({ title: 'Scénario 2', seats: { min: 2, max: 4 } }), elodie.id).expect(201);
 
@@ -228,6 +234,19 @@ describe('Scénarios', () => {
     await removeGameMaster().expect(204);
   });
 
+  it('répond 404 pour un scénario sous le chemin d’un autre MJ, et le garde', async () => {
+    const elodie = await addGameMaster('Élodie');
+    const { body: proposed } = await propose(aBody()).expect(201);
+    const { id } = proposed as ScenarioDto;
+
+    const updated = await update(id, aBody({ title: 'Volé' }), elodie.id).expect(404);
+    const removed = await remove(id, elodie.id).expect(404);
+
+    expect(updated.body).toMatchObject({ code: 'scenario-not-found' });
+    expect(removed.body).toMatchObject({ code: 'scenario-not-found' });
+    expect((await read(id).expect(200)).body).toEqual(proposed);
+  });
+
   it.each([
     ['proposer un scénario pour un', () => propose(aBody(), UNKNOWN_ID), 'game-master-not-found'],
     [
@@ -245,6 +264,16 @@ describe('Scénarios', () => {
     ],
     ['supprimer un', () => remove(UNKNOWN_ID), 'scenario-not-found'],
     ['supprimer, par un identifiant mal formé, un', () => remove('abc'), 'scenario-not-found'],
+    [
+      'modifier, sous un MJ inconnu, un',
+      () => update(UNKNOWN_ID, aBody(), UNKNOWN_ID),
+      'scenario-not-found',
+    ],
+    [
+      'supprimer, sous un MJ d’identifiant mal formé, un',
+      () => remove(UNKNOWN_ID, 'abc'),
+      'scenario-not-found',
+    ],
   ])('répond 404 pour %s élément inconnu', async (_, action, code) => {
     const response = await action()
       .expect(404)

@@ -52,12 +52,25 @@ describe("Image d'un scénario (PR-7, ADR 0007)", () => {
   });
 
   const server = () => request(app.getHttpServer());
-  const send = (bytes: Buffer, filename = 'image.jpg', scenarioId = scenario.id) =>
+  const send = (
+    bytes: Buffer,
+    filename = 'image.jpg',
+    scenarioId = scenario.id,
+    gameMasterId = scenario.gameMaster.id,
+  ) =>
     server()
-      .put(apiUrl(scenarioEndpoints.changeImage, { scenarioId }))
+      .put(apiUrl(scenarioEndpoints.changeImage, { gameMasterId, scenarioId }))
       .attach('image', bytes, filename);
-  const removeImage = (scenarioId = scenario.id) =>
-    server().delete(apiUrl(scenarioEndpoints.removeImage, { scenarioId }));
+  const removeImage = (scenarioId = scenario.id, gameMasterId = scenario.gameMaster.id) =>
+    server().delete(apiUrl(scenarioEndpoints.removeImage, { gameMasterId, scenarioId }));
+  /** Un autre MJ, sous le chemin duquel le scénario de Kaïros n'existe pas. */
+  const anotherGameMaster = async () => {
+    const { body } = await server()
+      .post(apiUrl(gameMasterEndpoints.add))
+      .send({ nickname: 'Élodie' })
+      .expect(201);
+    return (body as GameMasterDto[]).find(({ nickname }) => nickname === 'Élodie')!;
+  };
   const read = async () =>
     (
       await server()
@@ -130,7 +143,12 @@ describe("Image d'un scénario (PR-7, ADR 0007)", () => {
     const { body } = await send(await anImage(300, 200).jpeg().toBuffer()).expect(200);
 
     await server()
-      .delete(apiUrl(scenarioEndpoints.remove, { scenarioId: scenario.id }))
+      .delete(
+        apiUrl(scenarioEndpoints.remove, {
+          gameMasterId: scenario.gameMaster.id,
+          scenarioId: scenario.id,
+        }),
+      )
       .expect(204);
 
     await download((body as ScenarioDto).imageUrl!).expect(404);
@@ -156,10 +174,10 @@ describe("Image d'un scénario (PR-7, ADR 0007)", () => {
 
   it('garde l’image quand le contenu du scénario change', async () => {
     const { body } = await send(await anImage(300, 200).jpeg().toBuffer()).expect(200);
-    const { imageUrl, id, gameMaster: _, ...content } = body as ScenarioDto;
+    const { imageUrl, id, gameMaster, ...content } = body as ScenarioDto;
 
     const { body: updated } = await server()
-      .put(apiUrl(scenarioEndpoints.update, { scenarioId: id }))
+      .put(apiUrl(scenarioEndpoints.update, { gameMasterId: gameMaster.id, scenarioId: id }))
       .send({ ...content, title: 'Autre titre' })
       .expect(200);
 
@@ -206,10 +224,29 @@ describe("Image d'un scénario (PR-7, ADR 0007)", () => {
 
   it('refuse un envoi sans fichier : 400', async () => {
     const response = await server()
-      .put(apiUrl(scenarioEndpoints.changeImage, { scenarioId: scenario.id }))
+      .put(
+        apiUrl(scenarioEndpoints.changeImage, {
+          gameMasterId: scenario.gameMaster.id,
+          scenarioId: scenario.id,
+        }),
+      )
       .expect(400);
 
     expect(response.body).toMatchObject({ code: 'malformed-request' });
+  });
+
+  it('répond 404 pour l’image d’un scénario sous le chemin d’un autre MJ, et la garde', async () => {
+    const { body } = await send(await anImage(300, 200).jpeg().toBuffer()).expect(200);
+    const elodie = await anotherGameMaster();
+
+    await send(await anImage(30, 20).jpeg().toBuffer(), 'a.jpg', scenario.id, elodie.id)
+      .expect(404)
+      .expect(({ body: problem }) =>
+        expect(problem).toMatchObject({ code: 'scenario-not-found' }),
+      );
+    await removeImage(scenario.id, elodie.id).expect(404);
+
+    expect((await read()).imageUrl).toBe((body as ScenarioDto).imageUrl);
   });
 
   it.each([

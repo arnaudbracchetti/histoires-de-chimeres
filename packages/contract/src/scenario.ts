@@ -58,6 +58,9 @@ export type ScenarioParams = { scenarioId: string };
 
 export type ScenarioImageParams = ScenarioParams & { imageId: string };
 
+/** Un scénario sous le chemin de son MJ : celui d'un autre MJ répond 404. */
+export type GameMasterScenarioParams = GameMasterParams & ScenarioParams;
+
 /** Poids maximal d'une image envoyée : 10 Mo (PR-7). */
 export const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
@@ -65,6 +68,8 @@ export const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
  * La liste est dans l'ordre naturel des titres. Proposer et modifier renvoient le scénario relu.
  * L'image a ses propres endpoints, sans `Body` typé (ADR 0007) : l'envoi est un multipart au champ
  * `image`, et renvoie le scénario relu, comme le retrait. La lecture répond en `image/webp`.
+ * Les écritures sur un scénario passent sous le chemin de son MJ (ADR 0017) ; la lecture de l'image
+ * reste une URL publique, mise en cache hors ligne.
  */
 export const scenarioEndpoints = {
   list: endpoint<ScenarioListItemDto[]>('GET', 'scenarios'),
@@ -73,10 +78,22 @@ export const scenarioEndpoints = {
     'POST',
     'game-masters/:gameMasterId/scenarios',
   ),
-  update: endpoint<ScenarioDto, ScenarioParams, ScenarioBody>('PUT', 'scenarios/:scenarioId'),
-  remove: endpoint<void, ScenarioParams>('DELETE', 'scenarios/:scenarioId'),
-  changeImage: endpoint<ScenarioDto, ScenarioParams>('PUT', 'scenarios/:scenarioId/image'),
-  removeImage: endpoint<ScenarioDto, ScenarioParams>('DELETE', 'scenarios/:scenarioId/image'),
+  update: endpoint<ScenarioDto, GameMasterScenarioParams, ScenarioBody>(
+    'PUT',
+    'game-masters/:gameMasterId/scenarios/:scenarioId',
+  ),
+  remove: endpoint<void, GameMasterScenarioParams>(
+    'DELETE',
+    'game-masters/:gameMasterId/scenarios/:scenarioId',
+  ),
+  changeImage: endpoint<ScenarioDto, GameMasterScenarioParams>(
+    'PUT',
+    'game-masters/:gameMasterId/scenarios/:scenarioId/image',
+  ),
+  removeImage: endpoint<ScenarioDto, GameMasterScenarioParams>(
+    'DELETE',
+    'game-masters/:gameMasterId/scenarios/:scenarioId/image',
+  ),
   readImage: endpoint<Uint8Array, ScenarioImageParams>(
     'GET',
     'scenarios/:scenarioId/images/:imageId',

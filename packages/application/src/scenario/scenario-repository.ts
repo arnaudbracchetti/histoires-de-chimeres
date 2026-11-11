@@ -4,6 +4,11 @@ import type { Scenario, ScenarioCatalogue } from '@chimeres/domain';
 export interface ScenarioRepository {
   /** Le scénario, ou `null` s'il n'existe pas. */
   findById(scenarioId: string): Promise<Scenario | null>;
+  /**
+   * Le scénario de ce MJ, ou `null` s'il n'existe pas ou appartient à un autre MJ : un MJ n'écrit
+   * que sur ses scénarios (ADR 0017).
+   */
+  findScenarioOfGameMaster(gameMasterId: string, scenarioId: string): Promise<Scenario | null>;
   /** Le catalogue de tous les scénarios, sans présentations ni images (ADR 0005). */
   catalogue(): Promise<ScenarioCatalogue>;
   save(scenario: Scenario): Promise<void>;

@@ -61,19 +61,21 @@ export class ScenarioController {
   /** Renvoie le scénario relu. */
   @Put(scenarioEndpoints.update.path)
   async update(
+    @Param('gameMasterId') gameMasterId: string,
     @Param('scenarioId') scenarioId: string,
     @Body(new ZodPipe(scenarioBodySchema)) body: ScenarioBody,
   ): Promise<ResponseOf<typeof scenarioEndpoints.update>> {
-    await this.updateScenario.execute(scenarioId, body);
+    await this.updateScenario.execute(gameMasterId, scenarioId, body);
     return this.readOrRefuse(scenarioId);
   }
 
   @Delete(scenarioEndpoints.remove.path)
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(
+    @Param('gameMasterId') gameMasterId: string,
     @Param('scenarioId') scenarioId: string,
   ): Promise<ResponseOf<typeof scenarioEndpoints.remove>> {
-    return this.removeScenario.execute(scenarioId);
+    return this.removeScenario.execute(gameMasterId, scenarioId);
   }
 
   /** Un scénario inconnu répond 404, comme le refus du domaine pour une écriture. */
