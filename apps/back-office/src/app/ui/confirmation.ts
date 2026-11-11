@@ -73,41 +73,14 @@ let nextId = 0;
       }
     </div>
   `,
+  styleUrl: './dialog.css',
   styles: `
     @layer components {
-      :host {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-m);
-        width: 26rem;
-        padding: var(--space-l) var(--space-xl);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-card);
-        background: var(--surface-2);
-      }
-
-      /* Une question, pas un titre de section : police système. */
-      h2 {
-        font-family: var(--font-ui);
-        font-size: var(--font-size-block);
-        font-weight: 600;
-      }
-
-      .refusal {
-        color: var(--danger);
-      }
-
       .warning {
         display: flex;
         gap: var(--space-xs);
         align-items: baseline;
         color: var(--warning);
-      }
-
-      .actions {
-        display: flex;
-        gap: var(--space-s);
-        justify-content: flex-end;
       }
     }
   `,

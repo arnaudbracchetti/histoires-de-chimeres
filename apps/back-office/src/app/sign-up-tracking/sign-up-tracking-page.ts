@@ -678,14 +678,14 @@ export class SignUpTrackingPage {
   protected readonly openGame = computed(() =>
     this.value()?.games.find(({ id }) => id === this.openGameId()),
   );
-  /** Un refus part en alerte : la fiche n'a pas de place pour lui. */
-  protected readonly unscheduling = injectGesture({ alert: true, refreshes: true });
-  /** La relance sans confirmation : son refus part en alerte. */
-  private readonly rerunning = injectGesture({ alert: true, refreshes: true });
-  /** Le rétablissement d'une partie, sans confirmation : son refus part en alerte. */
-  private readonly restoring = injectGesture({ alert: true, refreshes: true });
-  /** Le déplacement d'un participant, sans confirmation : son refus part en alerte. */
-  private readonly moving = injectGesture({ alert: true, refreshes: true });
+  /** Un refus s'ouvre dans le dialogue d'erreur : la fiche n'a pas de place pour lui. */
+  protected readonly unscheduling = injectGesture({ errorDialog: true, refreshes: true });
+  /** La relance sans confirmation : son refus s'ouvre dans le dialogue d'erreur. */
+  private readonly rerunning = injectGesture({ errorDialog: true, refreshes: true });
+  /** Le rétablissement d'une partie, sans confirmation : son refus s'ouvre dans le dialogue d'erreur. */
+  private readonly restoring = injectGesture({ errorDialog: true, refreshes: true });
+  /** Le déplacement d'un participant, sans confirmation : son refus s'ouvre dans le dialogue d'erreur. */
+  private readonly moving = injectGesture({ errorDialog: true, refreshes: true });
   private readonly confirmation = inject(Confirmation);
   private readonly reopenSignUpsAfterConfirmation = injectReopenSignUps();
   private readonly apiCall = injectApiCall();
@@ -834,7 +834,7 @@ export class SignUpTrackingPage {
   /**
    * Relance le tirage du créneau : aussitôt, ou après une confirmation rouge s'il a des
    * déplacements à la main, qu'elle efface. Le suivi se relit ensuite, et la région `aria-live`
-   * l'annonce. Sans dialogue, un refus part en alerte, et un refus périmé relit le suivi.
+   * l'annonce. Sans dialogue, un refus s'ouvre dans le dialogue d'erreur, et un refus périmé relit le suivi.
    */
   protected async rerun(slot: TimeSlotTrackingDto) {
     const action = () => this.apiCall(drawEndpoints.rerun, { params: { timeSlotId: slot.id } });

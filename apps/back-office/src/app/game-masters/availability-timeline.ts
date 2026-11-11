@@ -17,8 +17,8 @@ type Segment = { start: number; end: number; slot?: TimeSlotDto };
  * Les disponibilités d'un MJ (docs/design/patterns.md, Disponibilités) : la journée en frise, à
  * l'échelle ; chaque créneau est un bloc à sa place et à sa durée, qui porte une case à cocher.
  * Un créneau court garde une largeur lisible, prise sur les pauses. Un clic sur le bloc enregistre aussitôt. Pendant l'écriture, le bloc
- * prend son nouvel état, atténué ; refusé, il revient à son état, le refus s'affiche en
- * alerte, et `refused` demande de relire l'écran (Erreur hors formulaire). Le texte d'un
+ * prend son nouvel état, atténué ; refusé, il revient à son état, le refus s'affiche dans le
+ * dialogue d'erreur, et `refused` demande de relire l'écran (Erreur hors formulaire). Le texte d'un
  * bloc suit sa largeur : plus petit, sur plusieurs lignes, puis réduit au rang et à l'icône.
  * Un créneau où le MJ mène une partie le dit, avec le scénario et la table. Une disponibilité que
  * la fiche dit impossible à retirer (PR-15) est cochée et verrouillée : la case est désactivée, et
@@ -282,8 +282,8 @@ export class AvailabilityTimeline {
   /** Une écriture est refusée (404, 409, 422) : le bloc est revenu à son état, l'écran est à relire. */
   readonly refused = output<void>();
 
-  /** Une écriture à la fois par créneau ; un refus part en alerte. */
-  protected readonly writes = injectGesture({ alert: true });
+  /** Une écriture à la fois par créneau ; un refus s'ouvre dans le dialogue d'erreur. */
+  protected readonly writes = injectGesture({ errorDialog: true });
 
   private readonly apiCall = injectApiCall();
   private readonly announcer = inject(Announcer);

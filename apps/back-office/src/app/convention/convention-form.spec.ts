@@ -6,7 +6,7 @@ import { apiUrl, conventionEndpoints, type ProblemDto } from '@chimeres/contract
 import { NBSP } from '@chimeres/design';
 import { ConventionForm } from './convention-form';
 import { ConventionStore } from './convention-store';
-import { Alerts } from '../shell/alerts';
+import { ErrorDialog } from '../shell/error-dialog';
 
 describe('ConventionForm', () => {
   beforeEach(() => {
@@ -240,7 +240,7 @@ describe('ConventionForm', () => {
     expect(host.querySelector('[role="alert"]')).toBeNull();
   });
 
-  it('affiche une erreur interne en alerte, sans perdre la saisie', async () => {
+  it('affiche une erreur interne dans le dialogue d’erreur, sans perdre la saisie', async () => {
     const { type, save, flush, host, input } = await render();
     const problem: ProblemDto = {
       type: 'urn:histoires-de-chimeres:problem:internal-error',
@@ -253,13 +253,13 @@ describe('ConventionForm', () => {
     await save();
     await flush(problem, 500);
 
-    expect(TestBed.inject(Alerts).notices()).toEqual([
+    expect(TestBed.inject(ErrorDialog).pending()).toEqual([
       expect.objectContaining({ title: 'Une erreur est survenue, réessaie.' }),
     ]);
     expect(input('Nom').value).toBe('Chimères 2027');
   });
 
-  it('affiche un conflit en alerte, avec son titre et son détail', async () => {
+  it('affiche un conflit dans le dialogue d’erreur, avec son titre et son détail', async () => {
     const { save, flush, host } = await render();
     const problem: ProblemDto = {
       type: 'urn:histoires-de-chimeres:problem:concurrent-modification',
@@ -272,7 +272,7 @@ describe('ConventionForm', () => {
     await save();
     await flush(problem, 409);
 
-    expect(TestBed.inject(Alerts).notices()).toEqual([
+    expect(TestBed.inject(ErrorDialog).pending()).toEqual([
       expect.objectContaining({
         title: 'Modification simultanée',
         detail: 'La convention a changé entre-temps\u00a0: recharge la page, puis recommence.',
@@ -280,13 +280,13 @@ describe('ConventionForm', () => {
     ]);
   });
 
-  it('signale une coupure réseau en alerte', async () => {
+  it('signale une coupure réseau dans le dialogue d’erreur', async () => {
     const { save, flush, host } = await render();
 
     await save();
     await flush(null, 0);
 
-    expect(TestBed.inject(Alerts).notices()).toEqual([
+    expect(TestBed.inject(ErrorDialog).pending()).toEqual([
       expect.objectContaining({ title: "Pas de connexion\u00a0: rien n'a été enregistré." }),
     ]);
   });

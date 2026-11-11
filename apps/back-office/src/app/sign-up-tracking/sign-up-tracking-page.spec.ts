@@ -27,7 +27,7 @@ import {
   type PlacementRequest,
 } from '../schedule/placement-dialog';
 import { CellPlacements, type CellPlacementRequest } from '../schedule/cell-placement-dialog';
-import { Alerts } from '../shell/alerts';
+import { ErrorDialog } from '../shell/error-dialog';
 import { Announcer } from '../shell/announcer';
 import { SignUpTrackingPage } from './sign-up-tracking-page';
 
@@ -776,9 +776,9 @@ describe('Pilotage du jour J', () => {
       expect(announce).toHaveBeenCalledWith('Tirage du créneau 2 relancé.');
     });
 
-    it('relance sans confirmation : un refus part en alerte, puis le suivi se relit', async () => {
+    it('relance sans confirmation : un refus s’ouvre dans le dialogue d’erreur, puis le suivi se relit', async () => {
       const { http, button, settle, reread } = await render(WITHOUT_MOVES);
-      const error = vi.spyOn(TestBed.inject(Alerts), 'error');
+      const error = vi.spyOn(TestBed.inject(ErrorDialog), 'open');
       button('Relancer le tirage')!.click();
       await settle();
 
@@ -1145,7 +1145,9 @@ describe('Pilotage du jour J', () => {
       expect(text(summary())).toBe(
         'Créneau 2 · 13 h 00 – 15 h 30 Tirage publié 19 / 26 placés 7 non placés 4 / 5 parties au minimum Tirage publié : les participants et les MJ ont reçu leur notification, et le résultat ne change plus. Il reste de la place : Sphinx (3 places). Les non placés vont voir leur MJ.',
       );
-      expect(summary()!.querySelector('.state[data-time-slot-state="published"] app-icon')).not.toBeNull();
+      expect(
+        summary()!.querySelector('.state[data-time-slot-state="published"] app-icon'),
+      ).not.toBeNull();
       for (const name of ['Publier le tirage', 'Relancer le tirage']) {
         expect(button(name)).toBeUndefined();
       }
@@ -1503,7 +1505,7 @@ describe('Pilotage du jour J', () => {
       expect(host.querySelectorAll('app-draw-plan .target')).toHaveLength(0);
     });
 
-    it('montre un refus en alerte, puis relit le suivi', async () => {
+    it('montre un refus dans le dialogue d’erreur, puis relit le suivi', async () => {
       const { host, http, settle, reread } = await render(DRAWING);
       await choose(host, settle, 'Bastou');
       cards(host)[3]!.querySelector<HTMLButtonElement>('.target')!.click();
@@ -1517,7 +1519,7 @@ describe('Pilotage du jour J', () => {
         );
       await reread(DRAWING);
 
-      expect(TestBed.inject(Alerts).notices()).toEqual([
+      expect(TestBed.inject(ErrorDialog).pending()).toEqual([
         expect.objectContaining({ title: 'Partie annulée' }),
       ]);
       expect(pill(host, 'Bastou').classList).toContain('chosen');
@@ -1975,7 +1977,7 @@ describe('Pilotage du jour J', () => {
       expect(sheet()).toBeNull();
     });
 
-    it('refus périmé : alerte, puis relecture ; un tirage lancé entre-temps retire les actions', async () => {
+    it('refus périmé : dialogue d’erreur, puis relecture ; un tirage lancé entre-temps retire les actions', async () => {
       const { http, sheet, button, askUnschedule, reread } = await render();
       const problem: Partial<ProblemDto> = {
         status: 409,
@@ -1993,7 +1995,7 @@ describe('Pilotage du jour J', () => {
           slot.id === 's2' ? { ...slot, state: 'drawing' } : slot,
         ),
       });
-      expect(TestBed.inject(Alerts).notices()).toEqual([
+      expect(TestBed.inject(ErrorDialog).pending()).toEqual([
         expect.objectContaining({ title: 'La convention a changé entre-temps' }),
       ]);
       expect(text(sheet()?.querySelector('h2'))).toBe('Brumes');

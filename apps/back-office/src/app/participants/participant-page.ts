@@ -415,8 +415,8 @@ export class ParticipantPage {
     if (value === REMOVE.value) void this.remove(sheet);
   }
 
-  /** Un geste du menu à la fois ; un refus part en alerte. */
-  private readonly menuGestures = injectGesture({ alert: true });
+  /** Un geste du menu à la fois ; un refus s'ouvre dans le dialogue d'erreur. */
+  private readonly menuGestures = injectGesture({ errorDialog: true });
 
   /**
    * Coupe tous les liens du pseudo, sans confirmation : il peut être relié de nouveau (ID-8).

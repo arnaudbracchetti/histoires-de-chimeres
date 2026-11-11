@@ -394,7 +394,7 @@ test('les heures d’un créneau qui porte une partie sont refusées (PR-11)', a
   await section.getByLabel('Fin').fill('10:30');
   await section.getByRole('button', { name: 'Enregistrer', exact: true }).click();
 
-  await expect(page.getByRole('alert').filter({ hasText: 'Heures figées' })).toContainText(
+  await expect(page.getByRole('alertdialog', { name: 'Heures figées' })).toContainText(
     `Le créneau 1 porte une partie${NBSP}: ses heures ne changent plus.`,
   );
 });
@@ -1033,9 +1033,11 @@ test('un dépôt sur une case prise entre-temps est refusé : « Table prise »,
   await expect(target(page)).toContainText('Brumes');
   await other.mouse.up();
 
-  await expect(other.getByRole('alert').filter({ hasText: 'Table prise' })).toContainText(
+  const refusal = other.getByRole('alertdialog', { name: 'Table prise' });
+  await expect(refusal).toContainText(
     `La table « Table 1 » accueille déjà une partie sur le créneau 1${NBSP}: choisis une autre table.`,
   );
+  await refusal.getByRole('button', { name: 'Fermer' }).click();
   await expect(target(other)).toContainText('Brumes');
   await expect(timeline(other).getByRole('article')).toHaveCount(1);
   await context.close();
@@ -1054,9 +1056,9 @@ test('un geste hors ligne : la partie revient à sa place, avec le message de co
   await page.context().setOffline(true);
   await page.mouse.up();
 
-  await expect(page.getByRole('alert')).toContainText(
-    `Pas de connexion${NBSP}: rien n'a été enregistré.`,
-  );
+  const refusal = page.getByRole('alertdialog');
+  await expect(refusal).toContainText(`Pas de connexion${NBSP}: rien n'a été enregistré.`);
+  await refusal.getByRole('button', { name: 'Fermer' }).click();
   await expect(slotCell(page, slot1, tableId('Table 1'))).toContainText('Néons');
   await expect(slotCell(page, slot2, tableId('Table 1'))).not.toContainText('Néons');
   await page.context().setOffline(false);

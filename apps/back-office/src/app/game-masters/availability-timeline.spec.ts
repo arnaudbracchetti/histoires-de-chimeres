@@ -9,7 +9,7 @@ import {
   type ProblemDto,
   type TimeSlotDto,
 } from '@chimeres/contract';
-import { Alerts } from '../shell/alerts';
+import { ErrorDialog } from '../shell/error-dialog';
 import { NBSP, THIN_NBSP } from '@chimeres/design';
 import { AvailabilityTimeline } from './availability-timeline';
 
@@ -196,7 +196,7 @@ describe('AvailabilityTimeline', () => {
     expect(state()[0]).toMatch(/☑ Je peux mener une partie$/);
     expect(changed).toEqual([]);
     expect(refusals()).toBe(1);
-    expect(TestBed.inject(Alerts).notices()).toEqual([
+    expect(TestBed.inject(ErrorDialog).pending()).toEqual([
       expect.objectContaining({ title: 'Créneau introuvable', detail: problem.detail }),
     ]);
   });

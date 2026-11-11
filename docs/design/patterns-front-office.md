@@ -125,7 +125,7 @@ Les dessins sont ceux du back office ([patterns.md](patterns.md#boutons)), à la
 
 ## Alertes
 
-Une erreur hors formulaire (coupure réseau, refus sans champ, 500) s'affiche en alerte, comme dans le back office ([patterns.md](patterns.md#erreur-hors-formulaire)), mais **en bas de l'écran**, sous le pouce :
+Une erreur hors formulaire (coupure réseau, refus sans champ, 500) suit les règles du back office ([patterns.md](patterns.md#erreur-hors-formulaire)), mais s'affiche en alerte **en bas de l'écran**, sous le pouce, et non dans un dialogue :
 
 - fixée en bas, dans la gouttière, à la largeur du contenu, au-dessus de tout, mais posée sur la barre des onglets, qu'elle ne cache pas ;
 - bordée de rouge brique, en Anthracite 2 : le `title` en gras, le `detail` dessous en texte secondaire, et ✕ à droite ;

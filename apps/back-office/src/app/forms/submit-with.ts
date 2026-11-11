@@ -6,7 +6,7 @@ import {
   type ValidationError,
 } from '@angular/forms/signals';
 import { readProblem, type FormProblem } from '../problem';
-import { Alerts, type ErrorNotice } from '../shell/alerts';
+import { ErrorDialog, type ErrorNotice } from '../shell/error-dialog';
 
 export type SubmitOptions = {
   /** Appelé avant le focus au premier champ en erreur : pour montrer un champ masqué. */
@@ -16,7 +16,7 @@ export type SubmitOptions = {
 /**
  * L'envoi d'un formulaire (docs/design/patterns.md, Validation), à passer en `submission` de
  * `form()`, dans le même contexte d'injection : `write` enregistre, et lance l'erreur de l'API
- * telle quelle. Une erreur rattachée à un champ s'affiche sous ce champ, le reste en alerte,
+ * telle quelle. Une erreur rattachée à un champ s'affiche sous ce champ, le reste dans le dialogue d'erreur,
  * et le focus va au premier champ en erreur, refus de l'API comme erreur locale. Un second envoi
  * pendant le premier est refusé par `submit()`.
  */
@@ -24,7 +24,7 @@ export function submitWith<TModel>(
   write: () => Promise<unknown>,
   { beforeFocus }: SubmitOptions = {},
 ): FormSubmitOptions<TModel, unknown> {
-  const alerts = inject(Alerts);
+  const errorDialog = inject(ErrorDialog);
   const injector = inject(Injector);
   const focusFirstError = (form: FieldTree<TModel>) => {
     beforeFocus?.();
@@ -38,8 +38,8 @@ export function submitWith<TModel>(
         await write();
         return undefined;
       } catch (error) {
-        const { errors, alert } = toSubmissionErrors(readProblem(error), form);
-        if (alert) alerts.error(alert);
+        const { errors, notice } = toSubmissionErrors(readProblem(error), form);
+        if (notice) void errorDialog.open(notice);
         focusFirstError(form);
         return errors;
       }
@@ -50,12 +50,12 @@ export function submitWith<TModel>(
 
 /**
  * Chaque erreur de champ sur le champ que nomme son `field` (`seats.min` → `form.seats.min`). Une
- * erreur dont le champ n'est pas dans le formulaire passe en alerte.
+ * erreur dont le champ n'est pas dans le formulaire passe dans le dialogue d'erreur.
  */
 function toSubmissionErrors(
   problem: FormProblem,
   form: FieldTree<unknown>,
-): { errors: ValidationError.WithFieldTree[]; alert?: ErrorNotice } {
+): { errors: ValidationError.WithFieldTree[]; notice?: ErrorNotice } {
   const errors: ValidationError.WithFieldTree[] = [];
   const orphans: string[] = [];
   for (const { field, message } of problem.fieldErrors) {
@@ -66,5 +66,5 @@ function toSubmissionErrors(
     else orphans.push(message);
   }
   const orphan = orphans.length ? { title: orphans.join(' ') } : undefined;
-  return { errors, alert: problem.alert ?? orphan };
+  return { errors, notice: problem.notice ?? orphan };
 }

@@ -3,13 +3,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, skip } from 'rxjs';
 import { Announcer } from './shell/announcer';
-import { AlertStack } from './shell/alert-stack';
 import { Rail } from './shell/rail';
 
-/** Coquille du back office : rail, page courante, alertes et région `aria-live`. */
+/** Coquille du back office : rail, page courante et région `aria-live`. */
 @Component({
   selector: 'app-root',
-  imports: [AlertStack, Rail, RouterOutlet],
+  imports: [Rail, RouterOutlet],
   styleUrl: './app.css',
   templateUrl: './app.html',
 })

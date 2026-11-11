@@ -24,7 +24,7 @@ const WITHDRAW_FROM_DRAW = 'withdraw-from-draw:';
  * confirmation, avec la jauge et les chiffres du pilotage. La partie qu'il mène est grisée ; sur un
  * créneau où il mène, ses inscriptions sont de secours (IN-4). Sans partie sur le créneau, il peut
  * être retiré du tirage (IN-6). Pendant l'écriture, la case prend son nouvel état, atténuée ;
- * refusée, elle revient, et le refus part en alerte.
+ * refusée, elle revient, et le refus s'ouvre dans le dialogue d'erreur.
  */
 @Component({
   selector: 'app-participant-sign-ups',
@@ -218,8 +218,8 @@ export class ParticipantSignUps {
   /** Une écriture est refusée (404, 409, 422) : la fiche est à relire. */
   readonly refused = output<void>();
 
-  /** Une écriture à la fois par partie ; un refus part en alerte. */
-  protected readonly writes = injectGesture({ alert: true });
+  /** Une écriture à la fois par partie ; un refus s'ouvre dans le dialogue d'erreur. */
+  protected readonly writes = injectGesture({ errorDialog: true });
 
   private readonly store = inject(ConventionStore);
   private readonly apiCall = injectApiCall();

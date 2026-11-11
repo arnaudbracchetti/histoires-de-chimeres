@@ -164,10 +164,10 @@ export class ScheduleBoard {
   private readonly apiCall = injectApiCall();
   private readonly injector = inject(Injector);
   protected readonly drag = inject(ScheduleDrag);
-  /** Un refus part en alerte : la fiche n'a pas de place pour lui. */
-  protected readonly unscheduling = injectGesture({ alert: true, refreshes: true });
-  /** Un glisser-déposer refusé part aussi en alerte. */
-  private readonly dropping = injectGesture({ alert: true, refreshes: true });
+  /** Un refus s'ouvre dans le dialogue d'erreur : la fiche n'a pas de place pour lui. */
+  protected readonly unscheduling = injectGesture({ errorDialog: true, refreshes: true });
+  /** Un glisser-déposer refusé s'ouvre aussi dans le dialogue d'erreur. */
+  private readonly dropping = injectGesture({ errorDialog: true, refreshes: true });
 
   /**
    * Ouvre le dialogue de placement. Une fois la partie programmée, le focus va à sa carte, et la

@@ -58,7 +58,7 @@ export class RemovedSignUpsGestures {
 
   /**
    * La confirmation de déprogrammer la partie, d'après les inscriptions que le geste retirerait et
-   * le tirage provisoire qu'il effacerait, lus par `gesture`. `unreadable` si la lecture est refusée : le refus part en alerte, et s'il
+   * le tirage provisoire qu'il effacerait, lus par `gesture`. `unreadable` si la lecture est refusée : le refus s'ouvre dans le dialogue d'erreur, et s'il
    * dit l'écran périmé, `onStale`. Avec `current`, les chiffres du dialogue ouvert le suivent.
    */
   async readUnscheduleConfirmation(
@@ -81,7 +81,7 @@ export class RemovedSignUpsGestures {
 
   /**
    * Écrit le geste, confirmé d'abord s'il a des `texts` : sans eux, aussitôt par `gesture`, dont le
-   * refus part en alerte ; avec eux, par le dialogue de confirmation, qui affiche son refus. Un refus
+   * refus s'ouvre dans le dialogue d'erreur ; avec eux, par le dialogue de confirmation, qui affiche son refus. Un refus
    * qui dit l'écran périmé appelle `onStale`. Le programme relu, ou `undefined` sans écriture.
    */
   async writeConfirmingIfAny(
