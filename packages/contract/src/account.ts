@@ -19,6 +19,8 @@ export type ChangeOwnPasswordBody = {
 
 /** Le compte de la personne connectée au back office (ADR 0015). */
 export type ConnectedAccountDto = {
+  /** Son participant : la fiche de son pseudo. */
+  participantId: string;
   /** Le pseudo de son participant, tel qu'il s'affiche. */
   nickname: string;
   organizer: boolean;

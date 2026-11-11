@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import {
   AddLatecomerToPublishedDraw,
+  AppointRole,
   AddParticipant,
   MergeParticipant,
   ReadMergeVerdict,
@@ -13,6 +14,8 @@ import {
   SignUpParticipantForGame,
   WithdrawParticipantFromDraw,
   WithdrawParticipantFromGame,
+  WithdrawRole,
+  type AccountRepository,
   type Clock,
   type ConventionRepository,
   type LinkedPhoneRepository,
@@ -21,6 +24,8 @@ import {
   type ScenarioRepository,
   type ScheduleReader,
 } from '@chimeres/application';
+import { ACCOUNT_REPOSITORY } from '../account/account-repository.token.js';
+import { AccountModule } from '../account/account.module.js';
 import { CLOCK } from '../clock/clock.token.js';
 import { ParisClock } from '../clock/paris-clock.js';
 import { CONVENTION_REPOSITORY } from '../convention/convention-repository.token.js';
@@ -38,7 +43,7 @@ import { PARTICIPANT_READER } from './participant-reader.token.js';
 import { PrismaParticipantReader } from './persistence/prisma-participant-reader.js';
 
 @Module({
-  imports: [ConventionModule, GameModule, NotificationModule, ScenarioModule],
+  imports: [AccountModule, ConventionModule, GameModule, NotificationModule, ScenarioModule],
   controllers: [ParticipantController],
   providers: [
     { provide: CLOCK, useClass: ParisClock },
@@ -121,14 +126,31 @@ import { PrismaParticipantReader } from './persistence/prisma-participant-reader
         schedule: ScheduleReader,
         reader: ParticipantReader,
         clock: Clock,
-      ) => new ReadParticipantSheet(conventions, scenarios, schedule, reader, clock),
+        accounts: AccountRepository,
+      ) => new ReadParticipantSheet(conventions, scenarios, schedule, reader, clock, accounts),
       inject: [
         CONVENTION_REPOSITORY,
         SCENARIO_REPOSITORY,
         SCHEDULE_READER,
         PARTICIPANT_READER,
         CLOCK,
+        ACCOUNT_REPOSITORY,
       ],
+    },
+    {
+      provide: AppointRole,
+      useFactory: (conventions: ConventionRepository, accounts: AccountRepository) =>
+        new AppointRole(conventions, accounts, randomUUID),
+      inject: [CONVENTION_REPOSITORY, ACCOUNT_REPOSITORY],
+    },
+    {
+      provide: WithdrawRole,
+      useFactory: (
+        conventions: ConventionRepository,
+        scenarios: ScenarioRepository,
+        accounts: AccountRepository,
+      ) => new WithdrawRole(conventions, scenarios, accounts),
+      inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY, ACCOUNT_REPOSITORY],
     },
   ],
 })

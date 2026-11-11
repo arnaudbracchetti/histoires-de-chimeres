@@ -4,72 +4,79 @@ Un seul thème, sombre. Les jetons sont des **jetons de rôle** en anglais, pos�
 
 ## Couleurs
 
-| Charte | Jeton CSS | Rôle |
-|---|---|---|
-| Charbon | `--surface-0` | fond de page |
-| Anthracite 1 | `--surface-1` | panneaux, rail, en-tête, fiche latérale |
-| Anthracite 2 | `--surface-2` | cartes, parties, dialogues |
-| Anthracite 3 | `--surface-3` | champs, puces, survol |
-| Filet | `--border` | bordures de 1 px |
-| Texte | `--text` | texte courant |
-| Texte secondaire | `--text-muted` | métadonnées, heures, aide |
-| Orange | `--accent` | action principale, liens, élément actif, halo |
-| Texte sur orange | `--on-accent` | libellé du bouton principal |
-| Focus | `--focus` | anneau de focus ; état « Inscriptions ouvertes » d'un créneau |
-| Vert | `--success` | statut correct, complet |
-| Jaune | `--warning` | statut attention |
-| Rouge brique | `--danger` | statut surcharge, erreur, entrée de menu destructrice |
-| Rouge (bouton) | `--danger-fill` | fond du bouton destructeur, libellé en `--text` |
-| Gravure | `--engraving` | motif gravé complet |
-| Gravure relevée | `--engraving-strong` | motif gravé simplifié des vignettes |
-| Lettrine | `--initial` | lettrine de l'illustration par défaut |
-| Papier | `--paper` | fond du QR code, à l'écran comme à l'impression |
-| Encre | `--ink` | modules du QR code : le plus fort contraste, pour tout lecteur |
-| Gris de l'emblème | `--emblem-1` à `--emblem-6` | segments gris de l'anneau de l'emblème, du plus sombre au plus clair |
+| Charte                 | Jeton CSS                   | Rôle                                                                 |
+| ---------------------- | --------------------------- | -------------------------------------------------------------------- |
+| Charbon                | `--surface-0`               | fond de page                                                         |
+| Anthracite 1           | `--surface-1`               | panneaux, rail, en-tête, fiche latérale                              |
+| Anthracite 2           | `--surface-2`               | cartes, parties, dialogues                                           |
+| Anthracite 3           | `--surface-3`               | champs, puces, survol                                                |
+| Filet                  | `--border`                  | bordures de 1 px                                                     |
+| Texte                  | `--text`                    | texte courant                                                        |
+| Texte secondaire       | `--text-muted`              | métadonnées, heures, aide                                            |
+| Orange                 | `--accent`                  | action principale, liens, élément actif, halo                        |
+| Texte sur orange       | `--on-accent`               | libellé du bouton principal                                          |
+| Focus                  | `--focus`                   | anneau de focus ; état « Inscriptions ouvertes » d'un créneau        |
+| Vert                   | `--success`                 | statut correct, complet                                              |
+| Jaune                  | `--warning`                 | statut attention                                                     |
+| Rouge brique           | `--danger`                  | statut surcharge, erreur, entrée de menu destructrice                |
+| Rouge (bouton)         | `--danger-fill`             | fond du bouton destructeur, libellé en `--text`                      |
+| Violet MJ              | `--role-game-master`        | badge et carte du rôle MJ (ID-16)                                    |
+| Turquoise Organisateur | `--role-organizer`          | badge et carte du rôle Organisateur (ID-16)                          |
+| Gris Participant       | `--role-participant`        | badge « Participant », sans rôle ; le Texte secondaire               |
+| Gravure                | `--engraving`               | motif gravé complet                                                  |
+| Gravure relevée        | `--engraving-strong`        | motif gravé simplifié des vignettes                                  |
+| Lettrine               | `--initial`                 | lettrine de l'illustration par défaut                                |
+| Papier                 | `--paper`                   | fond du QR code, à l'écran comme à l'impression                      |
+| Encre                  | `--ink`                     | modules du QR code : le plus fort contraste, pour tout lecteur       |
+| Gris de l'emblème      | `--emblem-1` à `--emblem-6` | segments gris de l'anneau de l'emblème, du plus sombre au plus clair |
 
 - **L'orange est le même d'une édition à l'autre.** Relevé sur une vignette JPEG de l'affiche (l'aplat du texte orange), il est à confirmer sur le fichier source si on l'obtient.
 - **Le texte blanc sur orange est exclu** (2,27:1) : le bouton principal porte un texte charbon.
 - **Le charbon est neutre, légèrement froid**, comme le fond relevé sur l'affiche.
 - **Le bleu du focus ne sert qu'au focus**, et à l'état « Inscriptions ouvertes » d'un créneau (voir [patterns.md](patterns.md#statuts)), pour ne jamais se confondre avec l'orange des actions. Il n'y a pas d'autre bleu « information ».
+- **Les couleurs des rôles ne sont pas des statuts.** Violet et turquoise ne servent qu'aux badges et aux cartes des rôles, pour ne jamais se confondre avec un état (vert, jaune, rouge, orange, bleu). Fond comme un badge de statut, la couleur du rôle à 14 % sur Anthracite 2, et bordure de la couleur du rôle à 45 %.
 - **Fond d'un badge de statut** : la couleur du statut à 14 % sur Anthracite 2, `color-mix(in srgb, var(--success) 14%, var(--surface-2))`.
 
 ## Contrastes vérifiés
 
-| Couple | Contraste |
-|---|---|
-| Texte sur Charbon | 14,98:1 |
-| Texte sur Anthracite 3 | 11,56:1 |
-| Texte secondaire sur Charbon | 7,28:1 |
-| Texte secondaire sur Anthracite 2 | 6,25:1 |
-| Texte secondaire sur Anthracite 3 | 5,62:1 |
-| Orange sur Charbon | 7,93:1 |
-| Orange sur Anthracite 2 | 6,81:1 |
-| Orange sur Anthracite 3 | 6,12:1 |
-| Texte sur orange, sur Orange | 7,85:1 |
-| Texte sur Rouge (bouton) | 4,96:1 |
-| Rouge brique sur Anthracite 3 | 5,24:1 |
-| Vert sur son badge | 5,36:1 |
-| Jaune sur son badge | 7,23:1 |
-| Rouge brique sur son badge | 4,64:1 |
-| Focus sur Charbon | 9,32:1 |
-| Focus sur Anthracite 2 | 8,00:1 |
-| Focus sur Anthracite 3 | 7,19:1 |
-| Vert sur Anthracite 2 | 7,03:1 |
-| Vert sur Anthracite 3 | 6,32:1 |
-| Lettrine sur Anthracite 2 | 4,16:1 (décor) |
-| Lettrine sur Anthracite 3 | 3,74:1 (décor) |
-| Gravure relevée sur Anthracite 3 | 2,42:1 (décor) |
+| Couple                               | Contraste      |
+| ------------------------------------ | -------------- |
+| Texte sur Charbon                    | 14,98:1        |
+| Texte sur Anthracite 3               | 11,56:1        |
+| Texte secondaire sur Charbon         | 7,28:1         |
+| Texte secondaire sur Anthracite 2    | 6,25:1         |
+| Texte secondaire sur Anthracite 3    | 5,62:1         |
+| Orange sur Charbon                   | 7,93:1         |
+| Orange sur Anthracite 2              | 6,81:1         |
+| Orange sur Anthracite 3              | 6,12:1         |
+| Texte sur orange, sur Orange         | 7,85:1         |
+| Texte sur Rouge (bouton)             | 4,96:1         |
+| Rouge brique sur Anthracite 3        | 5,24:1         |
+| Vert sur son badge                   | 5,36:1         |
+| Jaune sur son badge                  | 7,23:1         |
+| Rouge brique sur son badge           | 4,64:1         |
+| Violet MJ sur son badge              | 5,18:1         |
+| Turquoise Organisateur sur son badge | 6,18:1         |
+| Gris Participant sur son badge       | 4,85:1         |
+| Focus sur Charbon                    | 9,32:1         |
+| Focus sur Anthracite 2               | 8,00:1         |
+| Focus sur Anthracite 3               | 7,19:1         |
+| Vert sur Anthracite 2                | 7,03:1         |
+| Vert sur Anthracite 3                | 6,32:1         |
+| Lettrine sur Anthracite 2            | 4,16:1 (décor) |
+| Lettrine sur Anthracite 3            | 3,74:1 (décor) |
+| Gravure relevée sur Anthracite 3     | 2,42:1 (décor) |
 
 Un nouveau couple texte et fond se vérifie avant d'entrer dans un composant : 4,5:1 pour le texte, 3:1 pour un composant ou une bordure qui porte du sens. Les décors (gravure, lettrine) n'ont pas d'exigence.
 
 ## Polices
 
-| Rôle | Police | Jeton |
-|---|---|---|
-| Nom de l'application, titre de page (h1) | **Uncial Antiqua**, une seule graisse | `--font-display` |
-| Capitales espacées : surtitres, en-têtes de créneau et de table | **Aldrich**, une seule graisse, en Regular | `--font-caps` |
-| Tout le reste | police système (`system-ui`) | `--font-ui` |
-| Code dans la présentation d'un scénario | police à chasse fixe du système | `--font-code` |
+| Rôle                                                            | Police                                     | Jeton            |
+| --------------------------------------------------------------- | ------------------------------------------ | ---------------- |
+| Nom de l'application, titre de page (h1)                        | **Uncial Antiqua**, une seule graisse      | `--font-display` |
+| Capitales espacées : surtitres, en-têtes de créneau et de table | **Aldrich**, une seule graisse, en Regular | `--font-caps`    |
+| Tout le reste                                                   | police système (`system-ui`)               | `--font-ui`      |
+| Code dans la présentation d'un scénario                         | police à chasse fixe du système            | `--font-code`    |
 
 - Uncial Antiqua et Aldrich sont sous SIL Open Font License et ont tous les accents français. Elles sont livrées en WOFF2, en sous-ensemble latin étendu, en `font-display: swap`, avec leurs licences. Elles sont hébergées avec l'application, jamais chargées depuis Google Fonts, et marchent hors ligne.
 - **Pas de gras simulé** : ni Uncial Antiqua ni Aldrich n'ont de gras.
@@ -80,15 +87,15 @@ Un nouveau couple texte et fond se vérifie avant d'entrer dans un composant : 4
 
 La taille de base du back office est de 13 px (`--font-size-body`), posée dans son `styles.css`. Les tailles sont en `rem`.
 
-| Rôle | Police | Jeton |
-|---|---|---|
-| Titre de page (h1) | Uncial Antiqua | `--font-size-title` |
-| Grands chiffres du Pilotage du jour J : ratio d'une tuile, demande et capacité du résumé | système, chasse fixe | `--font-size-title` |
-| Titre de section (h2) | système, semi-gras | `--font-size-section` |
-| Titre de carte ou de bloc (h3) | système, semi-gras | `--font-size-block` |
-| Texte courant | système | `--font-size-body` |
-| Métadonnées, aide, compteurs | système | `--font-size-meta` |
-| Surtitres, en-têtes de créneau et de table | Aldrich, capitales, `letter-spacing: 0.12em` | `--font-size-overline` |
+| Rôle                                                                                     | Police                                       | Jeton                  |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------- | ---------------------- |
+| Titre de page (h1)                                                                       | Uncial Antiqua                               | `--font-size-title`    |
+| Grands chiffres du Pilotage du jour J : ratio d'une tuile, demande et capacité du résumé | système, chasse fixe                         | `--font-size-title`    |
+| Titre de section (h2)                                                                    | système, semi-gras                           | `--font-size-section`  |
+| Titre de carte ou de bloc (h3)                                                           | système, semi-gras                           | `--font-size-block`    |
+| Texte courant                                                                            | système                                      | `--font-size-body`     |
+| Métadonnées, aide, compteurs                                                             | système                                      | `--font-size-meta`     |
+| Surtitres, en-têtes de créneau et de table                                               | Aldrich, capitales, `letter-spacing: 0.12em` | `--font-size-overline` |
 
 - Aucune autre taille : les prototypes en ont essayé d'intermédiaires, l'échelle les ferme.
 
@@ -96,26 +103,26 @@ La taille de base du back office est de 13 px (`--font-size-body`), posée dans 
 
 Le téléphone se lit de plus loin et se tape au pouce : son échelle est plus grande d'un cran. La taille de base est de 15 px (`--font-size-mobile-body`), posée dans le `styles.css` du front office. Les jetons sont préfixés `mobile`, pour qu'un composant ne prenne jamais par mégarde la taille de l'autre front.
 
-| Rôle | Police | Jeton |
-|---|---|---|
-| Pseudo affiché en grand | Uncial Antiqua, orange | `--font-size-mobile-hero` |
-| Titre d'écran (h1), titre de carte de l'Accueil | Uncial Antiqua | `--font-size-mobile-title` |
-| Question d'un dialogue, pseudo dans sa boîte, code de présence | système, semi-gras (Aldrich pour le code) | `--font-size-mobile-section` |
-| Titre de bloc ou de ligne | système, semi-gras | `--font-size-mobile-block` |
-| Texte courant, boutons, nom de l'application dans l'en-tête | système (Uncial Antiqua pour le nom) | `--font-size-mobile-body` |
-| Aide, erreur de champ, détail d'une alerte, onglets, bouton du pseudo | système | `--font-size-mobile-meta` |
-| Surtitres | Aldrich, capitales, `letter-spacing: 0.12em` | `--font-size-mobile-overline` |
-| Texte d'un champ | système | `--font-size-mobile-field` |
+| Rôle                                                                  | Police                                       | Jeton                         |
+| --------------------------------------------------------------------- | -------------------------------------------- | ----------------------------- |
+| Pseudo affiché en grand                                               | Uncial Antiqua, orange                       | `--font-size-mobile-hero`     |
+| Titre d'écran (h1), titre de carte de l'Accueil                       | Uncial Antiqua                               | `--font-size-mobile-title`    |
+| Question d'un dialogue, pseudo dans sa boîte, code de présence        | système, semi-gras (Aldrich pour le code)    | `--font-size-mobile-section`  |
+| Titre de bloc ou de ligne                                             | système, semi-gras                           | `--font-size-mobile-block`    |
+| Texte courant, boutons, nom de l'application dans l'en-tête           | système (Uncial Antiqua pour le nom)         | `--font-size-mobile-body`     |
+| Aide, erreur de champ, détail d'une alerte, onglets, bouton du pseudo | système                                      | `--font-size-mobile-meta`     |
+| Surtitres                                                             | Aldrich, capitales, `letter-spacing: 0.12em` | `--font-size-mobile-overline` |
+| Texte d'un champ                                                      | système                                      | `--font-size-mobile-field`    |
 
 - **Le texte d'un champ ne descend jamais sous 16 px** : en dessous, Safari zoome sur le champ à la saisie, et la page ne revient pas à sa taille.
 - Aucune autre taille, comme pour le back office.
 
 ## Interlignes
 
-| Jeton | Pour |
-|---|---|
-| `--line-height-text` (1,4) | texte courant |
-| `--line-height-title` (1,2) | titres |
+| Jeton                         | Pour                                          |
+| ----------------------------- | --------------------------------------------- |
+| `--line-height-text` (1,4)    | texte courant                                 |
+| `--line-height-title` (1,2)   | titres                                        |
 | `--line-height-display` (1,1) | pseudo affiché en grand, sur plusieurs lignes |
 
 ## Dimensions du front office
@@ -128,11 +135,11 @@ De `--space-xxs` à `--space-xxl` (`xxs`, `xs`, `s`, `m`, `l`, `xl`, `xxl`). Auc
 
 ## Rayons
 
-| Jeton | Pour |
-|---|---|
-| `--radius-card` | cartes, parties, dialogues, fiche latérale |
-| `--radius-control` | boutons, champs, menus, alertes |
-| `--radius-thumb` | vignettes |
+| Jeton              | Pour                                       |
+| ------------------ | ------------------------------------------ |
+| `--radius-card`    | cartes, parties, dialogues, fiche latérale |
+| `--radius-control` | boutons, champs, menus, alertes            |
+| `--radius-thumb`   | vignettes                                  |
 
 Pastilles et badges sont en pilule (`999px`).
 

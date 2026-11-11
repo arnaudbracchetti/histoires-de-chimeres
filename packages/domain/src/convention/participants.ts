@@ -201,13 +201,45 @@ export class Participants {
   }
 
   /**
+   * Les participants après le rôle MJ donné au participant `participantId`, sous l'identifiant `id`
+   * (ID-4, ID-16) : il garde son identifiant et son pseudo, donc ses liens et ses inscriptions. Un
+   * participant déjà MJ ne change pas.
+   */
+  getParticipantsAfterAppointingGameMaster(id: string, participantId: string): Participants {
+    const participant = this.allParticipants.findExistingItemById(participantId);
+    if (this.hasGameMasterRole(participant)) return this;
+    return new Participants(
+      this.allParticipants,
+      this.allGameMasters.getCollectionAfterAddingItem(new GameMaster(id, participant)),
+    );
+  }
+
+  /**
+   * Les participants après le rôle MJ retiré au participant `participantId` (ID-16, PR-12) : le MJ
+   * part avec ses disponibilités, son participant reste. Un MJ qui a au moins un scénario garde son
+   * rôle : le catalogue, entier, le dit. Un participant qui n'est pas MJ ne change pas.
+   */
+  getParticipantsAfterWithdrawingGameMasterRole(
+    participantId: string,
+    catalogue: ScenarioCatalogue,
+  ): Participants {
+    this.allParticipants.verifyItemExists(participantId);
+    const gameMaster = this.findGameMasterOfParticipant(participantId);
+    if (!gameMaster) return this;
+    verifyGameMasterWithoutScenario(gameMaster.id, catalogue);
+    return new Participants(
+      this.allParticipants,
+      this.allGameMasters.getCollectionAfterRemovingItem(gameMaster.id),
+    );
+  }
+
+  /**
    * Les participants sans le MJ, ni ses disponibilités, ni son participant. Un MJ qui a au moins un
    * scénario reste (PR-12) : le catalogue, entier, le dit.
    */
   getParticipantsAfterRemovingGameMaster(id: string, catalogue: ScenarioCatalogue): Participants {
     const gameMaster = this.allGameMasters.findExistingItemById(id);
-    const scenarios = catalogue.countScenariosOfGameMaster(id);
-    if (scenarios > 0) throw new Refusal('game-master-has-scenarios', { scenarios });
+    verifyGameMasterWithoutScenario(id, catalogue);
     return new Participants(
       this.allParticipants.getCollectionAfterRemovingItem(gameMaster.participant.id),
       this.allGameMasters.getCollectionAfterRemovingItem(id),
@@ -331,6 +363,12 @@ export class Participants {
   private hasGameMasterRole(participant: Participant): boolean {
     return this.findGameMasterOfParticipant(participant.id) !== undefined;
   }
+}
+
+/** Un MJ qui a au moins un scénario ne perd ni son rôle, ni son pseudo (PR-12). */
+function verifyGameMasterWithoutScenario(gameMasterId: string, catalogue: ScenarioCatalogue): void {
+  const scenarios = catalogue.countScenariosOfGameMaster(gameMasterId);
+  if (scenarios > 0) throw new Refusal('game-master-has-scenarios', { scenarios });
 }
 
 /** La règle PR-15 du retrait d'une disponibilité, la même pour l'écriture et pour le verdict. */

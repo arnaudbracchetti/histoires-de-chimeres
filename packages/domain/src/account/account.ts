@@ -1,3 +1,9 @@
+import type { Convention } from '../convention/convention.js';
+import { Refusal } from '../refusal.js';
+
+/** Un rôle du back office (ID-16) : Organisateur, porté par le compte, ou MJ, porté par le participant. */
+export type AccountRole = 'organizer' | 'game-master';
+
 export type AccountState = {
   id: string;
   /** Le participant de la personne : son pseudo sert d'identifiant de connexion (ADR 0015). */
@@ -43,6 +49,33 @@ export class Account {
 
   appointOrganizer(): void {
     this.state = { ...this.state, organizer: true };
+  }
+
+  /**
+   * Retire le rôle d'Organisateur, à la demande du compte `actingAccount` (ID-16). Un Organisateur
+   * ne se le retire pas lui-même : il reste ainsi toujours au moins un Organisateur. Il le peut pour
+   * un autre Organisateur.
+   */
+  withdrawOrganizerRole(actingAccount: Account): void {
+    if (actingAccount.id === this.id) throw new Refusal('own-organizer-role-withdrawal', {});
+    this.state = { ...this.state, organizer: false };
+  }
+
+  /**
+   * Le compte n'a plus de rôle : ni Organisateur, ni MJ sur la convention (ID-16). Il doit alors
+   * disparaître.
+   */
+  isWithoutRole(convention: Convention): boolean {
+    return !this.isOrganizer && !convention.isParticipantGameMaster(this.participantId);
+  }
+
+  /**
+   * Le seul rôle du compte, dont le retrait le supprimerait (ID-16), ou `null` s'il en a deux.
+   */
+  findOnlyRole(convention: Convention): AccountRole | null {
+    const gameMaster = convention.isParticipantGameMaster(this.participantId);
+    if (this.isOrganizer === gameMaster) return null;
+    return this.isOrganizer ? 'organizer' : 'game-master';
   }
 
   replacePasswordHash(passwordHash: string): void {

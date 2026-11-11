@@ -145,6 +145,8 @@ export type RefusalParams = {
   'password-too-long': { max: number };
   /** Le mot de passe est le pseudo du compte, comparé comme ID-7 (ADR 0018). */
   'password-is-nickname': Record<string, never>;
+  /** Un Organisateur ne se retire pas lui-même le rôle d'Organisateur (ID-16). */
+  'own-organizer-role-withdrawal': Record<string, never>;
 };
 
 export type RefusalCode = keyof RefusalParams;

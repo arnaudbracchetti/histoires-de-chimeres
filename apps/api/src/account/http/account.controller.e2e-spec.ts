@@ -63,7 +63,12 @@ describe('Compte du back office : connexion et session (ADR 0015, 0018, 0019)', 
     it('connecte par pseudo et mot de passe, et pose le cookie de session avec ses attributs', async () => {
       const response = await logIn({ nickname: 'Kaïros', password: PASSWORD }).expect(200);
 
-      expect(response.body).toEqual({ nickname: 'Kaïros', organizer: true, gameMasterId: null });
+      expect(response.body).toEqual({
+        nickname: 'Kaïros',
+        participantId: expect.any(String),
+        organizer: true,
+        gameMasterId: null,
+      });
       const cookie = (response.headers['set-cookie'] as unknown as string[])[0]!;
       expect(cookie).toMatch(/^__Host-account-session=[\w-]{43};/);
       expect(cookie).toContain('Path=/;');
@@ -72,7 +77,12 @@ describe('Compte du back office : connexion et session (ADR 0015, 0018, 0019)', 
       expect(cookie).toContain('Secure');
       expect(cookie).toContain('SameSite=Strict');
       const account = await readAccount(readSessionCookie(response)).expect(200);
-      expect(account.body).toEqual({ nickname: 'Kaïros', organizer: true, gameMasterId: null });
+      expect(account.body).toEqual({
+        nickname: 'Kaïros',
+        participantId: expect.any(String),
+        organizer: true,
+        gameMasterId: null,
+      });
     });
 
     it('reconnaît le pseudo malgré la casse, les accents et les espaces (ID-7)', async () => {
@@ -148,7 +158,12 @@ describe('Compte du back office : connexion et session (ADR 0015, 0018, 0019)', 
 
       const response = await readAccount(cookie).expect(200);
 
-      expect(response.body).toEqual({ nickname: 'Lune', organizer: false, gameMasterId });
+      expect(response.body).toEqual({
+        nickname: 'Lune',
+        participantId: expect.any(String),
+        organizer: false,
+        gameMasterId,
+      });
     });
   });
 

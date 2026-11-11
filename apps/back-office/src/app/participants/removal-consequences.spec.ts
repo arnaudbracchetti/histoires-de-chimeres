@@ -16,6 +16,8 @@ const aSheet = (sheet: Partial<ParticipantSheetDto>): ParticipantSheetDto => ({
   id: 'p1',
   nickname: 'Lune',
   gameMaster: false,
+  organizer: false,
+  account: null,
   signedUpGameIds: [],
   backupGameIds: [],
   timeSlots: [],

@@ -152,6 +152,8 @@ export {
 } from './push-subscription.js';
 export {
   participantEndpoints,
+  type AccountRole,
+  type ParticipantAccountDto,
   type MergeOutcomeDto,
   type MergeParams,
   type MergeTimeSlotVerdictDto,

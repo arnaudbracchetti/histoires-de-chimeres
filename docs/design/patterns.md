@@ -2,14 +2,14 @@
 
 Cette page décrit les patterns du back office. Une partie vaut aussi pour le front office, qui en adapte le dessin au téléphone dans [patterns-front-office.md](patterns-front-office.md).
 
-| Vaut pour les deux fronts | Propre au back office |
-|---|---|
-| [Boutons](#boutons) : une seule action principale par vue, un nom accessible pour une icône seule, aucun bouton désactivé pour une saisie incomplète. Le front office a son propre jeu de dessins | [Coquille](#coquille), [En-tête de page](#en-tête-de-page) |
-| [Champs](#champs), [Validation](#validation), [Une erreur ne décale rien](#une-erreur-ne-décale-rien), [Enregistrement](#enregistrement) (pendant l'envoi, un second envoi est refusé) | [Où se fait la saisie](#où-se-fait-la-saisie) : cartes, lignes et pages de saisie |
-| [Actions destructrices](#actions-destructrices) : le dialogue de confirmation, le refus dans le dialogue | [Tableaux](#tableaux) |
-| [Erreur hors formulaire](#erreur-hors-formulaire), sauf son dessin : un dialogue ici, une alerte en bas de l'écran sur le téléphone | [Chargement, état vide, erreur de lecture](#chargement-état-vide-erreur-de-lecture), jusqu'aux premiers écrans du front office qui en ont besoin |
-| [Succès](#succès) : pas d'alerte de succès, annonce aux lecteurs d'écran | [Programmation](#programmation), [Pilotage du jour J](#pilotage-du-jour-j), [Informations de connexion](#informations-de-connexion), [Onglets de classeur](#onglets-de-classeur), [Jauge](#jauge) |
-| [Statuts](#statuts), [Focus](#focus) | |
+| Vaut pour les deux fronts                                                                                                                                                                         | Propre au back office                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Boutons](#boutons) : une seule action principale par vue, un nom accessible pour une icône seule, aucun bouton désactivé pour une saisie incomplète. Le front office a son propre jeu de dessins | [Coquille](#coquille), [En-tête de page](#en-tête-de-page)                                                                                                                                        |
+| [Champs](#champs), [Validation](#validation), [Une erreur ne décale rien](#une-erreur-ne-décale-rien), [Enregistrement](#enregistrement) (pendant l'envoi, un second envoi est refusé)            | [Où se fait la saisie](#où-se-fait-la-saisie) : cartes, lignes et pages de saisie                                                                                                                 |
+| [Actions destructrices](#actions-destructrices) : le dialogue de confirmation, le refus dans le dialogue                                                                                          | [Tableaux](#tableaux)                                                                                                                                                                             |
+| [Erreur hors formulaire](#erreur-hors-formulaire), sauf son dessin : un dialogue ici, une alerte en bas de l'écran sur le téléphone                                                               | [Chargement, état vide, erreur de lecture](#chargement-état-vide-erreur-de-lecture), jusqu'aux premiers écrans du front office qui en ont besoin                                                  |
+| [Succès](#succès) : pas d'alerte de succès, annonce aux lecteurs d'écran                                                                                                                          | [Programmation](#programmation), [Pilotage du jour J](#pilotage-du-jour-j), [Informations de connexion](#informations-de-connexion), [Onglets de classeur](#onglets-de-classeur), [Jauge](#jauge) |
+| [Statuts](#statuts), [Focus](#focus)                                                                                                                                                              |                                                                                                                                                                                                   |
 
 ## Le back office sur l'écran
 
@@ -36,12 +36,12 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 
 ## Boutons
 
-| Bouton | Dessin | Usage |
-|---|---|---|
-| **Principal** | orange plein, texte charbon | l'action principale, une seule par vue |
-| **Secondaire** | fond gris éclairci, filet gris clair, texte clair | les autres actions visibles |
-| **Discret** | texte seul | « Annuler », « Effacer le filtre » |
-| **Destructeur** | rouge plein, texte clair | **uniquement** dans un dialogue de confirmation |
+| Bouton          | Dessin                                            | Usage                                           |
+| --------------- | ------------------------------------------------- | ----------------------------------------------- |
+| **Principal**   | orange plein, texte charbon                       | l'action principale, une seule par vue          |
+| **Secondaire**  | fond gris éclairci, filet gris clair, texte clair | les autres actions visibles                     |
+| **Discret**     | texte seul                                        | « Annuler », « Effacer le filtre »              |
+| **Destructeur** | rouge plein, texte clair                          | **uniquement** dans un dialogue de confirmation |
 
 - Une entrée de menu destructrice (« Supprimer le scénario ») est écrite en rouge brique.
 - Un bouton à icône seule a toujours un nom accessible (`aria-label`) et une infobulle.
@@ -143,7 +143,7 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 ### Présentation (Markdown restreint)
 
 - Un `<textarea>` simple, sans barre d'outils.
-- Un aide-mémoire sous le champ : « **gras**, *italique*, « - » en début de ligne pour une liste ».
+- Un aide-mémoire sous le champ : « **gras**, _italique_, « - » en début de ligne pour une liste ».
 - Une bascule « Écrire / Aperçu » montre le rendu tel que le front office l'affichera.
 
 ## Tableaux
@@ -173,23 +173,23 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 
 ## Actions destructrices
 
-| Action | Confirmation |
-|---|---|
-| Supprimer un créneau, une table, un MJ, un scénario, un pseudo | oui |
-| Retirer l'image d'un scénario | oui |
-| Programmer une partie | oui, sur un créneau en tirage provisoire, qu'elle efface (TI-6) ; sinon, non |
-| Déprogrammer une partie | oui, si elle a des inscrits, ou si son créneau est en tirage provisoire ; sinon, non |
-| Déplacer une partie vers un autre créneau | oui, si elle a des inscrits, ou si l'un des deux créneaux est en tirage provisoire ; vers une autre table du même créneau, non (IN-6, TI-6) |
-| Échanger deux parties de créneaux différents | oui, si l'une a des inscrits, ou si l'un des deux créneaux est en tirage provisoire ; sur le même créneau, non (IN-6, TI-6) |
-| Lancer le tirage | oui, en orange (principal) : le geste n'efface rien, mais ferme les inscriptions |
-| Relancer le tirage | oui, s'il a des déplacements à la main, qu'elle efface ; sans déplacement, non |
-| Rouvrir les inscriptions d'un créneau en tirage | oui : le résultat provisoire est effacé |
-| Programmer depuis la réserve un créneau en tirage | oui : le tirage provisoire est effacé |
-| Annuler une partie dans le tirage | oui : ses joueurs passent dans les non placés ; « Garder la partie » ferme |
-| Rétablir une partie annulée | non : elle revient sans joueur, rien d'autre ne part |
-| Ajouter un retardataire à un tirage publié | oui, en orange (principal) : le geste n'efface rien, mais ne se défait pas (ID-14) |
-| Retirer une disponibilité | non : c'est une case à cocher |
-| Revenir aux places du scénario | non |
+| Action                                                         | Confirmation                                                                                                                                |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supprimer un créneau, une table, un MJ, un scénario, un pseudo | oui                                                                                                                                         |
+| Retirer l'image d'un scénario                                  | oui                                                                                                                                         |
+| Programmer une partie                                          | oui, sur un créneau en tirage provisoire, qu'elle efface (TI-6) ; sinon, non                                                                |
+| Déprogrammer une partie                                        | oui, si elle a des inscrits, ou si son créneau est en tirage provisoire ; sinon, non                                                        |
+| Déplacer une partie vers un autre créneau                      | oui, si elle a des inscrits, ou si l'un des deux créneaux est en tirage provisoire ; vers une autre table du même créneau, non (IN-6, TI-6) |
+| Échanger deux parties de créneaux différents                   | oui, si l'une a des inscrits, ou si l'un des deux créneaux est en tirage provisoire ; sur le même créneau, non (IN-6, TI-6)                 |
+| Lancer le tirage                                               | oui, en orange (principal) : le geste n'efface rien, mais ferme les inscriptions                                                            |
+| Relancer le tirage                                             | oui, s'il a des déplacements à la main, qu'elle efface ; sans déplacement, non                                                              |
+| Rouvrir les inscriptions d'un créneau en tirage                | oui : le résultat provisoire est effacé                                                                                                     |
+| Programmer depuis la réserve un créneau en tirage              | oui : le tirage provisoire est effacé                                                                                                       |
+| Annuler une partie dans le tirage                              | oui : ses joueurs passent dans les non placés ; « Garder la partie » ferme                                                                  |
+| Rétablir une partie annulée                                    | non : elle revient sans joueur, rien d'autre ne part                                                                                        |
+| Ajouter un retardataire à un tirage publié                     | oui, en orange (principal) : le geste n'efface rien, mais ne se défait pas (ID-14)                                                          |
+| Retirer une disponibilité                                      | non : c'est une case à cocher                                                                                                               |
+| Revenir aux places du scénario                                 | non                                                                                                                                         |
 
 - **Le dialogue de confirmation** :
   - pose une question qui nomme l'objet : « Supprimer le créneau 2 ? » ;
@@ -226,24 +226,25 @@ Un geste de programmation refusé après une course, une déprogrammation qui é
 
 Pensés pour le pilotage du jour J (demande / capacité, PRD §4.4) et les autres écrans.
 
-| Rôle | Jeton | Icône Lucide | Sens |
-|---|---|---|---|
-| Vert | `--success` | `circle-check` ; `lock` pour « Tirage publié » | correct, complet ; tirage publié |
-| Jaune | `--warning` | `triangle-alert` | attention : la demande atteint 80 % de la capacité maximum, trop de parties, une partie reste sous son minimum ; après le lancement, une partie du tirage sous son minimum ou au-delà de son maximum |
-| Rouge brique | `--danger` | `octagon-alert` | surcharge (il manque des places, des participants sans partie, des participants risquent de ne pas être placés), erreur ; après le lancement, des non placés, une partie sans joueur |
-| Neutre | `--text-muted` sur `--surface-3` | propre au sens : `clock` (à venir), `inbox` (en réserve), `check` (terminé) | information sans jugement : « double », « à venir », « en réserve », « Terminé » |
-| Bleu du focus | `--focus` | `lock-open` | inscriptions ouvertes : seul usage du bleu hors du focus |
+| Rôle          | Jeton                            | Icône Lucide                                                                | Sens                                                                                                                                                                                                 |
+| ------------- | -------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vert          | `--success`                      | `circle-check` ; `lock` pour « Tirage publié »                              | correct, complet ; tirage publié                                                                                                                                                                     |
+| Jaune         | `--warning`                      | `triangle-alert`                                                            | attention : la demande atteint 80 % de la capacité maximum, trop de parties, une partie reste sous son minimum ; après le lancement, une partie du tirage sous son minimum ou au-delà de son maximum |
+| Rouge brique  | `--danger`                       | `octagon-alert`                                                             | surcharge (il manque des places, des participants sans partie, des participants risquent de ne pas être placés), erreur ; après le lancement, des non placés, une partie sans joueur                 |
+| Neutre        | `--text-muted` sur `--surface-3` | propre au sens : `clock` (à venir), `inbox` (en réserve), `check` (terminé) | information sans jugement : « double », « à venir », « en réserve », « Terminé »                                                                                                                     |
+| Bleu du focus | `--focus`                        | `lock-open`                                                                 | inscriptions ouvertes : seul usage du bleu hors du focus                                                                                                                                             |
 
 - **Les quatre états d'un créneau**, partout dans le back office (pilotage, puis liste et fiche des pseudos) :
 
-  | État | Couleur | Icône | Quand |
-  |---|---|---|---|
-  | Inscriptions ouvertes | bleu du focus (`--focus`) | `lock-open` | aucun tirage lancé |
-  | Tirage provisoire | orange (`--accent`) | `hourglass` | tirage lancé, pas publié |
-  | Tirage publié | vert (`--success`) | `lock` | tirage publié, créneau pas terminé |
-  | Terminé | gris (`--text-muted`), ligne atténuée | `check` | tirage publié, heure de fin passée |
+  | État                  | Couleur                               | Icône       | Quand                              |
+  | --------------------- | ------------------------------------- | ----------- | ---------------------------------- |
+  | Inscriptions ouvertes | bleu du focus (`--focus`)             | `lock-open` | aucun tirage lancé                 |
+  | Tirage provisoire     | orange (`--accent`)                   | `hourglass` | tirage lancé, pas publié           |
+  | Tirage publié         | vert (`--success`)                    | `lock`      | tirage publié, créneau pas terminé |
+  | Terminé               | gris (`--text-muted`), ligne atténuée | `check`     | tirage publié, heure de fin passée |
 
   L'API donne l'état, terminé compris : les fronts ne le recalculent pas. La couleur de chaque état est écrite une seule fois, dans le `styles.css` du back office (`data-time-slot-state`, qui donne `--time-slot-state`) : la pastille de l'état et les ronds la lisent. Un créneau dont l'heure de fin est passée sans tirage publié garde son état, et ses gestes. Le libellé est toujours écrit : le lecteur d'écran l'entend, et l'icône reste décorative.
+
 - Une forme d'icône par couleur : aucune information ne passe par la couleur seule. Un statut a **toujours une icône et un libellé**.
 - **Deux formes seulement** :
   - **pastille** : icône et libellé, en ligne, dans un tableau, et pour l'état d'un créneau, sur sa tuile comme dans son résumé ;
@@ -301,13 +302,13 @@ Chaque carte : vignette, titre et méta en tête, jusqu'au bord ; dessous, sur t
 
 Le glisser-déposer (`@angular/cdk/drag-drop`) sert la souris et le tactile. Chaque action a aussi un chemin par bouton et menu, utilisable au clavier comme à la souris (WCAG 2.2, critère 2.5.7). Il n'y a pas de glisser-déposer au clavier.
 
-| Action | Glisser-déposer | Autre chemin |
-|---|---|---|
-| Programmer | scénario de la réserve → case | « Programmer sur… » sur le scénario de la réserve ; « Programmer ici » sur une case libre |
-| Déplacer une partie | partie → case | fiche → « Déplacer vers… » |
-| Échanger deux parties | partie → partie | fiche → « Déplacer vers… » → case occupée → « Échanger » |
-| Déprogrammer | partie → bac de réserve | fiche → « Déprogrammer » |
-| Modifier les places | — | fiche |
+| Action                | Glisser-déposer               | Autre chemin                                                                              |
+| --------------------- | ----------------------------- | ----------------------------------------------------------------------------------------- |
+| Programmer            | scénario de la réserve → case | « Programmer sur… » sur le scénario de la réserve ; « Programmer ici » sur une case libre |
+| Déplacer une partie   | partie → case                 | fiche → « Déplacer vers… »                                                                |
+| Échanger deux parties | partie → partie               | fiche → « Déplacer vers… » → case occupée → « Échanger »                                  |
+| Déprogrammer          | partie → bac de réserve       | fiche → « Déprogrammer »                                                                  |
+| Modifier les places   | —                             | fiche                                                                                     |
 
 - **« Programmer sur… » et « Déplacer vers… »** ouvrent un dialogue de placement : une grille créneaux × tables. Chaque case est soit « Choisir » (ou « Échanger »), soit éteinte avec son motif. « Échanger » n'apparaît que sur la première case d'une autre partie : la seconde case d'une partie double reste « Table prise ».
 - **« Programmer ici »** ouvre la liste des scénarios programmables sur cette case, puis, en dessous, ceux qui ne le sont pas, chacun avec sa raison.
@@ -345,14 +346,14 @@ La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque c
 - **Résumé du créneau choisi**, dans une carte : « Créneau 2 · 13 h 00 – 15 h 30 », sous le titre l'état du créneau en pastille, puis la demande (« 26 participants ») et la capacité (« 14 à 22 places », ou « 22 places » quand les deux bornes sont égales) en grand, et une jauge large.
   - Les **avertissements de suivi**, dans l'ordre reçu de l'API (trois au plus, les rouges d'abord), un par ligne : l'icône de son niveau, le titre en couleur, le détail en gris, et un bouton secondaire choisi selon le code, qui ouvre l'onglet où agir et y met le focus. L'API écrit le titre et le détail ; le front ne lit le code que pour choisir le bouton.
 
-    | Code | Niveau | Titre (exemple) | Bouton |
-    |---|---|---|---|
-    | `seats-missing` | rouge | « Il manque 4 places » | « Voir la réserve » |
-    | `participants-without-game` | rouge | « 3 participants sans partie » | « Voir les participants » (onglet Inscrits, puce « Sans partie ») |
-    | `participants-may-not-be-placed` | rouge | « 8 participants risquent de ne pas être placés » | « Voir les participants » (onglet Inscrits, puce « Risquent de ne pas être placés ») |
-    | `nearly-full` | jaune | « Presque plein » | « Voir la réserve » |
-    | `too-many-games` | jaune | « Trop de parties » | « Voir les parties » |
-    | `games-below-minimum` | jaune | « 3 parties sous leur minimum » | « Voir les parties » |
+    | Code                             | Niveau | Titre (exemple)                                   | Bouton                                                                               |
+    | -------------------------------- | ------ | ------------------------------------------------- | ------------------------------------------------------------------------------------ |
+    | `seats-missing`                  | rouge  | « Il manque 4 places »                            | « Voir la réserve »                                                                  |
+    | `participants-without-game`      | rouge  | « 3 participants sans partie »                    | « Voir les participants » (onglet Inscrits, puce « Sans partie »)                    |
+    | `participants-may-not-be-placed` | rouge  | « 8 participants risquent de ne pas être placés » | « Voir les participants » (onglet Inscrits, puce « Risquent de ne pas être placés ») |
+    | `nearly-full`                    | jaune  | « Presque plein »                                 | « Voir la réserve »                                                                  |
+    | `too-many-games`                 | jaune  | « Trop de parties »                               | « Voir les parties »                                                                 |
+    | `games-below-minimum`            | jaune  | « 3 parties sous leur minimum »                   | « Voir les parties »                                                                 |
 
   - Sans inscription : aucun avertissement, et « Aucune inscription sur ce créneau pour l'instant. » Les chiffres restent affichés, même à 0.
   - **Lancer le tirage** : sur le premier créneau dont le tirage n'est pas publié, le bouton principal « Lancer le tirage », sous la jauge. Sur les autres créneaux ouverts : « Le tirage de ce créneau se lance après la publication du créneau 2. » Le bouton ouvre une confirmation, en orange (principal) : « Lancer le tirage du créneau 2 ? », « 26 participants sont inscrits sur ce créneau, pour 14 à 22 places. », chaque avertissement de suivi rouge (titre et détail), puis « Les inscriptions du créneau seront fermées. Personne n'est notifié avant la publication. » ; Annuler · **Lancer le tirage**. Le geste réussi est annoncé, et la page relit le suivi.
@@ -410,20 +411,24 @@ La liste des pseudos, de participant et de MJ (ID-5), dans l'ordre naturel.
 
 ### Fiche d'un pseudo
 
-- **En-tête** : « Participants › pseudo », et dessous « Participant » ou « MJ ». Le crayon renomme le pseudo en place, comme sur la [fiche du MJ](#mj), à tout moment (ID-13). Un nom déjà pris par un autre pseudo est refusé sous le champ, suivi de « Voir sa fiche » ; le même refus, avec son lien, vaut sur la fiche du MJ.
+- **En-tête** : « Participants › pseudo », et dessous ses rôles en badges, icône et libellé : « MJ » (`dices`) en violet, « Organisateur » (`settings`) en turquoise, ou « Participant » (`user-round`) en gris s'il n'a aucun rôle ([jetons.md](jetons.md), couleurs des rôles). Le crayon renomme le pseudo en place, comme sur la [fiche du MJ](#mj), à tout moment (ID-13). Un nom déjà pris par un autre pseudo est refusé sous le champ, suivi de « Voir sa fiche » ; le même refus, avec son lien, vaut sur la fiche du MJ.
 - **Menu « ⋯ »** de l'en-tête (« Autres actions sur le pseudo ») : « Couper les liens », seulement si le pseudo a au moins un téléphone. Le geste coupe tous ses liens, sans confirmation ni verrou : le pseudo peut être relié de nouveau (ID-8). Le focus va ensuite à l'onglet Téléphones. Sans entrée, le menu n'apparaît pas.
   Puis, sur la fiche d'un participant, « Fusionner dans un autre pseudo… » (ID-11) ouvre un dialogue « Fusionner « Sven » dans un autre pseudo » : un champ « Chercher la destination », que l'API cherche comme la liste, puis les participants et les MJ trouvés, sauf la source, un bouton radio chacun, « MJ » en gris pour un MJ. La destination choisie, le dialogue lit dans l'API ce que la fusion fera, un paragraphe par fait, créneau par créneau : « Créneau 1 : « Lune » prend sa place à Néons, table Dragon. », « Créneau 1 : sa place à Néons, table Dragon, est perdue. », « Créneau 2 : « Lune » quitte le tirage, pour jouer la partie double du créneau d'avant. », « Créneau 1 : ses inscriptions à Néons et Brumes passent à « Lune ». », « Créneau 2 : son inscription à Dune passe à « Brann », en secours. » (destination MJ qui mène sur le créneau, IN-4), « Créneau 1 : son inscription à Épice est perdue. », « Créneau 2 : « Lune » devient sans partie, et reste dans le tirage. » ; puis « Son téléphone relié reviendra à l'identification. » et « « Sven » sera supprimé, et son pseudo redeviendra libre. ». Annuler · **Fusionner dans « Lune »**, en rouge. Un refus s'affiche dans le dialogue. La fusion faite, la fiche de la destination s'ouvre. Absent de la fiche d'un MJ (PR-12).
   Enfin, sur la fiche d'un participant, « Supprimer le pseudo », en rouge brique, avec une confirmation (ID-10) : « Supprimer le pseudo « Lune » ? », puis ce qui part avec lui (« Ses 2 inscriptions seront supprimées. », « Il sort des tirages, publiés compris : sa partie comptera un joueur de moins, et sa place ne sera proposée à personne. », « Son téléphone relié reviendra à l'identification. »), et « Le pseudo redeviendra libre. ». L'Organisateur revient ensuite à la liste. Absent de la fiche d'un MJ, qui se supprime par sa fiche de MJ (PR-12).
-- Trois [onglets de classeur](#onglets-de-classeur) : **Programme** (`calendar`), **Inscriptions** (`circle-check`), avec ses inscriptions sur les créneaux ouverts, et **Téléphones** (`smartphone`), avec leur nombre.
+- Quatre [onglets de classeur](#onglets-de-classeur) : **Programme** (`calendar`), **Inscriptions** (`circle-check`), avec ses inscriptions sur les créneaux ouverts, **Téléphones** (`smartphone`), avec leur nombre, et **Compte** (`lock`).
 - **Programme** : une frise verticale, un créneau par ligne. Le rond prend la couleur et l'icône de l'état du créneau ([Statuts](#statuts)). Le trait qui relie les ronds est plein pour ce qui est figé (tirage publié, terminé), en pointillés pour ce qui peut encore changer. Puis « Créneau 2 · 14 h 00 – 16 h 30 » et l'état, puis le résultat, en deux lignes, celui d'un tirage provisoire comme celui d'un tirage publié :
   - placé : « Table Dragon », puis « Néons, avec Élodie » ; une partie double sur ses deux créneaux ;
   - non placé : « Non placé » en rouge brique, puis « Il reste de la place à Dragon (3), Licorne (1). », ou « Toutes les parties du créneau sont complètes. » ;
   - MJ : « Mène Néons », puis « Table Dragon » ;
   - créneau tiré sans lui : « Pas dans le tirage » ;
   - créneau ouvert : « 2 inscriptions », ou « Aucune inscription » en gris.
-  Au plus un geste par ligne, en secondaire. Sur un créneau ouvert, « ✎ Modifier les inscriptions » ouvre l'onglet Inscriptions sur ce créneau. Sur un tirage provisoire où le pseudo n'est pas, et qu'il ne mène pas, « Rouvrir les inscriptions » (`lock-open`) reprend le geste du pilotage et sa confirmation rouge, mot pour mot, sans nommer le pseudo (TI-6) ; le créneau repasse en inscriptions ouvertes dans la frise. Sur un tirage publié, pas terminé, où le pseudo n'est pas, et qu'il ne mène pas, « + Ajouter comme non placé » (`plus`) ouvre une confirmation orange (principal) : « Ajouter « Sven » au tirage publié du créneau 1 ? », « « Sven » y entre comme non placé : sans prendre la place de personne. », « « Sven » reçoit la notification « pas de place pour toi », avec les tables où il reste de la place. L'ajout ne se défait pas. » ; Annuler · **Ajouter comme non placé** (ID-14). La frise montre alors « Non placé », avec les tables où il reste de la place.
+    Au plus un geste par ligne, en secondaire. Sur un créneau ouvert, « ✎ Modifier les inscriptions » ouvre l'onglet Inscriptions sur ce créneau. Sur un tirage provisoire où le pseudo n'est pas, et qu'il ne mène pas, « Rouvrir les inscriptions » (`lock-open`) reprend le geste du pilotage et sa confirmation rouge, mot pour mot, sans nommer le pseudo (TI-6) ; le créneau repasse en inscriptions ouvertes dans la frise. Sur un tirage publié, pas terminé, où le pseudo n'est pas, et qu'il ne mène pas, « + Ajouter comme non placé » (`plus`) ouvre une confirmation orange (principal) : « Ajouter « Sven » au tirage publié du créneau 1 ? », « « Sven » y entre comme non placé : sans prendre la place de personne. », « « Sven » reçoit la notification « pas de place pour toi », avec les tables où il reste de la place. L'ajout ne se défait pas. » ; Annuler · **Ajouter comme non placé** (ID-14). La frise montre alors « Non placé », avec les tables où il reste de la place.
 - **Inscriptions** : l'Organisateur inscrit le pseudo à sa place (ID-12), aux règles du téléphone (IN-2 à IN-4, IN-6). Une pilule par créneau ouvert, puis une case par partie qui y commence, enregistrée dès qu'on la coche ou la décoche, sans confirmation (IN-5 ne s'applique pas) ; pendant l'écriture, la ligne est atténuée, et un refus s'ouvre dans le dialogue d'erreur. Sous chaque partie, la [jauge](#jauge) et « 8 inscrits · 4 à 6 places · très demandée », ou « · 1 manquant » en jaune sous le minimum. La partie d'un MJ est grisée, case désactivée, « sa partie » ; sur un créneau où il mène : « Mène « Néons » : ses inscriptions sur ce créneau sont de secours. » Sans partie sur le créneau : « Sans partie sur ce créneau. », en rouge brique, avec « Retirer du tirage ». Sans créneau ouvert : « Aucun créneau n'a ses inscriptions ouvertes. »
 - **Téléphones** : « Relié à 9 h 12 », un par ligne, rien sur l'appareil. Sans téléphone : « Aucun téléphone relié : la personne lit ses résultats à l'accueil. »
+- **Compte** (ID-16) : « Ce pseudo a un compte du back office. », tel que l'API le dit (un MJ créé sans compte n'en a pas), ou, en gris, « Pas de compte : participant seulement. Donne-lui un rôle pour lui créer un compte. ». Puis « Rôles dans le back office » : deux cartes à cocher, **MJ** (`dices`, « Saisit ses scénarios et ses disponibilités. ») et **Organisateur** (`settings`, « Tous les droits du back office. »). Cochée, une carte prend la couleur de son rôle : fond à 14 %, bordure à 45 %. La case ne change qu'avec la fiche relue.
+  - Donner le rôle MJ se fait sans confirmation, et l'annonce « « Lune » est maintenant MJ. ». Donner le rôle d'Organisateur ouvre une confirmation orange : « Faire de « Lune » un Organisateur ? », « « Lune » aura tous les droits du back office. » ; Annuler · **Rendre Organisateur**. Un premier rôle crée le compte.
+  - Retirer un rôle ouvre une confirmation rouge : « Retirer le rôle MJ à « Lune » ? » (ou « le rôle d'Organisateur »), puis ce qui part : « Ses disponibilités seront supprimées. » pour le rôle MJ ; avec le dernier rôle, « Sans autre rôle, son compte sera supprimé, avec son mot de passe, son lien d'accès et ses sessions. « Lune » reste un participant, avec ses inscriptions et ses téléphones. » ; à un Organisateur qui reste MJ, « « Lune » reste MJ : son compte ne donnera plus accès qu'à sa fiche et aux scénarios de la convention. ». Un MJ qui a un scénario garde son rôle : le refus s'affiche dans le dialogue (PR-12).
+  - Sur son propre pseudo, la carte Organisateur est désactivée : « Tu ne peux pas te retirer ce rôle : un autre Organisateur peut le faire. ».
 
 ## Informations de connexion
 

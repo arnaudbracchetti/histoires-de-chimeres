@@ -271,6 +271,8 @@ describe('Liste « Participants » (ID-5)', () => {
         id: expect.any(String),
         nickname: 'Lune',
         gameMaster: false,
+        organizer: false,
+        account: null,
         signedUpGameIds: [neons],
         backupGameIds: [],
         timeSlots: [

@@ -12,12 +12,14 @@ export class PrismaAccountReader implements AccountReader {
       where: { id: accountId },
       select: {
         organizer: true,
+        participantId: true,
         participant: { select: { nickname: true, gameMaster: { select: { id: true } } } },
       },
     });
     if (!row) return null;
     return {
       nickname: row.participant.nickname,
+      participantId: row.participantId,
       organizer: row.organizer,
       gameMasterId: row.participant.gameMaster?.id ?? null,
     };

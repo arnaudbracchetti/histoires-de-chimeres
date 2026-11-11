@@ -1,5 +1,6 @@
 import type { ParticipantResultDto, ParticipantSheetDto } from '@chimeres/contract';
 import type { ParticipantResult } from '@chimeres/domain';
+import type { AccountRepository } from '../account/account-repository.js';
 import type { Clock } from '../clock.js';
 import type { ConventionRepository } from '../convention/convention-repository.js';
 import type { ScheduleReader } from '../game/schedule-reader.js';
@@ -9,7 +10,7 @@ import type { ParticipantReader } from './participant-reader.js';
 /**
  * La fiche d'un pseudo (ID-5) : son résultat sur chaque créneau, que la convention calcule avec le
  * catalogue entier, tirage provisoire compris, ses inscriptions, actives et de secours, d'après sa
- * situation, et ses téléphones reliés.
+ * situation, ses téléphones reliés et ses rôles (ID-16).
  */
 export class ReadParticipantSheet {
   constructor(
@@ -18,6 +19,7 @@ export class ReadParticipantSheet {
     private readonly schedule: ScheduleReader,
     private readonly reader: ParticipantReader,
     private readonly clock: Clock,
+    private readonly accounts: AccountRepository,
   ) {}
 
   /** La fiche, ou `null` si le pseudo n'existe pas. */
@@ -26,10 +28,11 @@ export class ReadParticipantSheet {
     const participant = convention.participants.find(({ id }) => id === participantId);
     // Un pseudo inconnu, même d'un id mal formé, ne va pas jusqu'à la lecture de ses téléphones.
     if (!participant) return null;
-    const [catalogue, games, linkedPhones] = await Promise.all([
+    const [catalogue, games, linkedPhones, account] = await Promise.all([
       this.scenarios.catalogue(),
       this.schedule.games(),
       this.reader.listLinkedPhones(participant.id),
+      this.accounts.findByParticipantId(participant.id),
     ]);
     const titles = new Map(games.map(({ id, scenario }) => [id, scenario.title]));
     const findGameTitle = (gameId: string) => titles.get(gameId)!;
@@ -39,9 +42,9 @@ export class ReadParticipantSheet {
     return {
       id: participant.id,
       nickname: participant.nickname.text,
-      gameMaster: convention.gameMasters.some(
-        (gameMaster) => gameMaster.participant.id === participant.id,
-      ),
+      gameMaster: convention.isParticipantGameMaster(participant.id),
+      organizer: account?.isOrganizer ?? false,
+      account: account && { onlyRole: account.findOnlyRole(convention) },
       signedUpGameIds: situation.signedUpGameIds,
       backupGameIds: situation.backupGameIds,
       timeSlots: convention

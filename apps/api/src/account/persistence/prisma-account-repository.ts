@@ -40,6 +40,11 @@ export class PrismaAccountRepository implements AccountRepository {
       update: data,
     });
   }
+
+  /** Ses sessions partent avec lui (clé étrangère en cascade). */
+  async remove(account: Account): Promise<void> {
+    await this.prisma.account.deleteMany({ where: { id: account.id } });
+  }
 }
 
 function restore(row: {

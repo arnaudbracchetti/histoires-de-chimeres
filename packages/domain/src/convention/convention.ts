@@ -386,6 +386,36 @@ export class Convention {
     );
   }
 
+  /** Le participant a le rôle MJ (ADR 0012). */
+  isParticipantGameMaster(participantId: string): boolean {
+    return this.allParticipants.findGameMasterOfParticipant(participantId) !== undefined;
+  }
+
+  /**
+   * Donne le rôle MJ à un participant existant, sous l'identifiant `id` (ID-4, ID-16) : il garde
+   * ses liens et ses inscriptions, et IN-4 s'applique dès lors. Donner le rôle à un MJ ne change
+   * rien.
+   */
+  appointGameMaster(id: string, participantId: string): void {
+    this.allParticipants = this.allParticipants.getParticipantsAfterAppointingGameMaster(
+      id,
+      participantId,
+    );
+  }
+
+  /**
+   * Retire le rôle MJ à un participant (ID-16, PR-12) : ses disponibilités sont supprimées, son
+   * participant reste, avec ses liens et ses inscriptions. Refusé tant que le MJ a un scénario : le
+   * catalogue, entier, le dit. Sans scénario, le MJ ne mène aucune partie. Retirer le rôle à un
+   * participant qui ne l'a pas ne change rien.
+   */
+  withdrawGameMasterRole(participantId: string, catalogue: ScenarioCatalogue): void {
+    this.allParticipants = this.allParticipants.getParticipantsAfterWithdrawingGameMasterRole(
+      participantId,
+      catalogue,
+    );
+  }
+
   /**
    * Supprime un MJ, et avec lui ses disponibilités et son participant, donc ses téléphones reliés,
    * ses inscriptions, son état sans partie et ses affectations de tous les tirages. Un MJ qui a au

@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import {
   AddLatecomerToPublishedDraw,
+  AppointRole,
   AddParticipant,
   MergeParticipant,
   ReadMergeVerdict,
@@ -24,6 +25,7 @@ import {
   SignUpParticipantForGame,
   WithdrawParticipantFromDraw,
   WithdrawParticipantFromGame,
+  WithdrawRole,
 } from '@chimeres/application';
 import {
   participantEndpoints,
@@ -32,6 +34,7 @@ import {
   type ResponseOf,
 } from '@chimeres/contract';
 import { Refusal } from '@chimeres/domain';
+import { ActingAccountId } from '../../account/http/acting-account-id.decorator.js';
 import { ZodPipe } from '../../http/zod.pipe.js';
 import { participantListQuerySchema } from './participant-list-query.schema.js';
 import { participantNicknameBodySchema } from './participant-nickname-body.schema.js';
@@ -56,6 +59,8 @@ export class ParticipantController {
     private readonly addLatecomerToPublishedDraw: AddLatecomerToPublishedDraw,
     @Inject(UnlinkParticipantPhones)
     private readonly unlinkParticipantPhones: UnlinkParticipantPhones,
+    @Inject(AppointRole) private readonly appointRole: AppointRole,
+    @Inject(WithdrawRole) private readonly withdrawRole: WithdrawRole,
   ) {}
 
   @Get(participantEndpoints.list.path)
@@ -163,6 +168,44 @@ export class ParticipantController {
     @Param('participantId') participantId: string,
   ): Promise<ResponseOf<typeof participantEndpoints.unlinkPhones>> {
     await this.unlinkParticipantPhones.execute(participantId);
+    return this.readSheetOrRefuse(participantId);
+  }
+
+  /** Donne le rôle Organisateur (ID-16), et rend la fiche relue. */
+  @Put(participantEndpoints.appointOrganizer.path)
+  async appointOrganizer(
+    @Param('participantId') participantId: string,
+  ): Promise<ResponseOf<typeof participantEndpoints.appointOrganizer>> {
+    await this.appointRole.execute(participantId, 'organizer');
+    return this.readSheetOrRefuse(participantId);
+  }
+
+  /** Retire le rôle Organisateur (ID-16), sauf à soi-même, et rend la fiche relue. */
+  @Delete(participantEndpoints.withdrawOrganizerRole.path)
+  async withdrawOrganizerRole(
+    @ActingAccountId() actingAccountId: string,
+    @Param('participantId') participantId: string,
+  ): Promise<ResponseOf<typeof participantEndpoints.withdrawOrganizerRole>> {
+    await this.withdrawRole.execute(actingAccountId, participantId, 'organizer');
+    return this.readSheetOrRefuse(participantId);
+  }
+
+  /** Donne le rôle MJ (ID-4, ID-16), et rend la fiche relue. */
+  @Put(participantEndpoints.appointGameMaster.path)
+  async appointGameMaster(
+    @Param('participantId') participantId: string,
+  ): Promise<ResponseOf<typeof participantEndpoints.appointGameMaster>> {
+    await this.appointRole.execute(participantId, 'game-master');
+    return this.readSheetOrRefuse(participantId);
+  }
+
+  /** Retire le rôle MJ (ID-16, PR-12), et rend la fiche relue. */
+  @Delete(participantEndpoints.withdrawGameMasterRole.path)
+  async withdrawGameMasterRole(
+    @ActingAccountId() actingAccountId: string,
+    @Param('participantId') participantId: string,
+  ): Promise<ResponseOf<typeof participantEndpoints.withdrawGameMasterRole>> {
+    await this.withdrawRole.execute(actingAccountId, participantId, 'game-master');
     return this.readSheetOrRefuse(participantId);
   }
 

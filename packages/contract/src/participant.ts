@@ -76,12 +76,26 @@ export type ParticipantLinkedPhoneDto = {
   linkedAt: string;
 };
 
+/** Un rôle du back office (ID-16) : Organisateur, porté par le compte, ou MJ, porté par le participant. */
+export type AccountRole = 'organizer' | 'game-master';
+
+/** Le compte d'un pseudo, sur sa fiche (ID-16). */
+export type ParticipantAccountDto = {
+  /** Son seul rôle, dont le retrait supprimerait le compte, ou `null` s'il en a deux. */
+  onlyRole: AccountRole | null;
+};
+
 /** La fiche d'un pseudo, de participant ou de MJ (ID-5). */
 export type ParticipantSheetDto = {
   id: string;
   /** Le pseudo tel qu'il a été saisi (ID-7). */
   nickname: string;
+  /** Son participant a le rôle MJ (ADR 0012). */
   gameMaster: boolean;
+  /** Son compte a le rôle Organisateur (ID-16). */
+  organizer: boolean;
+  /** Son compte du back office, ou `null` s'il n'en a pas (ID-16). */
+  account: ParticipantAccountDto | null;
   /** Les parties où son inscription est active (IN-4). */
   signedUpGameIds: string[];
   /** Ses inscriptions de secours, sur les créneaux où il mène (IN-4). */
@@ -183,5 +197,28 @@ export const participantEndpoints = {
   unlinkPhones: endpoint<ParticipantSheetDto, { participantId: string }>(
     'DELETE',
     'participants/:participantId/linked-phones',
+  ),
+  /**
+   * Les rôles du pseudo (ID-16), donnés ou retirés par un Organisateur ; chacun rend la fiche relue.
+   * Donner un premier rôle crée le compte, retirer le dernier le supprime, avec ses sessions. Retirer
+   * le rôle MJ est refusé par `game-master-has-scenarios` tant que le MJ a un scénario (PR-12) ; se
+   * retirer soi-même le rôle d'Organisateur, par `own-organizer-role-withdrawal`. Donner un rôle déjà
+   * là, ou retirer un rôle absent, ne change rien.
+   */
+  appointOrganizer: endpoint<ParticipantSheetDto, { participantId: string }>(
+    'PUT',
+    'participants/:participantId/roles/organizer',
+  ),
+  withdrawOrganizerRole: endpoint<ParticipantSheetDto, { participantId: string }>(
+    'DELETE',
+    'participants/:participantId/roles/organizer',
+  ),
+  appointGameMaster: endpoint<ParticipantSheetDto, { participantId: string }>(
+    'PUT',
+    'participants/:participantId/roles/game-master',
+  ),
+  withdrawGameMasterRole: endpoint<ParticipantSheetDto, { participantId: string }>(
+    'DELETE',
+    'participants/:participantId/roles/game-master',
   ),
 };

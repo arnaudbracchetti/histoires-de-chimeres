@@ -403,6 +403,11 @@ export const problemCatalogue: Catalogue = {
     detail: () => fr`Le mot de passe ne peut pas être ton pseudo : choisis une courte phrase.`,
     field: 'password',
   },
+  'own-organizer-role-withdrawal': {
+    title: 'Rôle gardé',
+    detail: () =>
+      fr`Tu ne peux pas te retirer toi-même le rôle d'Organisateur : un autre Organisateur peut le faire.`,
+  },
   'malformed-request': {
     title: 'Requête illisible',
     detail: () => 'Le serveur ne comprend pas cette requête : recharge la page, puis recommence.',

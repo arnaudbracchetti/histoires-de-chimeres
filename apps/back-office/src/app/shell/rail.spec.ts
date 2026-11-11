@@ -10,7 +10,12 @@ import {
 } from '@chimeres/contract';
 import { Rail } from './rail';
 
-const KAIROS: ConnectedAccountDto = { nickname: 'Kaïros', organizer: true, gameMasterId: null };
+const KAIROS: ConnectedAccountDto = {
+  nickname: 'Kaïros',
+  participantId: 'p-kairos',
+  organizer: true,
+  gameMasterId: null,
+};
 
 describe('Rail', () => {
   beforeEach(() => {

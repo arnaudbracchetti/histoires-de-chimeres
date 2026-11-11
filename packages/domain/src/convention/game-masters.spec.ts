@@ -37,6 +37,10 @@ function refusalOf(action: () => void): Refusal {
 const gameMastersOf = (convention: Convention) =>
   convention.gameMasters.map((gameMaster) => `${gameMaster.id} ${gameMaster.nickname.text}`);
 
+/** Les participants, en « identifiant pseudo ». */
+const participantsOf = (convention: Convention) =>
+  convention.participants.map((participant) => `${participant.id} ${participant.nickname.text}`);
+
 describe('MJ de la convention', () => {
   it('crée un MJ, avec le pseudo saisi sans les espaces du début et de la fin', () => {
     const convention = aConvention();
@@ -118,12 +122,6 @@ describe('MJ de la convention', () => {
   });
 
   describe('son participant (ADR 0012)', () => {
-    /** Les participants, en « identifiant pseudo ». */
-    const participantsOf = (convention: Convention) =>
-      convention.participants.map(
-        (participant) => `${participant.id} ${participant.nickname.text}`,
-      );
-
     it('crée le participant du MJ, sous le même pseudo', () => {
       const convention = aConvention();
 
@@ -224,5 +222,71 @@ describe('MJ de la convention', () => {
     const convention = aConvention();
 
     expect(refusalOf(() => action(convention)).code).toBe('game-master-not-found');
+  });
+  describe('rôle MJ donné à un participant ou retiré (ID-4, ID-16, PR-12)', () => {
+    it('donne le rôle MJ à un participant, qui garde son identifiant et son pseudo', () => {
+      const convention = aConvention();
+      convention.addParticipant('p1', 'Élodie');
+
+      convention.appointGameMaster('g1', 'p1');
+
+      expect(gameMastersOf(convention)).toEqual(['g1 Élodie']);
+      expect(participantsOf(convention)).toEqual(['p1 Élodie']);
+      expect(convention.isParticipantGameMaster('p1')).toBe(true);
+    });
+
+    it('ne change rien à un participant déjà MJ', () => {
+      const convention = aConvention();
+      convention.addGameMaster('g1', 'p-g1', 'Élodie');
+
+      convention.appointGameMaster('g2', 'p-g1');
+
+      expect(gameMastersOf(convention)).toEqual(['g1 Élodie']);
+    });
+
+    it('refuse de donner le rôle MJ à un participant inconnu', () => {
+      const convention = aConvention();
+
+      expect(refusalOf(() => convention.appointGameMaster('g1', 'x')).code).toBe(
+        'participant-not-found',
+      );
+    });
+
+    it('retire le rôle MJ, avec ses disponibilités, et garde son participant', () => {
+      const convention = aConvention();
+      convention.addTimeSlot('t1', TimeOfDay.parse('10:00'), TimeOfDay.parse('12:00'));
+      convention.addGameMaster('g1', 'p-g1', 'Élodie');
+      convention.declareGameMasterAvailability('g1', 't1');
+
+      convention.withdrawGameMasterRole('p-g1', ScenarioCatalogue.restore([]));
+
+      expect(convention.gameMasters).toEqual([]);
+      expect(convention.isParticipantGameMaster('p-g1')).toBe(false);
+      expect(participantsOf(convention)).toEqual(['p-g1 Élodie']);
+      expect(convention.countAvailabilitiesOnTimeSlot('t1')).toBe(0);
+    });
+
+    it('refuse de retirer le rôle MJ tant que le MJ a un scénario (PR-12)', () => {
+      const convention = aConvention();
+      convention.addGameMaster('g1', 'p-g1', 'Élodie');
+      const catalogue = ScenarioCatalogue.restore([
+        { id: 's1', gameMasterId: 'g1', duration: 1, minSeats: 3, maxSeats: 5 },
+      ]);
+
+      const refusal = refusalOf(() => convention.withdrawGameMasterRole('p-g1', catalogue));
+
+      expect(refusal.code).toBe('game-master-has-scenarios');
+      expect(refusal.params).toEqual({ scenarios: 1 });
+      expect(gameMastersOf(convention)).toEqual(['g1 Élodie']);
+    });
+
+    it('ne change rien à un participant qui n’est pas MJ', () => {
+      const convention = aConvention();
+      convention.addParticipant('p1', 'Élodie');
+
+      convention.withdrawGameMasterRole('p1', ScenarioCatalogue.restore([]));
+
+      expect(participantsOf(convention)).toEqual(['p1 Élodie']);
+    });
   });
 });

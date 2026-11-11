@@ -9,4 +9,6 @@ export interface AccountRepository {
   /** Le compte de ce participant, ou `null` s'il n'en a pas. */
   findByParticipantId(participantId: string): Promise<Account | null>;
   save(account: Account): Promise<void>;
+  /** Supprime le compte, avec ses sessions. */
+  remove(account: Account): Promise<void>;
 }

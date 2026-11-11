@@ -63,7 +63,12 @@ describe('Premier Organisateur de la configuration (ADR 0016)', () => {
 
     const response = await logIn('Kaïros', PASSWORD).expect(200);
 
-    expect(response.body).toEqual({ nickname: 'Kaïros', organizer: true, gameMasterId: null });
+    expect(response.body).toEqual({
+      nickname: 'Kaïros',
+      participantId: expect.any(String),
+      organizer: true,
+      gameMasterId: null,
+    });
     expect((await participants()).map(({ nickname }) => nickname)).toEqual(['Kaïros']);
   });
 
@@ -87,6 +92,7 @@ describe('Premier Organisateur de la configuration (ADR 0016)', () => {
     const response = await logIn('Élodie', PASSWORD).expect(200);
     expect(response.body).toEqual({
       nickname: 'Élodie',
+      participantId: expect.any(String),
       organizer: true,
       gameMasterId: elodie!.id,
     });

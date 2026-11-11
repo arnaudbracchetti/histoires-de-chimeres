@@ -28,12 +28,14 @@ import { Button } from '../ui/button';
 import { Confirmation } from '../ui/confirmation';
 import { Icon } from '../ui/icon';
 import { MoreMenu, type MoreMenuItem } from '../ui/more-menu';
+import { ParticipantAccount } from './participant-account';
 import { describeParticipantResult } from './participant-result';
 import { ParticipantSignUps } from './participant-sign-ups';
 import { ParticipantMerge } from './merge-dialog';
 import { removalConsequences } from './removal-consequences';
+import { RoleBadges } from './role-badges';
 
-type TabValue = 'program' | 'sign-ups' | 'phones';
+type TabValue = 'program' | 'sign-ups' | 'phones' | 'account';
 
 /** « Couper les liens », pour un pseudo qui a au moins un téléphone (ID-8). */
 const UNLINK_PHONES: MoreMenuItem = { value: 'unlink-phones', label: 'Couper les liens' };
@@ -46,15 +48,15 @@ const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', da
 
 /**
  * Fiche d'un pseudo, de participant ou de MJ (ID-5, docs/design/patterns.md, Fiche d'un pseudo) :
- * « Participants › pseudo », que le crayon renomme en place (ID-13), « Participant » ou « MJ »
- * dessous, puis trois onglets de classeur. « Programme » : la frise des créneaux, un rond à la
+ * « Participants › pseudo », que le crayon renomme en place (ID-13), ses rôles
+ * en badges dessous, puis quatre onglets de classeur. « Programme » : la frise des créneaux, un rond à la
  * couleur et à l'icône de l'état de chacun, et le résultat du pseudo, tirage provisoire compris ;
  * « Modifier les inscriptions » sur un créneau ouvert ouvre l'onglet suivant sur ce créneau ;
  * « Rouvrir les inscriptions » sur un tirage provisoire où il n'est pas, et qu'il ne mène
  * pas, reprend le geste du pilotage. « Ajouter comme non placé » sur un tirage publié, pas terminé,
  * où il n'est pas, l'y ajoute après une confirmation orange (ID-14).
  * « Inscriptions » : ses parties des créneaux ouverts, à cocher à sa place (ID-12).
- * « Téléphones » : l'heure de liaison de chacun.
+ * « Téléphones » : l'heure de liaison de chacun. « Compte » : ses rôles, donnés ou retirés (ID-16).
  * Le menu « ⋯ » de l'en-tête coupe tous les liens d'un pseudo qui a au moins un téléphone (ID-8),
  * puis fusionne dans un autre pseudo (ID-11) et supprime le pseudo d'un participant, pas d'un MJ
  * (ID-10, PR-12).
@@ -68,7 +70,9 @@ const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', da
     MoreMenu,
     NicknameEditor,
     PageHeader,
+    ParticipantAccount,
     ParticipantSignUps,
+    RoleBadges,
     Tab,
     TabContent,
     TabList,
@@ -108,7 +112,7 @@ const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', da
       </ng-container>
       <p appPageSubtitle class="role">
         @if (sheet(); as sheet) {
-          {{ sheet.gameMaster ? 'MJ' : 'Participant' }}
+          <app-role-badges [roles]="sheet" />
         }
       </p>
       @if (menu().length) {
@@ -137,6 +141,9 @@ const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', da
             <button ngTab id="tab-phones" type="button" value="phones">
               <app-icon name="smartphone" />Téléphones
               <span class="count">{{ formatCount(sheet.linkedPhones.length) }}</span>
+            </button>
+            <button ngTab id="tab-account" type="button" value="account">
+              <app-icon name="lock" />Compte
             </button>
           </div>
           <div ngTabPanel value="program" class="panel">
@@ -226,6 +233,15 @@ const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', da
               }
             </ng-template>
           </div>
+          <div ngTabPanel value="account" class="panel">
+            <ng-template ngTabContent>
+              <app-participant-account
+                [sheet]="sheet"
+                (changed)="resource.set($event)"
+                (refused)="resource.reload()"
+              />
+            </ng-template>
+          </div>
         </div>
       }
     </app-loadable>
@@ -242,9 +258,9 @@ const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', da
         max-width: 48rem;
       }
 
-      /* La ligne du rôle a sa place réservée : elle ne décale rien en apparaissant. */
+      /* La ligne des rôles a sa place réservée : elle ne décale rien en apparaissant. */
       .role {
-        min-height: calc(var(--font-size-meta) * var(--line-height-text));
+        min-height: calc(var(--font-size-meta) * var(--line-height-text) + 2px);
         margin: var(--space-xs) 0 0;
         color: var(--text-muted);
         font-size: var(--font-size-meta);

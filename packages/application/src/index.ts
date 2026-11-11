@@ -1,6 +1,7 @@
 export type { AccountReader } from './account/account-reader.js';
 export type { AccountRepository } from './account/account-repository.js';
 export type { AccountSessions } from './account/account-sessions.js';
+export { AppointRole } from './account/appoint-role.js';
 export { ChangeOwnPassword } from './account/change-own-password.js';
 export { CurrentPasswordWrongError } from './account/current-password-wrong.error.js';
 export type { FirstOrganizerFingerprint } from './account/first-organizer-fingerprint.js';
@@ -13,6 +14,7 @@ export { LogOut } from './account/log-out.js';
 export { NotLoggedInError } from './account/not-logged-in.error.js';
 export type { PasswordHasher } from './account/password-hasher.js';
 export { ReadOwnAccount } from './account/read-own-account.js';
+export { WithdrawRole } from './account/withdraw-role.js';
 export { WrongCredentialsError } from './account/wrong-credentials.error.js';
 export type { Clock } from './clock.js';
 export { changeConvention } from './convention/change-convention.js';
