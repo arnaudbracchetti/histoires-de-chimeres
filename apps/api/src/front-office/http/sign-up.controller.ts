@@ -2,7 +2,7 @@ import { Controller, Delete, HttpCode, HttpStatus, Inject, Param, Put, Req } fro
 import type { Request } from 'express';
 import { SignUpForGame, WithdrawFromDraw, WithdrawFromGame } from '@chimeres/application';
 import { signUpEndpoints, type ResponseOf } from '@chimeres/contract';
-import { linkedPhoneIdOf } from './linked-phone-cookie.js';
+import { readLinkedPhoneId } from './linked-phone-cookie.js';
 
 /**
  * L'inscription du pseudo du téléphone relié à une partie (IN-2), et sa participation au tirage d'un
@@ -22,7 +22,7 @@ export class SignUpController {
     @Req() request: Request,
     @Param('gameId') gameId: string,
   ): Promise<ResponseOf<typeof signUpEndpoints.signUp>> {
-    return this.signUpForGame.execute(linkedPhoneIdOf(request), gameId);
+    return this.signUpForGame.execute(readLinkedPhoneId(request), gameId);
   }
 
   @Delete(signUpEndpoints.withdraw.path)
@@ -31,7 +31,7 @@ export class SignUpController {
     @Req() request: Request,
     @Param('gameId') gameId: string,
   ): Promise<ResponseOf<typeof signUpEndpoints.withdraw>> {
-    return this.withdrawFromGame.execute(linkedPhoneIdOf(request), gameId);
+    return this.withdrawFromGame.execute(readLinkedPhoneId(request), gameId);
   }
 
   @Delete(signUpEndpoints.withdrawFromDraw.path)
@@ -40,6 +40,6 @@ export class SignUpController {
     @Req() request: Request,
     @Param('timeSlotId') timeSlotId: string,
   ): Promise<ResponseOf<typeof signUpEndpoints.withdrawFromDraw>> {
-    return this.withdrawFromDraw.execute(linkedPhoneIdOf(request), timeSlotId);
+    return this.withdrawFromDraw.execute(readLinkedPhoneId(request), timeSlotId);
   }
 }

@@ -3,7 +3,7 @@ import { ReadSignUpTracking, type SignUpTracking } from '@chimeres/application';
 import { signUpTrackingEndpoints, type ResponseOf } from '@chimeres/contract';
 import { toReserveDto } from '../../game/http/reserve-dto.js';
 import { writeDrawSignal } from '../../http/draw-signal-catalogue.js';
-import { verdictOf } from '../../http/problem-catalogue.js';
+import { buildVerdictRefusal } from '../../http/problem-catalogue.js';
 import { writeSignUpWarning } from '../../http/sign-up-warning-catalogue.js';
 
 @Controller()
@@ -40,7 +40,7 @@ function toDto({
       },
       reserve: slot.reserve.map(({ scenarioId, refusal }) => ({
         scenarioId,
-        refusal: refusal && verdictOf(refusal),
+        refusal: refusal && buildVerdictRefusal(refusal),
       })),
     })),
     reserve: toReserveDto(reserve),

@@ -24,7 +24,8 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 - **Sections**, une page chacune :
   - **Préparation** : Calendrier (écran d'accueil), MJ, Scénarios, Créneaux et tables ;
   - **Jour J** : Pilotage du jour J, Participants, Informations de connexion.
-- **Bas du rail** : l'utilisateur. Avant l'authentification, « Organisateur, sans authentification ».
+- **Bas du rail** : le pseudo de la personne connectée et « Se déconnecter ». Sans session, « Se connecter », qui mène à la page de connexion.
+- **Page de connexion** (`/gestion/connexion`), hors du rail : pseudo et mot de passe. Un refus efface la boîte de connexion et s'ouvre dans le dialogue d'erreur (voir [Erreur hors formulaire](#erreur-hors-formulaire)) ; le dialogue fermé, la boîte revient, pseudo gardé, mot de passe vidé, le focus dessus. Un pseudo inconnu et un mauvais mot de passe y donnent le même message (ADR 0018).
 - **La fiche d'un MJ** (MJ › pseudo) regroupe ses scénarios, ses disponibilités et ses parties. C'est le seul écran restreint à un MJ : il deviendra tout son espace avec l'authentification, sans le rail des Organisateurs ni le calendrier.
 
 ## En-tête de page

@@ -4,6 +4,7 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { API_PREFIX } from '@chimeres/contract';
+import { AccountModule } from './account/account.module.js';
 import { ConventionModule } from './convention/convention.module.js';
 import { DrawModule } from './draw/draw.module.js';
 import { FrontOfficeModule } from './front-office/front-office.module.js';
@@ -47,6 +48,7 @@ const fronts = existsSync(publicDir)
     ...fronts,
     PrismaModule,
     HealthModule,
+    AccountModule,
     ConventionModule,
     TimeSlotModule,
     TableModule,

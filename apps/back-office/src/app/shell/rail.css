@@ -117,6 +117,23 @@
     padding: 0 var(--space-s);
   }
 
+  .log-out {
+    width: 100%;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--surface-3);
+    }
+  }
+
+  .footer a.entry {
+    color: inherit;
+  }
+
   .toggle {
     align-self: flex-start;
   }

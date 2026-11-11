@@ -1,3 +1,5 @@
+export { Account, type AccountState } from './account/account.js';
+export { Password } from './account/password.js';
 export { ComparableName } from './comparable-name.js';
 export {
   Convention,

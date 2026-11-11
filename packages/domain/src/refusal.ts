@@ -148,6 +148,12 @@ export type RefusalParams = {
   'seats-min-below-one': Record<string, never>;
   /** Le maximum est sous le minimum. */
   'seats-out-of-order': Record<string, never>;
+  /** `min` : la longueur minimale d'un mot de passe, en caractères (ADR 0018). */
+  'password-too-short': { min: number };
+  /** `max` : la longueur maximale d'un mot de passe, en caractères (ADR 0018). */
+  'password-too-long': { max: number };
+  /** Le mot de passe est le pseudo du compte, comparé comme ID-7 (ADR 0018). */
+  'password-is-nickname': Record<string, never>;
 };
 
 export type RefusalCode = keyof RefusalParams;

@@ -19,7 +19,7 @@ import { PresenceCodeAttempts } from '../presence-code-attempts.js';
 import { linkPhoneBodySchema } from './link-phone-body.schema.js';
 import {
   clearLinkedPhoneCookie,
-  linkedPhoneIdOf,
+  readLinkedPhoneId,
   setLinkedPhoneCookie,
 } from './linked-phone-cookie.js';
 
@@ -35,7 +35,7 @@ export class LinkedPhoneController {
 
   @Get(linkedPhoneEndpoints.read.path)
   read(@Req() request: Request): Promise<ResponseOf<typeof linkedPhoneEndpoints.read>> {
-    return this.readLinkedPhone.execute(linkedPhoneIdOf(request));
+    return this.readLinkedPhone.execute(readLinkedPhoneId(request));
   }
 
   /** Les codes de présence faux comptent dans la limite d'essais de l'adresse IP (ID-2). */
@@ -48,7 +48,7 @@ export class LinkedPhoneController {
     @Body(new ZodPipe(linkPhoneBodySchema)) body: LinkPhoneBody,
   ): Promise<ResponseOf<typeof linkedPhoneEndpoints.link>> {
     const result = await this.attempts.guard(ip, () =>
-      this.identify.execute(body, linkedPhoneIdOf(request)),
+      this.identify.execute(body, readLinkedPhoneId(request)),
     );
     if (result.status === 'confirmation-needed') return result;
     setLinkedPhoneCookie(response, result.phoneId);
@@ -61,7 +61,7 @@ export class LinkedPhoneController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<ResponseOf<typeof linkedPhoneEndpoints.unlink>> {
-    await this.unlinkPhone.execute(linkedPhoneIdOf(request));
+    await this.unlinkPhone.execute(readLinkedPhoneId(request));
     clearLinkedPhoneCookie(response);
   }
 }

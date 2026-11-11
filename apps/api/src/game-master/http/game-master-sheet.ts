@@ -1,7 +1,7 @@
 import type { ReadGameMaster } from '@chimeres/application';
 import type { GameMasterSheetDto } from '@chimeres/contract';
 import { Refusal } from '@chimeres/domain';
-import { verdictOf } from '../../http/problem-catalogue.js';
+import { buildVerdictRefusal } from '../../http/problem-catalogue.js';
 
 /**
  * La fiche du MJ, chaque refus de retrait avec son motif et sa phrase. Un MJ inconnu répond 404,
@@ -18,7 +18,7 @@ export async function readSheetOrRefuse(
     ...sheet,
     withdrawals: sheet.withdrawals.map(({ timeSlotId, refusal }) => ({
       timeSlotId,
-      refusal: refusal && verdictOf(refusal),
+      refusal: refusal && buildVerdictRefusal(refusal),
     })),
   };
 }

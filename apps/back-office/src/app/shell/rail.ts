@@ -1,10 +1,13 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { AccountStore } from '../account/account-store';
 import { ConventionStore } from '../convention/convention-store';
 import { formatConventionDate } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
+import { ErrorDialog } from './error-dialog';
 import { Loadable } from './loadable';
+import { readProblem } from '../problem';
 
 /** Clé de l'état replié, mémorisé par navigateur. */
 const COLLAPSED_KEY = 'back-office.rail-collapsed';
@@ -46,7 +49,8 @@ function storeCollapsed(collapsed: boolean): void {
 
 /**
  * Rail latéral de la coquille. Replié, il ne garde que les icônes : le libellé reste dans le lien,
- * masqué à l'écran, et sert d'infobulle et de nom accessible.
+ * masqué à l'écran, et sert d'infobulle et de nom accessible. En bas, le pseudo de la personne
+ * connectée et « Se déconnecter » ; sans session, « Se connecter ».
  */
 @Component({
   selector: 'app-rail',
@@ -61,6 +65,10 @@ export class Rail {
   protected readonly convention = inject(ConventionStore).convention;
   protected readonly formatDate = formatConventionDate;
   protected readonly collapsed = signal(readCollapsed());
+  private readonly accountStore = inject(AccountStore);
+  protected readonly account = this.accountStore.value;
+  private readonly router = inject(Router);
+  private readonly errorDialog = inject(ErrorDialog);
 
   constructor() {
     const narrow = typeof matchMedia === 'function' ? matchMedia(NARROW) : undefined;
@@ -70,6 +78,17 @@ export class Rail {
       this.collapsed.set(event.matches || readCollapsed());
     narrow.addEventListener('change', follow);
     inject(DestroyRef).onDestroy(() => narrow.removeEventListener('change', follow));
+  }
+
+  /** Se déconnecter, puis la page de connexion. */
+  protected async logOut(): Promise<void> {
+    try {
+      await this.accountStore.logOut();
+      await this.router.navigateByUrl('/connexion');
+    } catch (error) {
+      const { notice } = readProblem(error);
+      if (notice) void this.errorDialog.open(notice);
+    }
   }
 
   protected toggle(): void {

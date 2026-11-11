@@ -386,6 +386,23 @@ export const problemCatalogue: Catalogue = {
     detail: () => 'Le maximum est sous le minimum : augmente-le, ou baisse le minimum.',
     field: 'seats.max',
   },
+  'password-too-short': {
+    title: 'Mot de passe trop court',
+    detail: ({ min }) =>
+      fr`Le mot de passe fait au moins ${countOf(min, 'caractère', 'caractères')} : une courte phrase convient.`,
+    field: 'password',
+  },
+  'password-too-long': {
+    title: 'Mot de passe trop long',
+    detail: ({ max }) =>
+      fr`Le mot de passe fait ${countOf(max, 'caractère', 'caractères')} au plus : raccourcis-le.`,
+    field: 'password',
+  },
+  'password-is-nickname': {
+    title: 'Mot de passe refusé',
+    detail: () => fr`Le mot de passe ne peut pas être ton pseudo : choisis une courte phrase.`,
+    field: 'password',
+  },
   'malformed-request': {
     title: 'Requête illisible',
     detail: () => 'Le serveur ne comprend pas cette requête : recharge la page, puis recommence.',
@@ -421,6 +438,22 @@ export const problemCatalogue: Catalogue = {
     field: 'presenceCode',
     status: 429,
   },
+  'too-many-login-attempts': {
+    title: "Trop d'essais",
+    detail: () => fr`Tu as fait trop d'essais de connexion : réessaie dans une minute.`,
+    status: 429,
+  },
+  'wrong-credentials': {
+    title: 'Pseudo ou mot de passe incorrect',
+    detail: () =>
+      fr`Vérifie ton pseudo et ton mot de passe. En cas d'oubli, demande un lien d'accès à un Organisateur.`,
+    status: 401,
+  },
+  'not-logged-in': {
+    title: 'Non connecté',
+    detail: () => fr`Ta session a pris fin : connecte-toi pour continuer.`,
+    status: 401,
+  },
   'phone-not-linked': {
     title: 'Téléphone relié à aucun pseudo',
     detail: () => 'Tape ton pseudo pour continuer.',
@@ -428,7 +461,8 @@ export const problemCatalogue: Catalogue = {
   },
   'cross-site-request': {
     title: 'Modification refusée',
-    detail: () => fr`Cette modification ne vient pas de l'application : recharge la page, puis recommence.`,
+    detail: () =>
+      fr`Cette modification ne vient pas de l'application : recharge la page, puis recommence.`,
     status: 403,
   },
   'push-not-configured': {
@@ -443,7 +477,7 @@ export const problemCatalogue: Catalogue = {
 };
 
 /** Le motif et la phrase d'un refus du domaine, tels que les Problem Details les donnent. */
-export function messageOf<C extends RefusalCode>(
+export function buildRefusalMessage<C extends RefusalCode>(
   code: C,
   params: RefusalParams[C],
 ): { title: string; detail: string } {
@@ -452,6 +486,6 @@ export function messageOf<C extends RefusalCode>(
 }
 
 /** Un refus du domaine rendu comme verdict d'une lecture, avec son motif et sa phrase. */
-export function verdictOf({ code, params }: Refusal): VerdictRefusalDto {
-  return { code, ...messageOf(code, params) };
+export function buildVerdictRefusal({ code, params }: Refusal): VerdictRefusalDto {
+  return { code, ...buildRefusalMessage(code, params) };
 }

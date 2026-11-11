@@ -1,4 +1,6 @@
-<app-rail />
+@if (withRail()) {
+  <app-rail />
+}
 <main>
   <router-outlet />
 </main>

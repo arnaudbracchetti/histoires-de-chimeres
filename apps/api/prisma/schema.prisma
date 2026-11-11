@@ -18,6 +18,9 @@ model Convention {
   /// Code de présence (ID-2) : tiré au hasard par la base à la création de la convention, il ne
   /// change plus. La fonction vient de la migration presence_code.
   presenceCode String        @default(dbgenerated("random_presence_code()"))
+  /// Empreinte SHA-256 du dernier couple ORGANIZER_PSEUDO + ORGANIZER_PASSWORD appliqué au
+  /// démarrage (ADR 0016) : une valeur inchangée ne s'applique pas deux fois.
+  firstOrganizerFingerprint String?
   timeSlots    TimeSlot[]
   tables       Table[]
   gameMasters  GameMaster[]
@@ -80,8 +83,33 @@ model Participant {
   signUps                SignUp[]
   withoutGameOnTimeSlots ParticipantWithoutGame[]
   drawAssignments        DrawAssignment[]
+  account                Account?
 
   @@index([conventionId])
+}
+
+/// Compte du back office (ADR 0015), hors de l'agrégat de la convention : un participant au plus
+/// en a un, et il part avec lui. Être MJ se lit sur le participant.
+model Account {
+  id            String           @id @db.Uuid
+  participantId String           @unique @db.Uuid
+  participant   Participant      @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  organizer     Boolean          @default(false)
+  /// Hachage scrypt du mot de passe, ou rien tant qu'aucun n'est choisi (ADR 0018).
+  passwordHash  String?
+  sessions      AccountSession[]
+}
+
+/// Session du back office (ADR 0019) : seule l'empreinte SHA-256 de son identifiant, valeur du
+/// cookie, est gardée. Elle vit 7 jours sans activité, 30 jours au plus, et part avec son compte.
+model AccountSession {
+  idHash       String   @id
+  accountId    String   @db.Uuid
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  openedAt     DateTime
+  lastActiveAt DateTime
+
+  @@index([accountId])
 }
 
 /// Téléphone relié à un pseudo (ADR 0009), hors de l'agrégat de la convention. Son identifiant,

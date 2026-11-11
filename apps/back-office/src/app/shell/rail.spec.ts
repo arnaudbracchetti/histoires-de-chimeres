@@ -2,8 +2,15 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { apiUrl, conventionEndpoints } from '@chimeres/contract';
+import {
+  accountEndpoints,
+  apiUrl,
+  conventionEndpoints,
+  type ConnectedAccountDto,
+} from '@chimeres/contract';
 import { Rail } from './rail';
+
+const KAIROS: ConnectedAccountDto = { nickname: 'Kaïros', organizer: true, gameMasterId: null };
 
 describe('Rail', () => {
   beforeEach(() => {
@@ -15,12 +22,28 @@ describe('Rail', () => {
 
   afterEach(() => vi.restoreAllMocks());
 
-  function render() {
+  /** Le rail, avec le compte connecté donné, ou sans session (401). */
+  function render(account: ConnectedAccountDto | null = KAIROS) {
     const fixture = TestBed.createComponent(Rail);
+    fixture.detectChanges();
+    // Le compte est lu une fois, par un store partagé : seul le premier rendu d'un test l'attend.
+    for (const request of TestBed.inject(HttpTestingController).match(
+      apiUrl(accountEndpoints.read),
+    )) {
+      if (account) request.flush(account);
+      else request.flush(null, { status: 401, statusText: 'Unauthorized' });
+    }
     fixture.detectChanges();
     const host = fixture.nativeElement as HTMLElement;
     const toggle = () => host.querySelector<HTMLButtonElement>('button[aria-expanded]')!;
-    return { fixture, host, toggle };
+    /** Sert la convention, puis attend que le rail soit stable. */
+    const settle = async () => {
+      TestBed.inject(HttpTestingController)
+        .expectOne(apiUrl(conventionEndpoints.read))
+        .flush({ id: 'c1', name: 'Histoires de Chimères 2027', date: null });
+      await fixture.whenStable();
+    };
+    return { fixture, host, toggle, settle };
   }
 
   it('est déplié par défaut', () => {
@@ -110,5 +133,38 @@ describe('Rail', () => {
     await fixture.whenStable();
 
     expect(host.querySelector('a.convention')?.textContent).toContain('samedi 13 mars 2027');
+  });
+
+  it('montre en bas le pseudo de la personne connectée et « Se déconnecter »', async () => {
+    const { host, settle } = render();
+    await settle();
+
+    const footer = host.querySelector('.footer')!;
+    expect(footer.querySelector('.user')?.textContent?.trim()).toBe('Kaïros');
+    expect(footer.querySelector('button.log-out')?.textContent?.trim()).toBe('Se déconnecter');
+  });
+
+  it('sans session, propose « Se connecter »', async () => {
+    const { host, settle } = render(null);
+    await settle();
+
+    const link = host.querySelector<HTMLAnchorElement>('.footer a')!;
+    expect(link.textContent?.trim()).toBe('Se connecter');
+    expect(link.getAttribute('href')).toBe('/connexion');
+    expect(host.querySelector('.footer .user')).toBeNull();
+  });
+
+  it('« Se déconnecter » supprime la session, puis propose « Se connecter »', async () => {
+    const { fixture, host, settle } = render();
+    await settle();
+
+    host.querySelector<HTMLButtonElement>('button.log-out')!.click();
+    const logOut = TestBed.inject(HttpTestingController).expectOne(apiUrl(accountEndpoints.logOut));
+    expect(logOut.request.method).toBe('DELETE');
+    logOut.flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('.footer a')?.textContent?.trim()).toBe('Se connecter');
   });
 });

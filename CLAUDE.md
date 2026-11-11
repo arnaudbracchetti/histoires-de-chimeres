@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Monorepo pnpm (Node 22, pnpm 12). Depuis la racine :
 
 - `pnpm dev:db` : PostgreSQL de dev dans Docker (port 5435). Avant le premier lancement : `cp apps/api/.env.example apps/api/.env`, puis `pnpm prisma:migrate`. La migration `default_convention` crée la convention, avec son nom provisoire, dans toute base qui n'en a pas. Le seed (`pnpm prisma:seed`) ne fait rien en attendant le seed de démonstration.
+- Back office en dev : se connecter avec le pseudo `Organisateur` et le mot de passe `mot de passe de dev` (`ORGANIZER_PSEUDO` / `ORGANIZER_PASSWORD` de `apps/api/.env.example` et du service `app` de Docker Compose, ADR 0016). Une `.env` antérieure doit les recevoir.
 - `pnpm dev` : compile les packages puis lance en parallèle leur watch, l'API (:3000), le front office (:4200) et le back office (:4201/gestion/). Les fronts passent par un proxy `/api` → :3000. L'API ne redémarre pas quand un package change : relancer `pnpm dev`.
 - `pnpm build`, `pnpm test`, `pnpm lint` : tous les paquets, dans l'ordre des dépendances.
 - Un seul fichier de test :
@@ -26,6 +27,7 @@ Monorepo pnpm (Node 22, pnpm 12). Depuis la racine :
 
 Pièges :
 
+- Safari refuse le cookie `Secure` de la session du back office sur `http://localhost` : la connexion y échoue en silence. En dev, utiliser Chrome ou Firefox (ADR 0019).
 - TypeScript reste en 6.0 (catalog de `pnpm-workspace.yaml`), car Angular 22 exige `>=6.0 <6.1`.
 - Le client Prisma est généré dans `apps/api/src/generated/` (ignoré par git). Les scripts `pre*` de l'API lancent `prisma generate`. `prisma migrate dev` ne le régénère pas : après un changement de schéma, lancer `pnpm --filter api exec prisma generate` avant le seed.
 - Un jeton d'injection (`Symbol`) vit dans son propre fichier (`<module>/<port>.token.ts`). S'il est défini dans `<module>.module.ts`, l'import circulaire module ↔ controller le rend `undefined` au moment du décorateur.

@@ -29,6 +29,9 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://chimeres:chimeres@postgres:5432/chimeres?schema=public
+      # Premier Organisateur de dev (ADR 0016), le même que dans apps/api/.env.example.
+      ORGANIZER_PSEUDO: Organisateur
+      ORGANIZER_PASSWORD: mot de passe de dev
     ports:
       - '8080:3000'
 

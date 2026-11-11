@@ -31,7 +31,7 @@ import {
   type SwapGamesBody,
 } from '@chimeres/contract';
 import { Refusal, type MovePlacement, type Placement } from '@chimeres/domain';
-import { verdictOf } from '../../http/problem-catalogue.js';
+import { buildVerdictRefusal } from '../../http/problem-catalogue.js';
 import { ZodPipe } from '../../http/zod.pipe.js';
 import { toReserveDto } from './reserve-dto.js';
 import {
@@ -138,11 +138,16 @@ export class ScheduleController {
 }
 
 function toPlacementDto({ timeSlotId, tableId, refusal, erasedDrawTimeSlotId }: Placement) {
-  return { timeSlotId, tableId, refusal: refusal && verdictOf(refusal), erasedDrawTimeSlotId };
+  return {
+    timeSlotId,
+    tableId,
+    refusal: refusal && buildVerdictRefusal(refusal),
+    erasedDrawTimeSlotId,
+  };
 }
 
 function toCellPlacementDto({ scenario, refusal, erasedDrawTimeSlotId }: ScenarioCellPlacement) {
-  return { scenario, refusal: refusal && verdictOf(refusal), erasedDrawTimeSlotId };
+  return { scenario, refusal: refusal && buildVerdictRefusal(refusal), erasedDrawTimeSlotId };
 }
 
 function toMovePlacementDto({ swapWith, removedSignUps, ...placement }: MovePlacement) {

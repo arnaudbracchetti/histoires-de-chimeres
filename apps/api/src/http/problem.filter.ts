@@ -8,7 +8,12 @@ import {
 } from '@nestjs/common';
 import { BaseExceptionFilter } from '@nestjs/core';
 import type { Response } from 'express';
-import { PhoneNotLinkedError, StaleConventionError } from '@chimeres/application';
+import {
+  NotLoggedInError,
+  PhoneNotLinkedError,
+  StaleConventionError,
+  WrongCredentialsError,
+} from '@chimeres/application';
 import type { ProblemCode, ProblemDto, RefusalCode, RefusalParams } from '@chimeres/contract';
 import { Refusal } from '@chimeres/domain';
 import { CrossSiteRequestError } from './cross-site-request.error.js';
@@ -27,7 +32,7 @@ export class ProblemFilter extends BaseExceptionFilter {
   private readonly logger = new Logger(ProblemFilter.name);
 
   override catch(error: unknown, host: ArgumentsHost): void {
-    const problem = this.problemOf(error);
+    const problem = this.buildProblem(error);
     if (!problem) return super.catch(error, host);
     host
       .switchToHttp()
@@ -39,7 +44,7 @@ export class ProblemFilter extends BaseExceptionFilter {
       .send(JSON.stringify(problem));
   }
 
-  private problemOf(error: unknown): ProblemDto | undefined {
+  private buildProblem(error: unknown): ProblemDto | undefined {
     if (error instanceof Refusal) {
       const code: RefusalCode = error.code;
       const status = problemCatalogue[code].status ?? HttpStatus.UNPROCESSABLE_ENTITY;
@@ -57,10 +62,16 @@ export class ProblemFilter extends BaseExceptionFilter {
       return problem(HttpStatus.BAD_REQUEST, 'malformed-request', {});
     }
     if (error instanceof TooManyAttemptsError) {
-      return problem(HttpStatus.TOO_MANY_REQUESTS, 'too-many-attempts', {});
+      return problem(HttpStatus.TOO_MANY_REQUESTS, error.code, {});
     }
     if (error instanceof PhoneNotLinkedError) {
       return problem(HttpStatus.UNAUTHORIZED, 'phone-not-linked', {});
+    }
+    if (error instanceof WrongCredentialsError) {
+      return problem(HttpStatus.UNAUTHORIZED, 'wrong-credentials', {});
+    }
+    if (error instanceof NotLoggedInError) {
+      return problem(HttpStatus.UNAUTHORIZED, 'not-logged-in', {});
     }
     if (error instanceof CrossSiteRequestError) {
       return problem(HttpStatus.FORBIDDEN, 'cross-site-request', {});

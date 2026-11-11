@@ -2,7 +2,12 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { apiUrl, conventionEndpoints, scenarioEndpoints } from '@chimeres/contract';
+import {
+  accountEndpoints,
+  apiUrl,
+  conventionEndpoints,
+  scenarioEndpoints,
+} from '@chimeres/contract';
 import { App } from './app';
 import { routes } from './app.routes';
 import { Announcer } from './shell/announcer';
@@ -27,6 +32,9 @@ describe('App', () => {
     TestBed.inject(HttpTestingController)
       .expectOne(apiUrl(conventionEndpoints.read))
       .flush({ id: 'c1', name: 'Histoires de Chimères', date: null, timeSlots: [], tables: [] });
+    TestBed.inject(HttpTestingController)
+      .expectOne(apiUrl(accountEndpoints.read))
+      .flush({ nickname: 'Kaïros', organizer: true, gameMasterId: null });
     await navigate('/');
     return { host: fixture.nativeElement as HTMLElement, navigate, router, fixture };
   }
@@ -43,6 +51,15 @@ describe('App', () => {
     const title = host.querySelector('main h1');
     expect(title?.textContent).toBe('Scénarios');
     expect(document.activeElement).toBe(title);
+  });
+
+  it('affiche la page de connexion sans le rail', async () => {
+    const { host, navigate } = await render();
+
+    await navigate('/connexion');
+
+    expect(host.querySelector('main h1')?.textContent).toBe('Connexion');
+    expect(host.querySelector('app-rail')).toBeNull();
   });
 
   it('annonce un message dans la région aria-live commune', async () => {

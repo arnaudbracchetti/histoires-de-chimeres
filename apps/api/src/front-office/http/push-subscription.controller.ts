@@ -10,7 +10,7 @@ import { PushNotConfiguredError } from '../../http/push-not-configured.error.js'
 import { ZodPipe } from '../../http/zod.pipe.js';
 import { PUSH_SETTINGS } from '../../notification/push-settings.token.js';
 import type { PushSettings } from '../../notification/push-settings.js';
-import { linkedPhoneIdOf } from './linked-phone-cookie.js';
+import { readLinkedPhoneId } from './linked-phone-cookie.js';
 import { pushSubscriptionBodySchema } from './push-subscription-body.schema.js';
 
 /** L'abonnement push du téléphone relié, et la clé publique VAPID avec laquelle il s'abonne. */
@@ -27,7 +27,7 @@ export class PushSubscriptionController {
     @Req() request: Request,
     @Body(new ZodPipe(pushSubscriptionBodySchema)) body: PushSubscriptionBody,
   ): Promise<ResponseOf<typeof pushSubscriptionEndpoints.save>> {
-    return this.savePushSubscription.execute(linkedPhoneIdOf(request), body);
+    return this.savePushSubscription.execute(readLinkedPhoneId(request), body);
   }
 
   @Get(pushSubscriptionEndpoints.readPublicKey.path)

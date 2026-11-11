@@ -1,4 +1,11 @@
 export {
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  accountEndpoints,
+  type ConnectedAccountDto,
+  type LogInBody,
+} from './account.js';
+export {
   CONVENTION_NAME_MAX_LENGTH,
   conventionEndpoints,
   type ConventionDto,

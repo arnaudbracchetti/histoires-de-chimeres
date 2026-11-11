@@ -1,7 +1,12 @@
-/** Trop de codes de présence faux depuis la même adresse IP (ID-2) : 429. */
+/**
+ * Trop d'essais depuis la même adresse IP : codes de présence faux (ID-2), ou essais de connexion
+ * au back office (ADR 0018). 429.
+ */
 export class TooManyAttemptsError extends Error {
-  constructor() {
-    super('too-many-attempts');
+  constructor(
+    readonly code: 'too-many-attempts' | 'too-many-login-attempts' = 'too-many-attempts',
+  ) {
+    super(code);
     this.name = 'TooManyAttemptsError';
   }
 }

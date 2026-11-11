@@ -3,12 +3,14 @@ import {
   CONTENT_WARNINGS_MAX_LENGTH,
   CONVENTION_NAME_MAX_LENGTH,
   NICKNAME_MAX_LENGTH,
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
   PRESENTATION_MAX_LENGTH,
   SCENARIO_TITLE_MAX_LENGTH,
   SYSTEM_MAX_LENGTH,
   TABLE_NAME_MAX_LENGTH,
 } from '@chimeres/contract';
-import { ContentWarnings, Convention, Scenario } from '@chimeres/domain';
+import { ContentWarnings, Convention, Password, Scenario } from '@chimeres/domain';
 
 describe('Bornes du contrat et du domaine', () => {
   it('le nom de la convention a la même longueur maximale', () => {
@@ -28,5 +30,10 @@ describe('Bornes du contrat et du domaine', () => {
     expect(SYSTEM_MAX_LENGTH).toBe(Scenario.SYSTEM_MAX_LENGTH);
     expect(PRESENTATION_MAX_LENGTH).toBe(Scenario.PRESENTATION_MAX_LENGTH);
     expect(CONTENT_WARNINGS_MAX_LENGTH).toBe(ContentWarnings.MAX_LENGTH);
+  });
+
+  it('le mot de passe d’un compte a les mêmes longueurs minimale et maximale', () => {
+    expect(PASSWORD_MIN_LENGTH).toBe(Password.MIN_LENGTH);
+    expect(PASSWORD_MAX_LENGTH).toBe(Password.MAX_LENGTH);
   });
 });

@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { LoginPage } from './account/login-page';
 import { CalendarPage } from './schedule/calendar-page';
 import { GameMasterPage } from './game-masters/game-master-page';
 import { GameMastersPage } from './game-masters/game-masters-page';
@@ -15,6 +16,7 @@ import { leaveUnsaved } from './shell/leave-unsaved';
  */
 export const routes: Routes = [
   { path: '', title: 'Calendrier', component: CalendarPage },
+  { path: 'connexion', title: 'Connexion', component: LoginPage },
   { path: 'mj', title: 'MJ', component: GameMastersPage },
   { path: 'mj/:id', title: 'Fiche du MJ', component: GameMasterPage },
   {
