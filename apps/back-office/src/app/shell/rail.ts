@@ -5,6 +5,8 @@ import { formatConventionDate } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { Loadable } from './loadable';
+import { computed } from '@angular/core';
+import { AccountsStore } from '../prototype-comptes/accounts-store';
 
 /** Clé de l'état replié, mémorisé par navigateur. */
 const COLLAPSED_KEY = 'back-office.rail-collapsed';
@@ -56,8 +58,20 @@ function storeCollapsed(collapsed: boolean): void {
   styleUrl: './rail.css',
 })
 export class Rail {
-  protected readonly preparation = PREPARATION;
-  protected readonly dayOf = DAY_OF;
+  // PROTOTYPE JETABLE (#169) : A ajoute « Comptes » ; B et C mènent « Participants » à la copie.
+  private readonly proto = inject(AccountsStore);
+  protected readonly preparationEntries = computed(() =>
+    this.proto.variant() === 'A'
+      ? [...PREPARATION, { label: 'Comptes', icon: 'lock', link: '/prototype-comptes' }]
+      : PREPARATION,
+  );
+  protected readonly dayOfEntries = computed(() =>
+    this.proto.variant() === 'A'
+      ? DAY_OF
+      : DAY_OF.map((entry) =>
+          entry.link === '/participants' ? { ...entry, link: '/prototype-comptes/pseudos' } : entry,
+        ),
+  );
   protected readonly convention = inject(ConventionStore).convention;
   protected readonly formatDate = formatConventionDate;
   protected readonly collapsed = signal(readCollapsed());

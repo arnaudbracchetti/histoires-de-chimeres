@@ -39,5 +39,24 @@ export const routes: Routes = [
     title: 'Informations de connexion',
     loadComponent: () => import('./poster/poster-page').then((m) => m.PosterPage),
   },
+  // PROTOTYPE JETABLE (#169) : créer un compte et changer ses rôles.
+  {
+    path: 'prototype-comptes',
+    title: 'Comptes',
+    loadComponent: () =>
+      import('./prototype-comptes/variant-a-accounts-page').then((m) => m.VariantAAccountsPage),
+  },
+  {
+    path: 'prototype-comptes/pseudos',
+    title: 'Participants',
+    loadComponent: () =>
+      import('./prototype-comptes/variant-bc-pages').then((m) => m.ProtoPseudosPage),
+  },
+  {
+    path: 'prototype-comptes/pseudos/:id',
+    title: 'Fiche du pseudo',
+    loadComponent: () =>
+      import('./prototype-comptes/variant-bc-pages').then((m) => m.ProtoPseudoSheetPage),
+  },
   { path: '**', redirectTo: '' },
 ];

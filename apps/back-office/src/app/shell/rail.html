@@ -19,7 +19,7 @@
 <nav aria-label="Navigation principale">
   <h2 class="section">Préparation</h2>
   <ul>
-    @for (entry of preparation; track entry.link) {
+    @for (entry of preparationEntries(); track entry.link) {
       <li>
         <a
           class="entry"
@@ -37,7 +37,7 @@
 
   <h2 class="section">Jour J</h2>
   <ul>
-    @for (entry of dayOf; track entry.link) {
+    @for (entry of dayOfEntries(); track entry.link) {
       <li>
         <a
           class="entry"
@@ -56,7 +56,7 @@
 <div class="footer">
   <p class="user">
     <app-icon name="user-round" />
-    <span class="label">Organisateur, sans authentification</span>
+    <span class="label">Aldric · Organisateur (proto)</span>
   </p>
   <button
     type="button"

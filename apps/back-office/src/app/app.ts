@@ -5,11 +5,12 @@ import { filter, skip } from 'rxjs';
 import { Announcer } from './shell/announcer';
 import { AlertStack } from './shell/alert-stack';
 import { Rail } from './shell/rail';
+import { PrototypeSwitcher } from './prototype-comptes/prototype-switcher';
 
 /** Coquille du back office : rail, page courante, alertes et région `aria-live`. */
 @Component({
   selector: 'app-root',
-  imports: [AlertStack, Rail, RouterOutlet],
+  imports: [AlertStack, PrototypeSwitcher, Rail, RouterOutlet],
   styleUrl: './app.css',
   templateUrl: './app.html',
 })
