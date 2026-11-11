@@ -20,6 +20,7 @@ describe('PushNotifications', () => {
     subscribe: ReturnType<typeof vi.fn>;
     installedApp: ReturnType<typeof vi.fn>;
     iOSVersion: ReturnType<typeof vi.fn>;
+    androidBrowser: ReturnType<typeof vi.fn>;
     onPermissionChange: ReturnType<typeof vi.fn>;
   };
   /** Ce que le navigateur appelle quand la permission change, sans quitter la page. */
@@ -37,6 +38,7 @@ describe('PushNotifications', () => {
       subscribe: vi.fn(async () => subscription),
       installedApp: vi.fn(() => false),
       iOSVersion: vi.fn(() => null),
+      androidBrowser: vi.fn(() => 'chrome'),
       onPermissionChange: vi.fn((listener: () => void) => (permissionChanged = listener)),
     };
     TestBed.configureTestingModule({
@@ -235,10 +237,14 @@ describe('PushNotifications', () => {
       expect(TestBed.inject(PushNotifications).settingsPath).toBe('installed-app');
     });
 
-    it('passe par l’icône à gauche de l’adresse dans le navigateur', () => {
-      browser.supported.mockReturnValue(false);
+    it.each(['chrome', 'samsung', 'firefox'])(
+      'passe par les réglages du navigateur, propres à %s',
+      (androidBrowser) => {
+        browser.supported.mockReturnValue(false);
+        browser.androidBrowser.mockReturnValue(androidBrowser);
 
-      expect(TestBed.inject(PushNotifications).settingsPath).toBe('browser');
-    });
+        expect(TestBed.inject(PushNotifications).settingsPath).toBe(androidBrowser);
+      },
+    );
   });
 });

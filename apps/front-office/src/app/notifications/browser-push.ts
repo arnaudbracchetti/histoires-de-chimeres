@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { SwPush } from '@angular/service-worker';
 import { EMPTY, type Observable } from 'rxjs';
 import type { PushSubscriptionBody } from '@chimeres/contract';
+import { readAndroidBrowser, type AndroidBrowser } from '../installation/android-browser';
 
 /**
  * Le push du navigateur : la permission des notifications, et l'abonnement par le service worker
@@ -63,7 +64,12 @@ export class BrowserPush {
     return readIOSVersion(this.window?.navigator.userAgent ?? '');
   }
 
-  /** L'application installée, ouverte hors du navigateur : ses réglages ne sont pas ceux de Chrome. */
+  /** Le navigateur d'Android, qui place les réglages du site à sa façon. */
+  androidBrowser(): AndroidBrowser {
+    return readAndroidBrowser(this.window?.navigator.userAgent ?? '');
+  }
+
+  /** L'application installée, ouverte hors du navigateur : ses réglages ne sont pas ceux du navigateur. */
   installedApp(): boolean {
     return !!this.window?.matchMedia?.('(display-mode: standalone)').matches;
   }

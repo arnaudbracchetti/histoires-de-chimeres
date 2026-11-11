@@ -1,6 +1,7 @@
 import { computed, effect, inject, Injectable, signal } from '@angular/core';
 import { pushSubscriptionEndpoints } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
+import type { AndroidBrowser } from '../installation/android-browser';
 import { LinkedPhone } from '../linked-phone';
 import { PageVisibility } from '../participant-data/page-visibility';
 import { readProblem } from '../problem';
@@ -15,9 +16,9 @@ export type PushStatus = 'unsupported' | 'not-on-home-screen' | NotificationPerm
 
 /**
  * Où réactiver des notifications bloquées : les Réglages de l'iPhone, les infos de l'application
- * installée sur Android, ou l'icône à gauche de l'adresse dans le navigateur.
+ * installée sur Android, ou les réglages du site, propres à chaque navigateur.
  */
-export type SettingsPath = 'iphone' | 'installed-app' | 'browser';
+export type SettingsPath = 'iphone' | 'installed-app' | AndroidBrowser;
 
 /** Le push arrive sur iPhone avec iOS 16.4, pour l'application ajoutée à l'écran d'accueil. */
 function canReceivePushOnHomeScreen([major, minor]: [number, number]): boolean {
@@ -63,7 +64,7 @@ export class PushNotifications {
     ? 'iphone'
     : this.installedApp
       ? 'installed-app'
-      : 'browser';
+      : this.browser.androidBrowser();
 
   constructor() {
     // Hors de l'écran d'accueil, la clé dit encore si le serveur envoie quelque chose.

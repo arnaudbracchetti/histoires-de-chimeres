@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { inject, Injectable } from '@angular/core';
+import { readAndroidBrowser, type AndroidBrowser } from './android-browser';
 import { readIPhoneBrowser, type IPhoneBrowser } from './iphone-browser';
 
 const ADVICE_DISMISSED_KEY = 'installAdviceDismissed';
@@ -18,6 +19,11 @@ export class BrowserInstall {
 
   isAndroid(): boolean {
     return /Android/i.test(this.window?.navigator.userAgent ?? '');
+  }
+
+  /** Le navigateur d'Android, qui place l'ajout à l'écran d'accueil à sa façon. */
+  androidBrowser(): AndroidBrowser {
+    return readAndroidBrowser(this.window?.navigator.userAgent ?? '');
   }
 
   /** Le navigateur de l'iPhone, qui place « Partager » à sa façon. */
