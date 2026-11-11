@@ -4,6 +4,16 @@
     min-height: 100vh;
   }
 
+  /* PROTOTYPE JETABLE (#171) : barre en haut, variante B. */
+  :host(.top-bar) {
+    padding-top: 3.5rem;
+  }
+
+  :host(.top-bar) app-rail {
+    top: 3.5rem;
+    height: calc(100vh - 3.5rem);
+  }
+
   main {
     flex: 1;
     min-width: 0;

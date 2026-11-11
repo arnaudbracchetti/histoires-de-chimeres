@@ -5,16 +5,21 @@ import { filter, skip } from 'rxjs';
 import { Announcer } from './shell/announcer';
 import { AlertStack } from './shell/alert-stack';
 import { Rail } from './shell/rail';
+import { MjShell } from './prototype-espace-mj/mj-shell';
+import { PrototypeState } from './prototype-espace-mj/prototype-state';
+import { PrototypeSwitcher } from './prototype-espace-mj/prototype-switcher';
 
 /** Coquille du back office : rail, page courante, alertes et région `aria-live`. */
 @Component({
   selector: 'app-root',
-  imports: [AlertStack, Rail, RouterOutlet],
+  imports: [AlertStack, MjShell, PrototypeSwitcher, Rail, RouterOutlet],
+  host: { '[class.top-bar]': 'proto.active() && proto.variant() === "B"' },
   styleUrl: './app.css',
   templateUrl: './app.html',
 })
 export class App {
   protected readonly announcer = inject(Announcer);
+  protected readonly proto = inject(PrototypeState);
 
   constructor() {
     const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;

@@ -39,5 +39,33 @@ export const routes: Routes = [
     title: 'Informations de connexion',
     loadComponent: () => import('./poster/poster-page').then((m) => m.PosterPage),
   },
+  // PROTOTYPE JETABLE (#171) : l'espace du MJ.
+  {
+    path: 'prototype-espace-mj/ma-fiche',
+    title: 'Ma fiche',
+    loadComponent: () => import('./prototype-espace-mj/mj-pages').then((m) => m.ProtoMySheetPage),
+  },
+  {
+    path: 'prototype-espace-mj/disponibilites',
+    title: 'Mes disponibilités',
+    data: { only: 'availabilities' },
+    loadComponent: () => import('./prototype-espace-mj/mj-pages').then((m) => m.ProtoMySheetPage),
+  },
+  {
+    path: 'prototype-espace-mj/mes-scenarios',
+    title: 'Mes scénarios',
+    data: { only: 'scenarios' },
+    loadComponent: () => import('./prototype-espace-mj/mj-pages').then((m) => m.ProtoMySheetPage),
+  },
+  {
+    path: 'prototype-espace-mj/scenarios',
+    title: 'Scénarios de la convention',
+    loadComponent: () => import('./prototype-espace-mj/mj-pages').then((m) => m.ProtoCataloguePage),
+  },
+  {
+    path: 'prototype-espace-mj/accueil',
+    title: 'Accueil',
+    loadComponent: () => import('./prototype-espace-mj/mj-pages').then((m) => m.ProtoDashboardPage),
+  },
   { path: '**', redirectTo: '' },
 ];
