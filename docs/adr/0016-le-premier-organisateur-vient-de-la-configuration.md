@@ -25,4 +25,4 @@ Un Organisateur ne peut ni se retirer lui-même le rôle d'Organisateur, ni supp
 ## Consequences
 
 - La base garde l'empreinte de la dernière valeur appliquée.
-- Les suites de bout en bout peuvent obtenir un Organisateur par ces mêmes variables, ou par la même commande de l'application.
+- Les suites de bout en bout n'utilisent pas ces variables : la remise à zéro de leur base efface ce compte. Elles insèrent leur propre session (ADR 0020).
