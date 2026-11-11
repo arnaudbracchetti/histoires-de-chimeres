@@ -107,6 +107,10 @@ _Avoid_: Report, transfert, regrouper
 Code unique de la convention, fixé à sa création, que le QR code affiché sur place transmet au téléphone. Sans lui, on ne peut pas s'identifier, donc pas entrer dans le front office ; avec lui, on entre à toute heure, jusqu'à la fin de la convention. Il n'identifie personne.
 _Avoid_: Code de salle, code d'accès, code d'accès anticipé, mot de passe
 
+**Affiche** · `Poster`:
+Feuille à afficher sur place, qui porte le QR code et le code de présence pour entrer dans le front office.
+_Avoid_: Poster, flyer, page QR
+
 **MJ** · `GameMaster`:
 Personne connue des Organisateurs avant la convention, qui mène (`lead`) des parties ; elle ne joue pas sur le ou les créneaux où elle mène une partie, et peut jouer sur les autres. Un MJ est un participant, qui a en plus ce rôle : son pseudo est celui de son participant.
 _Avoid_: Meneur, GM, animateur, Gm (abrégé)
