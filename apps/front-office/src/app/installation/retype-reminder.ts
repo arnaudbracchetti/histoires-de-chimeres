@@ -4,24 +4,29 @@ import { PresenceCodeStore } from '../presence-code-store';
 
 /**
  * Le pense-bête de l'iPhone avant l'ajout à l'écran d'accueil : l'application installée ne reçoit
- * ni le code de présence ni le pseudo tapé dans le navigateur, qu'on y retape.
+ * ni le code de présence ni le pseudo tapé dans le navigateur, qu'on y retape. Sans code reçu par le
+ * QR code, il dit seulement où le trouver.
  */
 @Component({
   selector: 'app-retype-reminder',
   template: `
     <div class="reminder">
-      <span class="over">{{ nickname() ? "Dans l'application, tu retaperas" : "L'application te demandera ce code" }}</span>
-      <dl>
-        @if (presenceCode()) {
-          <dt>Code de présence</dt>
-          <dd class="code">{{ presenceCode() }}</dd>
-        }
-        @if (nickname()) {
-          <dt>Ton pseudo</dt>
-          <dd>{{ nickname() }}</dd>
-        }
-      </dl>
-      <p class="meta">{{ whereToFind }}</p>
+      @if (presenceCode() || nickname()) {
+        <span class="over">{{ nickname() ? "Dans l'application, tu retaperas" : "L'application te demandera ce code" }}</span>
+        <dl>
+          @if (presenceCode()) {
+            <dt>Code de présence</dt>
+            <dd class="code">{{ presenceCode() }}</dd>
+          }
+          @if (nickname()) {
+            <dt>Ton pseudo</dt>
+            <dd>{{ nickname() }}</dd>
+          }
+        </dl>
+      } @else {
+        <span class="over">L'application te demandera le code de présence</span>
+      }
+      <p class="meta">{{ presenceCode() ? ifForgotten : whereToFind }}</p>
     </div>
   `,
   styles: `
@@ -70,5 +75,6 @@ export class RetypeReminder {
   readonly nickname = input<string | null>(null);
 
   protected readonly presenceCode = inject(PresenceCodeStore).code;
-  protected readonly whereToFind = fr`Si tu l'oublies, le code est écrit sous le QR code, sur l'affiche de l'accueil.`;
+  protected readonly ifForgotten = fr`Si tu l'oublies, le code est écrit sous le QR code, sur l'affiche de l'accueil.`;
+  protected readonly whereToFind = fr`Il est écrit sous le QR code, sur l'affiche de l'accueil.`;
 }

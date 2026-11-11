@@ -7,8 +7,10 @@ import {
 import { provideLocationMocks } from '@angular/common/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
+import { EMPTY } from 'rxjs';
 import { apiUrl, frontOfficeEndpoints, linkedPhoneEndpoints } from '@chimeres/contract';
 import { App } from './app';
+import { BrowserPush } from './notifications/browser-push';
 import { routes } from './app.routes';
 
 type Respond = (request: TestRequest) => void;
@@ -82,6 +84,94 @@ describe('App', () => {
     const page = await open(opened, notLinked);
 
     expect(heading(page)).toBe('Ton pseudo');
+  });
+
+  describe('sur un iPhone sous iOS 18.6 (détection simulée)', () => {
+    /** Dans Safari, `Notification` manque ; dans l'application de l'écran d'accueil, il y est. */
+    function onIPhone(inApp: boolean): void {
+      TestBed.overrideProvider(BrowserPush, {
+        useValue: {
+          messages: EMPTY,
+          supported: () => inApp,
+          permission: () => 'default',
+          installedApp: () => inApp,
+          iOSVersion: () => [18, 6],
+          onPermissionChange: () => undefined,
+        },
+      });
+    }
+
+    it('montre d’abord « Installe l’application » dans Safari, avec le code à retenir (stories 31 et 32)', async () => {
+      onIPhone(false);
+      localStorage.setItem('presenceCode', 'K7M2');
+
+      const page = await open(opened, notLinked);
+
+      expect(heading(page)).toBe("Installe l'application");
+      expect(page.querySelector('.reminder')?.textContent).toContain('K7M2');
+      expect(page.querySelector('input')).toBeNull();
+    });
+
+    it('demande le pseudo dans Safari après « Continuer sans », que la confirmation propose d’abord d’éviter (story 34)', async () => {
+      onIPhone(false);
+      localStorage.setItem('presenceCode', 'K7M2');
+      const fixture = TestBed.createComponent(App);
+      await TestBed.inject(Router).navigateByUrl('/');
+      fixture.detectChanges();
+      const http = TestBed.inject(HttpTestingController);
+      opened(http.expectOne(apiUrl(frontOfficeEndpoints.read)));
+      notLinked(http.expectOne(apiUrl(linkedPhoneEndpoints.read)));
+      await fixture.whenStable();
+      const page = fixture.nativeElement as HTMLElement;
+      const button = (root: ParentNode, name: string) =>
+        [...root.querySelectorAll('button')].find((b) => b.textContent?.trim() === name)!;
+      const confirmation = () => document.querySelector<HTMLElement>('[role="alertdialog"]')!;
+
+      button(page, 'Continuer dans Safari, sans notifications').click();
+      await fixture.whenStable();
+      expect(confirmation().textContent).toContain('Sans elles, tu ne sauras ni ta table');
+      button(confirmation(), "Installer l'application").click();
+      await fixture.whenStable();
+      expect(heading(page)).toBe("Installe l'application");
+
+      button(page, 'Continuer dans Safari, sans notifications').click();
+      await fixture.whenStable();
+      button(confirmation(), 'Continuer sans').click();
+      await fixture.whenStable();
+      expect(heading(page)).toBe('Ton pseudo');
+    });
+
+    it('montre « Installe l’application » dans Safari avant de demander le code qui manque : il ne se tape qu’une fois', async () => {
+      onIPhone(false);
+
+      const page = await open(opened, notLinked);
+
+      expect(heading(page)).toBe("Installe l'application");
+      expect(page.querySelector('.reminder')?.textContent).toContain(
+        "Il est écrit sous le QR code, sur l'affiche de l'accueil.",
+      );
+    });
+
+    it('demande le code, puis le pseudo, dans l’application installée (story 33)', async () => {
+      onIPhone(true);
+
+      expect(heading(await open(opened, notLinked))).toBe('Code de présence');
+    });
+
+    it('demande le pseudo dans l’application installée qui a le code (story 33)', async () => {
+      onIPhone(true);
+      localStorage.setItem('presenceCode', 'K7M2');
+
+      expect(heading(await open(opened, notLinked))).toBe('Ton pseudo');
+    });
+
+    it('entre dans la coquille, dans Safari, quand le téléphone est déjà relié', async () => {
+      onIPhone(false);
+
+      const page = await open(opened, linked);
+
+      expect(heading(page)).toBe('Accueil');
+    });
   });
 
   it.each([

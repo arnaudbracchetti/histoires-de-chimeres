@@ -1,13 +1,12 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { Component, inject, output, signal } from '@angular/core';
 import { fr } from '@chimeres/design';
-import { firstValueFrom } from 'rxjs';
 import { AppInstallation } from '../installation/app-installation';
 import { LinkedPhone } from '../linked-phone';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
 import { BlockedSteps } from './blocked-steps';
-import { ContinueWithoutDialog, type ContinueWithoutChoice } from './continue-without-dialog';
+import { askContinueWithout } from './continue-without-dialog';
 import { NotificationBenefits, NotificationExample } from './notification-benefits';
 import { BENEFITS_INTRO, PERMISSION_PROMPT } from './notification-texts';
 import { PushNotifications } from './push-notifications';
@@ -91,13 +90,7 @@ export class EnableNotificationsPage {
 
   /** « Plus tard » : la confirmation, qui propose d'abord de les activer. Fermée, rien ne change. */
   protected async later(): Promise<void> {
-    const ref = this.dialog.open<ContinueWithoutChoice>(ContinueWithoutDialog, {
-      role: 'alertdialog',
-      ariaLabelledBy: 'continue-without-title',
-      backdropClass: 'scrim',
-      restoreFocus: true,
-    });
-    const choice = await firstValueFrom(ref.closed);
+    const choice = await askContinueWithout(this.dialog, 'activate');
     if (choice === 'activate') await this.activate();
     else if (choice === 'continue') this.done.emit();
   }

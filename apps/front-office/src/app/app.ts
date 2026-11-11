@@ -7,7 +7,9 @@ import { NicknamePage } from './identification/nickname-page';
 import { LinkedPhone } from './linked-phone';
 import { AppInstallation } from './installation/app-installation';
 import { AppInstalledPage } from './installation/app-installed-page';
+import { HomeScreenFirst } from './installation/home-screen-first';
 import { InstallAppPage } from './installation/install-app-page';
+import { InstallOnIPhonePage } from './installation/install-on-iphone-page';
 import { EnableNotificationsPage } from './notifications/enable-notifications-page';
 import { PushNotifications } from './notifications/push-notifications';
 import { PresenceCodePage } from './presence-code-page';
@@ -18,7 +20,10 @@ import { Shell } from './shell/shell';
 
 /**
  * L'entrée du front office : un téléphone relié à un pseudo entre dans la coquille ; sinon, il
- * s'identifie, derrière le code de présence, demandé s'il manque (ADR 0009). Juste après, il passe
+ * s'identifie, derrière le code de présence, demandé s'il manque (ADR 0009). Sur iPhone, dans le
+ * navigateur, « Installe l'application » passe avant tout : le code et le pseudo ne se tapent
+ * qu'une fois, dans l'application installée, sauf à continuer dans le navigateur sans
+ * notifications. Juste après, il passe
  * par « Active les notifications », si le téléphone ne les a encore ni accordées ni refusées (§4.2),
  * puis, sur Android dans le navigateur, par « Installe l'application ». Quand le navigateur a installé
  * l'application, « L'application est installée » prend la place de l'écran.
@@ -31,6 +36,7 @@ import { Shell } from './shell/shell';
     ConventionEndedPage,
     EnableNotificationsPage,
     InstallAppPage,
+    InstallOnIPhonePage,
     NicknamePage,
     PresenceCodePage,
     Shell,
@@ -44,6 +50,7 @@ export class App {
   protected readonly linkedPhone = inject(LinkedPhone);
   private readonly push = inject(PushNotifications);
   protected readonly installation = inject(AppInstallation);
+  protected readonly homeScreenFirst = inject(HomeScreenFirst);
 
   /** Le téléphone vient d'être relié, sans avoir répondu aux notifications : leur étape est à faire. */
   private readonly notificationsStepDue = signal(false);

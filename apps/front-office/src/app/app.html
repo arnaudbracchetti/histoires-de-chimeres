@@ -24,6 +24,8 @@
       <app-app-installed-page />
     } @else if (linkedPhone.nickname()) {
       <app-install-app-page (done)="installDone()" />
+    } @else if (homeScreenFirst.due()) {
+      <app-install-on-iphone-page />
     } @else if (!presenceCode()) {
       <app-presence-code-page (ended)="endedOnScreen.set(true)" />
     } @else {

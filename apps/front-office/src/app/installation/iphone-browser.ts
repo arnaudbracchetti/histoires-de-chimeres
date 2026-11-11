@@ -10,3 +10,10 @@ export function readIPhoneBrowser(userAgent: string): IPhoneBrowser {
   if (/FxiOS\//.test(userAgent)) return 'firefox';
   return 'safari';
 }
+
+/** Le nom du navigateur, tel qu'on l'écrit dans un texte. */
+export const IPHONE_BROWSER_NAMES: Record<IPhoneBrowser, string> = {
+  safari: 'Safari',
+  chrome: 'Chrome',
+  firefox: 'Firefox',
+};
