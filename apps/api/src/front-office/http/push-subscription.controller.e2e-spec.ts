@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import { request } from '../../../test/http.js';
 import type { App } from 'supertest/types.js';
 import {
   apiUrl,
@@ -20,7 +20,7 @@ describe('Abonnement push du téléphone relié', () => {
     vi.unstubAllEnvs();
   });
 
-  const server = () => request(app.getHttpServer());
+  const server = () => request(app);
 
   /** Un téléphone relié à un pseudo nouveau : son cookie, `nom=valeur`. */
   const linkedPhone = async (nickname: string) => {

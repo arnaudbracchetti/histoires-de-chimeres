@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import { request } from './http.js';
 import type { App } from 'supertest/types.js';
 import { API_PREFIX, apiUrl, healthEndpoints } from '@chimeres/contract';
 import { startApp } from './app.js';
@@ -16,13 +16,13 @@ describe('Application (e2e)', () => {
   });
 
   it('répond au contrôle de santé', () => {
-    return request(app.getHttpServer())
+    return request(app)
       .get(apiUrl(healthEndpoints.check))
       .expect(200)
       .expect({ status: 'ok' });
   });
 
   it('répond 404 à une route inconnue, sans la traiter en erreur interne', () => {
-    return request(app.getHttpServer()).get(`/${API_PREFIX}/route-inconnue`).expect(404);
+    return request(app).get(`/${API_PREFIX}/route-inconnue`).expect(404);
   });
 });

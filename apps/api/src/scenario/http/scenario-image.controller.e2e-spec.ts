@@ -1,6 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import sharp from 'sharp';
-import request from 'supertest';
+import { request } from '../../../test/http.js';
 import type { App } from 'supertest/types.js';
 import {
   apiUrl,
@@ -51,7 +51,7 @@ describe("Image d'un scénario (PR-7, ADR 0007)", () => {
     await app.close();
   });
 
-  const server = () => request(app.getHttpServer());
+  const server = () => request(app);
   const send = (
     bytes: Buffer,
     filename = 'image.jpg',

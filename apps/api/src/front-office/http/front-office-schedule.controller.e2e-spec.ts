@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import { request, type Test } from '../../../test/http.js';
 import type { App } from 'supertest/types.js';
 import {
   apiUrl,
@@ -31,7 +31,7 @@ describe('Programme du front office', () => {
     await app.close();
   });
 
-  const server = () => request(app.getHttpServer());
+  const server = () => request(app);
   const readSchedule = (cookie?: string) => {
     const call = server().get(apiUrl(frontOfficeEndpoints.readSchedule));
     return cookie ? call.set('Cookie', cookie) : call;
@@ -49,7 +49,7 @@ describe('Programme du front office', () => {
   };
 
   /** Une écriture de préparation, qui doit réussir : le corps de sa réponse. */
-  const send = async <T>(call: request.Test): Promise<T> => {
+  const send = async <T>(call: Test): Promise<T> => {
     const response = await call;
     expect(response.status, JSON.stringify(response.body)).toBeLessThan(300);
     return response.body as T;

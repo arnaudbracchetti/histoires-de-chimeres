@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import { request } from '../../../test/http.js';
 import type { App } from 'supertest/types.js';
 import {
   apiUrl,
@@ -21,9 +21,9 @@ describe('Convention', () => {
     await app.close();
   });
 
-  const read = () => request(app.getHttpServer()).get(apiUrl(conventionEndpoints.read));
+  const read = () => request(app).get(apiUrl(conventionEndpoints.read));
   const update = (body: UpdateConventionBody | object | string) =>
-    request(app.getHttpServer())
+    request(app)
       .put(apiUrl(conventionEndpoints.update))
       .set('Content-Type', 'application/json')
       .send(body);
@@ -44,7 +44,7 @@ describe('Convention', () => {
 
   it('finit à la fin de son dernier créneau, le jour de sa date ; sans date, pas de fin', async () => {
     const addTimeSlot = (start: string, end: string) =>
-      request(app.getHttpServer())
+      request(app)
         .post(apiUrl(timeSlotEndpoints.add))
         .send({ start, end })
         .expect(201);

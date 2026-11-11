@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import { request } from '../../../test/http.js';
 import type { App } from 'supertest/types.js';
 import {
   apiUrl,
@@ -32,7 +32,7 @@ describe('Liste « Participants » (ID-5)', () => {
   /** Créneaux 1 (9 h – 11 h 30) et 2 (14 h – 16 h 30), tables « Dragon » et « Licorne ». */
   let convention: ConventionDto;
 
-  const server = () => request(app.getHttpServer());
+  const server = () => request(app);
   const slot = (rank: number) => convention.timeSlots[rank - 1]!.id;
   const table = (name: string) => convention.tables.find((t) => t.name === name)!.id;
 

@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import { request } from '../../../test/http.js';
 import type { App } from 'supertest/types.js';
 import {
   apiUrl,
@@ -47,7 +47,7 @@ describe('Programme', () => {
   let ruines: ScenarioDto;
   let brumes: ScenarioDto;
 
-  const server = () => request(app.getHttpServer());
+  const server = () => request(app);
 
   const proposeScenario = async (gameMasterId: string, title: string, duration: 1 | 2 = 1) =>
     (

@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import { request } from '../../../test/http.js';
 import type { App } from 'supertest/types.js';
 import {
   apiUrl,
@@ -23,7 +23,7 @@ describe('Front office', () => {
     await app.close();
   });
 
-  const server = () => request(app.getHttpServer());
+  const server = () => request(app);
   const presenceCode = async () =>
     ((await server().get(apiUrl(conventionEndpoints.read)).expect(200)).body as ConventionDto)
       .presenceCode;

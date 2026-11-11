@@ -10,6 +10,10 @@ export default defineConfig({
   reporter: process.env['CI'] ? 'list' : 'line',
   use: {
     baseURL,
+    // Les écritures par l'API (page.request, request) ne passent pas par le navigateur, qui
+    // enverrait Sec-Fetch-Site : Origin les fait passer le garde CSRF (ADR 0019, ADR 0020).
+    // Il faut le PUBLIC_URL de app-e2e.
+    extraHTTPHeaders: { Origin: baseURL },
     trace: 'retain-on-failure',
   },
   projects: [

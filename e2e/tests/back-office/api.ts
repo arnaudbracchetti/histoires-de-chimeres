@@ -1,4 +1,4 @@
-import type { APIResponse, Page } from '@playwright/test';
+import { request, type APIRequestContext, type APIResponse, type Page } from '@playwright/test';
 import { expect } from '../../fixtures.js';
 
 /** Attend la réponse d'un appel à l'API, et la refuse si elle échoue, avec son corps pour motif. */
@@ -11,4 +11,12 @@ export async function expectOk(response: Promise<APIResponse>): Promise<APIRespo
 /** Prépare une donnée par l'API, avec le contexte de la page : le corps JSON de la réponse. */
 export async function post<T>(page: Page, url: string, data: object): Promise<T> {
   return (await (await expectOk(page.request.post(url, { data }))).json()) as T;
+}
+
+/**
+ * Un contexte d'API à lui seul (un téléphone et son cookie). Comme la config, il envoie `Origin`
+ * pour passer le garde CSRF (ADR 0020).
+ */
+export function newApiContext(baseURL: string): Promise<APIRequestContext> {
+  return request.newContext({ baseURL, extraHTTPHeaders: { Origin: baseURL } });
 }

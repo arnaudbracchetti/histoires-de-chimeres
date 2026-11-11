@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import { request, type Response } from '../../../test/http.js';
 import type { App } from 'supertest/types.js';
 import {
   apiUrl,
@@ -33,7 +33,7 @@ describe('Téléphone relié à un pseudo', () => {
     await app.close();
   });
 
-  const server = () => request(app.getHttpServer());
+  const server = () => request(app);
 
   /** S'identifier, avec le cookie `cookie` du téléphone s'il en a un. */
   const link = (body: Partial<LinkPhoneBody> & { nickname: string }, cookie?: string) => {
@@ -53,12 +53,12 @@ describe('Téléphone relié à un pseudo', () => {
   };
 
   /** Le cookie posé par la réponse, tel que le téléphone le renverra : `nom=valeur`. */
-  const cookieOf = (response: request.Response) => {
+  const cookieOf = (response: Response) => {
     const header = setCookieOf(response);
     expect(header).toBeDefined();
     return header!.split(';')[0]!;
   };
-  const setCookieOf = (response: request.Response): string | undefined =>
+  const setCookieOf = (response: Response): string | undefined =>
     (response.headers['set-cookie'] as unknown as string[] | undefined)?.[0];
 
   /** Un téléphone relié à un pseudo nouveau : son cookie. */

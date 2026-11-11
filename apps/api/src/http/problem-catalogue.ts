@@ -426,6 +426,11 @@ export const problemCatalogue: Catalogue = {
     detail: () => 'Tape ton pseudo pour continuer.',
     status: 401,
   },
+  'cross-site-request': {
+    title: 'Modification refusée',
+    detail: () => fr`Cette modification ne vient pas de l'application : recharge la page, puis recommence.`,
+    status: 403,
+  },
   'push-not-configured': {
     title: 'Notifications non prises en charge',
     detail: () =>

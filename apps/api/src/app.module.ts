@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { Module } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { API_PREFIX } from '@chimeres/contract';
 import { ConventionModule } from './convention/convention.module.js';
@@ -15,6 +15,7 @@ import { ScenarioModule } from './scenario/scenario.module.js';
 import { SignUpTrackingModule } from './sign-up-tracking/sign-up-tracking.module.js';
 import { TableModule } from './table/table.module.js';
 import { TimeSlotModule } from './time-slot/time-slot.module.js';
+import { CrossSiteWriteGuard } from './http/cross-site-write.guard.js';
 import { ProblemFilter } from './http/problem.filter.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
@@ -57,7 +58,10 @@ const fronts = existsSync(publicDir)
     DrawModule,
     FrontOfficeModule,
   ],
-  // Filtre global, déclaré ici pour valoir aussi dans les tests qui démarrent AppModule.
-  providers: [{ provide: APP_FILTER, useClass: ProblemFilter }],
+  // Filtre et garde globaux, déclarés ici pour valoir aussi dans les tests qui démarrent AppModule.
+  providers: [
+    { provide: APP_FILTER, useClass: ProblemFilter },
+    { provide: APP_GUARD, useClass: CrossSiteWriteGuard },
+  ],
 })
 export class AppModule {}

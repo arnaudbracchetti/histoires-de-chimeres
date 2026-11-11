@@ -11,6 +11,7 @@ import type { Response } from 'express';
 import { PhoneNotLinkedError, StaleConventionError } from '@chimeres/application';
 import type { ProblemCode, ProblemDto, RefusalCode, RefusalParams } from '@chimeres/contract';
 import { Refusal } from '@chimeres/domain';
+import { CrossSiteRequestError } from './cross-site-request.error.js';
 import { ImageRefusedError } from './image-refused.error.js';
 import { MalformedRequestError } from './malformed-request.error.js';
 import { PushNotConfiguredError } from './push-not-configured.error.js';
@@ -60,6 +61,9 @@ export class ProblemFilter extends BaseExceptionFilter {
     }
     if (error instanceof PhoneNotLinkedError) {
       return problem(HttpStatus.UNAUTHORIZED, 'phone-not-linked', {});
+    }
+    if (error instanceof CrossSiteRequestError) {
+      return problem(HttpStatus.FORBIDDEN, 'cross-site-request', {});
     }
     if (error instanceof PushNotConfiguredError) {
       return problem(HttpStatus.NOT_FOUND, 'push-not-configured', {});

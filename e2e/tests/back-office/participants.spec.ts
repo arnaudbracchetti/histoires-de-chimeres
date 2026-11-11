@@ -1,4 +1,4 @@
-import { request, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import {
   apiUrl,
   availabilityEndpoints,
@@ -18,7 +18,7 @@ import {
   type TimeSlotDto,
 } from '@chimeres/contract';
 import { expect, test } from '../../fixtures.js';
-import { expectOk, post } from './api.js';
+import { expectOk, newApiContext, post } from './api.js';
 
 /**
  * Par l'API : un créneau, la table « Griffon », « Les Brumes » de Kaïros programmée à cette table,
@@ -64,7 +64,7 @@ async function prepare(page: Page, baseURL: string) {
 
   /** Un téléphone, par l'API : son propre contexte garde son cookie. */
   const phone = async (nickname: string) => {
-    const context = await request.newContext({ baseURL });
+    const context = await newApiContext(baseURL);
     await expectOk(
       context.post(apiUrl(linkedPhoneEndpoints.link), {
         data: { presenceCode, nickname, confirmation: null },
@@ -345,7 +345,7 @@ test('l’Organisateur coupe les liens d’un pseudo depuis le menu « ⋯ » ; 
   const { presenceCode } = (await (
     await expectOk(page.request.get(apiUrl(conventionEndpoints.read)))
   ).json()) as ConventionDto;
-  const phone = await request.newContext({ baseURL });
+  const phone = await newApiContext(baseURL!);
   await expectOk(
     phone.post(apiUrl(linkedPhoneEndpoints.link), {
       data: { presenceCode, nickname: 'Élodie', confirmation: 'participant' },

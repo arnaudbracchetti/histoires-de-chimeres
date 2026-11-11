@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import { request } from '../../../test/http.js';
 import type { App } from 'supertest/types.js';
 import webpush from 'web-push';
 import {
@@ -51,7 +51,7 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
   let svenPhone: string;
   let elodiePhone: string;
 
-  const server = () => request(app.getHttpServer());
+  const server = () => request(app);
 
   /**
    * Relie un téléphone au pseudo et range son abonnement : son cookie, `nom=valeur`. L'endpoint du

@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import { request } from '../../../test/http.js';
 import type { App } from 'supertest/types.js';
 import {
   apiUrl,
@@ -35,7 +35,7 @@ describe('MJ', () => {
     await app.close();
   });
 
-  const server = () => request(app.getHttpServer());
+  const server = () => request(app);
   const list = async () =>
     (await server().get(apiUrl(gameMasterEndpoints.list)).expect(200)).body as GameMasterDto[];
   const read = (gameMasterId: string) =>

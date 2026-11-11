@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import { request, type Test } from '../../../test/http.js';
 import type { App } from 'supertest/types.js';
 import {
   apiUrl,
@@ -31,8 +31,8 @@ describe('Inscriptions du front office (IN-2)', () => {
     await app.close();
   });
 
-  const server = () => request(app.getHttpServer());
-  const withCookie = (call: request.Test, cookie?: string) =>
+  const server = () => request(app);
+  const withCookie = (call: Test, cookie?: string) =>
     cookie ? call.set('Cookie', cookie) : call;
   const signUp = (gameId: string, cookie?: string) =>
     withCookie(server().put(apiUrl(signUpEndpoints.signUp, { gameId })), cookie);
@@ -66,7 +66,7 @@ describe('Inscriptions du front office (IN-2)', () => {
   };
 
   /** Une écriture de préparation, qui doit réussir : le corps de sa réponse. */
-  const send = async <T>(call: request.Test): Promise<T> => {
+  const send = async <T>(call: Test): Promise<T> => {
     const response = await call;
     expect(response.status, JSON.stringify(response.body)).toBeLessThan(300);
     return response.body as T;

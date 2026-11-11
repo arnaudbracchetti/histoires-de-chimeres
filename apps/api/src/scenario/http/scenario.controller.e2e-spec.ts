@@ -1,5 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import { request } from '../../../test/http.js';
 import type { App } from 'supertest/types.js';
 import {
   apiUrl,
@@ -42,7 +42,7 @@ describe('Scénarios', () => {
     await app.close();
   });
 
-  const server = () => request(app.getHttpServer());
+  const server = () => request(app);
   const propose = (body: ScenarioBody | object, gameMasterId = gameMaster.id) =>
     server().post(apiUrl(scenarioEndpoints.propose, { gameMasterId })).send(body);
   const read = (scenarioId: string) => server().get(apiUrl(scenarioEndpoints.read, { scenarioId }));
