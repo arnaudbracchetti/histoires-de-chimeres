@@ -300,4 +300,4 @@ Les notifications propres au MJ (NO-2), l'alerte d'une partie à mener (NO-5) et
 
 ## 8. Points ouverts
 
-- **Pseudo du MJ** : une fois connecté au back office, le MJ peut-il modifier lui-même le pseudo qu'un Organisateur lui a donné (PR-12) ?
+Aucun pour l'instant.
