@@ -1,6 +1,8 @@
 export type { AccountReader } from './account/account-reader.js';
 export type { AccountRepository } from './account/account-repository.js';
 export type { AccountSessions } from './account/account-sessions.js';
+export { ChangeOwnPassword } from './account/change-own-password.js';
+export { CurrentPasswordWrongError } from './account/current-password-wrong.error.js';
 export type { FirstOrganizerFingerprint } from './account/first-organizer-fingerprint.js';
 export {
   InitializeFirstOrganizer,

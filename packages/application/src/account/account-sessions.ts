@@ -12,4 +12,6 @@ export interface AccountSessions {
   close(sessionId: string): Promise<void>;
   /** Ferme toutes les sessions du compte. */
   closeAllOfAccount(accountId: string): Promise<void>;
+  /** Ferme toutes les sessions du compte, sauf celle-ci. */
+  closeAllOfAccountExcept(accountId: string, keptSessionId: string): Promise<void>;
 }

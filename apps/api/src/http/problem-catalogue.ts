@@ -449,6 +449,12 @@ export const problemCatalogue: Catalogue = {
       fr`Vérifie ton pseudo et ton mot de passe. En cas d'oubli, demande un lien d'accès à un Organisateur.`,
     status: 401,
   },
+  'current-password-wrong': {
+    title: 'Mot de passe actuel incorrect',
+    detail: () =>
+      fr`Vérifie ton mot de passe actuel. En cas d'oubli, demande un lien d'accès à un Organisateur.`,
+    field: 'currentPassword',
+  },
   'not-logged-in': {
     title: 'Non connecté',
     detail: () => fr`Ta session a pris fin : connecte-toi pour continuer.`,

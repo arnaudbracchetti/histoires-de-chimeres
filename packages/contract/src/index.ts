@@ -2,6 +2,7 @@ export {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   accountEndpoints,
+  type ChangeOwnPasswordBody,
   type ConnectedAccountDto,
   type LogInBody,
 } from './account.js';

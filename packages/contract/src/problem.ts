@@ -166,6 +166,8 @@ export type ApiErrorCode =
   | 'too-many-login-attempts'
   /** Pseudo inconnu ou mauvais mot de passe : une seule réponse pour les deux (ADR 0018). */
   | 'wrong-credentials'
+  /** Changer son mot de passe : le mot de passe actuel saisi est faux (ADR 0019). */
+  | 'current-password-wrong'
   /** Aucune session du back office : cookie absent, inconnu ou expiré (ADR 0019). */
   | 'not-logged-in'
   /** Le téléphone n'est relié à aucun pseudo : cookie absent, inconnu ou coupé (ADR 0009). */

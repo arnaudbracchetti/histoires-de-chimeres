@@ -63,6 +63,12 @@ export class PrismaAccountSessions implements AccountSessions {
     await this.prisma.accountSession.deleteMany({ where: { accountId } });
   }
 
+  async closeAllOfAccountExcept(accountId: string, keptSessionId: string): Promise<void> {
+    await this.prisma.accountSession.deleteMany({
+      where: { accountId, idHash: { not: hashSessionId(keptSessionId) } },
+    });
+  }
+
   private now(): Date {
     return instantOfParisMoment(this.clock.now());
   }

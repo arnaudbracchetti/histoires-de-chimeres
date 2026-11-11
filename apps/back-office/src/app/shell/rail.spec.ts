@@ -135,12 +135,14 @@ describe('Rail', () => {
     expect(host.querySelector('a.convention')?.textContent).toContain('samedi 13 mars 2027');
   });
 
-  it('montre en bas le pseudo de la personne connectée et « Se déconnecter »', async () => {
+  it('montre en bas le pseudo de la personne connectée, qui mène à « Mon compte », et « Se déconnecter »', async () => {
     const { host, settle } = render();
     await settle();
 
     const footer = host.querySelector('.footer')!;
-    expect(footer.querySelector('.user')?.textContent?.trim()).toBe('Kaïros');
+    const user = footer.querySelector<HTMLAnchorElement>('a.user')!;
+    expect(user.textContent?.trim()).toBe('Kaïros');
+    expect(user.getAttribute('href')).toBe('/mon-compte');
     expect(footer.querySelector('button.log-out')?.textContent?.trim()).toBe('Se déconnecter');
   });
 

@@ -1,7 +1,12 @@
 import type { INestApplication } from '@nestjs/common';
 import type { App } from 'supertest/types.js';
 import type { PasswordHasher } from '@chimeres/application';
-import { accountEndpoints, apiUrl, type LogInBody } from '@chimeres/contract';
+import {
+  accountEndpoints,
+  apiUrl,
+  type ChangeOwnPasswordBody,
+  type LogInBody,
+} from '@chimeres/contract';
 import { insertAccountSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 import { setEnvironment } from '../../../test/environment.js';
@@ -143,6 +148,95 @@ describe('Compte du back office : connexion et session (ADR 0015, 0018, 0019)', 
       const response = await readAccount(cookie).expect(200);
 
       expect(response.body).toEqual({ nickname: 'Lune', organizer: false, gameMasterId: null });
+    });
+  });
+
+  describe('changer son mot de passe (ADR 0019)', () => {
+    const NEW_PASSWORD = 'une autre longue phrase';
+
+    beforeEach(() => start(instantHasher));
+
+    const changePassword = (cookie: string, body: ChangeOwnPasswordBody) =>
+      request(app).put(apiUrl(accountEndpoints.changePassword)).set('Cookie', cookie).send(body);
+
+    it("remplace le mot de passe : l'ancien est refusé, le nouveau connecte", async () => {
+      const cookie = readSessionCookie(await logIn({ nickname: 'Kaïros', password: PASSWORD }));
+
+      await changePassword(cookie, { currentPassword: PASSWORD, password: NEW_PASSWORD }).expect(
+        204,
+      );
+
+      const refused = await logIn({ nickname: 'Kaïros', password: PASSWORD }).expect(401);
+      expect(refused.body.code).toBe('wrong-credentials');
+      await logIn({ nickname: 'Kaïros', password: NEW_PASSWORD }).expect(200);
+    });
+
+    it('ferme les autres sessions du compte et garde celle en cours', async () => {
+      const current = readSessionCookie(await logIn({ nickname: 'Kaïros', password: PASSWORD }));
+      const other = readSessionCookie(await logIn({ nickname: 'Kaïros', password: PASSWORD }));
+
+      await changePassword(current, { currentPassword: PASSWORD, password: NEW_PASSWORD }).expect(
+        204,
+      );
+
+      await readAccount(current).expect(200);
+      await readAccount(other).expect(401);
+    });
+
+    it('refuse un mot de passe actuel faux, sans rien changer', async () => {
+      const current = readSessionCookie(await logIn({ nickname: 'Kaïros', password: PASSWORD }));
+      const other = readSessionCookie(await logIn({ nickname: 'Kaïros', password: PASSWORD }));
+
+      const refused = await changePassword(current, {
+        currentPassword: 'pas le bon mot',
+        password: NEW_PASSWORD,
+      }).expect(422);
+
+      expect(refused.body.code).toBe('current-password-wrong');
+      expect(refused.body.errors).toEqual([
+        { field: 'currentPassword', code: 'current-password-wrong', message: expect.any(String) },
+      ]);
+      await readAccount(other).expect(200);
+      await logIn({ nickname: 'Kaïros', password: PASSWORD }).expect(200);
+    });
+
+    it('refuse un nouveau mot de passe trop court (ADR 0018)', async () => {
+      const cookie = readSessionCookie(await logIn({ nickname: 'Kaïros', password: PASSWORD }));
+
+      const refused = await changePassword(cookie, {
+        currentPassword: PASSWORD,
+        password: 'neuf car.',
+      }).expect(422);
+
+      expect(refused.body.code).toBe('password-too-short');
+      expect(refused.body.errors[0].field).toBe('password');
+      await logIn({ nickname: 'Kaïros', password: PASSWORD }).expect(200);
+    });
+
+    it('refuse sans session', async () => {
+      const refused = await request(app)
+        .put(apiUrl(accountEndpoints.changePassword))
+        .send({ currentPassword: PASSWORD, password: NEW_PASSWORD })
+        .expect(401);
+
+      expect(refused.body.code).toBe('not-logged-in');
+    });
+
+    it('limite les essais du mot de passe actuel comme ceux de la connexion (ADR 0018)', async () => {
+      const cookie = readSessionCookie(await logIn({ nickname: 'Kaïros', password: PASSWORD }));
+      for (let attempt = 0; attempt < 4; attempt++) {
+        await changePassword(cookie, {
+          currentPassword: 'pas le bon mot',
+          password: NEW_PASSWORD,
+        }).expect(422);
+      }
+
+      const refused = await changePassword(cookie, {
+        currentPassword: PASSWORD,
+        password: NEW_PASSWORD,
+      }).expect(429);
+
+      expect(refused.body.code).toBe('too-many-login-attempts');
     });
   });
 

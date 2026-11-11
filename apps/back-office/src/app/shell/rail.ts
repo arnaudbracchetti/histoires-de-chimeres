@@ -50,7 +50,7 @@ function storeCollapsed(collapsed: boolean): void {
 /**
  * Rail latéral de la coquille. Replié, il ne garde que les icônes : le libellé reste dans le lien,
  * masqué à l'écran, et sert d'infobulle et de nom accessible. En bas, le pseudo de la personne
- * connectée et « Se déconnecter » ; sans session, « Se connecter ».
+ * connectée, qui mène à « Mon compte », et « Se déconnecter » ; sans session, « Se connecter ».
  */
 @Component({
   selector: 'app-rail',

@@ -9,6 +9,7 @@ import {
 import { BaseExceptionFilter } from '@nestjs/core';
 import type { Response } from 'express';
 import {
+  CurrentPasswordWrongError,
   NotLoggedInError,
   PhoneNotLinkedError,
   StaleConventionError,
@@ -69,6 +70,9 @@ export class ProblemFilter extends BaseExceptionFilter {
     }
     if (error instanceof WrongCredentialsError) {
       return problem(HttpStatus.UNAUTHORIZED, 'wrong-credentials', {});
+    }
+    if (error instanceof CurrentPasswordWrongError) {
+      return problem(HttpStatus.UNPROCESSABLE_ENTITY, 'current-password-wrong', {});
     }
     if (error instanceof NotLoggedInError) {
       return problem(HttpStatus.UNAUTHORIZED, 'not-logged-in', {});

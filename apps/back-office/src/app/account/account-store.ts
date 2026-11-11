@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { accountEndpoints, type LogInBody } from '@chimeres/contract';
+import { accountEndpoints, type ChangeOwnPasswordBody, type LogInBody } from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { apiResource, currentValue } from '../api-resource';
 
@@ -23,5 +23,10 @@ export class AccountStore {
   async logOut(): Promise<void> {
     await this.apiCall(accountEndpoints.logOut);
     this.account.set(undefined);
+  }
+
+  /** Changer son mot de passe : ses autres sessions sont fermées, celle-ci reste ouverte. */
+  async changePassword(body: ChangeOwnPasswordBody): Promise<void> {
+    await this.apiCall(accountEndpoints.changePassword, { body });
   }
 }

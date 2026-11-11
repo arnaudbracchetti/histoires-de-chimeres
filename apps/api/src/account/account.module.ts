@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import {
+  ChangeOwnPassword,
   InitializeFirstOrganizer,
   LogIn,
   LogOut,
@@ -73,6 +74,16 @@ const computeFingerprint = ({ nickname, password }: FirstOrganizer) =>
       useFactory: (sessions: AccountSessions, reader: AccountReader) =>
         new ReadOwnAccount(sessions, reader),
       inject: [ACCOUNT_SESSIONS, ACCOUNT_READER],
+    },
+    {
+      provide: ChangeOwnPassword,
+      useFactory: (
+        sessions: AccountSessions,
+        accounts: AccountRepository,
+        reader: AccountReader,
+        hasher: PasswordHasher,
+      ) => new ChangeOwnPassword(sessions, accounts, reader, hasher),
+      inject: [ACCOUNT_SESSIONS, ACCOUNT_REPOSITORY, ACCOUNT_READER, PASSWORD_HASHER],
     },
     {
       provide: InitializeFirstOrganizer,

@@ -10,6 +10,13 @@ export type LogInBody = {
   password: string;
 };
 
+export type ChangeOwnPasswordBody = {
+  /** Le mot de passe actuel : une session seule ne suffit pas à changer le mot de passe. */
+  currentPassword: string;
+  /** Le nouveau mot de passe, de 10 à 128 caractères, différent du pseudo (ADR 0018). */
+  password: string;
+};
+
 /** Le compte de la personne connectée au back office (ADR 0015). */
 export type ConnectedAccountDto = {
   /** Le pseudo de son participant, tel qu'il s'affiche. */
@@ -33,4 +40,10 @@ export const accountEndpoints = {
   logIn: endpoint<ConnectedAccountDto, never, LogInBody>('POST', 'account/session'),
   /** Se déconnecter : supprime la session en base ; sans effet sans session. */
   logOut: endpoint<void>('DELETE', 'account/session'),
+  /**
+   * Changer son mot de passe : ferme ses autres sessions, garde celle en cours (ADR 0019). Un mot
+   * de passe actuel faux donne `current-password-wrong` ; sans session, `not-logged-in`. Après un
+   * oubli, c'est le lien d'accès qui fait choisir un nouveau mot de passe (ADR 0018).
+   */
+  changePassword: endpoint<void, never, ChangeOwnPasswordBody>('PUT', 'account/password'),
 };

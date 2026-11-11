@@ -55,10 +55,16 @@
 
 <div class="footer">
   @if (account(); as me) {
-    <p class="user">
+    <a
+      class="entry user"
+      routerLink="/mon-compte"
+      routerLinkActive="active"
+      ariaCurrentWhenActive="page"
+      title="Mon compte"
+    >
       <app-icon name="user-round" />
       <span class="label">{{ me.nickname }}</span>
-    </p>
+    </a>
     <button type="button" class="entry log-out" (click)="logOut()">
       <app-icon name="log-out" />
       <span class="label">Se déconnecter</span>
