@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import type { INestApplication } from '@nestjs/common';
+import { RequestMethod, type INestApplication } from '@nestjs/common';
+import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants.js';
+import { ModulesContainer } from '@nestjs/core';
 import type { App } from 'supertest/types.js';
 import * as contract from '@chimeres/contract';
 import {
@@ -53,6 +55,30 @@ const SCENARIO: ScenarioBody = {
   duration: 1,
 };
 
+/** Un chemin sans `/` au début ni à la fin, comme ceux des descripteurs. */
+const trimSlashes = (path: string) => path.replace(/^\/+|\/+$/g, '');
+
+/**
+ * Toutes les routes des controllers de l'application, `MÉTHODE chemin`, chemin du controller
+ * compris : ce que le garde doit retrouver parmi les descripteurs.
+ */
+function listControllerRoutes(app: INestApplication<App>): string[] {
+  return [...app.get(ModulesContainer).values()].flatMap((module) =>
+    [...module.controllers.values()].flatMap(({ metatype }) => {
+      const controller = metatype as unknown as { prototype: Record<string, unknown> };
+      const prefix = trimSlashes(Reflect.getMetadata(PATH_METADATA, controller) ?? '');
+      return Object.getOwnPropertyNames(controller.prototype).flatMap((name) => {
+        const handler = controller.prototype[name] as object;
+        const path = Reflect.getMetadata(PATH_METADATA, handler) as string | undefined;
+        const method = Reflect.getMetadata(METHOD_METADATA, handler) as RequestMethod | undefined;
+        if (name === 'constructor' || path === undefined || method === undefined) return [];
+        const fullPath = [prefix, trimSlashes(path)].filter(Boolean).join('/');
+        return [`${RequestMethod[method]} ${fullPath}`];
+      });
+    }),
+  );
+}
+
 describe('Contrôle d’accès lu sur le descripteur (ADR 0017)', () => {
   let app: INestApplication<App>;
 
@@ -67,6 +93,24 @@ describe('Contrôle d’accès lu sur le descripteur (ADR 0017)', () => {
     expect(levels).toEqual(
       new Set(['public', 'linkedPhone', 'gameMaster', 'ownGameMaster', 'organizer']),
     );
+  });
+
+  it('trouve un descripteur pour chaque route des controllers : aucune ne se ferme sans le dire', () => {
+    const described = new Set(contractEndpoints.map(([, { method, path }]) => `${method} ${path}`));
+    const routes = listControllerRoutes(app);
+
+    expect(routes.length).toBeGreaterThan(50);
+    expect(routes.filter((route) => !described.has(route))).toEqual([]);
+  });
+
+  it('trouve une route pour chaque descripteur', () => {
+    const routes = new Set(listControllerRoutes(app));
+
+    expect(
+      contractEndpoints
+        .filter(([, { method, path }]) => !routes.has(`${method} ${path}`))
+        .map(([name]) => name),
+    ).toEqual([]);
   });
 
   it('ne trouve qu’un descripteur par route : le garde lit le niveau par méthode et chemin', () => {
