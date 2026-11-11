@@ -19,6 +19,7 @@ describe('PushNotifications', () => {
     requestPermission: ReturnType<typeof vi.fn>;
     subscribe: ReturnType<typeof vi.fn>;
     installedApp: ReturnType<typeof vi.fn>;
+    iOSVersion: ReturnType<typeof vi.fn>;
     onPermissionChange: ReturnType<typeof vi.fn>;
   };
   /** Ce que le navigateur appelle quand la permission change, sans quitter la page. */
@@ -35,6 +36,7 @@ describe('PushNotifications', () => {
       requestPermission: vi.fn(async () => 'granted'),
       subscribe: vi.fn(async () => subscription),
       installedApp: vi.fn(() => false),
+      iOSVersion: vi.fn(() => null),
       onPermissionChange: vi.fn((listener: () => void) => (permissionChanged = listener)),
     };
     TestBed.configureTestingModule({
@@ -172,5 +174,71 @@ describe('PushNotifications', () => {
 
     expect(push.status()).toBe('granted');
     saved()[0]!.flush(null);
+  });
+
+  describe('sur iPhone', () => {
+    /** Safari : pas de `Notification` hors de l'écran d'accueil, donc pas de push. */
+    function inSafari(version: [number, number]): void {
+      browser.iOSVersion.mockReturnValue(version);
+      browser.supported.mockReturnValue(false);
+    }
+
+    it('demande l’ajout à l’écran d’accueil, dans Safari, sous iOS 16.4 ou plus (NO-6)', async () => {
+      inSafari([16, 4]);
+
+      const push = await opened('BPublique');
+
+      expect(push.status()).toBe('not-on-home-screen');
+    });
+
+    it('ne demande pas l’ajout à l’écran d’accueil sous iOS 16.3 ou moins : rien à recevoir', () => {
+      inSafari([16, 3]);
+
+      const push = TestBed.inject(PushNotifications);
+      TestBed.tick();
+
+      expect(push.status()).toBe('unsupported');
+    });
+
+    it('ne demande pas l’ajout à l’écran d’accueil quand le serveur n’a pas de clés VAPID', async () => {
+      inSafari([18, 6]);
+
+      const push = await opened(null);
+
+      expect(push.status()).toBe('unsupported');
+    });
+
+    it('suit la permission dans l’application de l’écran d’accueil', async () => {
+      browser.iOSVersion.mockReturnValue([17, 2]);
+      browser.installedApp.mockReturnValue(true);
+      browser.permission.mockReturnValue('denied');
+
+      const push = await opened('BPublique');
+
+      expect(push.status()).toBe('denied');
+    });
+  });
+
+  describe('chemin des réglages après un refus', () => {
+    it('passe par les Réglages de l’iPhone', () => {
+      browser.supported.mockReturnValue(false);
+      browser.iOSVersion.mockReturnValue([17, 2]);
+      browser.installedApp.mockReturnValue(true);
+
+      expect(TestBed.inject(PushNotifications).settingsPath).toBe('iphone');
+    });
+
+    it('passe par les infos de l’application installée sur Android', () => {
+      browser.supported.mockReturnValue(false);
+      browser.installedApp.mockReturnValue(true);
+
+      expect(TestBed.inject(PushNotifications).settingsPath).toBe('installed-app');
+    });
+
+    it('passe par l’icône à gauche de l’adresse dans le navigateur', () => {
+      browser.supported.mockReturnValue(false);
+
+      expect(TestBed.inject(PushNotifications).settingsPath).toBe('browser');
+    });
   });
 });

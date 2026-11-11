@@ -68,6 +68,15 @@
     vertical-align: middle;
   }
 
+  /* Des étapes numérotées à suivre dans le téléphone : ajout à l'écran d'accueil, réglages. */
+  .steps {
+    display: grid;
+    gap: var(--space-s);
+    margin: 0;
+    padding-inline-start: var(--space-l);
+    text-align: start;
+  }
+
   /* Fond du dialogue et de la boîte du pseudo (CDK) : l'écran assombri derrière. */
   .scrim {
     background: color-mix(in srgb, var(--surface-0) 72%, transparent);

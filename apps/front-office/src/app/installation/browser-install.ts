@@ -1,5 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { inject, Injectable } from '@angular/core';
+import { readIPhoneBrowser, type IPhoneBrowser } from './iphone-browser';
 
 const ADVICE_DISMISSED_KEY = 'installAdviceDismissed';
 
@@ -17,6 +18,11 @@ export class BrowserInstall {
 
   isAndroid(): boolean {
     return /Android/i.test(this.window?.navigator.userAgent ?? '');
+  }
+
+  /** Le navigateur de l'iPhone, qui place « Partager » à sa façon. */
+  iPhoneBrowser(): IPhoneBrowser {
+    return readIPhoneBrowser(this.window?.navigator.userAgent ?? '');
   }
 
   /** L'application installée, ouverte hors du navigateur. */

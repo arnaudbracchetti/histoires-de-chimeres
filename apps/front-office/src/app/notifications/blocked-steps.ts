@@ -1,16 +1,22 @@
 import { Component, input } from '@angular/core';
 import { Icon } from '../ui/icon';
+import type { SettingsPath } from './push-notifications';
 
 /**
- * Le chemin des réglages pour réactiver des notifications bloquées (§4.2) : dans Chrome, l'icône
- * à gauche de l'adresse ; dans l'application installée sur Android, ses infos.
+ * Le chemin des réglages pour réactiver des notifications bloquées (§4.2) : sur iPhone, les
+ * Réglages du téléphone ; dans Chrome, l'icône à gauche de l'adresse ; dans l'application
+ * installée sur Android, ses infos.
  */
 @Component({
   selector: 'app-blocked-steps',
   imports: [Icon],
   template: `
-    <ol>
-      @if (installedApp()) {
+    <ol class="steps">
+      @if (path() === 'iphone') {
+        <li>Ouvre les <span class="key"><app-icon name="settings" /> Réglages</span> du téléphone.</li>
+        <li>Touche <span class="key">Notifications</span>, puis <span class="key">Chimères</span>.</li>
+        <li>Active <span class="key">Autoriser les notifications</span>.</li>
+      } @else if (path() === 'installed-app') {
         <li>
           Appuie longuement sur l'icône <span class="key">Chimères</span> de l'écran d'accueil,
           puis touche <span class="key"><app-icon name="info" /><span class="visually-hidden">Infos</span></span>.
@@ -25,18 +31,7 @@ import { Icon } from '../ui/icon';
       }
     </ol>
   `,
-  styles: `
-    @layer components {
-      ol {
-        display: grid;
-        gap: var(--space-s);
-        margin: 0;
-        padding-inline-start: var(--space-l);
-        text-align: start;
-      }
-    }
-  `,
 })
 export class BlockedSteps {
-  readonly installedApp = input(false);
+  readonly path = input.required<SettingsPath>();
 }

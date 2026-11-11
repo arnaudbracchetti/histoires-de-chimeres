@@ -75,11 +75,16 @@ export class NotificationsBanner {
   private readonly injector = inject(Injector);
 
   protected readonly unsupported = fr`Ce téléphone ne reçoit pas les notifications : reviens voir ta table ici après chaque tirage`;
-  protected readonly text = computed(() =>
-    this.push.status() === 'denied'
-      ? fr`Notifications bloquées : réactive-les dans les réglages pour connaître ta table`
-      : 'Active les notifications pour connaître ta table',
-  );
+  protected readonly text = computed(() => {
+    switch (this.push.status()) {
+      case 'not-on-home-screen':
+        return fr`Ajoute l'application à l'écran d'accueil pour connaître ta table`;
+      case 'denied':
+        return fr`Notifications bloquées : réactive-les dans les réglages pour connaître ta table`;
+      default:
+        return fr`Active les notifications pour connaître ta table`;
+    }
+  });
 
   protected openGuide(): void {
     this.dialog.open(ActivationGuide, {

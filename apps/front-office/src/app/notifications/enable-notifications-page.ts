@@ -24,7 +24,7 @@ import { PushNotifications } from './push-notifications';
     @if (blocked()) {
       <h1>Notifications bloquées</h1>
       <p>{{ blockedIntro }}</p>
-      <app-blocked-steps [installedApp]="push.installedApp" />
+      <app-blocked-steps [path]="push.settingsPath" />
       <p class="meta">{{ blockedFallback }}</p>
       <div class="actions">
         <button type="button" appButton="secondary" (click)="done.emit()">Continuer</button>

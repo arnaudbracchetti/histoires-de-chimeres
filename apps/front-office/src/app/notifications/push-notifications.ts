@@ -8,9 +8,21 @@ import { BrowserPush } from './browser-push';
 
 /**
  * Où en sont les notifications de ce téléphone (NO-6) : pas prises en charge (navigateur sans push,
- * ou serveur sans clés VAPID), ou la permission du téléphone.
+ * iPhone sous iOS 16.3 ou moins, ou serveur sans clés VAPID), iPhone hors de l'écran d'accueil, ou
+ * la permission du téléphone.
  */
-export type PushStatus = 'unsupported' | NotificationPermission;
+export type PushStatus = 'unsupported' | 'not-on-home-screen' | NotificationPermission;
+
+/**
+ * Où réactiver des notifications bloquées : les Réglages de l'iPhone, les infos de l'application
+ * installée sur Android, ou l'icône à gauche de l'adresse dans le navigateur.
+ */
+export type SettingsPath = 'iphone' | 'installed-app' | 'browser';
+
+/** Le push arrive sur iPhone avec iOS 16.4, pour l'application ajoutée à l'écran d'accueil. */
+function canReceivePushOnHomeScreen([major, minor]: [number, number]): boolean {
+  return major > 16 || (major === 16 && minor >= 4);
+}
 
 /**
  * Les notifications du téléphone : leur état, la demande d'autorisation après un tap, et
@@ -26,22 +38,37 @@ export class PushNotifications {
   private readonly visibility = inject(PageVisibility);
 
   private readonly supported = this.browser.supported();
+  private readonly iOSVersion = this.browser.iOSVersion();
+  /** L'application installée, ouverte hors du navigateur. */
+  private readonly installedApp = this.browser.installedApp();
+  /**
+   * Un iPhone, dans Safari, qui recevrait les notifications une fois l'application ajoutée à
+   * l'écran d'accueil : hors de lui, `Notification` n'existe pas dans la page.
+   */
+  private readonly outsideHomeScreen =
+    !!this.iOSVersion && !this.installedApp && canReceivePushOnHomeScreen(this.iOSVersion);
   /** La clé publique VAPID : `undefined` tant qu'on ne l'a pas lue, `null` si le serveur n'en a pas. */
   private readonly publicKey = signal<string | null | undefined>(undefined);
   private readonly permission = signal<NotificationPermission>(
     this.supported ? this.browser.permission() : 'denied',
   );
 
-  readonly status = computed<PushStatus>(() =>
-    !this.supported || this.publicKey() === null ? 'unsupported' : this.permission(),
-  );
+  readonly status = computed<PushStatus>(() => {
+    if (this.publicKey() === null) return 'unsupported';
+    if (this.outsideHomeScreen) return 'not-on-home-screen';
+    return this.supported ? this.permission() : 'unsupported';
+  });
 
-  /** L'application installée : le chemin des réglages passe par ses infos, pas par Chrome. */
-  readonly installedApp = this.browser.installedApp();
+  readonly settingsPath: SettingsPath = this.iOSVersion
+    ? 'iphone'
+    : this.installedApp
+      ? 'installed-app'
+      : 'browser';
 
   constructor() {
+    // Hors de l'écran d'accueil, la clé dit encore si le serveur envoie quelque chose.
+    if (this.supported || this.outsideHomeScreen) void this.readPublicKey();
     if (!this.supported) return;
-    void this.readPublicKey();
     this.browser.onPermissionChange(() => this.permission.set(this.browser.permission()));
     effect(() => {
       if (this.visibility.visible()) this.permission.set(this.browser.permission());

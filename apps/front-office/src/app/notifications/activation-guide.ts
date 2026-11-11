@@ -1,5 +1,8 @@
 import { DialogRef } from '@angular/cdk/dialog';
 import { Component, inject } from '@angular/core';
+import { fr } from '@chimeres/design';
+import { HomeScreenSteps } from '../installation/home-screen-steps';
+import { RetypeReminder } from '../installation/retype-reminder';
 import { LinkedPhone } from '../linked-phone';
 import { Button } from '../ui/button';
 import { Icon } from '../ui/icon';
@@ -9,18 +12,25 @@ import { BENEFITS_INTRO, PERMISSION_PROMPT, WITHOUT_NOTIFICATIONS } from './noti
 import { PushNotifications } from './push-notifications';
 
 /**
- * Le guide d'activation (§4.2), ouvert d'un tap sur le bandeau de NO-6, propre au cas : permission
- * pas donnée (« Activer les notifications »), ou refusée (chemin des réglages). Il monte du bas.
+ * Le guide d'activation (§4.2), ouvert d'un tap sur le bandeau de NO-6, propre au cas : iPhone hors
+ * de l'écran d'accueil (l'ajout, et ce qu'on y retapera), permission pas donnée (« Activer les
+ * notifications »), ou refusée (chemin des réglages). Il monte du bas.
  */
 @Component({
   selector: 'app-activation-guide',
-  imports: [BlockedSteps, Button, Icon, NotificationBenefits],
+  imports: [BlockedSteps, Button, HomeScreenSteps, Icon, NotificationBenefits, RetypeReminder],
   template: `
-    @if (push.status() === 'denied') {
+    @if (push.status() === 'not-on-home-screen') {
+      <h2 id="activation-guide-title">Ajoute l'application à ton écran d'accueil</h2>
+      <p>{{ onlyWayOnIPhone }}</p>
+      <app-notification-benefits [gameMaster]="linkedPhone.gameMaster()" />
+      <app-home-screen-steps />
+      <app-retype-reminder [nickname]="linkedPhone.nickname() ?? null" />
+    } @else if (push.status() === 'denied') {
       <h2 id="activation-guide-title">Notifications bloquées</h2>
       <p>{{ withoutNotifications }}</p>
       <p>Pour les réactiver&nbsp;:</p>
-      <app-blocked-steps [installedApp]="push.installedApp" />
+      <app-blocked-steps [path]="push.settingsPath" />
     } @else {
       <h2 id="activation-guide-title">Active les notifications</h2>
       <p>{{ benefitsIntro }}</p>
@@ -69,6 +79,7 @@ export class ActivationGuide {
   protected readonly benefitsIntro = BENEFITS_INTRO;
   protected readonly permissionPrompt = PERMISSION_PROMPT;
   protected readonly withoutNotifications = WITHOUT_NOTIFICATIONS;
+  protected readonly onlyWayOnIPhone = fr`Sur iPhone, c'est le seul moyen de recevoir les notifications :`;
 
   /** La demande du téléphone ; accordée, le guide se ferme, et le bandeau avec lui. */
   protected async activate(): Promise<void> {

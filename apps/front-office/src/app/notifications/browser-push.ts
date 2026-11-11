@@ -55,8 +55,22 @@ export class BrowserPush {
     return subscription.toJSON() as PushSubscriptionBody;
   }
 
+  /**
+   * La version d'iOS (majeure, mineure), lue dans le user agent de l'iPhone : Safari et les autres
+   * navigateurs de l'iPhone y écrivent « iPhone OS 16_3 ». `null` hors de l'iPhone.
+   */
+  iOSVersion(): [number, number] | null {
+    return readIOSVersion(this.window?.navigator.userAgent ?? '');
+  }
+
   /** L'application installée, ouverte hors du navigateur : ses réglages ne sont pas ceux de Chrome. */
   installedApp(): boolean {
     return !!this.window?.matchMedia?.('(display-mode: standalone)').matches;
   }
+}
+
+/** La version d'iOS écrite dans un user agent d'iPhone (« iPhone OS 16_3 »), `null` ailleurs. */
+export function readIOSVersion(userAgent: string): [number, number] | null {
+  const match = /(?:iPhone|iPod|iPad).* OS (\d+)_(\d+)/.exec(userAgent);
+  return match ? [Number(match[1]), Number(match[2])] : null;
 }
