@@ -4,9 +4,12 @@ import { buildQrCodeSvg } from '@chimeres/design/qr-code';
 /**
  * Le QR code d'une adresse, modules à l'encre sur papier, marge comprise : le SVG prend toute la
  * place de son hôte, carré. Le tracé vient de `@chimeres/design/qr-code`, sans HTML injecté.
+ * L'hôte porte `--qr-symbol-share`, la part du symbole dans son côté : pour un symbole de côté
+ * `T`, l'hôte mesure `calc(T / var(--qr-symbol-share))`.
  */
 @Component({
   selector: 'app-qr-code',
+  host: { '[style.--qr-symbol-share]': 'svg().symbolShare' },
   template: `
     <svg
       role="img"

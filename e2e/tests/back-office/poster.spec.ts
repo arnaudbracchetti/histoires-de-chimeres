@@ -25,6 +25,15 @@ test('les Informations de connexion, par le rail puis par « Créneaux et tables
   await expect(qrCode).toBeVisible();
   await expect(qrCode.locator('path')).toHaveAttribute('d', /^M/);
 
+  // « Imprimer l'affiche » ouvre la fenêtre d'impression, ici remplacée pour être comptée.
+  type Counted = Window & { printed: number };
+  await page.evaluate(() => {
+    (window as unknown as Counted).printed = 0;
+    window.print = () => (window as unknown as Counted).printed++;
+  });
+  await page.getByRole('button', { name: "Imprimer l'affiche" }).click();
+  expect(await page.evaluate(() => (window as unknown as Counted).printed)).toBe(1);
+
   await page.goto('/gestion/creneaux-et-tables');
   await page.getByRole('link', { name: "Imprimé en clair sous le QR code de l'affiche." }).click();
 

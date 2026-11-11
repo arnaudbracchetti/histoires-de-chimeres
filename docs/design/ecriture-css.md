@@ -52,6 +52,7 @@ Aucune couleur n'est écrite en TypeScript ni en dur dans un SVG : le SVG réfé
   - `rem` pour le texte et les tailles qui suivent le texte ;
   - `px` pour les filets, les rayons, les vignettes et les dimensions fixées par la charte (32 et 44 px, 0,8 px par minute) ;
   - les espacements passent par les jetons `--space-*`, jamais par une valeur libre.
+  - exception, l'affiche imprimée (`@media print` de « Informations de connexion ») : tailles, espacements et rayons en `mm`, fixés pour une feuille A4 (voir [patterns.md](patterns.md#informations-de-connexion)).
 - **Seulement des jetons** pour les couleurs, les polices, les tailles de texte, les espacements, les rayons et le halo, et dans le front office pour les interlignes (`--line-height-*`). Le back office garde quelques interlignes propres à ses composants denses ; sa base les prend des jetons. Le front office prend son échelle (`--font-size-mobile-*`) et ses dimensions (`--touch-target`, `--button-height`, `--gutter`, `--content-width`…), jamais celles du back office.
 - **Les réglages du CDK passent par le CSS** : la position d'une boîte, l'écart avec son origine, la largeur d'un dialogue s'écrivent dans le style du composant ouvert, par les jetons. Le TypeScript ne donne que l'origine et le sens (`originX`, `overlayY`…), jamais de décalage ni de largeur.
 - **Mouvement** : transitions de moins de 200 ms, toutes neutralisées sous `@media (prefers-reduced-motion: reduce)`.

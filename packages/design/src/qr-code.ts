@@ -13,6 +13,11 @@ export type QrCodeSvg = {
   path: string;
   /** Sans anticrénelage : aucun liseré clair entre deux modules voisins, à tout agrandissement. */
   shapeRendering: 'crispEdges';
+  /**
+   * La part du symbole dans le côté, sans la marge : pour un symbole de côté `T`, le SVG mesure
+   * `T / symbolShare`.
+   */
+  symbolShare: number;
 };
 
 /**
@@ -37,5 +42,10 @@ export function buildQrCodeSvg(text: string): QrCodeSvg {
     }
   }
   const side = code.size + 2 * MARGIN;
-  return { viewBox: `0 0 ${side} ${side}`, path, shapeRendering: 'crispEdges' };
+  return {
+    viewBox: `0 0 ${side} ${side}`,
+    path,
+    shapeRendering: 'crispEdges',
+    symbolShare: code.size / side,
+  };
 }

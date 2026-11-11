@@ -8,4 +8,21 @@
     flex: 1;
     min-width: 0;
   }
+
+  /*
+   * À l'impression, la page seule : ni rail ni alertes, ni la région `aria-live`, qui ferait
+   * déborder d'un pixel une page qui remplit sa feuille.
+   */
+  @media print {
+    :host {
+      display: block;
+      min-height: 0;
+    }
+
+    app-rail,
+    app-alert-stack,
+    [aria-live] {
+      display: none;
+    }
+  }
 }

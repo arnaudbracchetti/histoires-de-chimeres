@@ -35,6 +35,11 @@ describe('buildQrCodeSvg', () => {
     expect(buildQrCodeSvg(URL).viewBox).toBe('0 0 37 37');
   });
 
+  it('donne la part du symbole dans son côté, sans la marge', () => {
+    // 29 modules de symbole sur 37 de côté.
+    expect(buildQrCodeSvg(URL).symbolShare).toBe(29 / 37);
+  });
+
   it('ne trace que des rectangles, sans rien d’autre', () => {
     const { path } = buildQrCodeSvg(URL);
 

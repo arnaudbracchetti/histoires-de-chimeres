@@ -431,6 +431,12 @@ La page « Informations de connexion » (`/informations-de-connexion`) donne tou
 - **Lue de loin** : c'est la seule page dont le texte suit la hauteur de l'écran (en `cqh`), avec la taille de l'échelle comme plancher. Le nom de la convention y prend Uncial Antiqua en orange, comme sur l'affiche (variante B du prototype #152). Ce sont des écarts voulus à l'échelle de [jetons.md](jetons.md).
 - Le QR code ouvre le front office du domaine du back office, avec le code de présence (`buildFrontOfficeUrl` de `contract`). Il a un nom accessible.
 - Sous le code de présence de « Créneaux et tables », un lien mène à la page.
+- **« Imprimer l'affiche »** (principal, dans l'en-tête) ouvre la fenêtre d'impression. La page s'imprime en une **affiche** A4 portrait, d'une seule feuille (variante B du prototype #152), en tailles fixes (mm) :
+  - fond `--paper`, texte `--ink`, sans filet en haut : la marge de l'imprimante le couperait ;
+  - le nom de la convention en Uncial Antiqua, puis le sous-titre « Regarde le programme, inscris-toi, et sois notifié des informations importantes de cette journée », absent de l'écran ;
+  - le QR code centré, dont le symbole mesure 12 cm, sous les 13 cm de #151, pour laisser leur place aux étapes et à un nom de convention sur deux lignes, marge en plus (`--qr-symbol-share`, posé par `app-qr-code`) ;
+  - l'encadré du code, puis les trois étapes sur trois colonnes, chacune sous un gros chiffre orange.
+- À l'impression, la coquille masque le rail, les alertes et la région `aria-live`, et la page masque son en-tête.
 
 ## Onglets de classeur
 
