@@ -22,6 +22,9 @@ export const pushSubscriptionEndpoints = {
   save: endpoint<void, never, PushSubscriptionBody>(
     'PUT',
     'front-office/linked-phone/push-subscription',
+    { access: 'linkedPhone' },
   ),
-  readPublicKey: endpoint<PushPublicKeyDto>('GET', 'front-office/push-public-key'),
+  readPublicKey: endpoint<PushPublicKeyDto>('GET', 'front-office/push-public-key', {
+    access: 'public',
+  }),
 };

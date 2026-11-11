@@ -17,6 +17,7 @@ import {
 } from '@chimeres/application';
 import type { ProblemCode, ProblemDto, RefusalCode, RefusalParams } from '@chimeres/contract';
 import { Refusal } from '@chimeres/domain';
+import { AccessDeniedError } from '../account/access-denied.error.js';
 import { CrossSiteRequestError } from './cross-site-request.error.js';
 import { ImageRefusedError } from './image-refused.error.js';
 import { MalformedRequestError } from './malformed-request.error.js';
@@ -76,6 +77,9 @@ export class ProblemFilter extends BaseExceptionFilter {
     }
     if (error instanceof NotLoggedInError) {
       return problem(HttpStatus.UNAUTHORIZED, 'not-logged-in', {});
+    }
+    if (error instanceof AccessDeniedError) {
+      return problem(HttpStatus.FORBIDDEN, 'access-denied', {});
     }
     if (error instanceof CrossSiteRequestError) {
       return problem(HttpStatus.FORBIDDEN, 'cross-site-request', {});

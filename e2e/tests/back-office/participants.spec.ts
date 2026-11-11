@@ -17,7 +17,7 @@ import {
   type ScheduleDto,
   type TimeSlotDto,
 } from '@chimeres/contract';
-import { expect, test } from '../../fixtures.js';
+import { expect, ORGANIZER_NICKNAME, test } from '../../fixtures.js';
 import { expectOk, newApiContext, post } from './api.js';
 
 /**
@@ -97,7 +97,7 @@ test('l’Organisateur retrouve un pseudo par une partie de son nom ou par le ti
   await expect(
     page.getByText("Tape quelques lettres du pseudo, ou du titre d'une partie où il est inscrit."),
   ).toBeVisible();
-  await expect(nicknames(page)).toHaveText(['Élodie', 'Kaïros', 'Sven']);
+  await expect(nicknames(page)).toHaveText(['Élodie', 'Kaïros', ORGANIZER_NICKNAME, 'Sven']);
   const kairos = page.getByRole('row', { name: /Kaïros/ });
   await expect(kairos.getByRole('rowheader')).toContainText('MJ');
   const elodie = page.getByRole('row', { name: /Élodie/ });
@@ -114,7 +114,7 @@ test('l’Organisateur retrouve un pseudo par une partie de son nom ou par le ti
   await search(page).fill('zz');
   await expect(page.getByText('Aucun pseudo ne correspond')).toBeVisible();
   await page.getByRole('button', { name: 'Effacer la recherche' }).click();
-  await expect(nicknames(page)).toHaveText(['Élodie', 'Kaïros', 'Sven']);
+  await expect(nicknames(page)).toHaveText(['Élodie', 'Kaïros', ORGANIZER_NICKNAME, 'Sven']);
 });
 
 test('l’Organisateur ouvre la fiche d’un pseudo et lit son résultat publié (ID-5)', async ({
@@ -157,7 +157,13 @@ test('l’Organisateur crée un pseudo et arrive sur sa fiche (ID-12)', async ({
   await expect(page.getByRole('heading', { level: 1, name: 'Lune' })).toBeVisible();
   await expect(page.getByText('Participant', { exact: true })).toBeVisible();
   await page.getByRole('navigation', { name: "Fil d'Ariane" }).getByRole('link').click();
-  await expect(nicknames(page)).toHaveText(['Élodie', 'Kaïros', 'Lune', 'Sven']);
+  await expect(nicknames(page)).toHaveText([
+    'Élodie',
+    'Kaïros',
+    'Lune',
+    ORGANIZER_NICKNAME,
+    'Sven',
+  ]);
 });
 
 test('un pseudo pris est refusé sous le champ, sans rien décaler, avec « Voir sa fiche » (ID-4, ID-12)', async ({
@@ -334,7 +340,7 @@ test('l’Organisateur supprime un pseudo, même après la publication, et revie
   await dialog.getByRole('button', { name: 'Supprimer le pseudo' }).click();
 
   await expect(page).toHaveURL(/\/gestion\/participants$/);
-  await expect(nicknames(page)).toHaveText(['Kaïros', 'Sven']);
+  await expect(nicknames(page)).toHaveText(['Kaïros', ORGANIZER_NICKNAME, 'Sven']);
 });
 
 test('l’Organisateur coupe les liens d’un pseudo depuis le menu « ⋯ » ; son téléphone revient à l’identification (ID-5, ID-8)', async ({
@@ -433,7 +439,8 @@ test('l’Organisateur fusionne un pseudo dans un autre, après avoir lu ce que 
     name: /^Fusionner «\s*Élodie\s*» dans un autre pseudo$/,
   });
   const destinations = dialog.getByRole('radio');
-  await expect(destinations).toHaveCount(2);
+  // Kaïros, Sven, et l'Organisateur des tests, qui entre dans le back office (ADR 0020).
+  await expect(destinations).toHaveCount(3);
   await expect(dialog.getByRole('radio', { name: /Kaïros/ })).toBeVisible();
   await dialog.getByRole('searchbox', { name: 'Chercher la destination' }).fill('sv');
   await expect(destinations).toHaveCount(1);
@@ -453,5 +460,5 @@ test('l’Organisateur fusionne un pseudo dans un autre, après avoir lu ce que 
   await expect(program).toContainText('Les Brumes, avec Kaïros');
 
   await page.goto('/gestion/participants');
-  await expect(nicknames(page)).toHaveText(['Kaïros', 'Sven']);
+  await expect(nicknames(page)).toHaveText(['Kaïros', ORGANIZER_NICKNAME, 'Sven']);
 });

@@ -4,6 +4,7 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { API_PREFIX } from '@chimeres/contract';
+import { AccessGuard } from './account/access.guard.js';
 import { AccountModule } from './account/account.module.js';
 import { ConventionModule } from './convention/convention.module.js';
 import { DrawModule } from './draw/draw.module.js';
@@ -60,10 +61,12 @@ const fronts = existsSync(publicDir)
     DrawModule,
     FrontOfficeModule,
   ],
-  // Filtre et garde globaux, déclarés ici pour valoir aussi dans les tests qui démarrent AppModule.
+  // Filtre et gardes globaux, déclarés ici pour valoir aussi dans les tests qui démarrent AppModule.
+  // Les gardes s'appliquent dans cet ordre : une écriture d'un autre site est refusée avant tout.
   providers: [
     { provide: APP_FILTER, useClass: ProblemFilter },
     { provide: APP_GUARD, useClass: CrossSiteWriteGuard },
+    { provide: APP_GUARD, useClass: AccessGuard },
   ],
 })
 export class AppModule {}

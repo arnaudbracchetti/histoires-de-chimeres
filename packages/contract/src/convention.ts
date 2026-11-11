@@ -30,6 +30,6 @@ export type UpdateConventionBody = {
 };
 
 export const conventionEndpoints = {
-  read: endpoint<ConventionDto>('GET', 'convention'),
+  read: endpoint<ConventionDto>('GET', 'convention', { access: 'gameMaster' }),
   update: endpoint<ConventionDto, never, UpdateConventionBody>('PUT', 'convention'),
 };

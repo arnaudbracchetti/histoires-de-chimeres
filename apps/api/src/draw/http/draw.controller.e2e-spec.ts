@@ -26,16 +26,24 @@ import {
 } from '@chimeres/contract';
 import type { Clock } from '@chimeres/application';
 import { TimeOfDay, type DrawAlgorithm } from '@chimeres/domain';
+import { insertAccountSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 import { CLOCK } from '../../clock/clock.token.js';
 import { DRAW_ALGORITHM } from '../draw-algorithm.token.js';
 
 describe('Les gestes du tirage (TI-1, TI-6)', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020). */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
+
   /** Créneaux 1 (9 h – 11 h 30) et 2 (14 h – 16 h 30), tables « Table 10 » et « Table 2 ». */
   let convention: ConventionDto;
 
-  const server = () => request(app);
+  const server = () => request(app, organizerCookie);
   const slot = (rank: number) => convention.timeSlots[rank - 1]!.id;
   const table = (name: string) => convention.tables.find((t) => t.name === name)!.id;
 
@@ -660,8 +668,15 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
     });
 
     it('termine le créneau publié une fois son heure de fin passée, pour le suivi comme pour le téléphone', async () => {
-      // Le 14 mars 2027 à midi : le créneau 1 (9 h – 11 h 30) a fini, pas le créneau 2.
-      await start(undefined, { now: () => ({ date: '2027-03-14', time: TimeOfDay.parse('12:00') }) });
+      // Le 14 mars 2027 à midi : le créneau 1 (9 h – 11 h 30) a fini, pas le créneau 2. La session
+      // s'ouvre à l'heure de cette horloge : celle d'aujourd'hui y aurait expiré.
+      organizerCookie = await insertAccountSession({
+        nickname: 'Organisatrice du 14 mars',
+        openedAt: new Date('2027-03-14T10:00:00Z'),
+      });
+      await start(undefined, {
+        now: () => ({ date: '2027-03-14', time: TimeOfDay.parse('12:00') }),
+      });
       await server()
         .put(apiUrl(conventionEndpoints.update))
         .send({ name: convention.name, date: '2027-03-14' })

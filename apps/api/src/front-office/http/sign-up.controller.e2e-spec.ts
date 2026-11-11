@@ -18,10 +18,17 @@ import {
   type GameMasterDto,
   type ScenarioDto,
 } from '@chimeres/contract';
+import { insertAccountSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 
 describe('Inscriptions du front office (IN-2)', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020). */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
 
   beforeEach(async () => {
     app = await startApp();
@@ -31,9 +38,8 @@ describe('Inscriptions du front office (IN-2)', () => {
     await app.close();
   });
 
-  const server = () => request(app);
-  const withCookie = (call: Test, cookie?: string) =>
-    cookie ? call.set('Cookie', cookie) : call;
+  const server = () => request(app, organizerCookie);
+  const withCookie = (call: Test, cookie?: string) => (cookie ? call.set('Cookie', cookie) : call);
   const signUp = (gameId: string, cookie?: string) =>
     withCookie(server().put(apiUrl(signUpEndpoints.signUp, { gameId })), cookie);
   const withdraw = (gameId: string, cookie?: string) =>

@@ -32,7 +32,11 @@ const EMPTY_MODEL = { currentPassword: '', password: '', passwordConfirmation: '
       <h2 id="password-title">Mot de passe</h2>
       <form [formRoot]="form">
         <app-field label="Mot de passe actuel">
-          <input type="password" autocomplete="current-password" [formField]="form.currentPassword" />
+          <input
+            type="password"
+            autocomplete="current-password"
+            [formField]="form.currentPassword"
+          />
         </app-field>
         <app-field label="Nouveau mot de passe" [help]="passwordHelp">
           <input type="password" autocomplete="new-password" [formField]="form.password" />
@@ -104,9 +108,7 @@ export class AccountPage {
     this.model,
     (path) => {
       validate(path.currentPassword, ({ value }) =>
-        value()
-          ? undefined
-          : { kind: 'required', message: fr`Indique ton mot de passe actuel.` },
+        value() ? undefined : { kind: 'required', message: fr`Indique ton mot de passe actuel.` },
       );
       passwordRules(path.password);
       validate(path.passwordConfirmation, ({ value, valueOf }) =>

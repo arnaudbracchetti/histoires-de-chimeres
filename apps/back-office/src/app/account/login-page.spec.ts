@@ -53,16 +53,14 @@ describe('Page de connexion', () => {
     rendered.type('Pseudo', 'Kaïros');
     rendered.type('Mot de passe', 'pas le bon mot');
     rendered.send();
-    TestBed.inject(HttpTestingController)
-      .expectOne(apiUrl(accountEndpoints.logIn))
-      .flush(
-        {
-          title: 'Pseudo ou mot de passe incorrect',
-          detail: 'Vérifie.',
-          code: 'wrong-credentials',
-        },
-        { status: 401, statusText: 'Unauthorized' },
-      );
+    TestBed.inject(HttpTestingController).expectOne(apiUrl(accountEndpoints.logIn)).flush(
+      {
+        title: 'Pseudo ou mot de passe incorrect',
+        detail: 'Vérifie.',
+        code: 'wrong-credentials',
+      },
+      { status: 401, statusText: 'Unauthorized' },
+    );
     await rendered.fixture.whenStable();
     rendered.fixture.detectChanges();
     return rendered;

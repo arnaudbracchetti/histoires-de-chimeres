@@ -36,9 +36,11 @@ export type LinkedPhoneDto = {
  * `phone-not-linked` : le front revient à l'identification.
  */
 export const linkedPhoneEndpoints = {
-  read: endpoint<LinkedPhoneDto>('GET', 'front-office/linked-phone'),
+  read: endpoint<LinkedPhoneDto>('GET', 'front-office/linked-phone', { access: 'public' }),
   /** S'identifier (ID-1) : refuse sans le code de présence (ID-2). */
-  link: endpoint<LinkPhoneDto, never, LinkPhoneBody>('POST', 'front-office/linked-phone'),
+  link: endpoint<LinkPhoneDto, never, LinkPhoneBody>('POST', 'front-office/linked-phone', {
+    access: 'public',
+  }),
   /** Changer de pseudo (ID-9) : coupe le lien de ce téléphone, sans effet s'il n'en a pas. */
-  unlink: endpoint<void>('DELETE', 'front-office/linked-phone'),
+  unlink: endpoint<void>('DELETE', 'front-office/linked-phone', { access: 'linkedPhone' }),
 };

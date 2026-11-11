@@ -7,7 +7,7 @@ import {
   type ChangeOwnPasswordBody,
   type LogInBody,
 } from '@chimeres/contract';
-import { insertAccountSession } from '../../../test/account-session.js';
+import { insertSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 import { setEnvironment } from '../../../test/environment.js';
 import { request, type Response } from '../../../test/http.js';
@@ -139,15 +139,16 @@ describe('Compte du back office : connexion et session (ADR 0015, 0018, 0019)', 
     });
 
     it('lit le compte de la session insérée par les tests (ADR 0020)', async () => {
-      const cookie = await insertAccountSession({
+      const { cookie, gameMasterId } = await insertSession({
         nickname: 'Lune',
         organizer: false,
+        gameMaster: true,
         openedAt: new Date('2027-03-14T08:00:00Z'),
       });
 
       const response = await readAccount(cookie).expect(200);
 
-      expect(response.body).toEqual({ nickname: 'Lune', organizer: false, gameMasterId: null });
+      expect(response.body).toEqual({ nickname: 'Lune', organizer: false, gameMasterId });
     });
   });
 

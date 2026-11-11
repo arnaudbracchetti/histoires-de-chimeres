@@ -72,30 +72,38 @@ export const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
  * reste une URL publique, mise en cache hors ligne.
  */
 export const scenarioEndpoints = {
-  list: endpoint<ScenarioListItemDto[]>('GET', 'scenarios'),
-  read: endpoint<ScenarioDto, ScenarioParams>('GET', 'scenarios/:scenarioId'),
+  list: endpoint<ScenarioListItemDto[]>('GET', 'scenarios', { access: 'gameMaster' }),
+  read: endpoint<ScenarioDto, ScenarioParams>('GET', 'scenarios/:scenarioId', {
+    access: 'gameMaster',
+  }),
   propose: endpoint<ScenarioDto, GameMasterParams, ScenarioBody>(
     'POST',
     'game-masters/:gameMasterId/scenarios',
+    { access: 'ownGameMaster' },
   ),
   update: endpoint<ScenarioDto, GameMasterScenarioParams, ScenarioBody>(
     'PUT',
     'game-masters/:gameMasterId/scenarios/:scenarioId',
+    { access: 'ownGameMaster' },
   ),
   remove: endpoint<void, GameMasterScenarioParams>(
     'DELETE',
     'game-masters/:gameMasterId/scenarios/:scenarioId',
+    { access: 'ownGameMaster' },
   ),
   changeImage: endpoint<ScenarioDto, GameMasterScenarioParams>(
     'PUT',
     'game-masters/:gameMasterId/scenarios/:scenarioId/image',
+    { access: 'ownGameMaster' },
   ),
   removeImage: endpoint<ScenarioDto, GameMasterScenarioParams>(
     'DELETE',
     'game-masters/:gameMasterId/scenarios/:scenarioId/image',
+    { access: 'ownGameMaster' },
   ),
   readImage: endpoint<Uint8Array, ScenarioImageParams>(
     'GET',
     'scenarios/:scenarioId/images/:imageId',
+    { access: 'public' },
   ),
 };

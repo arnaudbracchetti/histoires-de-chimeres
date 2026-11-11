@@ -11,7 +11,7 @@ import {
   type GameMasterDto,
   type ScenarioDto,
 } from '@chimeres/contract';
-import { expect, test } from '../../fixtures.js';
+import { addOrganizerCookie, expect, test } from '../../fixtures.js';
 import { post } from './api.js';
 
 // Espace insécable (U+00A0) et espace fine insécable (U+202F) de docs/design/ton.md.
@@ -1017,10 +1017,12 @@ test('déprogrammer une partie en la déposant sur le bac de réserve', async ({
 test('un dépôt sur une case prise entre-temps est refusé : « Table prise », et l’écran se relit', async ({
   page,
   browser,
+  baseURL,
 }) => {
   const { slot1, tableId } = await prepare(page);
   await page.goto('/gestion/');
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await addOrganizerCookie(context, baseURL!);
   const other = await context.newPage();
   await other.goto('/gestion/');
   const target = (on: Page) => slotCell(on, slot1, tableId('Table 1'));

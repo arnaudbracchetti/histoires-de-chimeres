@@ -11,6 +11,7 @@ import {
   type ScenarioDto,
   type ScenarioListItemDto,
 } from '@chimeres/contract';
+import { insertAccountSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 
 const UNKNOWN_ID = '8d3c1a8e-0000-4000-8000-000000000000';
@@ -21,6 +22,13 @@ const anImage = (width: number, height: number) =>
 
 describe("Image d'un scénario (PR-7, ADR 0007)", () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020). */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
+
   let scenario: ScenarioDto;
 
   beforeEach(async () => {
@@ -51,7 +59,7 @@ describe("Image d'un scénario (PR-7, ADR 0007)", () => {
     await app.close();
   });
 
-  const server = () => request(app);
+  const server = () => request(app, organizerCookie);
   const send = (
     bytes: Buffer,
     filename = 'image.jpg',
@@ -241,9 +249,7 @@ describe("Image d'un scénario (PR-7, ADR 0007)", () => {
 
     await send(await anImage(30, 20).jpeg().toBuffer(), 'a.jpg', scenario.id, elodie.id)
       .expect(404)
-      .expect(({ body: problem }) =>
-        expect(problem).toMatchObject({ code: 'scenario-not-found' }),
-      );
+      .expect(({ body: problem }) => expect(problem).toMatchObject({ code: 'scenario-not-found' }));
     await removeImage(scenario.id, elodie.id).expect(404);
 
     expect((await read()).imageUrl).toBe((body as ScenarioDto).imageUrl);

@@ -30,6 +30,7 @@ import {
   type ScenarioListItemDto,
   type SwapGamesBody,
 } from '@chimeres/contract';
+import { insertAccountSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 import { rowWrites } from '../../../test/database.js';
 
@@ -37,6 +38,13 @@ const UNKNOWN_ID = '8d3c1a8e-0000-4000-8000-000000000000';
 
 describe('Programme', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020). */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
+
   /** Créneaux 1 (9 h) et 2 (14 h), tables « Table 1 » et « Table 2 ». */
   let convention: ConventionDto;
   /** « Élodie », disponible sur les deux créneaux ; « Kaïros », sur le créneau 1. */
@@ -47,7 +55,7 @@ describe('Programme', () => {
   let ruines: ScenarioDto;
   let brumes: ScenarioDto;
 
-  const server = () => request(app);
+  const server = () => request(app, organizerCookie);
 
   const proposeScenario = async (gameMasterId: string, title: string, duration: 1 | 2 = 1) =>
     (
@@ -343,7 +351,12 @@ describe('Programme', () => {
     const gameId = await scheduleNeons();
     const update = (duration: 1 | 2) =>
       server()
-        .put(apiUrl(scenarioEndpoints.update, { gameMasterId: neons.gameMaster.id, scenarioId: neons.id }))
+        .put(
+          apiUrl(scenarioEndpoints.update, {
+            gameMasterId: neons.gameMaster.id,
+            scenarioId: neons.id,
+          }),
+        )
         .send({
           title: 'Néons',
           system: 'Cthulhu',
@@ -353,7 +366,12 @@ describe('Programme', () => {
           duration,
         });
     const remove = () =>
-      server().delete(apiUrl(scenarioEndpoints.remove, { gameMasterId: neons.gameMaster.id, scenarioId: neons.id }));
+      server().delete(
+        apiUrl(scenarioEndpoints.remove, {
+          gameMasterId: neons.gameMaster.id,
+          scenarioId: neons.id,
+        }),
+      );
 
     const duration = await update(2).expect(422);
     expect(duration.body).toMatchObject({
@@ -909,9 +927,7 @@ describe('Programme', () => {
         await signUp(neonsGameId, lune);
         await signUp(brumesGameId, lune);
         await signUp(neonsGameId, mira);
-        const removed = [
-          { gameId: neonsGameId, signUpCount: 2, withoutOtherSignUpCount: 1 },
-        ];
+        const removed = [{ gameId: neonsGameId, signUpCount: 2, withoutOtherSignUpCount: 1 }];
 
         const verdicts = (
           await server()

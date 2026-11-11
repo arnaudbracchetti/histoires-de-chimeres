@@ -10,12 +10,20 @@ import {
   type ConventionDto,
   type GameMasterDto,
 } from '@chimeres/contract';
+import { insertAccountSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 
 const UNKNOWN_ID = '8d3c1a8e-0000-4000-8000-000000000000';
 
 describe('Disponibilités des MJ (PR-2)', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020). */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
+
   /** Créneau 1 : 9 h – 11 h 30 ; créneau 2 : 14 h – 16 h 30. */
   let slot1: string;
   let slot2: string;
@@ -23,7 +31,7 @@ describe('Disponibilités des MJ (PR-2)', () => {
   let elodie: string;
   let kairos: string;
 
-  const server = () => request(app);
+  const server = () => request(app, organizerCookie);
   const readConvention = async () =>
     (await server().get(apiUrl(conventionEndpoints.read)).expect(200)).body as ConventionDto;
   const readGameMaster = (gameMasterId: string) =>

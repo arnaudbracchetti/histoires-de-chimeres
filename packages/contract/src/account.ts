@@ -32,18 +32,22 @@ export type ConnectedAccountDto = {
  */
 export const accountEndpoints = {
   /** Lire son propre compte : refusé sans session par `not-logged-in`. */
-  read: endpoint<ConnectedAccountDto>('GET', 'account'),
+  read: endpoint<ConnectedAccountDto>('GET', 'account', { access: 'gameMaster' }),
   /**
    * Se connecter : un pseudo inconnu et un mauvais mot de passe donnent la même réponse,
    * `wrong-credentials`. Au-delà de la limite des essais : `too-many-login-attempts` (ADR 0018).
    */
-  logIn: endpoint<ConnectedAccountDto, never, LogInBody>('POST', 'account/session'),
+  logIn: endpoint<ConnectedAccountDto, never, LogInBody>('POST', 'account/session', {
+    access: 'public',
+  }),
   /** Se déconnecter : supprime la session en base ; sans effet sans session. */
-  logOut: endpoint<void>('DELETE', 'account/session'),
+  logOut: endpoint<void>('DELETE', 'account/session', { access: 'gameMaster' }),
   /**
    * Changer son mot de passe : ferme ses autres sessions, garde celle en cours (ADR 0019). Un mot
    * de passe actuel faux donne `current-password-wrong` ; sans session, `not-logged-in`. Après un
    * oubli, c'est le lien d'accès qui fait choisir un nouveau mot de passe (ADR 0018).
    */
-  changePassword: endpoint<void, never, ChangeOwnPasswordBody>('PUT', 'account/password'),
+  changePassword: endpoint<void, never, ChangeOwnPasswordBody>('PUT', 'account/password', {
+    access: 'gameMaster',
+  }),
 };

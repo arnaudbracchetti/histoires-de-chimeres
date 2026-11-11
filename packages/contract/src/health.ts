@@ -5,5 +5,5 @@ export type HealthDto = {
 };
 
 export const healthEndpoints = {
-  check: endpoint<HealthDto>('GET', 'health'),
+  check: endpoint<HealthDto>('GET', 'health', { access: 'public' }),
 };

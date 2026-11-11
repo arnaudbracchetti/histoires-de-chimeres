@@ -7,11 +7,18 @@ import {
   timeSlotEndpoints,
   type UpdateConventionBody,
 } from '@chimeres/contract';
+import { insertAccountSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 import { resetDatabase } from '../../../test/database.js';
 
 describe('Convention', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020). */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
 
   beforeEach(async () => {
     app = await startApp();
@@ -21,9 +28,9 @@ describe('Convention', () => {
     await app.close();
   });
 
-  const read = () => request(app).get(apiUrl(conventionEndpoints.read));
+  const read = () => request(app, organizerCookie).get(apiUrl(conventionEndpoints.read));
   const update = (body: UpdateConventionBody | object | string) =>
-    request(app)
+    request(app, organizerCookie)
       .put(apiUrl(conventionEndpoints.update))
       .set('Content-Type', 'application/json')
       .send(body);
@@ -44,7 +51,7 @@ describe('Convention', () => {
 
   it('finit à la fin de son dernier créneau, le jour de sa date ; sans date, pas de fin', async () => {
     const addTimeSlot = (start: string, end: string) =>
-      request(app)
+      request(app, organizerCookie)
         .post(apiUrl(timeSlotEndpoints.add))
         .send({ start, end })
         .expect(201);
@@ -67,6 +74,7 @@ describe('Convention', () => {
     const { presenceCode } = (await read()).body;
 
     await resetDatabase();
+    organizerCookie = await insertAccountSession();
 
     expect((await read()).body.presenceCode).toBe(presenceCode);
   });

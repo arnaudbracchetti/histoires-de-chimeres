@@ -170,6 +170,8 @@ export type ApiErrorCode =
   | 'current-password-wrong'
   /** Aucune session du back office : cookie absent, inconnu ou expiré (ADR 0019). */
   | 'not-logged-in'
+  /** Une session du back office sans le droit que demande l'endpoint (ADR 0017). */
+  | 'access-denied'
   /** Le téléphone n'est relié à aucun pseudo : cookie absent, inconnu ou coupé (ADR 0009). */
   | 'phone-not-linked'
   /** Une écriture qui ne vient pas du site lui-même : refusée contre le CSRF (ADR 0019). */

@@ -19,6 +19,7 @@ export {
   endpoint,
   type BodyOf,
   type Endpoint,
+  type EndpointAccess,
   type ParamsArgs,
   type ParamsOf,
   type QueryOf,

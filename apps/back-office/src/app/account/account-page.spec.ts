@@ -90,9 +90,9 @@ describe('Page « Mon compte » : changer son mot de passe (ADR 0019)', () => {
 
     const current = input('Mot de passe actuel');
     expect(current.getAttribute('aria-invalid')).toBe('true');
-    expect(host.querySelector(`#${current.getAttribute('aria-describedby')}`)?.textContent).toContain(
-      message,
-    );
+    expect(
+      host.querySelector(`#${current.getAttribute('aria-describedby')}`)?.textContent,
+    ).toContain(message);
   });
 
   it('ne part pas sans mot de passe actuel, ni avec un nouveau trop court', async () => {

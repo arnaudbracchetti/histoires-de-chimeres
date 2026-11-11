@@ -19,14 +19,22 @@ import {
   type ScheduleDto,
   type SignUpTrackingDto,
 } from '@chimeres/contract';
+import { insertAccountSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 
 describe('Suivi des inscriptions', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020). */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
+
   /** Créneaux 1 (9 h – 11 h 30) et 2 (14 h – 16 h 30), tables « Table 10 » et « Table 2 ». */
   let convention: ConventionDto;
 
-  const server = () => request(app);
+  const server = () => request(app, organizerCookie);
   const slot = (rank: number) => convention.timeSlots[rank - 1]!.id;
   const table = (name: string) => convention.tables.find((t) => t.name === name)!.id;
 

@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, phoneTest as test } from '../../fixtures.js';
 import { frontOfficeUrls } from '@chimeres/contract';
 import {
   aNickname,

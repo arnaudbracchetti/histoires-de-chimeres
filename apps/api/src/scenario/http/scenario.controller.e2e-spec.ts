@@ -10,6 +10,7 @@ import {
   type ScenarioDto,
   type ScenarioListItemDto,
 } from '@chimeres/contract';
+import { insertAccountSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 
 const NBSP = '\u00a0';
@@ -27,6 +28,13 @@ const aBody = (changes: Partial<ScenarioBody> = {}): ScenarioBody => ({
 
 describe('Scénarios', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020). */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
+
   let gameMaster: GameMasterDto;
 
   beforeEach(async () => {
@@ -42,15 +50,12 @@ describe('Scénarios', () => {
     await app.close();
   });
 
-  const server = () => request(app);
+  const server = () => request(app, organizerCookie);
   const propose = (body: ScenarioBody | object, gameMasterId = gameMaster.id) =>
     server().post(apiUrl(scenarioEndpoints.propose, { gameMasterId })).send(body);
   const read = (scenarioId: string) => server().get(apiUrl(scenarioEndpoints.read, { scenarioId }));
-  const update = (
-    scenarioId: string,
-    body: ScenarioBody | object,
-    gameMasterId = gameMaster.id,
-  ) => server().put(apiUrl(scenarioEndpoints.update, { gameMasterId, scenarioId })).send(body);
+  const update = (scenarioId: string, body: ScenarioBody | object, gameMasterId = gameMaster.id) =>
+    server().put(apiUrl(scenarioEndpoints.update, { gameMasterId, scenarioId })).send(body);
   const list = async () =>
     (await server().get(apiUrl(scenarioEndpoints.list)).expect(200)).body as ScenarioListItemDto[];
   const remove = (scenarioId: string, gameMasterId = gameMaster.id) =>

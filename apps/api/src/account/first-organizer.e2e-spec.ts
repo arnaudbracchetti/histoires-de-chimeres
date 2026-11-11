@@ -8,6 +8,7 @@ import {
   type GameMasterDto,
   type ParticipantListEntryDto,
 } from '@chimeres/contract';
+import { insertAccountSession, TEST_ORGANIZER_NICKNAME } from '../../test/account-session.js';
 import { startApp } from '../../test/app.js';
 import { setEnvironment } from '../../test/environment.js';
 import { request, type Response } from '../../test/http.js';
@@ -20,6 +21,12 @@ const readSessionCookie = (response: Response) =>
 describe('Premier Organisateur de la configuration (ADR 0016)', () => {
   let app: INestApplication<App> | undefined;
   let restoreEnvironment: () => void = () => {};
+  /** La session de l'Organisateur des tests (ADR 0020), qui lit la liste des pseudos. */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
 
   /** Démarre l'application avec ces variables, après avoir arrêté la précédente. */
   const restartWithVariables = async (variables: { pseudo?: string; password?: string }) => {
@@ -44,9 +51,12 @@ describe('Premier Organisateur de la configuration (ADR 0016)', () => {
     request(app!).post(apiUrl(accountEndpoints.logIn)).send({ nickname, password });
   const readAccount = (cookie: string) =>
     request(app!).get(apiUrl(accountEndpoints.read)).set('Cookie', cookie);
+  /** Les pseudos de la convention, hors l'Organisateur des tests. */
   const participants = async () =>
-    (await request(app!).get(apiUrl(participantEndpoints.list)).expect(200))
-      .body as ParticipantListEntryDto[];
+    (
+      (await request(app!, organizerCookie).get(apiUrl(participantEndpoints.list)).expect(200))
+        .body as ParticipantListEntryDto[]
+    ).filter(({ nickname }) => nickname !== TEST_ORGANIZER_NICKNAME);
 
   it('crée au démarrage le participant et son compte Organisateur, qui se connecte tout de suite', async () => {
     await restartWithVariables({ pseudo: 'Kaïros', password: PASSWORD });
@@ -66,7 +76,7 @@ describe('Premier Organisateur de la configuration (ADR 0016)', () => {
   it('ajoute le compte au MJ qui porte déjà ce pseudo, comparé comme ID-7, sans second participant', async () => {
     await restartWithVariables({});
     const [elodie] = (
-      await request(app!)
+      await request(app!, organizerCookie)
         .post(apiUrl(gameMasterEndpoints.add))
         .send({ nickname: 'Élodie' })
         .expect(201)

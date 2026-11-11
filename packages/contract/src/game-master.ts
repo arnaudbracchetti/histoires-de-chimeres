@@ -48,7 +48,9 @@ export type GameMasterParams = { gameMasterId: string };
  */
 export const gameMasterEndpoints = {
   list: endpoint<GameMasterDto[]>('GET', 'game-masters'),
-  read: endpoint<GameMasterSheetDto, GameMasterParams>('GET', 'game-masters/:gameMasterId'),
+  read: endpoint<GameMasterSheetDto, GameMasterParams>('GET', 'game-masters/:gameMasterId', {
+    access: 'ownGameMaster',
+  }),
   add: endpoint<GameMasterDto[], never, GameMasterNicknameBody>('POST', 'game-masters'),
   rename: endpoint<GameMasterSheetDto, GameMasterParams, GameMasterNicknameBody>(
     'PUT',

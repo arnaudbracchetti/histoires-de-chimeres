@@ -25,14 +25,22 @@ import {
   type ScheduleDto,
   type SignUpTrackingDto,
 } from '@chimeres/contract';
+import { insertAccountSession, TEST_ORGANIZER_NICKNAME } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 
 describe('Liste « Participants » (ID-5)', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020). */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
+
   /** Créneaux 1 (9 h – 11 h 30) et 2 (14 h – 16 h 30), tables « Dragon » et « Licorne ». */
   let convention: ConventionDto;
 
-  const server = () => request(app);
+  const server = () => request(app, organizerCookie);
   const slot = (rank: number) => convention.timeSlots[rank - 1]!.id;
   const table = (name: string) => convention.tables.find((t) => t.name === name)!.id;
 
@@ -96,13 +104,16 @@ describe('Liste « Participants » (ID-5)', () => {
   const signUp = (gameId: string, cookie: string) =>
     server().put(apiUrl(signUpEndpoints.signUp, { gameId })).set('Cookie', cookie).expect(204);
 
+  /** La liste, sans l'Organisateur des tests, dont la session lit les pseudos. */
   const list = async (search?: string) =>
     (
-      await server()
-        .get(apiUrl(participantEndpoints.list))
-        .query(search === undefined ? {} : { search })
-        .expect(200)
-    ).body as ParticipantListEntryDto[];
+      (
+        await server()
+          .get(apiUrl(participantEndpoints.list))
+          .query(search === undefined ? {} : { search })
+          .expect(200)
+      ).body as ParticipantListEntryDto[]
+    ).filter(({ nickname }) => nickname !== TEST_ORGANIZER_NICKNAME);
 
   const nicknames = (participants: ParticipantListEntryDto[]) =>
     participants.map(({ nickname }) => nickname);

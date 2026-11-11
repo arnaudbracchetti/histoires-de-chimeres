@@ -460,6 +460,11 @@ export const problemCatalogue: Catalogue = {
     detail: () => fr`Ta session a pris fin : connecte-toi pour continuer.`,
     status: 401,
   },
+  'access-denied': {
+    title: 'Accès refusé',
+    detail: () => fr`Ton compte ne donne pas accès à cette page.`,
+    status: 403,
+  },
   'phone-not-linked': {
     title: 'Téléphone relié à aucun pseudo',
     detail: () => 'Tape ton pseudo pour continuer.',

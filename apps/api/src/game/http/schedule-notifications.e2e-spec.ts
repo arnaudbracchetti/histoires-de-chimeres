@@ -26,6 +26,7 @@ import {
   type SignUpTrackingDto,
 } from '@chimeres/contract';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { insertAccountSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 import { FakePushService, type ReceivedPush } from '../../../test/fake-push-service.js';
 
@@ -37,6 +38,13 @@ const quietPeriod = () => new Promise((resolve) => setTimeout(resolve, 300));
 
 describe('Notifications des gestes de programmation et des inscriptions (NO-2, ADR 0010)', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020). */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
+
   let push: FakePushService;
   let convention: ConventionDto;
   /** « Néons » d'Élodie, au créneau 1 (9 h – 11 h 30), table Griffon, de 3 à 5 places. */
@@ -51,7 +59,7 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
   let svenPhone: string;
   let elodiePhone: string;
 
-  const server = () => request(app);
+  const server = () => request(app, organizerCookie);
 
   /**
    * Relie un téléphone au pseudo et range son abonnement : son cookie, `nom=valeur`. L'endpoint du

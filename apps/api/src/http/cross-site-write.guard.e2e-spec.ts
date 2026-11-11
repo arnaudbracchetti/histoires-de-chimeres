@@ -7,14 +7,18 @@ import {
   linkedPhoneEndpoints,
   tableEndpoints,
 } from '@chimeres/contract';
+import { insertAccountSession } from '../../test/account-session.js';
 import { startApp } from '../../test/app.js';
 
 const PUBLIC_URL = 'https://chimeres.example.org';
 
 describe('Garde CSRF (ADR 0019)', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020) : le garde d'accès laisse passer. */
+  let organizerCookie: string;
 
   beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
     vi.stubEnv('PUBLIC_URL', `${PUBLIC_URL}/`);
     app = await startApp();
   });
@@ -25,7 +29,10 @@ describe('Garde CSRF (ADR 0019)', () => {
   });
 
   const addTable = () =>
-    request(app.getHttpServer()).post(apiUrl(tableEndpoints.add)).send({ name: 'Dragon' });
+    request(app.getHttpServer())
+      .post(apiUrl(tableEndpoints.add))
+      .set('Cookie', organizerCookie)
+      .send({ name: 'Dragon' });
 
   it('refuse une écriture sans Sec-Fetch-Site ni Origin : 403, en Problem Details', async () => {
     const response = await addTable()
@@ -73,6 +80,7 @@ describe('Garde CSRF (ADR 0019)', () => {
   it('laisse passer les lectures, d’où qu’elles viennent', async () => {
     await request(app.getHttpServer())
       .get(apiUrl(conventionEndpoints.read))
+      .set('Cookie', organizerCookie)
       .set('Sec-Fetch-Site', 'cross-site')
       .expect(200);
   });
@@ -80,8 +88,11 @@ describe('Garde CSRF (ADR 0019)', () => {
 
 describe('Garde CSRF sans domaine public configuré', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020) : le garde d'accès laisse passer. */
+  let organizerCookie: string;
 
   beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
     vi.stubEnv('PUBLIC_URL', '');
     app = await startApp();
   });
@@ -93,7 +104,10 @@ describe('Garde CSRF sans domaine public configuré', () => {
 
   it('refuse un Origin sans Sec-Fetch-Site, mais accepte same-origin', async () => {
     const add = () =>
-      request(app.getHttpServer()).post(apiUrl(tableEndpoints.add)).send({ name: 'Dragon' });
+      request(app.getHttpServer())
+        .post(apiUrl(tableEndpoints.add))
+        .set('Cookie', organizerCookie)
+        .send({ name: 'Dragon' });
 
     await add().set('Origin', 'http://localhost').expect(403);
     await add().set('Sec-Fetch-Site', 'same-origin').expect(201);

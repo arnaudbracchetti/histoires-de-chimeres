@@ -20,12 +20,19 @@ import {
   type ScenarioDto,
   type ScheduleDto,
 } from '@chimeres/contract';
+import { insertAccountSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 
 const UNKNOWN_ID = '8d3c1a8e-0000-4000-8000-000000000000';
 
 describe('MJ', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020). */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
 
   beforeEach(async () => {
     app = await startApp();
@@ -35,7 +42,7 @@ describe('MJ', () => {
     await app.close();
   });
 
-  const server = () => request(app);
+  const server = () => request(app, organizerCookie);
   const list = async () =>
     (await server().get(apiUrl(gameMasterEndpoints.list)).expect(200)).body as GameMasterDto[];
   const read = (gameMasterId: string) =>

@@ -11,9 +11,11 @@ export const availabilityEndpoints = {
   declare: endpoint<GameMasterSheetDto, AvailabilityParams>(
     'PUT',
     'game-masters/:gameMasterId/availabilities/:timeSlotId',
+    { access: 'ownGameMaster' },
   ),
   withdraw: endpoint<GameMasterSheetDto, AvailabilityParams>(
     'DELETE',
     'game-masters/:gameMasterId/availabilities/:timeSlotId',
+    { access: 'ownGameMaster' },
   ),
 };

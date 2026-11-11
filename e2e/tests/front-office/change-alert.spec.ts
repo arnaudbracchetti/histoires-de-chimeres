@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, phoneTest as test } from '../../fixtures.js';
 import { apiUrl, scheduleEndpoints, signUpEndpoints } from '@chimeres/contract';
 import { aNickname, identify } from './identification.js';
 import { prepare, timeSlotChip } from './schedule.js';

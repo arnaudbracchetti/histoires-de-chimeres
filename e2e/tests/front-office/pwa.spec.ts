@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, phoneTest as test } from '../../fixtures.js';
 import { apiUrl, frontOfficeEndpoints, linkedPhoneEndpoints } from '@chimeres/contract';
 import { aNickname, identify, nicknameButton } from './identification.js';
 import { gameCard, prepare, scheduleTab, timeSlotChip } from './schedule.js';

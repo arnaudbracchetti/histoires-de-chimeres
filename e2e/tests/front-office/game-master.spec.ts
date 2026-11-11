@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, phoneTest as test } from '../../fixtures.js';
 import { identifyAsGameMaster } from './identification.js';
 import { gameCard, prepare, scheduleTab, timeSlotChip } from './schedule.js';
 

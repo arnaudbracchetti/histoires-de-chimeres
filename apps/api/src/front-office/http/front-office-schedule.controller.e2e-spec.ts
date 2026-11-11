@@ -18,10 +18,17 @@ import {
   type ScenarioDto,
   type UpdateConventionBody,
 } from '@chimeres/contract';
+import { insertAccountSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 
 describe('Programme du front office', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020). */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
 
   beforeEach(async () => {
     app = await startApp();
@@ -31,7 +38,7 @@ describe('Programme du front office', () => {
     await app.close();
   });
 
-  const server = () => request(app);
+  const server = () => request(app, organizerCookie);
   const readSchedule = (cookie?: string) => {
     const call = server().get(apiUrl(frontOfficeEndpoints.readSchedule));
     return cookie ? call.set('Cookie', cookie) : call;

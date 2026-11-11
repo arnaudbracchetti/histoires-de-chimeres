@@ -14,7 +14,7 @@ import {
   type TimeSlotDto,
   type UpdateConventionBody,
 } from '@chimeres/contract';
-import { expect, test } from '../../fixtures.js';
+import { addOrganizerCookie, expect, test } from '../../fixtures.js';
 import { post } from './api.js';
 import { aNickname, identify, identifyAsGameMaster } from '../front-office/identification.js';
 import { gameCard, scheduleTab, timeSlotChip } from '../front-office/schedule.js';
@@ -104,6 +104,8 @@ test('le MJ d’une partie annulée rejoint les non placés avec ses inscription
   const { timeSlotId } = await prepare(page);
   await prepareNeons(page, timeSlotId);
   const phoneContext = await browser.newContext({ ...devices['Pixel 7'], baseURL });
+  // Le téléphone lit le code de présence par l'API, réservée aux sessions du back office.
+  await addOrganizerCookie(phoneContext, baseURL!);
   try {
     const phone = await phoneContext.newPage();
     await identifyAsGameMaster(phone, 'Sven');
@@ -146,6 +148,8 @@ test('un téléphone s’inscrit, l’Organisateur lance et publie le tirage, le
 }) => {
   await prepare(page);
   const phoneContext = await browser.newContext({ ...devices['Pixel 7'], baseURL });
+  // Le téléphone lit le code de présence par l'API, réservée aux sessions du back office.
+  await addOrganizerCookie(phoneContext, baseURL!);
   try {
     await followDraw(page, await phoneContext.newPage());
   } finally {
@@ -219,6 +223,8 @@ test('le tirage lancé du créneau suivant passe devant sa table sur le téléph
     baseURL,
     timezoneId: 'Europe/Paris',
   });
+  // Le téléphone lit le code de présence par l'API, réservée aux sessions du back office.
+  await addOrganizerCookie(phoneContext, baseURL!);
   try {
     const phone = await phoneContext.newPage();
     await phone.clock.install({ time: new Date('2027-03-13T08:00:00+01:00') });

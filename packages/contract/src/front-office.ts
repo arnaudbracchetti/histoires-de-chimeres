@@ -131,13 +131,21 @@ export type ParticipantSituationDto = {
 
 /** Le front office se ferme à la fin de la convention : ses endpoints refusent alors avec `convention-ended`. */
 export const frontOfficeEndpoints = {
-  read: endpoint<FrontOfficeDto>('GET', 'front-office'),
+  read: endpoint<FrontOfficeDto>('GET', 'front-office', { access: 'public' }),
   /** Vérifie le code de présence, sans rien changer : 204, ou `presence-code-wrong` (ID-2). */
-  verifyPresenceCode: endpoint<void, never, PresenceCodeBody>('POST', 'front-office/presence-code'),
+  verifyPresenceCode: endpoint<void, never, PresenceCodeBody>(
+    'POST',
+    'front-office/presence-code',
+    { access: 'public' },
+  ),
   /** Le programme, servi au seul téléphone relié : sinon `phone-not-linked`. */
-  readSchedule: endpoint<FrontOfficeScheduleDto>('GET', 'front-office/schedule'),
+  readSchedule: endpoint<FrontOfficeScheduleDto>('GET', 'front-office/schedule', {
+    access: 'linkedPhone',
+  }),
   /** La situation du pseudo, servie au seul téléphone relié : sinon `phone-not-linked`. */
-  readSituation: endpoint<ParticipantSituationDto>('GET', 'front-office/situation'),
+  readSituation: endpoint<ParticipantSituationDto>('GET', 'front-office/situation', {
+    access: 'linkedPhone',
+  }),
 };
 
 /**
@@ -147,10 +155,15 @@ export const frontOfficeEndpoints = {
  * répète ; 204, `phone-not-linked`, ou `sign-ups-closed`.
  */
 export const signUpEndpoints = {
-  signUp: endpoint<void, { gameId: string }>('PUT', 'front-office/games/:gameId/sign-up'),
-  withdraw: endpoint<void, { gameId: string }>('DELETE', 'front-office/games/:gameId/sign-up'),
+  signUp: endpoint<void, { gameId: string }>('PUT', 'front-office/games/:gameId/sign-up', {
+    access: 'linkedPhone',
+  }),
+  withdraw: endpoint<void, { gameId: string }>('DELETE', 'front-office/games/:gameId/sign-up', {
+    access: 'linkedPhone',
+  }),
   withdrawFromDraw: endpoint<void, { timeSlotId: string }>(
     'DELETE',
     'front-office/time-slots/:timeSlotId/draw-participation',
+    { access: 'linkedPhone' },
   ),
 };

@@ -10,17 +10,24 @@ import {
   type PushSubscriptionBody,
 } from '@chimeres/contract';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { insertAccountSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 
 describe('Abonnement push du téléphone relié', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020). */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
 
   afterEach(async () => {
     await app.close();
     vi.unstubAllEnvs();
   });
 
-  const server = () => request(app);
+  const server = () => request(app, organizerCookie);
 
   /** Un téléphone relié à un pseudo nouveau : son cookie, `nom=valeur`. */
   const linkedPhone = async (nickname: string) => {
@@ -116,7 +123,9 @@ describe('Abonnement push du téléphone relié', () => {
       vi.stubEnv('PUBLIC_URL', 'https://chimeres.example.org');
       app = await startApp();
 
-      const response = await server().get(apiUrl(pushSubscriptionEndpoints.readPublicKey)).expect(200);
+      const response = await server()
+        .get(apiUrl(pushSubscriptionEndpoints.readPublicKey))
+        .expect(200);
 
       expect(response.body).toEqual({ publicKey: 'BPublique' });
     });
@@ -127,7 +136,9 @@ describe('Abonnement push du téléphone relié', () => {
       vi.stubEnv('VAPID_SUBJECT', '');
       app = await startApp();
 
-      const response = await server().get(apiUrl(pushSubscriptionEndpoints.readPublicKey)).expect(404);
+      const response = await server()
+        .get(apiUrl(pushSubscriptionEndpoints.readPublicKey))
+        .expect(404);
 
       expect(response.body).toMatchObject({ code: 'push-not-configured' });
     });

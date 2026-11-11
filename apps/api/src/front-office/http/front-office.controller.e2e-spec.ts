@@ -10,10 +10,17 @@ import {
   type PresenceCodeBody,
   type UpdateConventionBody,
 } from '@chimeres/contract';
+import { insertAccountSession } from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 
 describe('Front office', () => {
   let app: INestApplication<App>;
+  /** La session de l'Organisateur des tests (ADR 0020). */
+  let organizerCookie: string;
+
+  beforeEach(async () => {
+    organizerCookie = await insertAccountSession();
+  });
 
   beforeEach(async () => {
     app = await startApp();
@@ -23,7 +30,7 @@ describe('Front office', () => {
     await app.close();
   });
 
-  const server = () => request(app);
+  const server = () => request(app, organizerCookie);
   const presenceCode = async () =>
     ((await server().get(apiUrl(conventionEndpoints.read)).expect(200)).body as ConventionDto)
       .presenceCode;
