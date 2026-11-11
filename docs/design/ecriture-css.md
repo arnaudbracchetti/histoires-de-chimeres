@@ -4,7 +4,7 @@ Le choix et ses raisons sont dans l'[ADR 0006](../adr/0006-interface-sans-biblio
 
 ## Le package `@chimeres/design`
 
-`packages/design`, sans framework, ne dépend que de `marked`, pour le rendu de la présentation. Les deux fronts en dépendent, avec `contract`. Tout ce que les deux fronts partagent sans framework y vit, jamais en copie dans chaque front.
+`packages/design`, sans framework, ne dépend que de `marked`, pour le rendu de la présentation, et de `lean-qr`, pour le QR code de l'affiche. Les deux fronts en dépendent, avec `contract`. Tout ce que les deux fronts partagent sans framework y vit, jamais en copie dans chaque front.
 
 | Contenu | Détail |
 |---|---|
@@ -18,6 +18,7 @@ Le choix et ses raisons sont dans l'[ADR 0006](../adr/0006-interface-sans-biblio
 | `src/typography/` | la typographie française de [ton.md](ton.md) : `fr`, `NBSP`, `countOf`, heures, plages, durées, heure saisie, date de la convention, testées par Vitest |
 | `scripts/check-typography.mjs` | le garde-fou typographique, commande `check-typography` que lance le `pnpm lint` de chaque front |
 | `renderPresentation(text)` | le HTML de la présentation d'un scénario, en Markdown sans lien, image ni HTML (PR-1), testé par Vitest : un seul rendu pour l'aperçu du back office et la fiche du front office. Seule dépendance du package : `marked`, importé par sa propre entrée (`@chimeres/design/presentation`) pour ne peser que sur les écrans qui l'affichent |
+| `buildQrCodeSvg(text)` | le QR code d'une adresse, en correction M, marge de 4 modules comprise : un `viewBox` et un tracé, à placer dans un `<svg>` sans HTML injecté, testé par Vitest contre `lean-qr`. Sur sa propre entrée (`@chimeres/design/qr-code`), chargée par la seule page « Informations de connexion » |
 | `presentation.css` | le style de ce rendu (classe `presentation`), commun aux deux fronts : intertitres en Aldrich orange derrière un filet, de taille décroissante selon leur niveau, citation, code, séparateur |
 
 Chaque front importe `tokens.css`, `fonts.css`, `base.css` (remise à zéro et éléments de base communs) et `presentation.css` dans son `styles.css`, et copie les sprites à sa racine, les licences dans `licences/` (`assets` de `angular.json`). Le front office copie aussi `pwa/` dans `icons/`.

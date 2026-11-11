@@ -4,6 +4,14 @@ import type { SeatsDto } from './scenario.js';
 /** Paramètre de l'adresse du QR code de l'affiche, qui porte le code de présence : `/?code=K7M2`. */
 export const PRESENCE_CODE_PARAM = 'code';
 
+/**
+ * L'adresse du QR code de l'affiche : le front office de l'origine, avec le code de présence. Le
+ * back office lui passe sa propre origine : les deux fronts sont servis sur le même domaine.
+ */
+export function buildFrontOfficeUrl(origin: string, presenceCode: string): string {
+  return `${origin}/?${new URLSearchParams({ [PRESENCE_CODE_PARAM]: presenceCode })}`;
+}
+
 /** Ce que le front office lit à son ouverture, tant que la convention n'est pas terminée. */
 export type FrontOfficeDto = {
   conventionName: string;

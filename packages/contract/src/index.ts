@@ -28,6 +28,7 @@ export {
 } from './game-master.js';
 export {
   PRESENCE_CODE_PARAM,
+  buildFrontOfficeUrl,
   frontOfficeEndpoints,
   hasPublishedDraw,
   type FrontOfficeDto,

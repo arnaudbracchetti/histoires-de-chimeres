@@ -23,6 +23,8 @@ Un seul thème, sombre. Les jetons sont des **jetons de rôle** en anglais, pos�
 | Gravure | `--engraving` | motif gravé complet |
 | Gravure relevée | `--engraving-strong` | motif gravé simplifié des vignettes |
 | Lettrine | `--initial` | lettrine de l'illustration par défaut |
+| Papier | `--paper` | fond du QR code, à l'écran comme à l'impression |
+| Encre | `--ink` | modules du QR code : le plus fort contraste, pour tout lecteur |
 | Gris de l'emblème | `--emblem-1` à `--emblem-6` | segments gris de l'anneau de l'emblème, du plus sombre au plus clair |
 
 - **L'orange est le même d'une édition à l'autre.** Relevé sur une vignette JPEG de l'affiche (l'aplat du texte orange), il est à confirmer sur le fichier source si on l'obtient.

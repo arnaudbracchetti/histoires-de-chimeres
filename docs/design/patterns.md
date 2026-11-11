@@ -8,7 +8,7 @@ Cette page décrit les patterns du back office. Une partie vaut aussi pour le fr
 | [Champs](#champs), [Validation](#validation), [Une erreur ne décale rien](#une-erreur-ne-décale-rien), [Enregistrement](#enregistrement) (pendant l'envoi, un second envoi est refusé) | [Où se fait la saisie](#où-se-fait-la-saisie) : cartes, lignes et pages de saisie |
 | [Actions destructrices](#actions-destructrices) : le dialogue de confirmation, le refus dans le dialogue | [Tableaux](#tableaux) |
 | [Erreur hors formulaire](#erreur-hors-formulaire), sauf la place des alertes : en bas à droite ici, en bas de l'écran sur le téléphone | [Chargement, état vide, erreur de lecture](#chargement-état-vide-erreur-de-lecture), jusqu'aux premiers écrans du front office qui en ont besoin |
-| [Succès](#succès) : pas d'alerte de succès, annonce aux lecteurs d'écran | [Programmation](#programmation), [Pilotage du jour J](#pilotage-du-jour-j), [Onglets de classeur](#onglets-de-classeur), [Jauge](#jauge) |
+| [Succès](#succès) : pas d'alerte de succès, annonce aux lecteurs d'écran | [Programmation](#programmation), [Pilotage du jour J](#pilotage-du-jour-j), [Informations de connexion](#informations-de-connexion), [Onglets de classeur](#onglets-de-classeur), [Jauge](#jauge) |
 | [Statuts](#statuts), [Focus](#focus) | |
 
 ## Le back office sur l'écran
@@ -23,7 +23,7 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 - **Haut du rail** : l'emblème et « Histoires de Chimères », puis la convention en cours (nom et date, ou « date à fixer »), qui mène à « Créneaux et tables ».
 - **Sections**, une page chacune :
   - **Préparation** : Calendrier (écran d'accueil), MJ, Scénarios, Créneaux et tables ;
-  - **Jour J** : Pilotage du jour J, Participants.
+  - **Jour J** : Pilotage du jour J, Participants, Informations de connexion.
 - **Bas du rail** : l'utilisateur. Avant l'authentification, « Organisateur, sans authentification ».
 - **La fiche d'un MJ** (MJ › pseudo) regroupe ses scénarios, ses disponibilités et ses parties. C'est le seul écran restreint à un MJ : il deviendra tout son espace avec l'authentification, sans le rail des Organisateurs ni le calendrier.
 
@@ -422,6 +422,15 @@ La liste des pseudos, de participant et de MJ (ID-5), dans l'ordre naturel.
   Au plus un geste par ligne, en secondaire. Sur un créneau ouvert, « ✎ Modifier les inscriptions » ouvre l'onglet Inscriptions sur ce créneau. Sur un tirage provisoire où le pseudo n'est pas, et qu'il ne mène pas, « Rouvrir les inscriptions » (`lock-open`) reprend le geste du pilotage et sa confirmation rouge, mot pour mot, sans nommer le pseudo (TI-6) ; le créneau repasse en inscriptions ouvertes dans la frise. Sur un tirage publié, pas terminé, où le pseudo n'est pas, et qu'il ne mène pas, « + Ajouter comme non placé » (`plus`) ouvre une confirmation orange (principal) : « Ajouter « Sven » au tirage publié du créneau 1 ? », « « Sven » y entre comme non placé : sans prendre la place de personne. », « « Sven » reçoit la notification « pas de place pour toi », avec les tables où il reste de la place. L'ajout ne se défait pas. » ; Annuler · **Ajouter comme non placé** (ID-14). La frise montre alors « Non placé », avec les tables où il reste de la place.
 - **Inscriptions** : l'Organisateur inscrit le pseudo à sa place (ID-12), aux règles du téléphone (IN-2 à IN-4, IN-6). Une pilule par créneau ouvert, puis une case par partie qui y commence, enregistrée dès qu'on la coche ou la décoche, sans confirmation (IN-5 ne s'applique pas) ; pendant l'écriture, la ligne est atténuée, et un refus part en alerte. Sous chaque partie, la [jauge](#jauge) et « 8 inscrits · 4 à 6 places · très demandée », ou « · 1 manquant » en jaune sous le minimum. La partie d'un MJ est grisée, case désactivée, « sa partie » ; sur un créneau où il mène : « Mène « Néons » : ses inscriptions sur ce créneau sont de secours. » Sans partie sur le créneau : « Sans partie sur ce créneau. », en rouge brique, avec « Retirer du tirage ». Sans créneau ouvert : « Aucun créneau n'a ses inscriptions ouvertes. »
 - **Téléphones** : « Relié à 9 h 12 », un par ligne, rien sur l'appareil. Sans téléphone : « Aucun téléphone relié : la personne lit ses résultats à l'accueil. »
+
+## Informations de connexion
+
+La page « Informations de connexion » (`/informations-de-connexion`) donne tout ce qu'il faut pour entrer dans le front office (ID-15). L'Organisateur la montre telle quelle sur un écran de l'accueil, rail compris.
+
+- **En paysage**, sous l'en-tête : à gauche, le QR code sur une tuile `--paper`, modules en `--ink`, d'environ 80 % de la hauteur disponible (sans dépasser 55 % de la largeur, pour laisser sa place au texte) ; à droite, le nom de la convention, les trois étapes numérotées, et l'encadré « Tu n'arrives pas à lire le QR code ? », avec « Va sur **domaine** et tape le code » et le code de présence en grand.
+- **Lue de loin** : c'est la seule page dont le texte suit la hauteur de l'écran (en `cqh`), avec la taille de l'échelle comme plancher. Le nom de la convention y prend Uncial Antiqua en orange, comme sur l'affiche (variante B du prototype #152). Ce sont des écarts voulus à l'échelle de [jetons.md](jetons.md).
+- Le QR code ouvre le front office du domaine du back office, avec le code de présence (`buildFrontOfficeUrl` de `contract`). Il a un nom accessible.
+- Sous le code de présence de « Créneaux et tables », un lien mène à la page.
 
 ## Onglets de classeur
 

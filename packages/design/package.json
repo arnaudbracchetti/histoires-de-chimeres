@@ -2,7 +2,7 @@
   "name": "@chimeres/design",
   "version": "0.0.0",
   "private": true,
-  "description": "Identité commune aux deux fronts : jetons CSS, polices, sprites SVG, icônes de PWA, typographie française, textes des notifications, initiale de l'illustration par défaut, rendu de la présentation.",
+  "description": "Identité commune aux deux fronts : jetons CSS, polices, sprites SVG, icônes de PWA, typographie française, textes des notifications, initiale de l'illustration par défaut, rendu de la présentation, QR code de l'affiche.",
   "type": "module",
   "exports": {
     ".": {
@@ -12,6 +12,10 @@
     "./presentation": {
       "types": "./dist/presentation-markdown.d.ts",
       "default": "./dist/presentation-markdown.js"
+    },
+    "./qr-code": {
+      "types": "./dist/qr-code.d.ts",
+      "default": "./dist/qr-code.js"
     },
     "./tokens.css": "./tokens.css",
     "./fonts.css": "./fonts.css",
@@ -27,6 +31,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "lean-qr": "catalog:",
     "marked": "catalog:"
   },
   "devDependencies": {

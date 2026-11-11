@@ -11,7 +11,7 @@ import { leaveUnsaved } from './shell/leave-unsaved';
 
 /**
  * URL en français, sous /gestion/. Le `title` devient celui de l'onglet (app.config.ts). Les pages
- * de scénario, avec leur rendu Markdown, se chargent à la demande.
+ * de scénario, avec leur rendu Markdown, et la page du QR code se chargent à la demande.
  */
 export const routes: Routes = [
   { path: '', title: 'Calendrier', component: CalendarPage },
@@ -34,5 +34,10 @@ export const routes: Routes = [
   { path: 'pilotage', title: 'Pilotage du jour J', component: SignUpTrackingPage },
   { path: 'participants', title: 'Participants', component: ParticipantsPage },
   { path: 'participants/:id', title: 'Fiche du pseudo', component: ParticipantPage },
+  {
+    path: 'informations-de-connexion',
+    title: 'Informations de connexion',
+    loadComponent: () => import('./poster/poster-page').then((m) => m.PosterPage),
+  },
   { path: '**', redirectTo: '' },
 ];

@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { apiUrl, conventionEndpoints, type ProblemDto } from '@chimeres/contract';
 import { NBSP } from '@chimeres/design';
 import { ConventionForm } from './convention-form';
@@ -10,7 +11,7 @@ import { Alerts } from '../shell/alerts';
 describe('ConventionForm', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
     });
   });
 
@@ -37,7 +38,7 @@ describe('ConventionForm', () => {
       host.querySelector<HTMLButtonElement>('button[type="submit"]')!.click();
       await fixture.whenStable();
     };
-    const errorOf = (label: string) => {
+    const findFieldError = (label: string) => {
       const ids = input(label).getAttribute('aria-describedby')?.split(' ') ?? [];
       return ids.map((id) => host.querySelector(`#${id}.error`)?.textContent?.trim()).find(Boolean);
     };
@@ -58,7 +59,7 @@ describe('ConventionForm', () => {
         .map((line) => line.textContent?.trim())
         .join(' ');
     };
-    return { fixture, host, http, input, type, save, errorOf, flush, detail };
+    return { fixture, host, http, input, type, save, findFieldError, flush, detail };
   }
 
   /** La convention du 14 mars 2027, en deux créneaux, finie à 18 h 30. */
@@ -79,6 +80,15 @@ describe('ConventionForm', () => {
     const { detail } = await render(onMarch14);
 
     expect(detail('Code de présence')).toBe("K7M2 Imprimé en clair sous le QR code de l'affiche.");
+  });
+
+  it('mène du code de présence aux Informations de connexion (ID-15)', async () => {
+    const { host } = await render(onMarch14);
+
+    const link = [...host.querySelectorAll<HTMLAnchorElement>('dd a')].find(
+      (a) => a.textContent?.trim() === "Imprimé en clair sous le QR code de l'affiche.",
+    );
+    expect(link?.getAttribute('href')).toBe('/informations-de-connexion');
   });
 
   it('place « Enregistrer » sous la fin et le code de présence', async () => {
@@ -167,11 +177,11 @@ describe('ConventionForm', () => {
   });
 
   it('affiche une erreur locale sous le champ quand on le quitte', async () => {
-    const { type, errorOf } = await render();
+    const { type, findFieldError } = await render();
 
     await type('Nom', '');
 
-    expect(errorOf('Nom')).toBe('Donne un nom à la convention.');
+    expect(findFieldError('Nom')).toBe('Donne un nom à la convention.');
   });
 
   it("n'envoie rien s'il reste une erreur, et met le focus au premier champ en erreur", async () => {
@@ -187,17 +197,17 @@ describe('ConventionForm', () => {
   });
 
   it('refuse un nom fait seulement d’espaces, compté comme le domaine', async () => {
-    const { type, save, errorOf, http } = await render();
+    const { type, save, findFieldError, http } = await render();
 
     await type('Nom', '   ');
     await save();
 
     http.expectNone(apiUrl(conventionEndpoints.update));
-    expect(errorOf('Nom')).toBe('Donne un nom à la convention.');
+    expect(findFieldError('Nom')).toBe('Donne un nom à la convention.');
   });
 
   it("affiche sous le champ une erreur de l'API rattachée à ce champ", async () => {
-    const { type, save, flush, errorOf, input } = await render();
+    const { type, save, flush, findFieldError, input } = await render();
     const problem: ProblemDto = {
       type: 'urn:histoires-de-chimeres:problem:convention-name-required',
       title: 'Nom obligatoire',
@@ -217,7 +227,7 @@ describe('ConventionForm', () => {
     await save();
     await flush(problem, 422);
 
-    expect(errorOf('Nom')).toBe('Donne un nom à la convention.');
+    expect(findFieldError('Nom')).toBe('Donne un nom à la convention.');
     expect(document.activeElement).toBe(input('Nom'));
   });
 

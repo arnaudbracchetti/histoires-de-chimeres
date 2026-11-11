@@ -25,6 +25,8 @@
     --engraving: #3a3e3e; /* Gravure */
     --engraving-strong: #626767; /* Gravure relevée */
     --initial: #8c837c; /* Lettrine */
+    --paper: #ffffff; /* Papier : fond du QR code */
+    --ink: #000000; /* Encre : modules du QR code */
 
     /* Gris chauds des segments de l'emblème */
     --emblem-1: #4e4944;

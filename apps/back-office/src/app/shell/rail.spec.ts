@@ -71,10 +71,11 @@ describe('Rail', () => {
       'Créneaux et tables',
       'Pilotage du jour J',
       'Participants',
+      'Informations de connexion',
     ]);
   });
 
-  it('mène au Pilotage du jour J et aux Participants', () => {
+  it('mène au Pilotage du jour J, aux Participants et aux Informations de connexion', () => {
     const { host } = render();
 
     const findHrefOfEntry = (label: string) =>
@@ -83,6 +84,7 @@ describe('Rail', () => {
         ?.getAttribute('href');
     expect(findHrefOfEntry('Pilotage du jour J')).toBe('/pilotage');
     expect(findHrefOfEntry('Participants')).toBe('/participants');
+    expect(findHrefOfEntry('Informations de connexion')).toBe('/informations-de-connexion');
   });
 
   it('affiche la convention en cours, date à fixer', async () => {

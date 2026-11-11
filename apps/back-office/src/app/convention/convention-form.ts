@@ -1,5 +1,6 @@
 import { Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { form, FormField, FormRoot } from '@angular/forms/signals';
+import { RouterLink } from '@angular/router';
 import { CONVENTION_NAME_MAX_LENGTH, conventionEndpoints } from '@chimeres/contract';
 import { submitWith } from '../forms/submit-with';
 import { textRules } from '../forms/text-rules';
@@ -22,11 +23,11 @@ type ConventionModel = { name: string; date: string };
 /**
  * Renseigner la convention : son nom et sa date. Le rail suit dès l'enregistrement. Sous la date,
  * avant « Enregistrer », sa fin, calculée par l'API, et son code de présence (ID-2), qui se lisent
- * sans se modifier.
+ * sans se modifier. Sous le code, un lien mène aux Informations de connexion, avec le QR code.
  */
 @Component({
   selector: 'app-convention-form',
-  imports: [Field, FormField, FormRoot, Loadable, SaveButton],
+  imports: [Field, FormField, FormRoot, Loadable, RouterLink, SaveButton],
   template: `
     <app-loadable [resource]="store.convention" failure="Impossible de charger la convention.">
       @if (store.convention.hasValue()) {
@@ -52,7 +53,11 @@ type ConventionModel = { name: string; date: string };
               <dt>Code de présence</dt>
               <dd>
                 <p class="value code">{{ store.convention.value().presenceCode }}</p>
-                <p class="help">Imprimé en clair sous le QR code de l'affiche.</p>
+                <p class="help">
+                  <a routerLink="/informations-de-connexion">
+                    Imprimé en clair sous le QR code de l'affiche.
+                  </a>
+                </p>
               </dd>
             </div>
           </dl>

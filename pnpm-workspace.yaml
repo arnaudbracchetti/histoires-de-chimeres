@@ -23,3 +23,5 @@ catalog:
   # Dépendance de @chimeres/design/presentation, déclarée aussi par les fronts : `ng serve`
   # exclut @chimeres/design du pré-bundle, et Vite cherche alors marked dans le front.
   marked: 18.0.14
+  # Dépendance de @chimeres/design/qr-code, déclarée aussi par le back office, pour la même raison.
+  lean-qr: 2.7.4
