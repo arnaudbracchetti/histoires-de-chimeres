@@ -34,5 +34,12 @@ export const routes: Routes = [
   { path: 'pilotage', title: 'Pilotage du jour J', component: SignUpTrackingPage },
   { path: 'participants', title: 'Participants', component: ParticipantsPage },
   { path: 'participants/:id', title: 'Fiche du pseudo', component: ParticipantPage },
+  {
+    // PROTOTYPE JETABLE (wayfinder #152)
+    path: 'prototype-affiche',
+    title: 'Affiche (prototype)',
+    loadComponent: () =>
+      import('./poster/poster-prototype-page').then((m) => m.PosterPrototypePage),
+  },
   { path: '**', redirectTo: '' },
 ];

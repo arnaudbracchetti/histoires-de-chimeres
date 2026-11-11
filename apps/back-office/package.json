@@ -20,6 +20,7 @@
     "@angular/router": "^22.2.0",
     "@chimeres/contract": "workspace:*",
     "@chimeres/design": "workspace:*",
+    "lean-qr": "2.7.4",
     "marked": "catalog:",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
