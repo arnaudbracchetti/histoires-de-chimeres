@@ -119,6 +119,14 @@ _Avoid_: Meneur, GM, animateur, Gm (abrégé)
 Personne connue avant la convention, qui programme les scénarios sur les créneaux et les tables, et lance les tirages.
 _Avoid_: Admin, staff
 
+**Compte** · `Account`:
+Ce qui fait entrer un MJ ou un Organisateur dans le back office : le pseudo de son participant et un mot de passe qu'il a choisi. Le compte dit si la personne est Organisateur ; elle est MJ si son participant l'est. Une personne n'a qu'un compte.
+_Avoid_: Utilisateur, login, profil, Account pour un pseudo de participant
+
+**Lien d'accès** · `AccessLink`:
+Lien qu'un Organisateur crée pour un compte et remet lui-même à la personne. Il ouvre la page où elle choisit son mot de passe, à la création du compte ou après un oubli, et ne sert qu'une fois.
+_Avoid_: Lien magique, invitation
+
 ## Répartition
 
 **Inscription** · `SignUp`:

@@ -86,7 +86,7 @@ Points structurants, répartis entre plusieurs documents :
 - **Une personne, un compte** (ADR 0012) : un MJ est aussi un participant, qui porte son pseudo, et une même personne peut être MJ et Organisateur. Sur le téléphone, saisir le pseudo d'un MJ le relie à ce MJ après une confirmation, sans code.
 - **Cycle de vie d'un créneau** : inscriptions ouvertes → tirage lancé (inscriptions fermées) → résultat provisoire, ajustable → publication (résultat figé). Programmer une partie depuis la réserve annule le tirage provisoire et rouvre les inscriptions du créneau (TI-6).
 - **Le tirage** est le cœur du métier. Il obéit à un ordre de priorités strict (TI-4), et une partie double est tirée avec son premier créneau (TI-3).
-- **Pas de donnée nominative côté participant** : seuls les emails des MJ et des Organisateurs sont stockés, et ils ne servent qu'aux liens magiques du back office.
+- **Pas de donnée nominative** : aucun email stocké. MJ et Organisateurs entrent dans le back office par le pseudo de leur participant et un mot de passe, choisi par un lien d'accès qu'un Organisateur leur remet (ADR 0015).
 - **Notifications** (ADR 0010) : le geste du domaine les produit (un code, des paramètres, des pseudos destinataires), la commande les passe au port `NotificationSender` après la sauvegarde, et l'API écrit le texte puis envoie sans file.
 
 ## Agent skills

@@ -29,10 +29,10 @@ Ordres de grandeur :
 | Profil | Connu à l'avance ? | Identification | Interface |
 |---|---|---|---|
 | **Participant** | Non | **Pseudo** seul, derrière le **code de présence** | Front office mobile (PWA) |
-| **MJ** | Oui (email) | Back office : lien magique par email. Téléphone : **pseudo**, comme un participant | Back office (avant la convention) + front office mobile |
-| **Organisateur** | Oui (email) | Lien magique par email | Back office, sur ordinateur portable, y compris le jour J |
+| **MJ** | Oui | Back office : **pseudo** et mot de passe. Téléphone : **pseudo**, comme un participant | Back office (avant la convention) + front office mobile |
+| **Organisateur** | Oui | Back office : **pseudo** et mot de passe. Téléphone : **pseudo**, comme un participant | Back office, sur ordinateur portable, y compris le jour J |
 
-Un MJ est aussi un participant : il peut jouer sur les créneaux où il ne mène pas. Une même personne peut être MJ et Organisateur ; elle n'a qu'un compte. Sur le téléphone, un Organisateur qui n'est pas MJ est un participant comme les autres.
+Un MJ est aussi un participant : il peut jouer sur les créneaux où il ne mène pas. Une même personne peut être MJ et Organisateur ; elle n'a qu'un compte, au pseudo de son participant ([ADR 0015](adr/0015-compte-du-back-office-pseudo-et-mot-de-passe-sans-email.md)). Sur le téléphone, un Organisateur qui n'est pas MJ est un participant comme les autres.
 
 Choix d'identification : voir [ADR 0009](adr/0009-identification-par-pseudo-sans-secret-derriere-un-code-de-presence.md), qui remplace l'ADR 0001.
 
@@ -46,8 +46,8 @@ Choix d'identification : voir [ADR 0009](adr/0009-identification-par-pseudo-sans
 ### 4.1 Préparation (avant la convention)
 
 1. Un Organisateur renseigne la convention (nom, date), ses **créneaux** (heure de début, heure de fin) et ses **tables** (nom).
-2. Il crée les MJ, chacun avec son **pseudo** (PR-12), puis les comptes MJ et Organisateurs (email).
-3. Le MJ se connecte au back office par lien magique, puis propose ses **scénarios** et ses **disponibilités** (les créneaux où il peut mener). Il peut modifier ses scénarios à tout moment ; il n'y a pas de validation par les Organisateurs. Un Organisateur peut aussi les saisir et les modifier à sa place (PR-13).
+2. Il crée les MJ, chacun avec son **pseudo** (PR-12), puis les comptes MJ et Organisateurs, et remet à chacun son lien d'accès.
+3. Le MJ choisit son mot de passe par son lien d'accès, se connecte au back office par son pseudo et ce mot de passe, puis propose ses **scénarios** et ses **disponibilités** (les créneaux où il peut mener). Il peut modifier ses scénarios à tout moment ; il n'y a pas de validation par les Organisateurs. Un Organisateur peut aussi les saisir et les modifier à sa place (PR-13).
 4. Les Organisateurs **programment** des scénarios sur un créneau et une table, dès avant la convention, ce qui crée des **parties**, ou les laissent en **réserve**. Le jour J, ils peuvent encore programmer une partie depuis la réserve (TI-6).
 5. Les Organisateurs affichent sur place le QR code qui porte le **code de présence** de la convention, sur l'affiche imprimée ou sur un écran (ID-15). Ce code est fixé à la création de la convention, ne change pas et se lit dans le back office.
 
@@ -109,7 +109,7 @@ Le tirage publié est figé. Les non placés vont voir les MJ des tables où il 
   - fusionner un pseudo de participant dans un autre (ID-11).
 
   Les inscriptions d'un pseudo ne passent sur un autre que par une fusion : un MJ qui s'est d'abord inscrit sous un autre pseudo se réinscrit sous le sien, ou demande une fusion. Ces gestes n'envoient aucune notification au pseudo concerné, sauf l'ajout à un tirage publié (NO-4, ID-14), et ne sont pas journalisés.
-- **ID-6** MJ et Organisateurs se connectent au back office par lien magique envoyé par email.
+- **ID-6** MJ et Organisateurs se connectent au back office par leur pseudo et un mot de passe. Un Organisateur crée pour chaque compte un lien d'accès, qu'il remet lui-même à la personne ; ce lien lui fait choisir son mot de passe, à la création du compte ou après un oubli. Aucun email n'est demandé ni envoyé.
 - **ID-7** Deux pseudos sont le même pseudo quand ils ne diffèrent que par la casse, les accents ou les espaces (au début, à la fin, ou plusieurs à la suite) : « Élodie » et « elodie » sont le même pseudo. La ponctuation compte : « Jean-Luc » et « Jean Luc » sont deux pseudos distincts. Un pseudo s'affiche tel qu'il a été saisi.
 - **ID-8** Un téléphone est relié à un seul pseudo à la fois ; un pseudo peut être relié à plusieurs téléphones. Le relier à un nouveau téléphone ne coupe rien sur les autres ; un pseudo supprimé ou fusionné (ID-10, ID-11) perd tous ses liens, et un Organisateur peut les couper (ID-5). Un téléphone dont le lien est coupé revient à l'identification à son prochain échange avec le serveur, et oublie sa copie hors ligne. Les notifications vont aux téléphones reliés au pseudo au moment de l'envoi. Le participant ne voit pas les autres téléphones reliés à son pseudo.
 - **ID-9** « Changer de pseudo », après une confirmation, coupe le lien du téléphone et ramène à l'identification : pour corriger une erreur, ou pour inscrire plusieurs personnes depuis un même téléphone. L'ancien pseudo reste, avec ses inscriptions. Un participant ne peut pas modifier son pseudo.
@@ -275,8 +275,8 @@ Les notifications propres au MJ (NO-2), l'alerte d'une partie à mener (NO-5) et
 - **Mise à jour de l'application** : elle est cherchée au lancement, au retour au premier plan et toutes les 5 minutes. Une version prête s'installe sans rien demander, à la navigation suivante (onglet, fiche), ou à défaut au retour au premier plan suivant.
 - **Charge** : jusqu'à ~80 personnes qui consultent et s'inscrivent en même temps, avec un pic à chaque publication.
 - **Session** : un cookie posé par le serveur, illisible par les scripts de la page, relie le téléphone à son pseudo. Il dure 30 jours, et la fin de la convention ferme tout, cookie ou non (§4.1). L'application garde à côté une copie non secrète pour l'affichage hors ligne. Après « Changer de pseudo », la copie hors ligne de l'ancien pseudo ne s'affiche plus.
-- **Données personnelles** : aucun email ni donnée nominative côté participant ; seuls les emails des MJ et Organisateurs sont stockés.
-- **Envoi d'emails** : nécessaire uniquement pour les liens magiques du back office.
+- **Données personnelles** : aucun email ni donnée nominative, ni côté participant, ni pour les MJ et les Organisateurs.
+- **Envoi d'emails** : aucun.
 - **Langue** : français.
 - **Heure** : la date et les heures de la convention s'entendent à l'heure de Paris.
 - **Pile technique** : Angular (front office PWA et back office), NestJS, Prisma / PostgreSQL, Docker sur VPS derrière Caddy.
