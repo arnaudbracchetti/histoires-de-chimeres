@@ -120,7 +120,7 @@ Personne connue avant la convention, qui programme les scénarios sur les créne
 _Avoid_: Admin, staff
 
 **Compte** · `Account`:
-Ce qui fait entrer un MJ ou un Organisateur dans le back office : le pseudo de son participant et un mot de passe qu'il a choisi. Le compte dit si la personne est Organisateur ; elle est MJ si son participant l'est. Une personne n'a qu'un compte.
+Ce qui fait entrer un MJ ou un Organisateur dans le back office : le pseudo de son participant et un mot de passe qu'il a choisi. Le compte dit si la personne est Organisateur ; elle est MJ si son participant l'est. Une personne n'a qu'un compte. Il disparaît quand la personne n'est plus ni Organisateur ni MJ.
 _Avoid_: Utilisateur, login, profil, Account pour un pseudo de participant
 
 **Lien d'accès** · `AccessLink`:

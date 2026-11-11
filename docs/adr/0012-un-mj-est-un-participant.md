@@ -21,3 +21,4 @@ Un MJ joue sur les créneaux où il ne mène pas : il s'inscrit, il est tiré au
 - Dans le domaine, `GameMaster` contient son `Participant`, et son getter `nickname` lit le pseudo de celui-ci : qui lit le pseudo d'un MJ n'a pas à passer par son participant. La convention garde l'unicité sur l'ensemble de ses participants, MJ compris.
 - En base, `GameMaster.participantId` est unique et retient son participant (RESTRICT) : seule la suppression du MJ supprime son participant. Les lectures du back office prennent le pseudo d'un MJ par son participant.
 - La fusion (ID-11) vers un pseudo de MJ vise son participant, comme toute autre destination.
+- Ajout de la gestion des comptes : retirer le rôle MJ supprime le `GameMaster` et garde son participant ; donner le rôle MJ à un participant existant lui relie un nouveau `GameMaster` (ID-4, ID-16, PR-12).
