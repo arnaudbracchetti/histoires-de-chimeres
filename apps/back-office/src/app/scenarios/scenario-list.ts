@@ -1,7 +1,8 @@
-import { Component, viewChild } from '@angular/core';
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { scenarioEndpoints, type ScenarioListItemDto } from '@chimeres/contract';
 import { formatSeats } from '@chimeres/design';
+import { AccountStore } from '../account/account-store';
 import { apiResource, currentValue } from '../api-resource';
 import { Loadable } from '../shell/loadable';
 import { Button } from '../ui/button';
@@ -22,8 +23,9 @@ const SORT_KEYS = {
 /**
  * Tous les scénarios, en tableau (docs/design/patterns.md, Tableaux) : vignette, titre vers sa
  * page, jeu, MJ vers sa fiche, places, durée et parties. Le filtre (titre, jeu et MJ) et le tri
- * (titre, jeu ou MJ) viennent de `tableView()`. Sans scénario, l'état vide renvoie vers les MJ :
- * un scénario se propose depuis la fiche de son MJ.
+ * (titre, jeu ou MJ) viennent de `tableView()`. Un MJ filtre en plus « Tous / Les miens » ; le MJ
+ * d'un scénario ne mène à sa fiche que si le compte peut la lire. Sans scénario, l'état vide renvoie
+ * un Organisateur vers les MJ, et invite un MJ à proposer le sien.
  */
 @Component({
   selector: 'app-scenario-list',
@@ -42,10 +44,32 @@ const SORT_KEYS = {
         @if (!scenarios.value().length) {
           <app-empty-state>
             <p>Aucun scénario pour l'instant&nbsp;: chaque MJ propose les siens depuis sa fiche.</p>
-            <a appButton="primary" routerLink="/mj">Choisir un MJ</a>
+            @if (myGameMasterId(); as gameMasterId) {
+              <a appButton="primary" [routerLink]="['/mj', gameMasterId, 'nouveau-scenario']"
+                >Proposer un scénario</a
+              >
+            } @else if (account()?.organizer) {
+              <a appButton="primary" routerLink="/mj">Choisir un MJ</a>
+            }
           </app-empty-state>
         } @else {
-          <app-table-filter label="Filtrer les scénarios" [(value)]="view.filter" />
+          <div class="tools">
+            <app-table-filter label="Filtrer les scénarios" [(value)]="view.filter" />
+            @if (myGameMasterId()) {
+              <div class="chips" role="group" aria-label="Scénarios montrés">
+                <button
+                  type="button"
+                  [attr.aria-pressed]="!onlyMine()"
+                  (click)="onlyMine.set(false)"
+                >
+                  Tous
+                </button>
+                <button type="button" [attr.aria-pressed]="onlyMine()" (click)="onlyMine.set(true)">
+                  Les miens
+                </button>
+              </div>
+            }
+          </div>
           <table>
             <caption class="visually-hidden">
               Scénarios de la convention
@@ -77,9 +101,11 @@ const SORT_KEYS = {
                   </th>
                   <td>{{ scenario.system }}</td>
                   <td>
-                    <a [routerLink]="['/mj', scenario.gameMaster.id]">{{
-                      scenario.gameMaster.nickname
-                    }}</a>
+                    @if (gameMasterLink(scenario.gameMaster.id); as link) {
+                      <a [routerLink]="link">{{ scenario.gameMaster.nickname }}</a>
+                    } @else {
+                      {{ scenario.gameMaster.nickname }}
+                    }
                   </td>
                   <td>{{ formatSeats(scenario.seats) }}</td>
                   <td>{{ formatScenarioDuration(scenario.duration) }}</td>
@@ -116,6 +142,32 @@ const SORT_KEYS = {
 
       table {
         width: 64rem;
+      }
+
+      .tools {
+        display: flex;
+        gap: var(--space-l);
+        align-items: center;
+      }
+
+      .chips {
+        display: flex;
+        gap: var(--space-s);
+
+        button {
+          padding: var(--space-xs) var(--space-m);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-control);
+          background: none;
+          color: var(--text-muted);
+          font: inherit;
+          cursor: pointer;
+
+          &[aria-pressed='true'] {
+            border-color: var(--accent);
+            color: var(--text);
+          }
+        }
       }
 
       /* Lignes de 40 px, autour de vignettes de 32 px. */
@@ -160,10 +212,22 @@ const SORT_KEYS = {
   `,
 })
 export class ScenarioList {
+  private readonly accountStore = inject(AccountStore);
+  protected readonly account = this.accountStore.value;
+  protected readonly myGameMasterId = computed(() => this.account()?.gameMasterId ?? undefined);
+  /** « Les miens » : les seuls scénarios du MJ connecté. */
+  protected readonly onlyMine = signal(false);
   protected readonly scenarios = apiResource(scenarioEndpoints.list);
   private readonly loaded = currentValue(this.scenarios);
+  private readonly shown = computed(() => {
+    const scenarios = this.loaded() ?? [];
+    const mine = this.myGameMasterId();
+    return this.onlyMine() && mine
+      ? scenarios.filter(({ gameMaster }) => gameMaster.id === mine)
+      : scenarios;
+  });
   protected readonly view = tableView({
-    items: () => this.loaded() ?? [],
+    items: () => this.shown(),
     searchIn: ({ title, system, gameMaster }) => [title, system, gameMaster.nickname],
     sortKeys: SORT_KEYS,
     initialSort: 'title',
@@ -178,9 +242,14 @@ export class ScenarioList {
 
   private readonly filter = viewChild(TableFilter);
 
-  /** Toutes les lignes reviennent, et le focus retourne au filtre. */
+  protected gameMasterLink(gameMasterId: string): string[] | undefined {
+    return this.accountStore.gameMasterLink(gameMasterId);
+  }
+
+  /** Toutes les lignes reviennent, « Les miens » compris, et le focus retourne au filtre. */
   protected clearFilter(): void {
     this.view.clear();
+    this.onlyMine.set(false);
     this.filter()?.focus();
   }
 }

@@ -25,7 +25,9 @@ export class App {
       filter((event) => event instanceof NavigationEnd),
       map(() => !isPageWithoutSession(this.router.url)),
     ),
-    { initialValue: true },
+    // Sans rail avant la première navigation : sur une page sans session, il lirait la convention
+    // sans session (401), et le store partagé garderait cet échec après la connexion.
+    { initialValue: false },
   );
 
   constructor() {

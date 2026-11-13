@@ -9,7 +9,7 @@ import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants.js';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { NotLoggedInError, type AccountReader, type AccountSessions } from '@chimeres/application';
-import type { EndpointAccess } from '@chimeres/contract';
+import { isAccessAllowed, type EndpointAccess } from '@chimeres/contract';
 import { AccessDeniedError } from './access-denied.error.js';
 import { ACCOUNT_READER } from './account-reader.token.js';
 import { ACCOUNT_SESSIONS } from './account-sessions.token.js';
@@ -34,8 +34,8 @@ const accessByRoute = new Map<string, EndpointAccess>(
  * Garde global d'accès (ADR 0017) : lit le niveau du descripteur de la route, par son chemin et sa
  * méthode. Une route sans descripteur est réservée aux Organisateurs. Hors `public` et `linkedPhone`,
  * retrouve la session par son cookie, puis son compte, à chaque requête et sans cache : un rôle
- * retiré vaut dès la requête suivante. 401 sans session, 403 sans le droit. `ownGameMaster` compare
- * `:gameMasterId` au MJ de la session ; un Organisateur passe partout (PR-13).
+ * retiré vaut dès la requête suivante. 401 sans session, 403 sans le droit, selon
+ * `isAccessAllowed()` de `contract`, que les fronts lisent aussi.
  */
 @Injectable()
 export class AccessGuard implements CanActivate {
@@ -52,7 +52,8 @@ export class AccessGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const account = await this.readAccount(request);
     (request as Request & { account?: RequestAccount }).account = account;
-    if (account.organizer || this.isAllowedToGameMaster(access, account, request)) return true;
+    const { gameMasterId } = request.params as { gameMasterId?: string };
+    if (isAccessAllowed(access, account, gameMasterId)) return true;
     throw new AccessDeniedError();
   }
 
@@ -70,15 +71,5 @@ export class AccessGuard implements CanActivate {
     const account = accountId ? await this.reader.read(accountId) : null;
     if (!accountId || !account) throw new NotLoggedInError();
     return { accountId, organizer: account.organizer, gameMasterId: account.gameMasterId };
-  }
-
-  private isAllowedToGameMaster(
-    access: EndpointAccess,
-    { gameMasterId }: RequestAccount,
-    request: Request,
-  ): boolean {
-    if (gameMasterId === null) return false;
-    if (access === 'gameMaster') return true;
-    return access === 'ownGameMaster' && request.params['gameMasterId'] === gameMasterId;
   }
 }

@@ -433,6 +433,9 @@ test('une disponibilité où le MJ mène une partie est verrouillée, puis libre
   const { neons, slot1, elodie, tableId } = await prepare(page);
   await scheduleByApi(page, neons.id, slot1, tableId('Table 1'));
   await page.goto(`/gestion/mj/${elodie}`);
+  // La frise est sous l'onglet « Disponibilités » de la fiche du MJ.
+  const availabilities = page.getByRole('tab', { name: /Disponibilités/ });
+  await availabilities.click();
   const first = page.getByRole('checkbox', {
     name: `Créneau 1 · 9${NBSP}h${NBSP}00${THIN}–${THIN}11${NBSP}h${NBSP}30`,
   });
@@ -446,12 +449,14 @@ test('une disponibilité où le MJ mène une partie est verrouillée, puis libre
   await sheet(page).getByRole('button', { name: 'Déprogrammer' }).click();
   await expect(sheet(page)).toHaveCount(0);
   await page.goto(`/gestion/mj/${elodie}`);
+  await availabilities.click();
 
   await expect(first).toBeEnabled();
   await page.locator('label.block').filter({ has: first }).click();
   await expect(first).not.toBeChecked();
   await expect(page.locator('label.pending')).toHaveCount(0);
   await page.reload();
+  await availabilities.click();
   await expect(first).not.toBeChecked();
 });
 

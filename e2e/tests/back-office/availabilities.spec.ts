@@ -43,6 +43,11 @@ async function prepare(page: Page) {
   return { slot1, slot2, elodie, kairos };
 }
 
+/** La frise est sous l'onglet « Disponibilités » de la fiche du MJ. */
+async function openAvailabilities(page: Page) {
+  await page.getByRole('tab', { name: /Disponibilités/ }).click();
+}
+
 async function declareThroughApi(page: Page, gameMasterId: string, timeSlotId: string) {
   const response = await page.request.put(
     apiUrl(availabilityEndpoints.declare, { gameMasterId, timeSlotId }),
@@ -55,6 +60,7 @@ test('cliquer sur les créneaux de la frise du MJ, enregistrés sans bouton (PR-
 }) => {
   const { elodie } = await prepare(page);
   await page.goto(`/gestion/mj/${elodie}`);
+  await openAvailabilities(page);
   const first = page.getByRole('checkbox', { name: slot(1, time(9), time(11, '30')) });
   const second = page.getByRole('checkbox', { name: slot(2, time(14), time(16, '30')) });
   /** Le bloc de la frise qui porte la case : c'est lui qu'on clique. */
@@ -69,6 +75,7 @@ test('cliquer sur les créneaux de la frise du MJ, enregistrés sans bouton (PR-
   await expect(page.locator('label.pending')).toHaveCount(0);
 
   await page.reload();
+  await openAvailabilities(page);
   await expect(first).toBeChecked();
   await expect(second).not.toBeChecked();
   await page.getByRole('link', { name: 'MJ', exact: true }).first().click();
@@ -114,11 +121,13 @@ test('supprimer un créneau supprime ses disponibilités, annoncées dans la con
   await expect(dialog).toBeHidden();
 
   await page.goto(`/gestion/mj/${elodie}`);
+  await openAvailabilities(page);
   await expect(page.getByRole('checkbox')).toHaveCount(1);
   await expect(
     page.getByRole('checkbox', { name: slot(1, time(14), time(16, '30')) }),
   ).toBeChecked();
   await page.goto(`/gestion/mj/${kairos}`);
+  await openAvailabilities(page);
   await expect(
     page.getByRole('checkbox', { name: slot(1, time(14), time(16, '30')) }),
   ).not.toBeChecked();

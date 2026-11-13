@@ -46,10 +46,10 @@
     background: var(--surface-2);
     color: var(--text);
     text-decoration: none;
+  }
 
-    &:hover {
-      background: var(--surface-3);
-    }
+  a.convention:hover {
+    background: var(--surface-3);
   }
 
   .convention-date {

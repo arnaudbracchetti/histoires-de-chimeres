@@ -1,11 +1,19 @@
-import { Component, inject, input, linkedSignal, viewChild } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, viewChild } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { scenarioEndpoints, type ScenarioBody, type ScenarioDto } from '@chimeres/contract';
+import {
+  scenarioEndpoints,
+  type ScenarioBody,
+  type ScenarioDto,
+  type Endpoint,
+  type GameMasterScenarioParams,
+} from '@chimeres/contract';
+import { AccountStore } from '../account/account-store';
 import { injectApiCall } from '../api-call';
 import { apiResource, currentValue } from '../api-resource';
 import type { UnsavedChanges } from '../shell/leave-unsaved';
 import { ScenarioForm } from './scenario-form';
 import { ScenarioImage } from './scenario-image';
+import { ScenarioReading } from './scenario-reading';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
@@ -20,21 +28,31 @@ const MENU: readonly MoreMenuItem[] = [
 /**
  * Page d'un scénario : « Scénarios › titre », son MJ, la zone de son image, et la saisie de son contenu, de
  * ses places et de sa durée (PR-14), et son image (PR-7), qui part hors de « Enregistrer ». Quitter avec des modifications non enregistrées demande
- * confirmation. La suppression passe par « ⋯ », après confirmation, puis revient à la liste.
+ * confirmation. La suppression passe par « ⋯ », après confirmation, puis revient à la liste. Pour
+ * un compte qui ne peut pas l'écrire (le scénario d'un autre MJ), la page se lit seulement, et son
+ * MJ ne mène à sa fiche que si le compte peut la lire (ADR 0017).
  */
 @Component({
   selector: 'app-scenario-page',
-  imports: [Loadable, MoreMenu, PageHeader, RouterLink, ScenarioForm, ScenarioImage],
+  imports: [
+    Loadable,
+    MoreMenu,
+    PageHeader,
+    RouterLink,
+    ScenarioForm,
+    ScenarioImage,
+    ScenarioReading,
+  ],
   template: `
     <app-page-header
       [title]="scenario()?.title ?? 'Scénario'"
       [trail]="[{ label: 'Scénarios', link: '/scenarios' }]"
     >
-      @if (scenario(); as scenario) {
+      @if (canRemove()) {
         <app-more-menu
           label="Autres actions sur le scénario"
           [items]="menu"
-          (selected)="onMenu($event, scenario)"
+          (selected)="onMenu($event, scenario()!)"
         />
       }
     </app-page-header>
@@ -46,16 +64,24 @@ const MENU: readonly MoreMenuItem[] = [
       @if (scenario(); as scenario) {
         <p class="game-master">
           Proposé par
-          <a [routerLink]="['/mj', scenario.gameMaster.id]">{{ scenario.gameMaster.nickname }}</a>
+          @if (gameMasterLink(); as link) {
+            <a [routerLink]="link">{{ scenario.gameMaster.nickname }}</a>
+          } @else {
+            {{ scenario.gameMaster.nickname }}
+          }
         </p>
-        <app-scenario-image
-          [gameMasterId]="scenario.gameMaster.id"
-          [scenarioId]="scenario.id"
-          [title]="scenario.title"
-          [imageUrl]="imageUrl()"
-          (changed)="imageUrl.set($event.imageUrl)"
-        />
-        <app-scenario-form [scenario]="scenario" [save]="update" (saved)="onUpdated($event)" />
+        @if (canUpdate()) {
+          <app-scenario-image
+            [gameMasterId]="scenario.gameMaster.id"
+            [scenarioId]="scenario.id"
+            [title]="scenario.title"
+            [imageUrl]="imageUrl()"
+            (changed)="imageUrl.set($event.imageUrl)"
+          />
+          <app-scenario-form [scenario]="scenario" [save]="update" (saved)="onUpdated($event)" />
+        } @else {
+          <app-scenario-reading [scenario]="scenario" />
+        }
       }
     </app-loadable>
   `,
@@ -83,6 +109,14 @@ export class ScenarioPage implements UnsavedChanges {
   }));
   protected readonly scenario = currentValue(this.resource);
 
+  private readonly accountStore = inject(AccountStore);
+  protected readonly canUpdate = computed(() => this.canWrite(scenarioEndpoints.update));
+  protected readonly canRemove = computed(() => this.canWrite(scenarioEndpoints.remove));
+  protected readonly gameMasterLink = computed(() => {
+    const scenario = this.scenario();
+    return scenario && this.accountStore.gameMasterLink(scenario.gameMaster.id);
+  });
+
   /**
    * À part du scénario : changer l'image ne passe pas par le formulaire, dont la saisie en cours
    * repartirait de zéro avec un nouveau scénario.
@@ -106,6 +140,18 @@ export class ScenarioPage implements UnsavedChanges {
       body,
     });
   };
+
+  /** Le compte connecté peut-il appeler cet endpoint d'écriture du scénario, sous son MJ ? */
+  private canWrite(endpoint: Endpoint<unknown, GameMasterScenarioParams, unknown, unknown>) {
+    const scenario = this.scenario();
+    return (
+      scenario !== undefined &&
+      this.accountStore.can(endpoint, {
+        gameMasterId: scenario.gameMaster.id,
+        scenarioId: scenario.id,
+      })
+    );
+  }
 
   hasUnsavedChanges(): boolean {
     return !this.removed && (this.form()?.hasUnsavedChanges() ?? false);

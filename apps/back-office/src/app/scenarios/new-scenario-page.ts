@@ -6,6 +6,7 @@ import {
   type ScenarioBody,
   type ScenarioDto,
 } from '@chimeres/contract';
+import { AccountStore, MY_SHEET_PATH } from '../account/account-store';
 import { injectApiCall } from '../api-call';
 import { apiResource, currentValue } from '../api-resource';
 import type { UnsavedChanges } from '../shell/leave-unsaved';
@@ -17,7 +18,7 @@ import { fr } from '@chimeres/design';
 
 /**
  * Proposer un scénario depuis la fiche de son MJ, qui lui reste fixé (PR-16) : « MJ › pseudo ›
- * Nouveau scénario ». Une fois enregistré, le scénario s'ouvre sur sa propre page.
+ * Nouveau scénario », ou « Ma fiche › Nouveau scénario » pour le MJ lui-même. Une fois enregistré, le scénario s'ouvre sur sa propre page.
  */
 @Component({
   selector: 'app-new-scenario-page',
@@ -65,13 +66,15 @@ export class NewScenarioPage implements UnsavedChanges {
   }));
   private readonly loaded = currentValue(this.gameMaster);
 
-  protected readonly trail = computed(() => [
-    { label: 'MJ', link: '/mj' },
-    {
-      label: this.loaded()?.nickname ?? 'Fiche du MJ',
-      link: `/mj/${this.id()}`,
-    },
-  ]);
+  private readonly accountStore = inject(AccountStore);
+  /** « MJ › pseudo » pour un Organisateur, « Ma fiche » pour le MJ lui-même. */
+  protected readonly trail = computed(() => {
+    if (this.accountStore.isMine(this.id())) return [{ label: 'Ma fiche', link: MY_SHEET_PATH }];
+    return [
+      ...(this.accountStore.can(gameMasterEndpoints.list) ? [{ label: 'MJ', link: '/mj' }] : []),
+      { label: this.loaded()?.nickname ?? 'Fiche du MJ', link: `/mj/${this.id()}` },
+    ];
+  });
 
   private readonly form = viewChild(ScenarioForm);
   private readonly apiCall = injectApiCall();

@@ -2,7 +2,13 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { apiUrl, scenarioEndpoints, type ScenarioListItemDto } from '@chimeres/contract';
+import {
+  accountEndpoints,
+  apiUrl,
+  scenarioEndpoints,
+  type ConnectedAccountDto,
+  type ScenarioListItemDto,
+} from '@chimeres/contract';
 import { NBSP } from '@chimeres/design';
 import { ScenarioList } from './scenario-list';
 
@@ -31,6 +37,20 @@ const SCENARIOS = [
   aScenario('s3', 'Zénith', 'Alien', 'Margot'),
 ];
 
+const ORGANIZER: ConnectedAccountDto = {
+  participantId: 'p-orga',
+  nickname: 'Orga',
+  organizer: true,
+  gameMasterId: null,
+};
+/** Élodie, MJ seule : le MJ du scénario s2. */
+const ELODIE: ConnectedAccountDto = {
+  participantId: 'p-elodie',
+  nickname: 'Élodie',
+  organizer: false,
+  gameMasterId: 'g-s2',
+};
+
 describe('ScenarioList', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -38,10 +58,11 @@ describe('ScenarioList', () => {
     });
   });
 
-  async function render(list: ScenarioListItemDto[] = SCENARIOS) {
+  async function render(list: ScenarioListItemDto[] = SCENARIOS, account = ORGANIZER) {
     const fixture = TestBed.createComponent(ScenarioList);
     const http = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
+    http.expectOne(apiUrl(accountEndpoints.read)).flush(account);
     http.expectOne(apiUrl(scenarioEndpoints.list)).flush(list);
     await fixture.whenStable();
     const host = fixture.nativeElement as HTMLElement;
@@ -135,5 +156,44 @@ describe('ScenarioList', () => {
     expect(host.querySelector('table')).toBeNull();
     expect(text(host.querySelector('.empty p'))).toContain('Aucun scénario');
     expect(host.querySelector('.empty a')!.getAttribute('href')).toBe('/mj');
+  });
+
+  it("un Organisateur sans MJ n'a pas le filtre « Tous / Les miens »", async () => {
+    const { host } = await render();
+
+    expect(host.querySelector('[aria-label="Scénarios montrés"]')).toBeNull();
+  });
+
+  it('un MJ filtre « Tous / Les miens »', async () => {
+    const { host, text, titles, fixture } = await render(SCENARIOS, ELODIE);
+    const chips = () => [...host.querySelectorAll('[aria-label="Scénarios montrés"] button')];
+
+    expect(chips().map(text)).toEqual(['Tous', 'Les miens']);
+    expect(chips()[0].getAttribute('aria-pressed')).toBe('true');
+    (chips()[1] as HTMLButtonElement).click();
+    await fixture.whenStable();
+
+    expect(titles()).toEqual(['Scénario 10']);
+    expect(chips()[1].getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it("un MJ voit le MJ d'un autre scénario sans lien vers sa fiche, et le sien mène à Ma fiche", async () => {
+    const { host, text } = await render(SCENARIOS, ELODIE);
+
+    const gameMasterCell = (title: string) =>
+      [...host.querySelectorAll('tbody tr')]
+        .find((row) => text(row.querySelector('th')) === title)!
+        .querySelectorAll('td')[2]!;
+    expect(text(gameMasterCell('Zénith'))).toBe('Margot');
+    expect(gameMasterCell('Zénith').querySelector('a')).toBeNull();
+    expect(gameMasterCell('Scénario 10').querySelector('a')!.getAttribute('href')).toBe(
+      '/ma-fiche',
+    );
+  });
+
+  it('sans scénario, un MJ est invité à proposer le sien', async () => {
+    const { host } = await render([], ELODIE);
+
+    expect(host.querySelector('.empty a')!.getAttribute('href')).toBe('/mj/g-s2/nouveau-scenario');
   });
 });

@@ -97,7 +97,6 @@ type Segment = { start: number; end: number; slot?: TimeSlotDto };
         display: flex;
         flex-direction: column;
         gap: var(--space-m);
-        max-width: 64rem;
       }
 
       .quick {

@@ -107,4 +107,26 @@ describe('Loadable', () => {
     expect(zone.textContent).toContain('Impossible de charger les scénarios.');
     expect(zone.textContent).toContain('Réessayer');
   });
+
+  it("affiche le refus de l'API sur un 403, sans « Réessayer »", () => {
+    const { fixture, read, zone } = render();
+
+    read.isLoading.set(false);
+    read.error.set(
+      new HttpErrorResponse({
+        status: 403,
+        error: {
+          code: 'access-denied',
+          title: 'Accès refusé',
+          detail: 'Ton compte ne donne pas accès à cette page.',
+        },
+      }),
+    );
+    fixture.detectChanges();
+
+    expect(zone.textContent).toContain('Accès refusé');
+    expect(zone.textContent).toContain('Ton compte ne donne pas accès à cette page.');
+    expect(zone.textContent).not.toContain('Impossible de charger les scénarios.');
+    expect(zone.querySelector('button')).toBeNull();
+  });
 });

@@ -86,8 +86,9 @@ describe('Rail', () => {
     expect(toggle().getAttribute('aria-expanded')).toBe('false');
   });
 
-  it('replié, chaque entrée garde son libellé', () => {
-    const { fixture, host, toggle } = render();
+  it('replié, chaque entrée garde son libellé', async () => {
+    const { fixture, host, toggle, settle } = render();
+    await settle();
     toggle().click();
     fixture.detectChanges();
 
@@ -103,8 +104,38 @@ describe('Rail', () => {
     ]);
   });
 
-  it('mène au Pilotage du jour J, aux Participants et aux Informations de connexion', () => {
-    const { host } = render();
+  it("un MJ seul ne voit que Ma fiche et les scénarios de la convention, et aucune entrée d'Organisateur", async () => {
+    const { host, settle } = render({ ...KAIROS, organizer: false, gameMasterId: 'mj-kairos' });
+    await settle();
+
+    const links = [...host.querySelectorAll<HTMLAnchorElement>('nav a')].map((a) => [
+      a.textContent?.trim(),
+      a.getAttribute('href'),
+    ]);
+    expect(links).toEqual([
+      ['Ma fiche', '/ma-fiche'],
+      ['Scénarios de la convention', '/scenarios'],
+    ]);
+    expect(host.querySelectorAll('nav h2')).toHaveLength(0);
+    // La convention se lit, sans mener aux créneaux et tables, réservés aux Organisateurs.
+    expect(host.querySelector('.convention')?.textContent).toContain('Histoires de Chimères 2027');
+    expect(host.querySelector('a.convention')).toBeNull();
+  });
+
+  it('un MJ Organisateur voit « Mon espace MJ » en tête du rail complet', async () => {
+    const { host, settle } = render({ ...KAIROS, gameMasterId: 'mj-kairos' });
+    await settle();
+
+    const sections = [...host.querySelectorAll('nav h2')].map((h2) => h2.textContent?.trim());
+    expect(sections).toEqual(['Mon espace MJ', 'Préparation', 'Jour J']);
+    const links = [...host.querySelectorAll('nav a')].map((a) => a.textContent?.trim());
+    expect(links.slice(0, 2)).toEqual(['Ma fiche', 'Calendrier']);
+    expect(links).toHaveLength(8);
+  });
+
+  it('mène au Pilotage du jour J, aux Participants et aux Informations de connexion', async () => {
+    const { host, settle } = render();
+    await settle();
 
     const findHrefOfEntry = (label: string) =>
       [...host.querySelectorAll<HTMLAnchorElement>('nav a')]

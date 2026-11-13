@@ -28,14 +28,21 @@ describe('App', () => {
       await router.navigateByUrl(url);
       await fixture.whenStable();
     };
+    const http = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
-    TestBed.inject(HttpTestingController)
-      .expectOne(apiUrl(conventionEndpoints.read))
-      .flush({ id: 'c1', name: 'Histoires de Chimères', date: null, timeSlots: [], tables: [] });
-    TestBed.inject(HttpTestingController)
+    // L'accueil attend le compte (homeForAccount) ; le rail n'apparaît qu'après la navigation.
+    const home = router.navigateByUrl('/');
+    await new Promise((resolve) => setTimeout(resolve));
+    TestBed.tick();
+    http
       .expectOne(apiUrl(accountEndpoints.read))
       .flush({ nickname: 'Kaïros', organizer: true, gameMasterId: null });
-    await navigate('/');
+    await home;
+    fixture.detectChanges();
+    http
+      .expectOne(apiUrl(conventionEndpoints.read))
+      .flush({ id: 'c1', name: 'Histoires de Chimères', date: null, timeSlots: [], tables: [] });
+    await fixture.whenStable();
     return { host: fixture.nativeElement as HTMLElement, navigate, router, fixture };
   }
 

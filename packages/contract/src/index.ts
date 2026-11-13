@@ -36,6 +36,7 @@ export {
   type QueryOf,
   type ResponseOf,
 } from './endpoint.js';
+export { isAccessAllowed, type AccessHolder } from './access.js';
 export {
   NICKNAME_MAX_LENGTH,
   gameMasterEndpoints,

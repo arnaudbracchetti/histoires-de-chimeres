@@ -4,9 +4,11 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import {
+  accountEndpoints,
   apiUrl,
   conventionEndpoints,
   gameMasterEndpoints,
+  type ConnectedAccountDto,
   type GameMasterSheetDto,
   type ProblemDto,
 } from '@chimeres/contract';
@@ -15,6 +17,24 @@ import { GameMasterPage } from './game-master-page';
 
 @Component({ template: '' })
 class Empty {}
+
+const ORGANIZER: ConnectedAccountDto = {
+  participantId: 'p-orga',
+  nickname: 'Kaïros',
+  organizer: true,
+  gameMasterId: null,
+};
+/** Élodie, MJ seule, connectée : son MJ est g1. */
+const ELODIE: ConnectedAccountDto = {
+  participantId: 'p-elodie',
+  nickname: 'Élodie',
+  organizer: false,
+  gameMasterId: 'g1',
+};
+const TIME_SLOTS = [
+  { id: 't1', rank: 1, start: '10:00', end: '12:00', availableGameMasters: 1 },
+  { id: 't2', rank: 2, start: '14:00', end: '16:00', availableGameMasters: 0 },
+];
 
 describe('GameMasterPage', () => {
   beforeEach(() => {
@@ -35,17 +55,27 @@ describe('GameMasterPage', () => {
       nickname: 'Élodie',
       availabilities: [],
     },
+    {
+      account = ORGANIZER,
+      mine = false,
+      timeSlots = [],
+    }: { account?: ConnectedAccountDto; mine?: boolean; timeSlots?: typeof TIME_SLOTS } = {},
   ) {
     const fixture = TestBed.createComponent(GameMasterPage);
-    fixture.componentRef.setInput('id', 'g1');
+    if (mine) fixture.componentRef.setInput('mine', true);
+    else fixture.componentRef.setInput('id', 'g1');
     const http = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
+    http.expectOne(apiUrl(accountEndpoints.read)).flush(account);
+    // Sans attendre la stabilité : la convention, encore à servir, la retiendrait.
+    await new Promise((resolve) => setTimeout(resolve));
+    TestBed.tick();
     const read = http.expectOne(apiUrl(gameMasterEndpoints.read, { gameMasterId: 'g1' }));
     if (response === 'not-found') read.flush(null, { status: 404, statusText: 'Introuvable' });
     else read.flush({ id: 'g1', scenarios: [], games: [], withdrawals: [], ...response });
     http
       .expectOne(apiUrl(conventionEndpoints.read))
-      .flush({ id: 'c1', name: 'Histoires de Chimères', date: null, tables: [], timeSlots: [] });
+      .flush({ id: 'c1', name: 'Histoires de Chimères', date: null, tables: [], timeSlots });
     await fixture.whenStable();
     const host = fixture.nativeElement as HTMLElement;
     const settle = async () => {
@@ -123,9 +153,7 @@ describe('GameMasterPage', () => {
   it('dit qu’il n’a aucun scénario', async () => {
     const { host, text } = await render();
 
-    expect(text(host.querySelector('[aria-labelledby="scenarios-title"] .none'))).toBe(
-      "Aucun scénario pour l'instant.",
-    );
+    expect(text(host.querySelector('.panel .none'))).toBe("Aucun scénario pour l'instant.");
   });
 
   it('le crayon ouvre le champ en place ; Entrée enregistre le pseudo', async () => {
@@ -258,6 +286,60 @@ describe('GameMasterPage', () => {
 
     expect(text(document.querySelector('[role="alertdialog"] [role="alert"]'))).toBe(detail);
     expect(dialogButtons()).toEqual(['Fermer']);
+  });
+
+  it('« Ma fiche » : titrée par son pseudo, sans crayon, sans « ⋯ » ni fil d’Ariane, sur l’onglet « Mes scénarios »', async () => {
+    const { host, text, button } = await render(
+      { nickname: 'Élodie', availabilities: ['t1'] },
+      { account: ELODIE, mine: true, timeSlots: TIME_SLOTS },
+    );
+
+    expect(text(host.querySelector('h1'))).toBe('Élodie');
+    expect(host.querySelector('nav[aria-label="Fil d\'Ariane"]')).toBeNull();
+    expect(button('Modifier le pseudo')).toBeUndefined();
+    expect(button('Autres actions sur le MJ')).toBeUndefined();
+    const tabs = [...host.querySelectorAll('[role="tab"]')];
+    expect(tabs.map(text)).toEqual(['Mes scénarios', 'Mes disponibilités 1 / 2', 'Mes parties']);
+    expect(tabs[0].getAttribute('aria-selected')).toBe('true');
+    const propose = [...host.querySelectorAll('a')].find((a) => text(a) === 'Proposer un scénario');
+    expect(propose?.getAttribute('href')).toBe('/mj/g1/nouveau-scenario');
+  });
+
+  it('« Mes parties » : le créneau, le scénario et la table de chaque partie', async () => {
+    const { host, text, settle } = await render(
+      {
+        nickname: 'Élodie',
+        availabilities: ['t2'],
+        games: [
+          {
+            gameId: 'p1',
+            timeSlotId: 't2',
+            table: { id: 'tb1', name: 'Table 3' },
+            scenario: { id: 's1', title: "La Tour d'ébène" },
+          },
+        ],
+      },
+      { account: ELODIE, mine: true, timeSlots: TIME_SLOTS },
+    );
+
+    host.querySelector<HTMLButtonElement>('#tab-games')!.click();
+    await settle();
+
+    const row = host.querySelector('.games li')!;
+    expect([...row.children].map(text)).toEqual([
+      `Créneau 2 · 14${NBSP}h${NBSP}00${THIN_NBSP}–${THIN_NBSP}16${NBSP}h${NBSP}00`,
+      "La Tour d'ébène",
+      'Table 3',
+    ]);
+    expect(row.querySelector('a')?.getAttribute('href')).toBe('/scenarios/s1');
+  });
+
+  it('un MJ seul sur sa propre fiche par son URL : aucun geste d’Organisateur', async () => {
+    const { host, button } = await render(undefined, { account: ELODIE });
+
+    expect(host.querySelector('nav[aria-label="Fil d\'Ariane"]')).toBeNull();
+    expect(button('Modifier le pseudo')).toBeUndefined();
+    expect(button('Autres actions sur le MJ')).toBeUndefined();
   });
 
   it('un MJ inconnu : un message sobre à la place de la fiche', async () => {

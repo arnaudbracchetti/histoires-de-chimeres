@@ -20,14 +20,16 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 ## Coquille
 
 - **Rail latéral permanent, repliable.** Replié, il ne garde que les icônes, avec le libellé en infobulle et en nom accessible. Il est déplié par défaut, et son état est mémorisé par navigateur (`localStorage`).
-- **Haut du rail** : l'emblème et « Histoires de Chimères », puis la convention en cours (nom et date, ou « date à fixer »), qui mène à « Créneaux et tables ».
+- **Haut du rail** : l'emblème et « Histoires de Chimères », puis la convention en cours (nom et date, ou « date à fixer »), qui mène à « Créneaux et tables » pour un Organisateur.
 - **Sections**, une page chacune :
   - **Préparation** : Calendrier (écran d'accueil), MJ, Scénarios, Créneaux et tables ;
   - **Jour J** : Pilotage du jour J, Participants, Informations de connexion.
+- **Rail selon le compte** : un MJ seul a un rail réduit, sans titre de section : **Ma fiche** (son accueil, `house`) et **Scénarios de la convention**. Un MJ qui est aussi Organisateur a le rail complet, précédé de la section **Mon espace MJ** → Ma fiche. Pas de bascule d'espace.
+- **Gestes masqués** : un geste ne s'affiche que si le niveau d'accès du descripteur de son endpoint l'ouvre au compte connecté (`canCall()`, ADR 0017). Une page réservée aux Organisateurs ouverte par URL par un MJ seul affiche « Accès refusé », sans changer l'adresse ; l'accueil (`/gestion/`) le mène à Ma fiche.
 - **Bas du rail** : le pseudo de la personne connectée, qui mène à « Mon compte » (changer son mot de passe), et « Se déconnecter ». Sans session, « Se connecter », qui mène à la page de connexion.
 - **Page de connexion** (`/gestion/connexion`), hors du rail : pseudo et mot de passe. Un refus efface la boîte de connexion et s'ouvre dans le dialogue d'erreur (voir [Erreur hors formulaire](#erreur-hors-formulaire)) ; le dialogue fermé, la boîte revient, pseudo gardé, mot de passe vidé, le focus dessus. Un pseudo inconnu et un mauvais mot de passe y donnent le même message (ADR 0018).
-- **Page d'un lien d'accès** (`/gestion/lien-d-acces/<jeton>`), hors du rail, dans la même boîte que la connexion : « Lune, choisis ton mot de passe », « Tu te connecteras ensuite avec ton pseudo, Lune, et ce mot de passe. », puis le champ « Pseudo » en lecture seule, grisé, qui porte `autocomplete="username"` pour que le gestionnaire de mots de passe du navigateur enregistre la paire, puis le mot de passe deux fois, le focus sur le premier, avec l'aide « De 10 à 128 caractères, espaces compris : une courte phrase convient. », et **Choisir ce mot de passe**. Ouvrir la page ne consomme pas le lien ; le mot de passe choisi, la personne est connectée et arrive au calendrier. Un lien inconnu, déjà utilisé ou expiré remplace le formulaire par le motif de l'API, la phrase en rouge brique, et « Aller à la connexion » (ADR 0018).
-- **La fiche d'un MJ** (MJ › pseudo) regroupe ses scénarios, ses disponibilités et ses parties. C'est le seul écran restreint à un MJ : il deviendra tout son espace avec l'authentification, sans le rail des Organisateurs ni le calendrier.
+- **Page d'un lien d'accès** (`/gestion/lien-d-acces/<jeton>`), hors du rail, dans la même boîte que la connexion : « Lune, choisis ton mot de passe », « Tu te connecteras ensuite avec ton pseudo, Lune, et ce mot de passe. », puis le champ « Pseudo » en lecture seule, grisé, qui porte `autocomplete="username"` pour que le gestionnaire de mots de passe du navigateur enregistre la paire, puis le mot de passe deux fois, le focus sur le premier, avec l'aide « De 10 à 128 caractères, espaces compris : une courte phrase convient. », et **Choisir ce mot de passe**. Ouvrir la page ne consomme pas le lien ; le mot de passe choisi, la personne est connectée et arrive à l'accueil : le calendrier pour un Organisateur, Ma fiche pour un MJ seul. Un lien inconnu, déjà utilisé ou expiré remplace le formulaire par le motif de l'API, la phrase en rouge brique, et « Aller à la connexion » (ADR 0018).
+- **La fiche d'un MJ** (MJ › pseudo) regroupe ses scénarios, ses disponibilités et ses parties. C'est aussi l'espace du MJ lui-même, **Ma fiche** (`/gestion/ma-fiche`), voir [MJ](#mj).
 
 ## En-tête de page
 
@@ -86,6 +88,9 @@ Forme retenue sur prototype, face au tableau à ligne en édition, aux étiquett
 - **La liste** est un tableau (voir [Tableaux](#tableaux)) : le pseudo, lien vers la fiche, triable, avec un filtre texte au-dessus. Le filtre ignore la casse et les accents.
 - **« Ajouter un MJ »** (secondaire), **sous le tableau**, ouvre l'assistant « Créer un pseudo » (voir [Participants](#participants)), le rôle MJ coché d'avance. La liste est relue à sa fermeture.
 - **La fiche** : « MJ › pseudo ». Un crayon à côté du titre (« Modifier le pseudo ») remplace le h1 par le champ, avec « Enregistrer » et « Annuler ». Entrée enregistre, Échap ferme, le refus s'affiche sous le champ, et le focus revient au crayon. « Supprimer le MJ » est dans le menu « ⋯ » de l'en-tête.
+- **Trois onglets de classeur** (voir [Onglets de classeur](#onglets-de-classeur)) : Scénarios (par défaut, « Proposer un scénario » en bouton principal en haut à droite de l'onglet), Disponibilités (la frise, sur toute la largeur, et le compteur « déclarés / créneaux » sur l'onglet), Parties (créneau, scénario, table).
+- **Ma fiche** : la fiche du MJ connecté, titrée par son pseudo, sans crayon, sans « ⋯ » ni fil d'Ariane. Ses onglets : Mes scénarios, Mes disponibilités, Mes parties. Un MJ seul qui ouvre sa fiche par `/gestion/mj/<id>` arrive sur Ma fiche.
+- **Scénarios de la convention** (la liste des scénarios, pour un MJ) : un filtre « Tous / Les miens » à côté du filtre texte. Le MJ d'un autre scénario s'affiche sans lien, et la page de ce scénario se lit seulement : image, jeu, places, durée, avertissements, présentation rendue, sans « ⋯ » ni formulaire.
 - **Sans MJ**, l'état vide gravé invite à « Créer le premier MJ », qui ouvre l'assistant comme « Ajouter un MJ ».
 
 ### Icône de carte
@@ -160,12 +165,12 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 ## Chargement, état vide, erreur de lecture
 
 - **Chargement** : rien pendant 300 ms, puis une fine barre de progression indéterminée en haut de la zone de contenu, avec `aria-busy` sur cette zone. Pas de squelettes.
-- **Échec d'une lecture** : à la place du contenu, un message sobre, sans motif gravé (« Impossible de charger les scénarios. »), et un bouton « Réessayer ».
+- **Échec d'une lecture** : à la place du contenu, un message sobre, sans motif gravé (« Impossible de charger les scénarios. »), et un bouton « Réessayer ». Un refus faute de droit (403) affiche le titre et le texte de l'API, sans « Réessayer ».
 - **État vide** : motif gravé, une phrase (l'humour discret y a sa place) et une invitation à créer, en bouton principal.
   - Convention sans créneau : le calendrier invite d'abord à créer les créneaux, « Ou commencer par les MJ » en second.
   - Créneaux sans table : le calendrier invite à ajouter les tables.
   - Aucun MJ : la page invite à créer le premier MJ.
-  - Aucun scénario : la page renvoie vers la fiche d'un MJ pour en créer un.
+  - Aucun scénario : la page renvoie un Organisateur vers les MJ, et invite un MJ à « Proposer un scénario ».
 - **Filtre sans résultat** : sobre, sans motif. « Aucun scénario ne correspond », et « Effacer le filtre ».
 
 ## Actions destructrices
