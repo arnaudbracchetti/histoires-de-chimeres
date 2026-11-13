@@ -7,6 +7,7 @@ import {
   inject,
   Injector,
   input,
+  linkedSignal,
   signal,
   untracked,
 } from '@angular/core';
@@ -390,12 +391,16 @@ const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', da
 export class ParticipantPage {
   /** Identifiant du pseudo, lu dans l'URL. */
   readonly id = input.required<string>();
+  /** L'onglet ouvert à l'arrivée, lu dans l'URL : `?onglet=compte` ouvre « Compte ». */
+  readonly tab = input<string>(undefined, { alias: 'onglet' });
 
   protected readonly resource = apiResource(participantEndpoints.read, () => ({
     participantId: this.id(),
   }));
   protected readonly sheet = currentValue(this.resource);
-  protected readonly selectedTab = signal<TabValue | undefined>('program');
+  protected readonly selectedTab = linkedSignal<TabValue | undefined>(() =>
+    this.tab() === 'compte' ? 'account' : 'program',
+  );
   protected readonly states = TIME_SLOT_STATES;
   protected readonly formatCount = formatCount;
 

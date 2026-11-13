@@ -17,7 +17,6 @@ import {
   timeSlotEndpoints,
   type ConventionDto,
   type FrontOfficeScheduleDto,
-  type GameMasterDto,
   type ParticipantSituationDto,
   type PlacementDto,
   type ScenarioDto,
@@ -27,6 +26,7 @@ import {
 import type { Clock } from '@chimeres/application';
 import { TimeOfDay, type DrawAlgorithm } from '@chimeres/domain';
 import { insertAccountSession } from '../../../test/account-session.js';
+import { addGameMaster } from '../../../test/game-master.js';
 import { startApp } from '../../../test/app.js';
 import { CLOCK } from '../../clock/clock.token.js';
 import { DRAW_ALGORITHM } from '../draw-algorithm.token.js';
@@ -49,10 +49,7 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
 
   /** Un MJ disponible sur le créneau 1. */
   const gameMaster = async (nickname: string) => {
-    const added = (
-      (await server().post(apiUrl(gameMasterEndpoints.add)).send({ nickname }).expect(201))
-        .body as GameMasterDto[]
-    ).find((candidate) => candidate.nickname === nickname)!;
+    const added = { id: (await addGameMaster(server(), nickname)).gameMasterId, nickname };
     await server()
       .put(apiUrl(availabilityEndpoints.declare, { gameMasterId: added.id, timeSlotId: slot(1) }))
       .expect(200);

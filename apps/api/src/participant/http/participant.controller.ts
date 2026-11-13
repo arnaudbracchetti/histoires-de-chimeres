@@ -29,13 +29,16 @@ import {
 } from '@chimeres/application';
 import {
   participantEndpoints,
+  type AddParticipantBody,
   type ParticipantListQuery,
   type ParticipantNicknameBody,
   type ResponseOf,
 } from '@chimeres/contract';
 import { Refusal } from '@chimeres/domain';
 import { ActingAccountId } from '../../account/http/acting-account-id.decorator.js';
+import { buildAccessLinkUrl, readAccessLinkPublicUrl } from '../../http/access-link-url.js';
 import { ZodPipe } from '../../http/zod.pipe.js';
+import { addParticipantBodySchema } from './add-participant-body.schema.js';
 import { participantListQuerySchema } from './participant-list-query.schema.js';
 import { participantNicknameBodySchema } from './participant-nickname-body.schema.js';
 
@@ -77,12 +80,25 @@ export class ParticipantController {
     return this.readSheetOrRefuse(participantId);
   }
 
-  /** Rend la fiche du pseudo créé, que le back office ouvre aussitôt. */
+  /**
+   * L'assistant « Créer un pseudo ». L'URL du lien d'accès se construit sur le domaine public
+   * (`PUBLIC_URL`), comme celle d'un lien créé depuis la fiche.
+   */
   @Post(participantEndpoints.add.path)
   async add(
-    @Body(new ZodPipe(participantNicknameBodySchema)) body: ParticipantNicknameBody,
+    @Body(new ZodPipe(addParticipantBodySchema)) body: AddParticipantBody,
   ): Promise<ResponseOf<typeof participantEndpoints.add>> {
-    return this.readSheetOrRefuse(await this.addParticipant.execute(body));
+    // Avant la création : sans adresse publique, aucun compte ne naît sans son lien.
+    const publicUrl = body.roles?.length ? readAccessLinkPublicUrl() : null;
+    const { participantId, gameMasterId, accessLink } = await this.addParticipant.execute(body);
+    return {
+      participantId,
+      gameMasterId,
+      accessLink: accessLink && {
+        url: buildAccessLinkUrl(publicUrl!, accessLink.token),
+        expiresAt: accessLink.expiresAt,
+      },
+    };
   }
 
   /** Rend la fiche relue. */

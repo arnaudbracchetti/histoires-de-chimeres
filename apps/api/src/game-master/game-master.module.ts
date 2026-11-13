@@ -1,7 +1,5 @@
-import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import {
-  AddGameMaster,
   DeclareAvailability,
   ReadGameMaster,
   RemoveGameMaster,
@@ -30,11 +28,6 @@ import { PrismaGameMasterReader } from './persistence/prisma-game-master-reader.
       useFactory: (conventions: ConventionRepository, reader: GameMasterReader) =>
         new ReadGameMaster(conventions, reader),
       inject: [CONVENTION_REPOSITORY, GAME_MASTER_READER],
-    },
-    {
-      provide: AddGameMaster,
-      useFactory: (repository: ConventionRepository) => new AddGameMaster(repository, randomUUID),
-      inject: [CONVENTION_REPOSITORY],
     },
     {
       provide: RenameGameMaster,

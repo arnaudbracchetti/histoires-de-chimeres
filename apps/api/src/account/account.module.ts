@@ -166,6 +166,6 @@ const computeFingerprint = ({ nickname, password }: FirstOrganizer) =>
   ],
   // Pour le garde d'accès, global, déclaré dans AppModule après le garde CSRF, et pour les rôles
   // donnés depuis la fiche d'un pseudo.
-  exports: [ACCOUNT_SESSIONS, ACCOUNT_READER, ACCOUNT_REPOSITORY],
+  exports: [ACCOUNT_SESSIONS, ACCOUNT_READER, ACCOUNT_REPOSITORY, ACCESS_LINK_TOKENS],
 })
 export class AccountModule {}

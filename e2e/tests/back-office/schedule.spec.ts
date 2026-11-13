@@ -12,7 +12,7 @@ import {
   type ScenarioDto,
 } from '@chimeres/contract';
 import { addOrganizerCookie, expect, test } from '../../fixtures.js';
-import { post } from './api.js';
+import { addGameMaster, post } from './api.js';
 
 // Espace insécable (U+00A0) et espace fine insécable (U+202F) de docs/design/ton.md.
 const NBSP = ' ';
@@ -61,12 +61,9 @@ async function prepare(page: Page) {
   for (const name of ['Table 1', 'Table 2']) {
     convention = await post(page, apiUrl(tableEndpoints.add), { name });
   }
-  let gameMasters: GameMasterDto[] = [];
-  for (const nickname of ['Élodie', 'Kaïros']) {
-    gameMasters = await post(page, apiUrl(gameMasterEndpoints.add), { nickname });
-  }
+  const elodie = await addGameMaster(page.request, 'Élodie');
+  const kairos = await addGameMaster(page.request, 'Kaïros');
   const [slot1, slot2] = convention!.timeSlots.map(({ id }) => id) as [string, string];
-  const [elodie, kairos] = gameMasters.map(({ id }) => id) as [string, string];
   for (const [gameMasterId, timeSlotId] of [
     [elodie, slot1],
     [elodie, slot2],
@@ -199,10 +196,7 @@ test('« Tous les scénarios » donne une pastille par statut : programmé, en r
 
 test("le scénario d'un MJ sans disponibilité est grisé, avec sa raison", async ({ page }) => {
   await prepare(page);
-  const gameMasters: GameMasterDto[] = await post(page, apiUrl(gameMasterEndpoints.add), {
-    nickname: 'Morgane',
-  });
-  const morgane = gameMasters.find(({ nickname }) => nickname === 'Morgane')!;
+  const morgane = { id: await addGameMaster(page.request, 'Morgane') };
   await post(page, apiUrl(scenarioEndpoints.propose, { gameMasterId: morgane.id }), {
     title: 'Abysses',
     system: 'Cthulhu',
@@ -599,14 +593,12 @@ test('échanger une partie double avec une partie simple, puis le refus avec son
   await expect(timelineRow(page, 'Table 1')).toContainText('Brumes');
 
   // Une partie de Moïra prend la table 1 au créneau 2 : Abysses n'y revient plus.
-  const [moira] = (
-    (await post(page, apiUrl(gameMasterEndpoints.add), { nickname: 'Moïra' })) as GameMasterDto[]
-  ).filter(({ nickname }) => nickname === 'Moïra');
+  const moira = { id: await addGameMaster(page.request, 'Moïra') };
   const declared = await page.request.put(
-    apiUrl(availabilityEndpoints.declare, { gameMasterId: moira!.id, timeSlotId: slot2 }),
+    apiUrl(availabilityEndpoints.declare, { gameMasterId: moira.id, timeSlotId: slot2 }),
   );
   expect(declared.ok()).toBe(true);
-  const marees = await proposeScenario(page, moira!.id, 'Marées');
+  const marees = await proposeScenario(page, moira.id, 'Marées');
   await scheduleByApi(page, marees.id, slot2, tableId('Table 1'));
   await page.reload();
   await gameButton(page, 'Abysses').click();

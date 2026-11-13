@@ -13,12 +13,10 @@ import type { Response } from 'express';
 import { ChooseAccessLinkPassword, CreateAccessLink, ReadAccessLink } from '@chimeres/application';
 import {
   accessLinkEndpoints,
-  buildAccessLinkPath,
   type ChooseAccessLinkPasswordBody,
   type ResponseOf,
 } from '@chimeres/contract';
-import { readPublicUrl } from '../../http/public-url.js';
-import { PublicUrlMissingError } from '../../http/public-url-missing.error.js';
+import { buildAccessLinkUrl, readAccessLinkPublicUrl } from '../../http/access-link-url.js';
 import { ZodPipe } from '../../http/zod.pipe.js';
 import { setAccountSessionCookie } from './account-session-cookie.js';
 import { chooseAccessLinkPasswordBodySchema } from './choose-access-link-password-body.schema.js';
@@ -43,10 +41,9 @@ export class AccessLinkController {
     @Param('participantId') participantId: string,
   ): Promise<ResponseOf<typeof accessLinkEndpoints.create>> {
     // Avant la création : sans adresse publique, le compte n'est pas remis à zéro pour rien.
-    const publicUrl = readPublicUrl();
-    if (!publicUrl) throw new PublicUrlMissingError();
+    const publicUrl = readAccessLinkPublicUrl();
     const { token, expiresAt } = await this.createAccessLink.execute(participantId);
-    return { url: `${publicUrl}${buildAccessLinkPath(token)}`, expiresAt };
+    return { url: buildAccessLinkUrl(publicUrl, token), expiresAt };
   }
 
   @Get(accessLinkEndpoints.read.path)

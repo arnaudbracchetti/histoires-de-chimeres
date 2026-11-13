@@ -4,14 +4,13 @@ import { request } from '../../../test/http.js';
 import type { App } from 'supertest/types.js';
 import {
   apiUrl,
-  gameMasterEndpoints,
   IMAGE_MAX_BYTES,
   scenarioEndpoints,
-  type GameMasterDto,
   type ScenarioDto,
   type ScenarioListItemDto,
 } from '@chimeres/contract';
 import { insertAccountSession } from '../../../test/account-session.js';
+import { addGameMaster } from '../../../test/game-master.js';
 import { startApp } from '../../../test/app.js';
 
 const UNKNOWN_ID = '8d3c1a8e-0000-4000-8000-000000000000';
@@ -33,16 +32,9 @@ describe("Image d'un scénario (PR-7, ADR 0007)", () => {
 
   beforeEach(async () => {
     app = await startApp();
-    const { body: gameMasters } = await server()
-      .post(apiUrl(gameMasterEndpoints.add))
-      .send({ nickname: 'Kaïros' })
-      .expect(201);
+    const { gameMasterId } = await addGameMaster(server(), 'Kaïros');
     const { body } = await server()
-      .post(
-        apiUrl(scenarioEndpoints.propose, {
-          gameMasterId: (gameMasters as GameMasterDto[])[0]!.id,
-        }),
-      )
+      .post(apiUrl(scenarioEndpoints.propose, { gameMasterId }))
       .send({
         title: "La Tour d'ébène",
         system: "L'Appel de Cthulhu",
@@ -73,11 +65,7 @@ describe("Image d'un scénario (PR-7, ADR 0007)", () => {
     server().delete(apiUrl(scenarioEndpoints.removeImage, { gameMasterId, scenarioId }));
   /** Un autre MJ, sous le chemin duquel le scénario de Kaïros n'existe pas. */
   const anotherGameMaster = async () => {
-    const { body } = await server()
-      .post(apiUrl(gameMasterEndpoints.add))
-      .send({ nickname: 'Élodie' })
-      .expect(201);
-    return (body as GameMasterDto[]).find(({ nickname }) => nickname === 'Élodie')!;
+    return { id: (await addGameMaster(server(), 'Élodie')).gameMasterId };
   };
   const read = async () =>
     (

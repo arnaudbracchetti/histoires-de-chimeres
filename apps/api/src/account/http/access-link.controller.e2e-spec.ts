@@ -6,6 +6,7 @@ import {
   accountEndpoints,
   apiUrl,
   participantEndpoints,
+  type AddedParticipantDto,
   type CreatedAccessLinkDto,
   type ParticipantListEntryDto,
   type ParticipantSheetDto,
@@ -62,7 +63,7 @@ describe("Lien d'accès et choix du mot de passe (ID-6, ADR 0018)", () => {
       .post(apiUrl(participantEndpoints.add))
       .send({ nickname: 'Lune' })
       .expect(201);
-    participantId = (body as ParticipantSheetDto).id;
+    participantId = (body as AddedParticipantDto).participantId;
     await server()
       .put(apiUrl(participantEndpoints.appointGameMaster, { participantId }))
       .expect(200);
@@ -206,7 +207,11 @@ describe("Lien d'accès et choix du mot de passe (ID-6, ADR 0018)", () => {
       .send({ nickname: 'Sven' });
 
     const response = await server()
-      .post(apiUrl(accessLinkEndpoints.create, { participantId: (body as ParticipantSheetDto).id }))
+      .post(
+        apiUrl(accessLinkEndpoints.create, {
+          participantId: (body as AddedParticipantDto).participantId,
+        }),
+      )
       .expect(404);
 
     expect(response.body).toMatchObject({ code: 'account-not-found' });
@@ -242,8 +247,8 @@ describe("Lien d'accès et choix du mot de passe (ID-6, ADR 0018)", () => {
     const addParticipant = async (nickname: string) =>
       (
         (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
-          .body as ParticipantSheetDto
-      ).id;
+          .body as AddedParticipantDto
+      ).participantId;
     const astre = await addParticipant('Astre');
     await server().put(apiUrl(participantEndpoints.appointOrganizer, { participantId: astre }));
     await createLink(astre);

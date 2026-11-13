@@ -9,6 +9,7 @@ import {
   type ScenarioDto,
 } from '@chimeres/contract';
 import { expect, test } from '../../fixtures.js';
+import { addGameMaster } from './api.js';
 
 const NBSP = ' ';
 const THIN = ' ';
@@ -25,23 +26,17 @@ const jpeg = async (width: number, height: number) => ({
 
 /** Crée un MJ et son scénario « La Tour d'ébène » par l'API. */
 async function aScenario(page: Page): Promise<ScenarioDto> {
-  const added = await page.request.post(apiUrl(gameMasterEndpoints.add), {
-    data: { nickname: 'Kaïros' },
-  });
-  const [gameMaster] = (await added.json()) as GameMasterDto[];
-  const proposed = await page.request.post(
-    apiUrl(scenarioEndpoints.propose, { gameMasterId: gameMaster!.id }),
-    {
-      data: {
-        title: "La Tour d'ébène",
-        system: "L'Appel de Cthulhu",
-        presentation: 'Une tour, une nuit.',
-        contentWarnings: '',
-        seats: { min: 3, max: 5 },
-        duration: 1,
-      },
+  const gameMasterId = await addGameMaster(page.request, 'Kaïros');
+  const proposed = await page.request.post(apiUrl(scenarioEndpoints.propose, { gameMasterId }), {
+    data: {
+      title: "La Tour d'ébène",
+      system: "L'Appel de Cthulhu",
+      presentation: 'Une tour, une nuit.',
+      contentWarnings: '',
+      seats: { min: 3, max: 5 },
+      duration: 1,
     },
-  );
+  });
   expect(proposed.ok()).toBe(true);
   return (await proposed.json()) as ScenarioDto;
 }

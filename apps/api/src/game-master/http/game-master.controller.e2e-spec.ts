@@ -8,6 +8,7 @@ import {
   frontOfficeEndpoints,
   gameMasterEndpoints,
   linkedPhoneEndpoints,
+  participantEndpoints,
   scenarioEndpoints,
   scheduleEndpoints,
   signUpEndpoints,
@@ -47,8 +48,11 @@ describe('MJ', () => {
     (await server().get(apiUrl(gameMasterEndpoints.list)).expect(200)).body as GameMasterDto[];
   const read = (gameMasterId: string) =>
     server().get(apiUrl(gameMasterEndpoints.read, { gameMasterId }));
-  const add = (body: GameMasterNicknameBody | object) =>
-    server().post(apiUrl(gameMasterEndpoints.add)).send(body);
+  /** Crée un MJ par l'assistant « Créer un pseudo », seule façon de créer un MJ. */
+  const add = (body: object) =>
+    server()
+      .post(apiUrl(participantEndpoints.add))
+      .send({ roles: ['game-master'], ...body });
   const rename = (gameMasterId: string, body: GameMasterNicknameBody | object) =>
     server().put(apiUrl(gameMasterEndpoints.rename, { gameMasterId })).send(body);
   const remove = (gameMasterId: string) =>
@@ -61,12 +65,11 @@ describe('MJ', () => {
     expect(await list()).toEqual([]);
   });
 
-  it('crée des MJ, renvoyés dans l’ordre naturel de leur pseudo', async () => {
+  it('liste les MJ créés dans l’ordre naturel de leur pseudo', async () => {
     await add({ nickname: 'Kaïros' }).expect(201);
-    const response = await add({ nickname: '  Élodie ' }).expect(201);
+    await add({ nickname: '  Élodie ' }).expect(201);
 
-    expect(nicknamesOf(response.body)).toEqual(['Élodie', 'Kaïros']);
-    expect(response.body).toEqual(await list());
+    expect(nicknamesOf(await list())).toEqual(['Élodie', 'Kaïros']);
   });
 
   it('lit la fiche d’un MJ, avec son pseudo tel qu’il a été saisi', async () => {
@@ -136,9 +139,9 @@ describe('MJ', () => {
   it('accepte « Jean Luc » à côté de « Jean-Luc » : la ponctuation compte', async () => {
     await add({ nickname: 'Jean-Luc' }).expect(201);
 
-    const response = await add({ nickname: 'Jean Luc' }).expect(201);
+    await add({ nickname: 'Jean Luc' }).expect(201);
 
-    expect(nicknamesOf(response.body)).toEqual(['Jean Luc', 'Jean-Luc']);
+    expect(nicknamesOf(await list())).toEqual(['Jean Luc', 'Jean-Luc']);
   });
 
   it.each([
@@ -281,6 +284,7 @@ describe('MJ', () => {
     ['un pseudo qui n’est pas un texte', { nickname: 42 }],
     ['un pseudo manquant', {}],
     ['un champ en trop', { nickname: 'Élodie', id: 'x' }],
+    ['un rôle inconnu', { nickname: 'Élodie', roles: ['admin'] }],
   ])('refuse %s : 400 malformed-request', async (_, body) => {
     const response = await add(body).expect(400);
 

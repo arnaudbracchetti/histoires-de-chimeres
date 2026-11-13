@@ -15,7 +15,7 @@ import {
   type UpdateConventionBody,
 } from '@chimeres/contract';
 import { addOrganizerCookie, expect, test } from '../../fixtures.js';
-import { post } from './api.js';
+import { addGameMaster, post } from './api.js';
 import { aNickname, identify, identifyAsGameMaster } from '../front-office/identification.js';
 import { gameCard, scheduleTab, timeSlotChip } from '../front-office/schedule.js';
 
@@ -38,11 +38,7 @@ async function prepare(page: Page) {
   const { tables } = await post<ConventionDto>(page, apiUrl(tableEndpoints.add), {
     name: 'Griffon',
   });
-  const [{ id: gameMasterId }] = (await post<GameMasterDto[]>(
-    page,
-    apiUrl(gameMasterEndpoints.add),
-    { nickname: 'Kaïros' },
-  )) as [GameMasterDto];
+  const gameMasterId = await addGameMaster(page.request, 'Kaïros');
   const [{ id: timeSlotId }] = timeSlots as [TimeSlotDto];
   const declared = await page.request.put(
     apiUrl(availabilityEndpoints.declare, { gameMasterId, timeSlotId }),
@@ -73,10 +69,7 @@ async function prepareNeons(page: Page, timeSlotId: string) {
   const { tables } = await post<ConventionDto>(page, apiUrl(tableEndpoints.add), {
     name: 'Licorne',
   });
-  const gameMasters = await post<GameMasterDto[]>(page, apiUrl(gameMasterEndpoints.add), {
-    nickname: 'Sven',
-  });
-  const gameMasterId = gameMasters.find(({ nickname }) => nickname === 'Sven')!.id;
+  const gameMasterId = await addGameMaster(page.request, 'Sven');
   const declared = await page.request.put(
     apiUrl(availabilityEndpoints.declare, { gameMasterId, timeSlotId }),
   );

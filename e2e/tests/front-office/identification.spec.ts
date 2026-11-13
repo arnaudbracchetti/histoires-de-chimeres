@@ -5,6 +5,7 @@ import {
   linkedPhoneEndpoints,
   PRESENCE_CODE_PARAM,
   type LinkPhoneBody,
+  participantEndpoints,
 } from '@chimeres/contract';
 import {
   aNickname,
@@ -94,9 +95,10 @@ test('le pseudo d’un MJ demande « Es-tu bien ce MJ ? » avant de relier le t�
 }) => {
   // Créé par un Organisateur, dans le back office.
   const nickname = aNickname('Brann');
-  expect((await request.post(apiUrl(gameMasterEndpoints.add), { data: { nickname } })).ok()).toBe(
-    true,
-  );
+  const created = await request.post(apiUrl(participantEndpoints.add), {
+    data: { nickname, roles: ['game-master'] },
+  });
+  expect(created.ok()).toBe(true);
 
   await enterNickname(page, nickname.toLowerCase());
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Es-tu bien ce MJ.\?$/);

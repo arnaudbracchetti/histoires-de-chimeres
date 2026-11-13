@@ -1,7 +1,6 @@
-import type { LocalMomentDto } from '@chimeres/contract';
 import { Refusal } from '@chimeres/domain';
 import type { Clock } from '../clock.js';
-import type { AccessLinkTokens } from './access-link-tokens.js';
+import type { AccessLinkTokens, IssuedAccessLink } from './access-link-tokens.js';
 import type { AccountRepository } from './account-repository.js';
 import type { AccountSessions } from './account-sessions.js';
 import { toLocalMomentDto } from './local-moment-dto.js';
@@ -19,7 +18,7 @@ export class CreateAccessLink {
   ) {}
 
   /** Le jeton, rendu une seule fois, et la fin de validité du lien. */
-  async execute(participantId: string): Promise<{ token: string; expiresAt: LocalMomentDto }> {
+  async execute(participantId: string): Promise<IssuedAccessLink> {
     const account = await this.accounts.findByParticipantId(participantId);
     if (!account) throw new Refusal('account-not-found', {});
     const { token, tokenHash } = this.tokens.generate();

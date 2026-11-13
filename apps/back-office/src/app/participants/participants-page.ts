@@ -1,20 +1,9 @@
-import {
-  afterNextRender,
-  Component,
-  computed,
-  DestroyRef,
-  ElementRef,
-  inject,
-  Injector,
-  signal,
-  viewChild,
-} from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Component, computed, DestroyRef, inject, signal, viewChild } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
   participantEndpoints,
   type AccessStateDto,
   type ParticipantListEntryDto,
-  type ParticipantSheetDto,
   type TimeSlotSignUpCountDto,
 } from '@chimeres/contract';
 import { countOf, fr } from '@chimeres/design';
@@ -29,7 +18,7 @@ import { Icon } from '../ui/icon';
 import { Pip } from '../ui/pip';
 import { TableFilter } from '../ui/table-filter';
 import { ACCESS_STATE_FILTERS, describeAccessState } from './access-state';
-import { NewParticipant } from './new-participant';
+import { ParticipantCreation } from './participant-creation';
 import { RoleBadges } from './role-badges';
 
 /** Le délai entre la dernière frappe et la recherche : une requête par mot, pas par lettre. */
@@ -42,8 +31,8 @@ const SEARCH_DELAY_MS = 250;
  * inscriptions par créneau en ronds, et son nombre de téléphones reliés (ID-16). En tête, la bascule
  * « Tous les participants avec un compte » ↔ « Tous les participants », puis un filtre par état du
  * compte, chacun avec son nombre, sur les lignes de la recherche. La liste se tient à jour seule
- * (`liveResource()`), et garde ses lignes pendant une recherche. « Créer un pseudo », sous la liste, ouvre une ligne « Nouveau pseudo » en dernier
- * (ID-12) ; le pseudo créé, sa fiche s'ouvre.
+ * (`liveResource()`), et garde ses lignes pendant une recherche. « Créer un pseudo », action
+ * principale de l'en-tête, ouvre l'assistant (ID-12, ID-16).
  */
 @Component({
   selector: 'app-participants-page',
@@ -52,7 +41,6 @@ const SEARCH_DELAY_MS = 250;
     EmptyState,
     Icon,
     Loadable,
-    NewParticipant,
     PageHeader,
     Pip,
     RoleBadges,
@@ -66,13 +54,14 @@ const SEARCH_DELAY_MS = 250;
           <button type="button" (click)="list.reload()">{{ line }}</button>
         }
       </p>
+      <button type="button" appButton="primary" (click)="create()">Créer un pseudo</button>
     </app-page-header>
     <app-loadable [resource]="list.firstRead" failure="Impossible de charger les participants.">
       @if (list.value(); as participants) {
-        @if (!participants.length && !search() && !adding()) {
+        @if (!participants.length && !search()) {
           <app-empty-state>
             <p>Aucun pseudo pour l'instant.</p>
-            <button type="button" appButton="primary" (click)="adding.set(true)">
+            <button type="button" appButton="primary" (click)="create()">
               Créer le premier pseudo
             </button>
           </app-empty-state>
@@ -176,20 +165,8 @@ const SEARCH_DELAY_MS = 250;
                   </tr>
                 }
               }
-              @if (adding()) {
-                <tr class="new">
-                  <td colspan="5">
-                    <app-new-participant (added)="onAdded($event)" (cancelled)="closeNew()" />
-                  </td>
-                </tr>
-              }
             </tbody>
           </table>
-          @if (!adding()) {
-            <button type="button" appButton="secondary" class="add" (click)="adding.set(true)">
-              Créer un pseudo
-            </button>
-          }
         }
       }
     </app-loadable>
@@ -285,13 +262,8 @@ const SEARCH_DELAY_MS = 250;
         text-align: right;
       }
 
-      tbody tr:not(.new):hover {
+      tbody tr:hover {
         background: var(--surface-1);
-      }
-
-      /* La bulle d'erreur de la ligne « Nouveau pseudo » se place sous la cellule. */
-      .new td {
-        position: relative;
       }
 
       .nickname {
@@ -353,13 +325,8 @@ export class ParticipantsPage {
     ) as Record<AccessStateDto, number>;
   });
 
-  /** La ligne « Nouveau pseudo » est ouverte. */
-  protected readonly adding = signal(false);
-
   private readonly filter = viewChild(TableFilter);
-  private readonly router = inject(Router);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-  private readonly injector = inject(Injector);
+  private readonly creation = inject(ParticipantCreation);
   private timer: ReturnType<typeof setTimeout> | undefined;
 
   constructor() {
@@ -416,20 +383,13 @@ export class ParticipantsPage {
     this.timer = setTimeout(() => this.search.set(text), SEARCH_DELAY_MS);
   }
 
-  /** Le pseudo est créé : sa fiche s'ouvre. */
-  protected onAdded({ id }: ParticipantSheetDto): void {
-    void this.router.navigate(['/participants', id]);
-  }
-
-  /** Ferme la ligne ; le focus revient à « Créer un pseudo », ou à l'invitation de l'état vide. */
-  protected closeNew(): void {
-    this.adding.set(false);
-    afterNextRender(
-      () => this.host.querySelector<HTMLElement>('.add, app-empty-state button')?.focus(),
-      {
-        injector: this.injector,
-      },
-    );
+  /**
+   * L'assistant « Créer un pseudo ». Sans rôle, la fiche du pseudo s'ouvre ; avec un rôle, la liste
+   * relue le montre, avec l'état de son compte, même si l'assistant se ferme par Échap.
+   */
+  protected async create(): Promise<void> {
+    await this.creation.open();
+    this.list.reload();
   }
 
   /** Toutes les lignes reviennent, et le focus retourne au champ. */

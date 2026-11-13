@@ -1,13 +1,4 @@
-import {
-  afterNextRender,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  Injector,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { Component, computed, inject, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { gameMasterEndpoints, type GameMasterDto } from '@chimeres/contract';
 import { apiResource, currentValue } from '../api-resource';
@@ -20,7 +11,7 @@ import { Pip } from '../ui/pip';
 import { SortableHeader } from '../ui/sortable-header';
 import { TableFilter } from '../ui/table-filter';
 import { tableView } from '../ui/table-view';
-import { NewGameMaster } from './new-game-master';
+import { ParticipantCreation } from '../participants/participant-creation';
 
 /**
  * Les MJ, en tableau (docs/design/patterns.md, Tableaux et MJ) : chaque pseudo mène à la fiche,
@@ -28,25 +19,15 @@ import { NewGameMaster } from './new-game-master';
  * créneau, de même taille : plein si le MJ peut y mener une partie, cerclé sinon. La dernière
  * colonne compte les parties qu'il mène, une partie double une seule fois.
  * Le filtre et le tri, sur le pseudo, viennent de `tableView()`. « Ajouter un MJ », sous le
- * tableau, ouvre une ligne « Nouveau MJ » en dernier ; après chaque ajout, une ligne vide s'ouvre
- * aussitôt. Quitter la page pendant une saisie l'abandonne sans rien demander.
+ * tableau, ouvre l'assistant « Créer un pseudo », MJ coché d'avance.
  */
 @Component({
   selector: 'app-game-master-list',
-  imports: [
-    Button,
-    EmptyState,
-    Loadable,
-    NewGameMaster,
-    Pip,
-    RouterLink,
-    SortableHeader,
-    TableFilter,
-  ],
+  imports: [Button, EmptyState, Loadable, Pip, RouterLink, SortableHeader, TableFilter],
   template: `
     <app-loadable [resource]="gameMasters" failure="Impossible de charger les MJ.">
       @if (gameMasters.hasValue()) {
-        @if (!gameMasters.value().length && !adding()) {
+        @if (!gameMasters.value().length) {
           <app-empty-state>
             <p>Aucun MJ pour l'instant&nbsp;: la convention attend ses conteurs.</p>
             <button type="button" appButton="primary" (click)="openNew()">
@@ -101,20 +82,11 @@ import { NewGameMaster } from './new-game-master';
                   </tr>
                 }
               }
-              @for (key of newKeys(); track key) {
-                <tr class="new">
-                  <td colspan="4">
-                    <app-new-game-master (added)="onAdded($event)" (cancelled)="closeNew()" />
-                  </td>
-                </tr>
-              }
             </tbody>
           </table>
-          @if (!adding()) {
-            <button type="button" appButton="secondary" class="add" (click)="openNew()">
-              Ajouter un MJ
-            </button>
-          }
+          <button type="button" appButton="secondary" class="add" (click)="openNew()">
+            Ajouter un MJ
+          </button>
         }
       }
     </app-loadable>
@@ -153,13 +125,8 @@ import { NewGameMaster } from './new-game-master';
         --pip-color: var(--accent);
       }
 
-      tbody tr:not(.new):hover {
+      tbody tr:hover {
         background: var(--surface-1);
-      }
-
-      /* La bulle d'erreur de la ligne « Nouveau MJ » se place sous la cellule. */
-      .new td {
-        position: relative;
       }
 
       tbody th a {
@@ -187,15 +154,10 @@ export class GameMasterList {
     sortKeys: { nickname: ({ nickname }: GameMasterDto) => nickname },
     initialSort: 'nickname',
   });
-  /** La ligne d'ajout : une clé neuve à chaque ligne ouverte (pour la recréer vide), ou aucune. */
-  protected readonly newKeys = signal<number[]>([]);
-  protected readonly adding = computed(() => this.newKeys().length > 0);
-  private nextKey = 0;
 
   private readonly store = inject(ConventionStore);
   private readonly filter = viewChild(TableFilter);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-  private readonly injector = inject(Injector);
+  private readonly creation = inject(ParticipantCreation);
 
   /** Les MJ affichés (filtrés et triés par `view`), chacun avec un rond par créneau. */
   protected readonly rows = computed(() => {
@@ -215,34 +177,19 @@ export class GameMasterList {
     });
   });
 
-  /** Ouvre une ligne d'ajout vide, en dernier ; le filtre s'efface pour montrer tous les MJ. */
-  protected openNew(): void {
-    this.view.clear();
-    this.newKeys.set([this.nextKey++]);
-  }
-
-  /** Un MJ est créé : la liste est à jour, et une nouvelle ligne vide s'ouvre (saisie à la chaîne). */
-  protected onAdded(gameMasters: GameMasterDto[]): void {
-    this.gameMasters.set(gameMasters);
-    this.openNew();
-  }
-
-  /** Ferme la ligne d'ajout ; le focus revient à « Ajouter un MJ », ou à l'invitation de l'état vide. */
-  protected closeNew(): void {
-    this.newKeys.set([]);
-    this.focusAfterRender('.add, .empty button');
+  /**
+   * L'assistant « Créer un pseudo », MJ coché d'avance : seule façon de créer un MJ. La liste est
+   * relue à sa fermeture.
+   */
+  protected async openNew(): Promise<void> {
+    await this.creation.open({ gameMaster: true });
+    this.gameMasters.reload();
   }
 
   /** Toutes les lignes reviennent, et le focus retourne au filtre. */
   protected clearFilter(): void {
     this.view.clear();
     this.filter()?.focus();
-  }
-
-  private focusAfterRender(selector: string): void {
-    afterNextRender(() => this.host.querySelector<HTMLElement>(selector)?.focus(), {
-      injector: this.injector,
-    });
   }
 }
 

@@ -5,7 +5,6 @@ import {
   apiUrl,
   availabilityEndpoints,
   conventionEndpoints,
-  gameMasterEndpoints,
   linkedPhoneEndpoints,
   scenarioEndpoints,
   scheduleEndpoints,
@@ -14,12 +13,12 @@ import {
   tableEndpoints,
   timeSlotEndpoints,
   type ConventionDto,
-  type GameMasterDto,
   type ScenarioDto,
   type ScheduleDto,
   type SignUpTrackingDto,
 } from '@chimeres/contract';
 import { insertAccountSession } from '../../../test/account-session.js';
+import { addGameMaster } from '../../../test/game-master.js';
 import { startApp } from '../../../test/app.js';
 
 describe('Suivi des inscriptions', () => {
@@ -40,10 +39,7 @@ describe('Suivi des inscriptions', () => {
 
   /** Un MJ disponible sur le créneau 1. */
   const gameMaster = async (nickname: string) => {
-    const added = (
-      (await server().post(apiUrl(gameMasterEndpoints.add)).send({ nickname }).expect(201))
-        .body as GameMasterDto[]
-    ).find((candidate) => candidate.nickname === nickname)!;
+    const added = { id: (await addGameMaster(server(), nickname)).gameMasterId, nickname };
     await server()
       .put(apiUrl(availabilityEndpoints.declare, { gameMasterId: added.id, timeSlotId: slot(1) }))
       .expect(200);

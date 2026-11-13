@@ -35,7 +35,7 @@ export type WithdrawalDto = { timeSlotId: string; refusal: VerdictRefusalDto | n
 /** Un MJ, sur sa fiche : en plus, le verdict de retrait de chaque disponibilité, dans l'ordre de la journée. */
 export type GameMasterSheetDto = GameMasterDto & { withdrawals: WithdrawalDto[] };
 
-/** Pseudo d'un MJ. Corps de la création et du changement de pseudo. */
+/** Pseudo d'un MJ. Corps du changement de pseudo. */
 export type GameMasterNicknameBody = {
   nickname: string;
 };
@@ -43,15 +43,15 @@ export type GameMasterNicknameBody = {
 export type GameMasterParams = { gameMasterId: string };
 
 /**
- * La liste et la création renvoient les MJ dans l'ordre naturel de leur pseudo. La fiche ne lit
- * que le MJ : elle deviendra l'espace du MJ lui-même.
+ * La liste renvoie les MJ dans l'ordre naturel de leur pseudo. La fiche ne lit que le MJ : elle
+ * est aussi l'espace du MJ lui-même. Un MJ se crée par l'assistant « Créer un pseudo »
+ * (`participantEndpoints.add`), seule façon de créer un pseudo.
  */
 export const gameMasterEndpoints = {
   list: endpoint<GameMasterDto[]>('GET', 'game-masters'),
   read: endpoint<GameMasterSheetDto, GameMasterParams>('GET', 'game-masters/:gameMasterId', {
     access: 'ownGameMaster',
   }),
-  add: endpoint<GameMasterDto[], never, GameMasterNicknameBody>('POST', 'game-masters'),
   rename: endpoint<GameMasterSheetDto, GameMasterParams, GameMasterNicknameBody>(
     'PUT',
     'game-masters/:gameMasterId',

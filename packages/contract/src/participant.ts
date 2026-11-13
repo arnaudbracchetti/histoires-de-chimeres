@@ -1,4 +1,4 @@
-import type { LocalMomentDto } from './account.js';
+import type { CreatedAccessLinkDto, LocalMomentDto } from './account.js';
 import { endpoint } from './endpoint.js';
 import type { TimeSlotStateDto } from './front-office.js';
 
@@ -125,9 +125,27 @@ export type ParticipantSheetDto = {
   linkedPhones: ParticipantLinkedPhoneDto[];
 };
 
-/** Le pseudo d'un participant. Corps de la création (ID-12) et du renommage (ID-13). */
+/** Le pseudo d'un participant. Corps du renommage (ID-13). */
 export type ParticipantNicknameBody = {
   nickname: string;
+};
+
+/**
+ * Corps de l'assistant « Créer un pseudo » : le pseudo et ses rôles du back office, facultatifs.
+ * Sans rôle, un simple participant (ID-12).
+ */
+export type AddParticipantBody = {
+  nickname: string;
+  roles?: AccountRole[];
+};
+
+/** Le pseudo que l'assistant « Créer un pseudo » vient de créer. */
+export type AddedParticipantDto = {
+  participantId: string;
+  /** Son MJ, s'il a reçu le rôle MJ, sinon `null`. */
+  gameMasterId: string | null;
+  /** Le lien d'accès de son compte, créé avec un rôle (ADR 0018), ou `null` sans rôle. */
+  accessLink: CreatedAccessLinkDto | null;
 };
 
 /** Le sort d'un élément du pseudo fusionné (ID-11) : passé à la destination, ou perdu. */
@@ -162,8 +180,11 @@ export type MergeParams = { participantId: string; destinationId: string };
 
 /**
  * Les pseudos, de participant et de MJ, gérés par un Organisateur (ID-5). La liste les rend dans
- * l'ordre naturel : le front garde cet ordre. `read` : la fiche d'un pseudo, ou 404. `add` crée un
- * pseudo de participant (ID-12) et rend sa fiche. `rename` renomme un pseudo, de participant ou de
+ * l'ordre naturel : le front garde cet ordre. `read` : la fiche d'un pseudo, ou 404. `add` est la
+ * seule façon de créer un pseudo, et donc un MJ : l'assistant « Créer un pseudo ». Sans rôle, un
+ * simple participant (ID-12) ; avec un rôle, son MJ éventuel et son compte, avec un lien d'accès,
+ * d'une seule requête. Un pseudo déjà pris est refusé (ID-4, ID-7) ; sans `PUBLIC_URL`, un rôle
+ * l'est aussi (`public-url-missing`), sans rien créer. `rename` renomme un pseudo, de participant ou de
  * MJ (ID-13), et rend sa fiche. `remove` supprime un pseudo de participant, pas de MJ (ID-10,
  * PR-12), et ne rend rien. `signUp`, `withdraw` et `withdrawFromDraw` inscrivent le pseudo
  * à une partie, l'en désinscrivent, ou le retirent du tirage d'un créneau où il est sans partie, à
@@ -183,7 +204,7 @@ export const participantEndpoints = {
     'GET',
     'participants/:participantId',
   ),
-  add: endpoint<ParticipantSheetDto, never, ParticipantNicknameBody>('POST', 'participants'),
+  add: endpoint<AddedParticipantDto, never, AddParticipantBody>('POST', 'participants'),
   rename: endpoint<ParticipantSheetDto, { participantId: string }, ParticipantNicknameBody>(
     'PUT',
     'participants/:participantId',

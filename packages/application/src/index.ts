@@ -1,4 +1,4 @@
-export type { AccessLinkTokens } from './account/access-link-tokens.js';
+export type { AccessLinkTokens, IssuedAccessLink } from './account/access-link-tokens.js';
 export type { AccountReader } from './account/account-reader.js';
 export type { AccountRepository } from './account/account-repository.js';
 export type { AccountSessions } from './account/account-sessions.js';
@@ -75,9 +75,8 @@ export type {
 } from './participant/participant-reader.js';
 export { ReadParticipantList } from './participant/read-participant-list.js';
 export { ReadParticipantSheet } from './participant/read-participant-sheet.js';
-export { AddGameMaster } from './game-master/add-game-master.js';
 export { AddLatecomerToPublishedDraw } from './participant/add-latecomer-to-published-draw.js';
-export { AddParticipant } from './participant/add-participant.js';
+export { AddParticipant, type AddedParticipant } from './participant/add-participant.js';
 export { MergeParticipant } from './participant/merge-participant.js';
 export { ReadMergeVerdict } from './participant/read-merge-verdict.js';
 export { RemoveParticipant } from './participant/remove-participant.js';

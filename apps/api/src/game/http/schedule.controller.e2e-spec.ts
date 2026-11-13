@@ -31,6 +31,7 @@ import {
   type SwapGamesBody,
 } from '@chimeres/contract';
 import { insertAccountSession } from '../../../test/account-session.js';
+import { addGameMaster } from '../../../test/game-master.js';
 import { startApp } from '../../../test/app.js';
 import { rowWrites } from '../../../test/database.js';
 
@@ -85,7 +86,7 @@ describe('Programme', () => {
         .body as ConventionDto;
     }
     for (const nickname of ['Élodie', 'Kaïros']) {
-      await server().post(apiUrl(gameMasterEndpoints.add)).send({ nickname }).expect(201);
+      await addGameMaster(server(), nickname);
     }
     const gameMasters = (await server().get(apiUrl(gameMasterEndpoints.list)).expect(200))
       .body as GameMasterDto[];
@@ -831,10 +832,7 @@ describe('Programme', () => {
 
       it('refuse « Table prise » sur le créneau suivant : 422', async () => {
         const { doubleId, simpleId } = await withDoubleAndSimple();
-        await server()
-          .post(apiUrl(gameMasterEndpoints.add))
-          .send({ nickname: 'Moïra' })
-          .expect(201);
+        await addGameMaster(server(), 'Moïra');
         const moira = (
           (await server().get(apiUrl(gameMasterEndpoints.list)).expect(200)).body as GameMasterDto[]
         ).find(({ nickname }) => nickname === 'Moïra')!;

@@ -6,7 +6,6 @@ import {
   availabilityEndpoints,
   conventionEndpoints,
   frontOfficeEndpoints,
-  gameMasterEndpoints,
   linkedPhoneEndpoints,
   scenarioEndpoints,
   scheduleEndpoints,
@@ -15,10 +14,10 @@ import {
   timeSlotEndpoints,
   type ConventionDto,
   type FrontOfficeScheduleDto,
-  type GameMasterDto,
   type ScenarioDto,
 } from '@chimeres/contract';
 import { insertAccountSession } from '../../../test/account-session.js';
+import { addGameMaster } from '../../../test/game-master.js';
 import { startApp } from '../../../test/app.js';
 
 describe('Inscriptions du front office (IN-2)', () => {
@@ -86,16 +85,14 @@ describe('Inscriptions du front office (IN-2)', () => {
     const { tables } = await send<ConventionDto>(
       server().post(apiUrl(tableEndpoints.add)).send({ name: 'Griffon' }),
     );
-    const [brann] = await send<GameMasterDto[]>(
-      server().post(apiUrl(gameMasterEndpoints.add)).send({ nickname: 'Brann' }),
-    );
+    const brann = { id: (await addGameMaster(server(), 'Brann')).gameMasterId };
     const timeSlotId = timeSlots[0]!.id;
     await send(
-      server().put(apiUrl(availabilityEndpoints.declare, { gameMasterId: brann!.id, timeSlotId })),
+      server().put(apiUrl(availabilityEndpoints.declare, { gameMasterId: brann.id, timeSlotId })),
     );
     const scenario = await send<ScenarioDto>(
       server()
-        .post(apiUrl(scenarioEndpoints.propose, { gameMasterId: brann!.id }))
+        .post(apiUrl(scenarioEndpoints.propose, { gameMasterId: brann.id }))
         .send({
           title: "Les Brumes d'Innsmouth",
           system: "L'Appel de Cthulhu",
@@ -124,10 +121,7 @@ describe('Inscriptions du front office (IN-2)', () => {
     const { tables } = await send<ConventionDto>(
       server().post(apiUrl(tableEndpoints.add)).send({ name: 'Licorne' }),
     );
-    const gameMasters = await send<GameMasterDto[]>(
-      server().post(apiUrl(gameMasterEndpoints.add)).send({ nickname: 'Kaïros' }),
-    );
-    const kairos = gameMasters.find(({ nickname }) => nickname === 'Kaïros')!;
+    const kairos = { id: (await addGameMaster(server(), 'Kaïros')).gameMasterId };
     await send(
       server().put(apiUrl(availabilityEndpoints.declare, { gameMasterId: kairos.id, timeSlotId })),
     );

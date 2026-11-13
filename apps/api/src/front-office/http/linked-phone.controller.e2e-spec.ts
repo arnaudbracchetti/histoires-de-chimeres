@@ -8,11 +8,11 @@ import {
   linkedPhoneEndpoints,
   timeSlotEndpoints,
   type ConventionDto,
-  type GameMasterDto,
   type LinkPhoneBody,
   type UpdateConventionBody,
 } from '@chimeres/contract';
 import { insertAccountSession } from '../../../test/account-session.js';
+import { addGameMaster } from '../../../test/game-master.js';
 import { startApp } from '../../../test/app.js';
 
 describe('Téléphone relié à un pseudo', () => {
@@ -186,15 +186,8 @@ describe('Téléphone relié à un pseudo', () => {
 
   describe('le pseudo d’un MJ (ID-3, ID-4)', () => {
     /** Crée le MJ, comme un Organisateur dans le back office : son identifiant. */
-    const gameMasterOf = async (nickname: string) => {
-      const response = await server()
-        .post(apiUrl(gameMasterEndpoints.add))
-        .send({ nickname })
-        .expect(201);
-      return (response.body as GameMasterDto[]).find(
-        (gameMaster) => gameMaster.nickname === nickname,
-      )!.id;
-    };
+    const gameMasterOf = async (nickname: string) =>
+      (await addGameMaster(server(), nickname)).gameMasterId;
     /** Un téléphone relié au MJ, après sa confirmation : son cookie. */
     const gameMasterPhoneOf = async (nickname: string) =>
       cookieOf(await link({ nickname, confirmation: 'game-master' }).expect(200));

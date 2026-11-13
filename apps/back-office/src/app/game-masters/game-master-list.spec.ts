@@ -30,6 +30,10 @@ describe('GameMasterList', () => {
     });
   });
 
+  afterEach(() => {
+    document.querySelectorAll('.cdk-overlay-container').forEach((container) => container.remove());
+  });
+
   async function render(list = gameMasters(), timeSlots: TimeSlotDto[] = []) {
     const fixture = TestBed.createComponent(GameMasterList);
     const http = TestBed.inject(HttpTestingController);
@@ -204,7 +208,7 @@ describe('GameMasterList', () => {
   });
 
   it('sans MJ, montre l’état vide gravé, qui invite à créer le premier', async () => {
-    const { host, button, settle, newRow, input } = await render();
+    const { host, button, settle } = await render();
 
     expect(host.querySelector('.empty use')?.getAttribute('href')).toBe(
       'illustration.svg#engraving',
@@ -213,97 +217,39 @@ describe('GameMasterList', () => {
     button('Créer le premier MJ')!.click();
     await settle();
 
-    expect(newRow()).not.toBeNull();
-    expect(document.activeElement).toBe(input());
+    expect(document.querySelector('app-participant-creation')).not.toBeNull();
   });
 
-  it('crée à la chaîne : après l’ajout, une nouvelle ligne vide s’ouvre', async () => {
-    const { button, type, input, http, settle, nicknames } = await render(gameMasters('Kaïros'));
+  it('« Ajouter un MJ » ouvre l’assistant « Créer un pseudo », MJ coché, puis relit la liste', async () => {
+    const { button, settle, http, nicknames } = await render(gameMasters('Kaïros'));
 
-    button('Ajouter un MJ')!.click();
-    await settle();
-    expect(document.activeElement).toBe(input());
-    await type(input(), '  Élodie ');
-    button('Ajouter')!.click();
-    await settle();
-    const request = http.expectOne(apiUrl(gameMasterEndpoints.add));
-    expect(request.request.body).toEqual({ nickname: 'Élodie' });
-    request.flush(gameMasters('Élodie', 'Kaïros'));
-    await settle();
-
-    expect(nicknames()).toEqual(['Élodie', 'Kaïros']);
-    expect(input().value).toBe('');
-    expect(document.activeElement).toBe(input());
-    expect(button('Ajouter un MJ')).toBeUndefined();
-  });
-
-  it('Entrée enregistre, Échap ferme la ligne et rend le focus à « Ajouter un MJ »', async () => {
-    const { button, type, input, press, http, settle, newRow } = await render(
-      gameMasters('Kaïros'),
-    );
-    button('Ajouter un MJ')!.click();
-    await settle();
-
-    await type(input(), 'Élodie');
-    await press('Enter');
-    http.expectOne(apiUrl(gameMasterEndpoints.add)).flush(gameMasters('Élodie', 'Kaïros'));
-    await settle();
-    await press('Escape');
-
-    expect(newRow()).toBeNull();
-    expect(document.activeElement).toBe(button('Ajouter un MJ'));
-  });
-
-  it('un pseudo vide n’est signalé qu’à l’enregistrement, sans rien envoyer', async () => {
-    const { button, type, input, press, http, settle, errorText } = await render(
-      gameMasters('Kaïros'),
-    );
-    button('Ajouter un MJ')!.click();
-    await settle();
-
-    await type(input(), '  ');
-    expect(errorText()).toBeUndefined();
-    await press('Enter');
-
-    http.expectNone(apiUrl(gameMasterEndpoints.add));
-    expect(errorText()).toBe('Donne un pseudo au MJ.');
-  });
-
-  it('signale un pseudo trop long dès qu’on quitte le champ', async () => {
-    const { button, type, input, settle, errorText } = await render(gameMasters('Kaïros'));
-    button('Ajouter un MJ')!.click();
-    await settle();
-
-    await type(input(), 'a'.repeat(31));
-
-    expect(errorText()).toBe(`Un pseudo fait 30${NBSP}caractères au plus${NBSP}: raccourcis-le.`);
-  });
-
-  it('affiche dans la ligne un pseudo pris refusé par l’API, sans perdre la saisie', async () => {
-    const { button, type, input, press, http, settle, errorText } = await render(
-      gameMasters('Élodie'),
-    );
-    const message = `Le MJ «${NBSP}Élodie${NBSP}» porte déjà ce pseudo${NBSP}: choisis-en un autre.`;
-    const problem: ProblemDto = {
-      type: 'urn:histoires-de-chimeres:problem:nickname-taken',
-      title: 'Pseudo déjà pris',
-      status: 422,
-      detail: message,
-      code: 'nickname-taken',
-      errors: [{ field: 'nickname', code: 'nickname-taken', message }],
+    /** Le dialogue ouvert, `whenStable()` attendrait sa fermeture. */
+    const tick = async () => {
+      await new Promise((resolve) => setTimeout(resolve));
+      TestBed.tick();
+      await new Promise((resolve) => setTimeout(resolve));
     };
     button('Ajouter un MJ')!.click();
-    await settle();
+    await tick();
+    const wizard = document.querySelector<HTMLElement>('app-participant-creation')!;
+    const input = wizard.querySelector<HTMLInputElement>('input[type="text"]')!;
+    input.value = 'Élodie';
+    input.dispatchEvent(new Event('input'));
+    await tick();
+    [...wizard.querySelectorAll('button')]
+      .find((b) => b.textContent?.trim() === 'Suivant')!
+      .click();
+    await tick();
+    expect(
+      wizard.querySelector<HTMLInputElement>('app-role-card[role="game-master"] input')!.checked,
+    ).toBe(true);
+    [...wizard.querySelectorAll('button')]
+      .find((b) => b.textContent?.trim() === 'Annuler')!
+      .click();
+    await tick();
 
-    await type(input(), 'elodie');
-    await press('Enter');
-    http
-      .expectOne(apiUrl(gameMasterEndpoints.add))
-      .flush(problem, { status: 422, statusText: 'Refus' });
+    http.expectOne(apiUrl(gameMasterEndpoints.list)).flush(gameMasters('Élodie', 'Kaïros'));
     await settle();
-
-    expect(errorText()).toBe(message);
-    expect(input().value).toBe('elodie');
-    expect(document.activeElement).toBe(input());
+    expect(nicknames()).toEqual(['Élodie', 'Kaïros']);
   });
 });

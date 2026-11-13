@@ -164,6 +164,8 @@ export {
 export {
   participantEndpoints,
   type AccessStateDto,
+  type AddedParticipantDto,
+  type AddParticipantBody,
   type AccountRole,
   type ParticipantAccountDto,
   type MergeOutcomeDto,

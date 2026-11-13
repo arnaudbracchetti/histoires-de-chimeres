@@ -11,6 +11,7 @@ import {
   type GameMasterDto,
 } from '@chimeres/contract';
 import { insertAccountSession } from '../../../test/account-session.js';
+import { addGameMaster } from '../../../test/game-master.js';
 import { startApp } from '../../../test/app.js';
 
 const UNKNOWN_ID = '8d3c1a8e-0000-4000-8000-000000000000';
@@ -51,11 +52,8 @@ describe('Disponibilités des MJ (PR-2)', () => {
       await server().post(apiUrl(timeSlotEndpoints.add)).send({ start: '09:00', end: '11:30' })
     ).body as ConventionDto;
     [slot1, slot2] = convention.timeSlots.map(({ id }) => id) as [string, string];
-    await server().post(apiUrl(gameMasterEndpoints.add)).send({ nickname: 'Élodie' });
-    const gameMasters = (
-      await server().post(apiUrl(gameMasterEndpoints.add)).send({ nickname: 'Kaïros' })
-    ).body as GameMasterDto[];
-    [elodie, kairos] = gameMasters.map(({ id }) => id) as [string, string];
+    elodie = (await addGameMaster(server(), 'Élodie')).gameMasterId;
+    kairos = (await addGameMaster(server(), 'Kaïros')).gameMasterId;
   });
 
   afterEach(async () => {

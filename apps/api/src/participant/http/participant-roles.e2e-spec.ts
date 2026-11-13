@@ -8,6 +8,7 @@ import {
   participantEndpoints,
   scenarioEndpoints,
   timeSlotEndpoints,
+  type AddedParticipantDto,
   type ConnectedAccountDto,
   type ConventionDto,
   type GameMasterDto,
@@ -42,8 +43,8 @@ describe('Rôles du pseudo, donnés et retirés par un Organisateur (ID-16)', ()
   const addParticipant = async (nickname: string) =>
     (
       (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
-        .body as ParticipantSheetDto
-    ).id;
+        .body as AddedParticipantDto
+    ).participantId;
   const readSheet = async (participantId: string) =>
     (await server().get(apiUrl(participantEndpoints.read, { participantId })).expect(200))
       .body as ParticipantSheetDto;

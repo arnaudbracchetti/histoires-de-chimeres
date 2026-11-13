@@ -54,9 +54,9 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 
 - **Créneau** : une **carte par créneau**, dans l'ordre de la journée, et la pause entre deux cartes (voir [Créneaux](#créneaux)).
 - **Table** : une **petite carte par table**, sur une grille, dans l'ordre naturel (voir [Tables](#tables)).
-- **MJ** : une ligne en saisie en bas du tableau, ouverte par « Ajouter un MJ » sous le tableau (voir [MJ](#mj)). Sa ligne mène à sa fiche. Son pseudo se modifie dans l'en-tête de la fiche (crayon, puis champ en place, Entrée ou Échap), jamais dans la liste.
+- **Pseudo, MJ compris** : l'assistant « Créer un pseudo », en dialogue (voir [Participants](#participants)), ouvert par « Créer un pseudo » dans la liste Participants et par « Ajouter un MJ » sous le tableau des MJ. Seule façon de créer un pseudo, et donc un MJ. La ligne d'un MJ mène à sa fiche. Son pseudo se modifie dans l'en-tête de la fiche (crayon, puis champ en place, Entrée ou Échap), jamais dans la liste.
 - **Scénario** : il a **sa propre page**, en lecture puis en édition. Il se crée depuis la fiche de son MJ, qui lui est fixé dès la création (PR-16), et s'ouvre aussi depuis la liste des scénarios.
-- **Dialogues** (`@angular/cdk/dialog`) : réservés aux confirmations et aux dialogues de placement de la programmation. Jamais de formulaire de saisie dans un dialogue.
+- **Dialogues** (`@angular/cdk/dialog`) : réservés aux confirmations, aux dialogues de placement de la programmation et à l'assistant « Créer un pseudo ». Aucun autre formulaire de saisie dans un dialogue.
 
 ### Créneaux
 
@@ -83,14 +83,10 @@ Forme retenue sur prototype, face au tableau à ligne en édition, aux étiquett
 
 ### MJ
 
-Forme retenue sur prototype, face au champ d'ajout permanent, au champ « Chercher ou créer » et à la saisie en lot : la ligne en saisie du tableau.
-
 - **La liste** est un tableau (voir [Tableaux](#tableaux)) : le pseudo, lien vers la fiche, triable, avec un filtre texte au-dessus. Le filtre ignore la casse et les accents.
-- **« Ajouter un MJ »** (secondaire), **sous le tableau**, ouvre une ligne « Nouveau MJ » en dernier : le champ du pseudo, « Ajouter » (principal) et « Annuler » (discret). Le filtre s'efface pour montrer tous les MJ. Le bouton disparaît le temps de la saisie.
-- **Saisie à la chaîne** : après un ajout, le MJ prend sa place dans l'ordre naturel et une ligne vide s'ouvre aussitôt, focus sur le pseudo. « Annuler », ou Échap, la ferme ; le focus revient à « Ajouter un MJ ».
-- La ligne en saisie est centrée et garde la hauteur des autres. Elle est la dernière du tableau : **son erreur s'affiche en bulle juste dessous**, comme pour une table, sans rien couvrir ni décaler.
+- **« Ajouter un MJ »** (secondaire), **sous le tableau**, ouvre l'assistant « Créer un pseudo » (voir [Participants](#participants)), le rôle MJ coché d'avance. La liste est relue à sa fermeture.
 - **La fiche** : « MJ › pseudo ». Un crayon à côté du titre (« Modifier le pseudo ») remplace le h1 par le champ, avec « Enregistrer » et « Annuler ». Entrée enregistre, Échap ferme, le refus s'affiche sous le champ, et le focus revient au crayon. « Supprimer le MJ » est dans le menu « ⋯ » de l'en-tête.
-- **Sans MJ**, l'état vide gravé invite à « Créer le premier MJ », qui ouvre la ligne de saisie.
+- **Sans MJ**, l'état vide gravé invite à « Créer le premier MJ », qui ouvre l'assistant comme « Ajouter un MJ ».
 
 ### Icône de carte
 
@@ -411,7 +407,12 @@ La liste des pseudos, de participant et de MJ (ID-5), dans l'ordre naturel.
   - Inscriptions par créneau : un rond par créneau (`app-pip`), comme les disponibilités des MJ, avec le nombre d'inscriptions dedans (de secours comprises, une partie double sur son premier créneau). Contour à la couleur de l'état du créneau, rond teinté s'il y a au moins une inscription, vide avec « 0 » sinon, atténué pour un créneau terminé. Infobulle et texte pour lecteur d'écran : « Créneau 2 · tirage publié : 1 inscription ».
 - La liste se tient à jour seule, comme le pilotage (§6, Fraîcheur).
 - Le pseudo de chaque ligne mène à sa fiche.
-- **« Créer un pseudo »** (secondaire), sous le tableau, ouvre une ligne « Nouveau pseudo » en dernier, comme « Ajouter un MJ » : le champ, « Créer » (principal) et « Annuler » (discret). Le pseudo créé, sa fiche s'ouvre (ID-12). Un pseudo déjà pris, de participant ou de MJ (ID-4), est refusé en bulle sous la ligne, suivi du lien « Voir sa fiche ». Sans pseudo, l'état vide invite à « Créer le premier pseudo ».
+- **« Créer un pseudo »**, action principale de l'en-tête, ouvre l'assistant du même nom (ID-12, ID-16), en dialogue, en trois temps, dont les étapes s'affichent en tête (« 1. Pseudo », « 2. Rôles (facultatif) », « 3. Lien d'accès »), l'étape en cours en gras :
+  1. **Pseudo** : le champ « Pseudo » ; Annuler · **Suivant** (ou Entrée). Un pseudo vide ou trop long ne passe pas à l'étape suivante.
+  2. **Rôles de « Lune »** : les deux cartes à cocher de l'onglet Compte, MJ et Organisateur, puis en gris « Sans rôle, « Lune » est un simple participant, sans accès au back office. Un rôle se donne aussi plus tard, dans l'onglet « Compte » de sa fiche. » ; Annuler · Retour · **Créer le pseudo**, ou **Créer le pseudo et son compte** avec un rôle.
+  3. **Lien d'accès de « Lune »**, avec un rôle seulement : le contenu du dialogue du lien de l'onglet Compte (QR code, « Copier le lien », valable jusqu'au …) ; Voir sa fiche · **Terminé**. « Voir sa fiche » ouvre l'onglet Compte (`?onglet=compte`).
+
+  Sans rôle, le pseudo créé, sa fiche s'ouvre, sans lien. Avec un rôle, une seule requête crée le pseudo, son MJ et son compte, avec le lien. Un pseudo déjà pris, de participant ou de MJ (ID-4, ID-7), ramène à l'étape 1, le refus sous le champ, suivi de « Voir sa fiche », qui ouvre l'onglet Compte du pseudo qui le porte, pour lui donner un rôle au lieu d'un doublon. Sans pseudo, l'état vide invite à « Créer le premier pseudo », qui ouvre l'assistant.
 
 ### Fiche d'un pseudo
 
@@ -429,7 +430,7 @@ La liste des pseudos, de participant et de MJ (ID-5), dans l'ordre naturel.
     Au plus un geste par ligne, en secondaire. Sur un créneau ouvert, « ✎ Modifier les inscriptions » ouvre l'onglet Inscriptions sur ce créneau. Sur un tirage provisoire où le pseudo n'est pas, et qu'il ne mène pas, « Rouvrir les inscriptions » (`lock-open`) reprend le geste du pilotage et sa confirmation rouge, mot pour mot, sans nommer le pseudo (TI-6) ; le créneau repasse en inscriptions ouvertes dans la frise. Sur un tirage publié, pas terminé, où le pseudo n'est pas, et qu'il ne mène pas, « + Ajouter comme non placé » (`plus`) ouvre une confirmation orange (principal) : « Ajouter « Sven » au tirage publié du créneau 1 ? », « « Sven » y entre comme non placé : sans prendre la place de personne. », « « Sven » reçoit la notification « pas de place pour toi », avec les tables où il reste de la place. L'ajout ne se défait pas. » ; Annuler · **Ajouter comme non placé** (ID-14). La frise montre alors « Non placé », avec les tables où il reste de la place.
 - **Inscriptions** : l'Organisateur inscrit le pseudo à sa place (ID-12), aux règles du téléphone (IN-2 à IN-4, IN-6). Une pilule par créneau ouvert, puis une case par partie qui y commence, enregistrée dès qu'on la coche ou la décoche, sans confirmation (IN-5 ne s'applique pas) ; pendant l'écriture, la ligne est atténuée, et un refus s'ouvre dans le dialogue d'erreur. Sous chaque partie, la [jauge](#jauge) et « 8 inscrits · 4 à 6 places · très demandée », ou « · 1 manquant » en jaune sous le minimum. La partie d'un MJ est grisée, case désactivée, « sa partie » ; sur un créneau où il mène : « Mène « Néons » : ses inscriptions sur ce créneau sont de secours. » Sans partie sur le créneau : « Sans partie sur ce créneau. », en rouge brique, avec « Retirer du tirage ». Sans créneau ouvert : « Aucun créneau n'a ses inscriptions ouvertes. »
 - **Téléphones** : « Relié à 9 h 12 », un par ligne, rien sur l'appareil. Sans téléphone : « Aucun téléphone relié : la personne lit ses résultats à l'accueil. »
-- **Compte** (ID-16) : un bandeau d'état, tel que l'API le dit (un MJ créé sans compte n'en a pas), avec un filet gauche de 4 px et un fond à 14 % de la couleur de statut, son icône, une phrase d'aide et son action à droite (secondaire) :
+- **Compte** (ID-16) : un bandeau d'état, tel que l'API le dit, avec un filet gauche de 4 px et un fond à 14 % de la couleur de statut, son icône, une phrase d'aide et son action à droite (secondaire) :
   - « Compte actif » (`circle-check`, vert) : « Le mot de passe est choisi : la personne se connecte seule. » ; « Créer un nouveau lien » ;
   - « En attente · encore 5 jours » (`hourglass`, orange), le temps qui reste au lien : en jours entiers, puis « encore 3 h » le dernier jour, et « encore moins d'une heure » la dernière heure : « Le lien d'accès est créé, la personne ne l'a pas encore suivi. » ; « Créer un nouveau lien » ;
   - « Lien à créer » (`triangle-alert`, jaune) : « Le compte existe, mais aucun lien d'accès n'a été remis. » ; « Créer le lien d'accès » ;

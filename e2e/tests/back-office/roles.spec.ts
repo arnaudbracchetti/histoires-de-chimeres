@@ -3,14 +3,17 @@ import {
   participantEndpoints,
   type ParticipantListEntryDto,
   type ParticipantSheetDto,
+  type AddedParticipantDto,
 } from '@chimeres/contract';
 import { expect, ORGANIZER_NICKNAME, test } from '../../fixtures.js';
 import { expectOk, post } from './api.js';
 
 test('donne puis retire le rôle MJ depuis l’onglet « Compte » (ID-16)', async ({ page }) => {
-  const { id } = await post<ParticipantSheetDto>(page, apiUrl(participantEndpoints.add), {
-    nickname: 'Lune',
-  });
+  const { participantId: id } = await post<AddedParticipantDto>(
+    page,
+    apiUrl(participantEndpoints.add),
+    { nickname: 'Lune' },
+  );
   await page.goto(`/gestion/participants/${id}`);
   const header = page.locator('app-page-header');
   await expect(header.getByText('Participant', { exact: true })).toBeVisible();

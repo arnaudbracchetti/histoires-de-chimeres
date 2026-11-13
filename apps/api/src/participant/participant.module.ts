@@ -15,6 +15,7 @@ import {
   WithdrawParticipantFromDraw,
   WithdrawParticipantFromGame,
   WithdrawRole,
+  type AccessLinkTokens,
   type AccountRepository,
   type Clock,
   type ConventionRepository,
@@ -24,6 +25,7 @@ import {
   type ScenarioRepository,
   type ScheduleReader,
 } from '@chimeres/application';
+import { ACCESS_LINK_TOKENS } from '../account/access-link-tokens.token.js';
 import { ACCOUNT_REPOSITORY } from '../account/account-repository.token.js';
 import { AccountModule } from '../account/account.module.js';
 import { CLOCK } from '../clock/clock.token.js';
@@ -51,8 +53,13 @@ import { PrismaParticipantReader } from './persistence/prisma-participant-reader
     { provide: LINKED_PHONE_REPOSITORY, useClass: PrismaLinkedPhoneRepository },
     {
       provide: AddParticipant,
-      useFactory: (repository: ConventionRepository) => new AddParticipant(repository, randomUUID),
-      inject: [CONVENTION_REPOSITORY],
+      useFactory: (
+        conventions: ConventionRepository,
+        accounts: AccountRepository,
+        tokens: AccessLinkTokens,
+        clock: Clock,
+      ) => new AddParticipant(conventions, accounts, tokens, clock, randomUUID),
+      inject: [CONVENTION_REPOSITORY, ACCOUNT_REPOSITORY, ACCESS_LINK_TOKENS, CLOCK],
     },
     {
       provide: RenameParticipant,

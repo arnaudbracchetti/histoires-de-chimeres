@@ -1,4 +1,9 @@
-import { apiUrl, participantEndpoints, type ParticipantSheetDto } from '@chimeres/contract';
+import {
+  apiUrl,
+  participantEndpoints,
+  type ParticipantSheetDto,
+  type AddedParticipantDto,
+} from '@chimeres/contract';
 import { expect, test } from '../../fixtures.js';
 import { expectOk, post } from './api.js';
 
@@ -13,9 +18,11 @@ test("lien d'accès : choisir son mot de passe, puis se reconnecter (ID-6)", asy
   page,
   browser,
 }) => {
-  const { id } = await post<ParticipantSheetDto>(page, apiUrl(participantEndpoints.add), {
-    nickname: 'Lune',
-  });
+  const { participantId: id } = await post<AddedParticipantDto>(
+    page,
+    apiUrl(participantEndpoints.add),
+    { nickname: 'Lune' },
+  );
   await expectOk(
     page.request.put(apiUrl(participantEndpoints.appointOrganizer, { participantId: id })),
   );

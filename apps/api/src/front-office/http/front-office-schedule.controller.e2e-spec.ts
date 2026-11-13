@@ -6,19 +6,18 @@ import {
   availabilityEndpoints,
   conventionEndpoints,
   frontOfficeEndpoints,
-  gameMasterEndpoints,
   linkedPhoneEndpoints,
   scenarioEndpoints,
   scheduleEndpoints,
   tableEndpoints,
   timeSlotEndpoints,
   type ConventionDto,
-  type GameMasterDto,
   type ScenarioBody,
   type ScenarioDto,
   type UpdateConventionBody,
 } from '@chimeres/contract';
 import { insertAccountSession } from '../../../test/account-session.js';
+import { addGameMaster } from '../../../test/game-master.js';
 import { startApp } from '../../../test/app.js';
 
 describe('Programme du front office', () => {
@@ -76,11 +75,11 @@ describe('Programme du front office', () => {
     const convention = await send<ConventionDto>(
       server().post(apiUrl(tableEndpoints.add)).send({ name: 'Basilic' }),
     );
-    await send(server().post(apiUrl(gameMasterEndpoints.add)).send({ nickname: 'Brann' }));
-    const gameMasters = await send<GameMasterDto[]>(
-      server().post(apiUrl(gameMasterEndpoints.add)).send({ nickname: 'Kaïros' }),
-    );
-    const gameMasterId = (nickname: string) => gameMasters.find((m) => m.nickname === nickname)!.id;
+    const gameMasterIds = {
+      Brann: (await addGameMaster(server(), 'Brann')).gameMasterId,
+      Kaïros: (await addGameMaster(server(), 'Kaïros')).gameMasterId,
+    };
+    const gameMasterId = (nickname: 'Brann' | 'Kaïros') => gameMasterIds[nickname];
     const [slot1, slot2] = convention.timeSlots.map(({ id }) => id) as [string, string];
     for (const [nickname, timeSlotId] of [
       ['Brann', slot1],
@@ -96,7 +95,7 @@ describe('Programme du front office', () => {
         ),
       );
     }
-    const propose = (nickname: string, scenario: ScenarioBody) =>
+    const propose = (nickname: 'Brann' | 'Kaïros', scenario: ScenarioBody) =>
       send<ScenarioDto>(
         server()
           .post(apiUrl(scenarioEndpoints.propose, { gameMasterId: gameMasterId(nickname) }))

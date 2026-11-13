@@ -7,7 +7,6 @@ import {
   availabilityEndpoints,
   conventionEndpoints,
   drawEndpoints,
-  gameMasterEndpoints,
   linkedPhoneEndpoints,
   participantEndpoints,
   scenarioEndpoints,
@@ -17,7 +16,6 @@ import {
   tableEndpoints,
   timeSlotEndpoints,
   type ConventionDto,
-  type GameMasterDto,
   type IdentityConfirmationDto,
   type ParticipantListEntryDto,
   type PushSubscriptionBody,
@@ -27,6 +25,7 @@ import {
 } from '@chimeres/contract';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { insertAccountSession } from '../../../test/account-session.js';
+import { addGameMaster } from '../../../test/game-master.js';
 import { startApp } from '../../../test/app.js';
 import { FakePushService, type ReceivedPush } from '../../../test/fake-push-service.js';
 
@@ -167,18 +166,15 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
     }
     convention = (await server().post(apiUrl(tableEndpoints.add)).send({ name: 'Griffon' }))
       .body as ConventionDto;
-    const [gameMaster] = (
-      await server().post(apiUrl(gameMasterEndpoints.add)).send({ nickname: 'Élodie' }).expect(201)
-    ).body as GameMasterDto[];
-    gameMasterId = gameMaster!.id;
+    gameMasterId = (await addGameMaster(server(), 'Élodie')).gameMasterId;
     for (const timeSlotId of [slot(1), slot(2)]) {
       await server()
-        .put(apiUrl(availabilityEndpoints.declare, { gameMasterId: gameMaster!.id, timeSlotId }))
+        .put(apiUrl(availabilityEndpoints.declare, { gameMasterId, timeSlotId }))
         .expect(200);
     }
     scenario = (
       await server()
-        .post(apiUrl(scenarioEndpoints.propose, { gameMasterId: gameMaster!.id }))
+        .post(apiUrl(scenarioEndpoints.propose, { gameMasterId }))
         .send({
           title: 'Néons',
           system: 'Cthulhu',
@@ -482,14 +478,7 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
     describe('MJ qui mène sur le créneau (NO-2, IN-4)', () => {
       /** Programme « Brumes » de Kaïros, au créneau 1, table Licorne : l'id de la partie. */
       const scheduleBrumes = async () => {
-        const kairosId = (
-          (
-            await server()
-              .post(apiUrl(gameMasterEndpoints.add))
-              .send({ nickname: 'Kaïros' })
-              .expect(201)
-          ).body as GameMasterDto[]
-        ).find(({ nickname }) => nickname === 'Kaïros')!.id;
+        const kairosId = (await addGameMaster(server(), 'Kaïros')).gameMasterId;
         await server()
           .put(
             apiUrl(availabilityEndpoints.declare, { gameMasterId: kairosId, timeSlotId: slot(1) }),

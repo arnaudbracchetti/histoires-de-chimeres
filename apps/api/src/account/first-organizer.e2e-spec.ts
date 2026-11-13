@@ -3,12 +3,11 @@ import type { App } from 'supertest/types.js';
 import {
   accountEndpoints,
   apiUrl,
-  gameMasterEndpoints,
   participantEndpoints,
-  type GameMasterDto,
   type ParticipantListEntryDto,
 } from '@chimeres/contract';
 import { insertAccountSession, TEST_ORGANIZER_NICKNAME } from '../../test/account-session.js';
+import { addGameMaster } from '../../test/game-master.js';
 import { startApp } from '../../test/app.js';
 import { setEnvironment } from '../../test/environment.js';
 import { request, type Response } from '../../test/http.js';
@@ -80,12 +79,9 @@ describe('Premier Organisateur de la configuration (ADR 0016)', () => {
 
   it('ajoute le compte au MJ qui porte déjà ce pseudo, comparé comme ID-7, sans second participant', async () => {
     await restartWithVariables({});
-    const [elodie] = (
-      await request(app!, organizerCookie)
-        .post(apiUrl(gameMasterEndpoints.add))
-        .send({ nickname: 'Élodie' })
-        .expect(201)
-    ).body as GameMasterDto[];
+    const elodie = {
+      id: (await addGameMaster(request(app!, organizerCookie), 'Élodie')).gameMasterId,
+    };
 
     await restartWithVariables({ pseudo: 'elodie', password: PASSWORD });
 

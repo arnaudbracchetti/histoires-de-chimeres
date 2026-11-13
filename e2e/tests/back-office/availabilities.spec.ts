@@ -8,6 +8,7 @@ import {
   type GameMasterDto,
 } from '@chimeres/contract';
 import { expect, test } from '../../fixtures.js';
+import { addGameMaster } from './api.js';
 
 // Espace insécable (U+00A0) et espace fine insécable (U+202F) de docs/design/ton.md.
 const NBSP = ' ';
@@ -33,14 +34,10 @@ async function prepare(page: Page) {
     expect(response.ok()).toBe(true);
     convention = await response.json();
   }
-  let gameMasters: GameMasterDto[] = [];
-  for (const nickname of ['Élodie', 'Kaïros']) {
-    const response = await page.request.post(apiUrl(gameMasterEndpoints.add), {
-      data: { nickname },
-    });
-    expect(response.ok()).toBe(true);
-    gameMasters = await response.json();
-  }
+  const gameMasters = [
+    { id: await addGameMaster(page.request, 'Élodie'), nickname: 'Élodie' },
+    { id: await addGameMaster(page.request, 'Kaïros'), nickname: 'Kaïros' },
+  ];
   const [slot1, slot2] = convention!.timeSlots.map(({ id }) => id) as [string, string];
   const [elodie, kairos] = gameMasters.map(({ id }) => id) as [string, string];
   return { slot1, slot2, elodie, kairos };

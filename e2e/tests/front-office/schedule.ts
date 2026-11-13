@@ -18,6 +18,8 @@ import {
   type ScenarioDto,
   type ScheduleDto,
   type SeatsDto,
+  participantEndpoints,
+  type AddedParticipantDto,
 } from '@chimeres/contract';
 import { aNickname, presenceCodeOf } from './identification.js';
 
@@ -63,10 +65,13 @@ export async function prepare(page: Page, { brumesSeats }: { brumesSeats?: Seats
   const [slot1, slot2] = await firstTwoTimeSlots(request);
   const gameMaster = async (timeSlotIds: string[]) => {
     const nickname = aNickname('MJ');
-    const all = await send<GameMasterDto[]>(() =>
-      request.post(apiUrl(gameMasterEndpoints.add), { data: { nickname } }),
+    // L'assistant « Créer un pseudo », seule façon de créer un MJ.
+    const { gameMasterId } = await send<AddedParticipantDto>(() =>
+      request.post(apiUrl(participantEndpoints.add), {
+        data: { nickname, roles: ['game-master'] },
+      }),
     );
-    const { id } = all.find((master) => master.nickname === nickname)!;
+    const id = gameMasterId!;
     for (const timeSlotId of timeSlotIds) {
       await send(() =>
         request.put(apiUrl(availabilityEndpoints.declare, { gameMasterId: id, timeSlotId })),

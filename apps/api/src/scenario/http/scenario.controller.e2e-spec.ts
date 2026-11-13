@@ -11,6 +11,7 @@ import {
   type ScenarioListItemDto,
 } from '@chimeres/contract';
 import { insertAccountSession } from '../../../test/account-session.js';
+import { addGameMaster } from '../../../test/game-master.js';
 import { startApp } from '../../../test/app.js';
 
 const NBSP = '\u00a0';
@@ -39,11 +40,10 @@ describe('Scénarios', () => {
 
   beforeEach(async () => {
     app = await startApp();
-    const response = await server()
-      .post(apiUrl(gameMasterEndpoints.add))
-      .send({ nickname: 'Kaïros' })
-      .expect(201);
-    gameMaster = (response.body as GameMasterDto[])[0]!;
+    const { gameMasterId } = await addGameMaster(server(), 'Kaïros');
+    gameMaster = (
+      await server().get(apiUrl(gameMasterEndpoints.read, { gameMasterId })).expect(200)
+    ).body as GameMasterDto;
   });
 
   afterEach(async () => {
@@ -60,12 +60,10 @@ describe('Scénarios', () => {
     (await server().get(apiUrl(scenarioEndpoints.list)).expect(200)).body as ScenarioListItemDto[];
   const remove = (scenarioId: string, gameMasterId = gameMaster.id) =>
     server().delete(apiUrl(scenarioEndpoints.remove, { gameMasterId, scenarioId }));
-  const addGameMaster = async (nickname: string) => {
-    const { body } = await server()
-      .post(apiUrl(gameMasterEndpoints.add))
-      .send({ nickname })
-      .expect(201);
-    return (body as GameMasterDto[]).find((added) => added.nickname === nickname)!;
+  const anotherGameMaster = async (nickname: string) => {
+    const { gameMasterId } = await addGameMaster(server(), nickname);
+    return (await server().get(apiUrl(gameMasterEndpoints.read, { gameMasterId })).expect(200))
+      .body as GameMasterDto;
   };
   const removeGameMaster = (gameMasterId = gameMaster.id) =>
     server().delete(apiUrl(gameMasterEndpoints.remove, { gameMasterId }));
@@ -189,7 +187,7 @@ describe('Scénarios', () => {
   });
 
   it('liste tous les scénarios, dans l’ordre naturel de leur titre, avec leur MJ', async () => {
-    const elodie = await addGameMaster('Élodie');
+    const elodie = await anotherGameMaster('Élodie');
     await propose(aBody({ title: 'Scénario 10' })).expect(201);
     await propose(aBody({ title: 'Scénario 2', seats: { min: 2, max: 4 } }), elodie.id).expect(201);
 
@@ -240,7 +238,7 @@ describe('Scénarios', () => {
   });
 
   it('répond 404 pour un scénario sous le chemin d’un autre MJ, et le garde', async () => {
-    const elodie = await addGameMaster('Élodie');
+    const elodie = await anotherGameMaster('Élodie');
     const { body: proposed } = await propose(aBody()).expect(201);
     const { id } = proposed as ScenarioDto;
 

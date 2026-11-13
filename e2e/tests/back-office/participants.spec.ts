@@ -19,9 +19,10 @@ import {
   type ScenarioDto,
   type ScheduleDto,
   type TimeSlotDto,
+  type AddedParticipantDto,
 } from '@chimeres/contract';
 import { expect, ORGANIZER_NICKNAME, test } from '../../fixtures.js';
-import { expectOk, newApiContext, post } from './api.js';
+import { addGameMaster, expectOk, newApiContext, post } from './api.js';
 
 /**
  * Par l'API : un créneau, la table « Griffon », « Les Brumes » de Kaïros programmée à cette table,
@@ -37,11 +38,7 @@ async function prepare(page: Page, baseURL: string) {
   const { tables } = await post<ConventionDto>(page, apiUrl(tableEndpoints.add), {
     name: 'Griffon',
   });
-  const [{ id: gameMasterId }] = (await post<GameMasterDto[]>(
-    page,
-    apiUrl(gameMasterEndpoints.add),
-    { nickname: 'Kaïros' },
-  )) as [GameMasterDto];
+  const gameMasterId = await addGameMaster(page.request, 'Kaïros');
   const [{ id: timeSlotId }] = timeSlots as [TimeSlotDto];
   await expectOk(api.put(apiUrl(availabilityEndpoints.declare, { gameMasterId, timeSlotId })));
   const brumes = await post<ScenarioDto>(
@@ -145,58 +142,6 @@ test('l’Organisateur ouvre la fiche d’un pseudo et lit son résultat publié
 
   await page.getByRole('tab', { name: /Téléphones/ }).click();
   await expect(page.getByRole('tabpanel')).toContainText(/^Relié à \d{1,2}\u00a0h\u00a0\d{2}$/);
-});
-
-test('l’Organisateur crée un pseudo et arrive sur sa fiche (ID-12)', async ({ page, baseURL }) => {
-  await prepare(page, baseURL!);
-  await page.goto('/gestion/participants');
-
-  await page.getByRole('button', { name: 'Créer un pseudo' }).click();
-  const field = page.getByRole('textbox', { name: 'Pseudo du nouveau participant' });
-  await expect(field).toBeFocused();
-  await field.fill('Lune');
-  await page.keyboard.press('Enter');
-
-  await expect(page.getByRole('heading', { level: 1, name: 'Lune' })).toBeVisible();
-  await expect(page.getByText('Participant', { exact: true })).toBeVisible();
-  await page.getByRole('navigation', { name: "Fil d'Ariane" }).getByRole('link').click();
-  await expect(nicknames(page)).toHaveText([
-    'Élodie',
-    'Kaïros',
-    'Lune',
-    ORGANIZER_NICKNAME,
-    'Sven',
-  ]);
-});
-
-test('un pseudo pris est refusé sous le champ, sans rien décaler, avec « Voir sa fiche » (ID-4, ID-12)', async ({
-  page,
-  baseURL,
-}) => {
-  await prepare(page, baseURL!);
-  await page.goto('/gestion/participants');
-  await page.getByRole('button', { name: 'Créer un pseudo' }).click();
-  const field = page.getByRole('textbox', { name: 'Pseudo du nouveau participant' });
-  const cancel = await page.getByRole('button', { name: 'Annuler' }).boundingBox();
-  const sven = await nicknames(page).last().boundingBox();
-
-  await field.fill('kairos');
-  await page.keyboard.press('Enter');
-
-  await expect(field).toHaveAccessibleDescription(/^Le MJ «\s*Kaïros\s*» porte déjà ce pseudo/);
-  expect(await page.getByRole('button', { name: 'Annuler' }).boundingBox()).toEqual(cancel);
-  expect(await nicknames(page).last().boundingBox()).toEqual(sven);
-  await expect(page.getByRole('link', { name: 'Voir sa fiche' })).toHaveAttribute(
-    'href',
-    /\/gestion\/participants\/.+/,
-  );
-
-  await field.fill('ELODIE');
-  await page.keyboard.press('Enter');
-  await expect(field).toHaveAccessibleDescription(/^Le participant «\s*Élodie\s*»/);
-  await page.getByRole('link', { name: 'Voir sa fiche' }).click();
-
-  await expect(page.getByRole('heading', { level: 1, name: 'Élodie' })).toBeVisible();
 });
 
 test('l’Organisateur renomme un pseudo en place, même après la publication, et un nom pris est refusé avec « Voir sa fiche » (ID-13)', async ({
@@ -470,7 +415,8 @@ test('la liste « Participants » montre rôles et accès, avec la bascule et le
   page,
 }) => {
   const add = async (nickname: string) =>
-    (await post<ParticipantSheetDto>(page, apiUrl(participantEndpoints.add), { nickname })).id;
+    (await post<AddedParticipantDto>(page, apiUrl(participantEndpoints.add), { nickname }))
+      .participantId;
   const lune = await add('Lune');
   await expectOk(
     page.request.put(apiUrl(participantEndpoints.appointGameMaster, { participantId: lune })),

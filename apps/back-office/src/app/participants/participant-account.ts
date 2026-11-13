@@ -16,6 +16,7 @@ import { Icon } from '../ui/icon';
 import { Button } from '../ui/button';
 import { AccessLinkDialog } from './access-link-dialog';
 import { describeAccessState } from './access-state';
+import { RoleCard } from './role-card';
 import { roleWithdrawalConsequences } from './role-withdrawal-consequences';
 
 const APPOINT = {
@@ -42,7 +43,7 @@ const ROLE_LABEL: Record<AccountRole, string> = {
  */
 @Component({
   selector: 'app-participant-account',
-  imports: [Button, Icon],
+  imports: [Button, Icon, RoleCard],
   host: { '[attr.aria-busy]': 'gesture.running()' },
   template: `
     @if (banner(); as banner) {
@@ -63,36 +64,21 @@ const ROLE_LABEL: Record<AccountRole, string> = {
     }
     <fieldset>
       <legend>Rôles dans le back office</legend>
-      <label class="role" [class.on]="sheet().gameMaster" style="--role: var(--role-game-master)">
-        <input
-          type="checkbox"
-          [checked]="sheet().gameMaster"
-          (click)="toggle($event, 'game-master')"
-        />
-        <app-icon name="dices" />
-        <span class="text">
-          <strong>MJ</strong>
-          <span class="help">Saisit ses scénarios et ses disponibilités.</span>
-        </span>
-      </label>
-      <label class="role" [class.on]="sheet().organizer" style="--role: var(--role-organizer)">
-        <input
-          type="checkbox"
-          [checked]="sheet().organizer"
-          [disabled]="isMe()"
-          (click)="toggle($event, 'organizer')"
-        />
-        <app-icon name="settings" />
-        <span class="text">
-          <strong>Organisateur</strong>
-          <span class="help">
-            Tous les droits du back office.
-            @if (isMe()) {
-              Tu ne peux pas te retirer ce rôle&nbsp;: un autre Organisateur peut le faire.
-            }
-          </span>
-        </span>
-      </label>
+      <app-role-card
+        role="game-master"
+        [checked]="sheet().gameMaster"
+        (pressed)="toggle($event, 'game-master')"
+      />
+      <app-role-card
+        role="organizer"
+        [checked]="sheet().organizer"
+        [disabled]="isMe()"
+        (pressed)="toggle($event, 'organizer')"
+      >
+        @if (isMe()) {
+          Tu ne peux pas te retirer ce rôle&nbsp;: un autre Organisateur peut le faire.
+        }
+      </app-role-card>
     </fieldset>
   `,
   styles: `
@@ -149,34 +135,6 @@ const ROLE_LABEL: Record<AccountRole, string> = {
         margin-bottom: var(--space-s);
         padding: 0;
         font-weight: 600;
-      }
-
-      .role {
-        display: flex;
-        gap: var(--space-s);
-        align-items: center;
-        padding: var(--space-s) var(--space-m);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-control);
-        cursor: pointer;
-
-        &:has(input:disabled) {
-          cursor: default;
-        }
-
-        > app-icon {
-          color: var(--text-muted);
-        }
-
-        &.on {
-          border-color: color-mix(in srgb, var(--role) 45%, transparent);
-          background: color-mix(in srgb, var(--role) 14%, var(--surface-2));
-
-          > app-icon,
-          strong {
-            color: var(--role);
-          }
-        }
       }
 
       .text {

@@ -8,19 +8,18 @@ import {
   type ScenarioDto,
 } from '@chimeres/contract';
 import { expect, test } from '../../fixtures.js';
+import { addGameMaster } from './api.js';
 
 // Espace insécable (U+00A0) et espace fine insécable (U+202F) de docs/design/ton.md.
 const NBSP = ' ';
 const THIN = ' ';
 
 /** Crée un MJ par l'API. */
-async function addGameMaster(page: Page, nickname: string): Promise<GameMasterDto> {
-  const response = await page.request.post(apiUrl(gameMasterEndpoints.add), {
-    data: { nickname },
-  });
+async function aGameMaster(page: Page, nickname: string): Promise<GameMasterDto> {
+  const gameMasterId = await addGameMaster(page.request, nickname);
+  const response = await page.request.get(apiUrl(gameMasterEndpoints.read, { gameMasterId }));
   expect(response.ok()).toBe(true);
-  const gameMasters = (await response.json()) as GameMasterDto[];
-  return gameMasters.find((gameMaster) => gameMaster.nickname === nickname)!;
+  return (await response.json()) as GameMasterDto;
 }
 
 /** Propose un scénario par l'API. */
@@ -70,7 +69,7 @@ const leaveDialog = (page: Page) =>
   page.getByRole('alertdialog', { name: `Quitter sans enregistrer${THIN}?` });
 
 test('proposer un scénario complet depuis la fiche du MJ (PR-1, PR-16)', async ({ page }) => {
-  const kairos = await addGameMaster(page, 'Kaïros');
+  const kairos = await aGameMaster(page, 'Kaïros');
   await page.goto(`/gestion/mj/${kairos.id}`);
   await expect(page.getByText("Aucun scénario pour l'instant.")).toBeVisible();
 
@@ -116,7 +115,7 @@ test('proposer un scénario complet depuis la fiche du MJ (PR-1, PR-16)', async 
 test('modifier un scénario : « Enregistré », puis le nouveau titre en tête de page (PR-14)', async ({
   page,
 }) => {
-  const kairos = await addGameMaster(page, 'Kaïros');
+  const kairos = await aGameMaster(page, 'Kaïros');
   const { id } = await proposeScenario(page, kairos.id);
   await page.goto(`/gestion/scenarios/${id}`);
   const scenario = form(page);
@@ -137,7 +136,7 @@ test('modifier un scénario : « Enregistré », puis le nouveau titre en tête 
 test('erreurs locales au départ du champ, focus au premier champ en erreur, rien ne bouge', async ({
   page,
 }) => {
-  const kairos = await addGameMaster(page, 'Kaïros');
+  const kairos = await aGameMaster(page, 'Kaïros');
   await page.goto(`/gestion/mj/${kairos.id}/nouveau-scenario`);
   const scenario = form(page);
   const save = await positionOf(scenario.save);
@@ -168,7 +167,7 @@ test('erreurs locales au départ du champ, focus au premier champ en erreur, rie
 });
 
 test('les compteurs suivent la saisie', async ({ page }) => {
-  const kairos = await addGameMaster(page, 'Kaïros');
+  const kairos = await aGameMaster(page, 'Kaïros');
   await page.goto(`/gestion/mj/${kairos.id}/nouveau-scenario`);
   const scenario = form(page);
 
@@ -184,7 +183,7 @@ test('les compteurs suivent la saisie', async ({ page }) => {
 test('l’aperçu rend le gras, l’italique et les listes, et laisse un lien tel quel', async ({
   page,
 }) => {
-  const kairos = await addGameMaster(page, 'Kaïros');
+  const kairos = await aGameMaster(page, 'Kaïros');
   await page.goto(`/gestion/mj/${kairos.id}/nouveau-scenario`);
   const scenario = form(page);
 
@@ -207,7 +206,7 @@ test('l’aperçu rend le gras, l’italique et les listes, et laisse un lien te
 });
 
 test('« Quitter sans enregistrer ? » : refusé, on reste ; accepté, on part', async ({ page }) => {
-  const kairos = await addGameMaster(page, 'Kaïros');
+  const kairos = await aGameMaster(page, 'Kaïros');
   const { id } = await proposeScenario(page, kairos.id);
   await page.goto(`/gestion/scenarios/${id}`);
   const scenario = form(page);
@@ -235,7 +234,7 @@ test('« Quitter sans enregistrer ? » : refusé, on reste ; accepté, on part',
 });
 
 test('lien profond vers un scénario', async ({ page }) => {
-  const kairos = await addGameMaster(page, 'Kaïros');
+  const kairos = await aGameMaster(page, 'Kaïros');
   const { id } = await proposeScenario(page, kairos.id, { title: 'Néons sur Neo-Paris' });
 
   await page.goto(`/gestion/scenarios/${id}`);
@@ -264,8 +263,8 @@ function scenarioList(page: Page) {
 }
 
 test('liste des scénarios : tri par colonne et filtre sans accent (PR-14)', async ({ page }) => {
-  const kairos = await addGameMaster(page, 'Kaïros');
-  const elodie = await addGameMaster(page, 'Élodie');
+  const kairos = await aGameMaster(page, 'Kaïros');
+  const elodie = await aGameMaster(page, 'Élodie');
   await proposeScenario(page, kairos.id, { title: 'Scénario 10', system: 'Pendragon' });
   await proposeScenario(page, elodie.id, {
     title: 'Scénario 2',
@@ -311,7 +310,7 @@ test('sans scénario, l’état vide renvoie vers les MJ', async ({ page }) => {
 });
 
 test('supprimer un scénario depuis « ⋯ », après confirmation (PR-14)', async ({ page }) => {
-  const kairos = await addGameMaster(page, 'Kaïros');
+  const kairos = await aGameMaster(page, 'Kaïros');
   const { id } = await proposeScenario(page, kairos.id);
   await proposeScenario(page, kairos.id, { title: 'Zénith' });
   await page.goto(`/gestion/scenarios/${id}`);
@@ -331,7 +330,7 @@ test('supprimer un scénario depuis « ⋯ », après confirmation (PR-14)', asy
 test('un MJ qui a un scénario : la suppression est refusée dans le dialogue (PR-12)', async ({
   page,
 }) => {
-  const kairos = await addGameMaster(page, 'Kaïros');
+  const kairos = await aGameMaster(page, 'Kaïros');
   await proposeScenario(page, kairos.id);
   await page.goto(`/gestion/mj/${kairos.id}`);
 

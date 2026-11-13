@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { request } from '../../../test/http.js';
 import type { App } from 'supertest/types.js';
 import {
+  accessLinkEndpoints,
   apiUrl,
   availabilityEndpoints,
   conventionEndpoints,
@@ -15,6 +16,8 @@ import {
   signUpTrackingEndpoints,
   tableEndpoints,
   timeSlotEndpoints,
+  type AccountRole,
+  type AddedParticipantDto,
   type ConventionDto,
   type GameMasterDto,
   type IdentityConfirmationDto,
@@ -25,7 +28,13 @@ import {
   type ScheduleDto,
   type SignUpTrackingDto,
 } from '@chimeres/contract';
-import { insertAccountSession, TEST_ORGANIZER_NICKNAME } from '../../../test/account-session.js';
+import {
+  insertAccountSession,
+  insertGameMasterSession,
+  TEST_ORGANIZER_NICKNAME,
+} from '../../../test/account-session.js';
+import { setEnvironment } from '../../../test/environment.js';
+import { addGameMaster } from '../../../test/game-master.js';
 import { startApp } from '../../../test/app.js';
 
 describe('Liste « Participants » (ID-5)', () => {
@@ -46,10 +55,7 @@ describe('Liste « Participants » (ID-5)', () => {
 
   /** Un MJ disponible sur les deux créneaux. */
   const gameMaster = async (nickname: string) => {
-    const added = (
-      (await server().post(apiUrl(gameMasterEndpoints.add)).send({ nickname }).expect(201))
-        .body as GameMasterDto[]
-    ).find((candidate) => candidate.nickname === nickname)!;
+    const added = { id: (await addGameMaster(server(), nickname)).gameMasterId, nickname };
     for (const rank of [1, 2]) {
       await server()
         .put(
@@ -115,6 +121,15 @@ describe('Liste « Participants » (ID-5)', () => {
       ).body as ParticipantListEntryDto[]
     ).filter(({ nickname }) => nickname !== TEST_ORGANIZER_NICKNAME);
 
+  /** Crée un simple participant par l'assistant « Créer un pseudo », et rend sa fiche. */
+  const addParticipantSheet = async (nickname: string) => {
+    const { participantId } = (
+      await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201)
+    ).body as AddedParticipantDto;
+    return (await server().get(apiUrl(participantEndpoints.read, { participantId })).expect(200))
+      .body as ParticipantSheetDto;
+  };
+
   const nicknames = (participants: ParticipantListEntryDto[]) =>
     participants.map(({ nickname }) => nickname);
 
@@ -165,7 +180,7 @@ describe('Liste « Participants » (ID-5)', () => {
         nickname: 'Élodie',
         gameMaster: true,
         organizer: false,
-        account: null,
+        account: expect.objectContaining({ onlyRole: 'game-master', state: 'pending' }),
         signUpCounts: counts(0, 0),
         linkedPhoneCount: 0,
         matchedGameTitle: null,
@@ -175,7 +190,7 @@ describe('Liste « Participants » (ID-5)', () => {
         nickname: 'Kaïros',
         gameMaster: true,
         organizer: false,
-        account: null,
+        account: expect.objectContaining({ onlyRole: 'game-master', state: 'pending' }),
         signUpCounts: counts(1, 0),
         linkedPhoneCount: 1,
         matchedGameTitle: null,
@@ -333,31 +348,85 @@ describe('Liste « Participants » (ID-5)', () => {
     );
   });
 
-  describe('Création d’un pseudo par un Organisateur (ID-12)', () => {
-    const add = (nickname: string) =>
-      server().post(apiUrl(participantEndpoints.add)).send({ nickname });
+  describe('Assistant « Créer un pseudo » (ID-12, ID-16)', () => {
+    const add = (nickname: string, roles?: AccountRole[]) =>
+      server()
+        .post(apiUrl(participantEndpoints.add))
+        .send(roles ? { nickname, roles } : { nickname });
+    const readSheet = async (participantId: string) =>
+      (await server().get(apiUrl(participantEndpoints.read, { participantId })).expect(200))
+        .body as ParticipantSheetDto;
 
-    it('crée le pseudo et rend sa fiche : 201', async () => {
+    it('sans rôle, crée un simple participant, sans compte ni lien : 201', async () => {
       const response = await add('  Élodie ').expect(201);
 
-      const sheet = response.body as ParticipantSheetDto;
-      expect(sheet).toMatchObject({ nickname: 'Élodie', gameMaster: false, linkedPhones: [] });
+      const added = response.body as AddedParticipantDto;
+      expect(added).toEqual({
+        participantId: expect.any(String),
+        gameMasterId: null,
+        accessLink: null,
+      });
+      expect(await readSheet(added.participantId)).toMatchObject({
+        nickname: 'Élodie',
+        gameMaster: false,
+        organizer: false,
+        account: null,
+        linkedPhones: [],
+      });
       expect(nicknames(await list())).toEqual(['Élodie']);
     });
 
-    it('refuse un pseudo de participant déjà pris : 422, rattaché au pseudo, avec son identifiant', async () => {
-      const elodie = (await add('Élodie').expect(201)).body as ParticipantSheetDto;
+    it('avec les rôles MJ et Organisateur, crée pseudo, MJ, compte et lien d’une seule requête', async () => {
+      const response = await add('Kaïros', ['game-master', 'organizer']).expect(201);
 
-      const response = await add('ELODIE')
+      const { participantId, gameMasterId, accessLink } = response.body as AddedParticipantDto;
+      expect(gameMasterId).toEqual(expect.any(String));
+      expect(accessLink!.url).toMatch(/^https:\/\/chimeres\.example\.org\/gestion\/.+/);
+      expect(accessLink!.expiresAt).toEqual({ date: expect.any(String), time: expect.any(String) });
+      expect(await readSheet(participantId)).toMatchObject({
+        nickname: 'Kaïros',
+        gameMaster: true,
+        organizer: true,
+        account: { onlyRole: null, state: 'pending' },
+      });
+      const gameMasters = (await server().get(apiUrl(gameMasterEndpoints.list)).expect(200))
+        .body as GameMasterDto[];
+      expect(gameMasters).toEqual([
+        expect.objectContaining({ id: gameMasterId, nickname: 'Kaïros' }),
+      ]);
+      const token = new URL(accessLink!.url).pathname.split('/').pop()!;
+      const link = await server().get(apiUrl(accessLinkEndpoints.read, { token })).expect(200);
+      expect(link.body).toEqual({ nickname: 'Kaïros' });
+    });
+
+    it('avec le seul rôle MJ, crée un compte de MJ sans le rôle d’Organisateur', async () => {
+      const { participantId } = (await add('Brann', ['game-master']).expect(201))
+        .body as AddedParticipantDto;
+
+      expect(await readSheet(participantId)).toMatchObject({
+        gameMaster: true,
+        organizer: false,
+        account: { onlyRole: 'game-master', state: 'pending' },
+      });
+    });
+
+    it('refuse un pseudo de participant déjà pris : 422, rattaché au pseudo, avec son identifiant', async () => {
+      const elodie = (await add('Élodie').expect(201)).body as AddedParticipantDto;
+
+      const response = await add('ELODIE', ['game-master'])
         .expect(422)
         .expect('Content-Type', /application\/problem\+json/);
 
       expect(response.body).toMatchObject({
         code: 'nickname-taken-by-participant',
-        params: { nickname: 'Élodie', participantId: elodie.id },
+        params: { nickname: 'Élodie', participantId: elodie.participantId },
         errors: [{ field: 'nickname', code: 'nickname-taken-by-participant' }],
       });
       expect(nicknames(await list())).toEqual(['Élodie']);
+      expect(await readSheet(elodie.participantId)).toMatchObject({
+        gameMaster: false,
+        account: null,
+      });
     });
 
     it('refuse le pseudo d’un MJ, avec l’identifiant de son participant (ID-4)', async () => {
@@ -373,8 +442,29 @@ describe('Liste « Participants » (ID-5)', () => {
       expect(response.body.detail).toMatch(/^Le MJ «\s*Kaïros\s*»/);
     });
 
+    it('sans PUBLIC_URL, refuse un rôle par un message clair, sans rien créer : 503', async () => {
+      const restore = setEnvironment({ PUBLIC_URL: undefined });
+      try {
+        const response = await add('Mira', ['organizer']).expect(503);
+
+        expect(response.body).toMatchObject({ code: 'public-url-missing' });
+        expect(nicknames(await list())).toEqual([]);
+      } finally {
+        restore();
+      }
+    });
+
+    it('est réservé aux Organisateurs : 403 pour un MJ', async () => {
+      const { cookie } = await insertGameMasterSession('Sven');
+
+      await request(app, cookie)
+        .post(apiUrl(participantEndpoints.add))
+        .send({ nickname: 'Mira' })
+        .expect(403);
+    });
+
     it('relie ensuite un téléphone au pseudo, après la confirmation de ID-1', async () => {
-      const elodie = (await add('Élodie').expect(201)).body as ParticipantSheetDto;
+      const elodie = (await add('Élodie').expect(201)).body as AddedParticipantDto;
 
       const question = await server()
         .post(apiUrl(linkedPhoneEndpoints.link))
@@ -387,19 +477,12 @@ describe('Liste « Participants » (ID-5)', () => {
         confirmation: 'participant',
         nickname: 'Élodie',
       });
-      const sheet = (
-        await server()
-          .get(apiUrl(participantEndpoints.read, { participantId: elodie.id }))
-          .expect(200)
-      ).body as ParticipantSheetDto;
-      expect(sheet.linkedPhones).toHaveLength(1);
+      expect((await readSheet(elodie.participantId)).linkedPhones).toHaveLength(1);
     });
   });
 
   describe('Renommer un pseudo (ID-13)', () => {
-    const add = async (nickname: string) =>
-      (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
-        .body as ParticipantSheetDto;
+    const add = addParticipantSheet;
     const rename = (participantId: string, nickname: string) =>
       server().put(apiUrl(participantEndpoints.rename, { participantId })).send({ nickname });
 
@@ -461,9 +544,7 @@ describe('Liste « Participants » (ID-5)', () => {
   });
 
   describe('Inscrire à la place d’un participant (ID-12)', () => {
-    const add = async (nickname: string) =>
-      (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
-        .body as ParticipantSheetDto;
+    const add = addParticipantSheet;
     const signUpOnBehalf = (participantId: string, gameId: string) =>
       server().put(apiUrl(participantEndpoints.signUp, { participantId, gameId }));
     const withdrawOnBehalf = (participantId: string, gameId: string) =>
@@ -583,9 +664,7 @@ describe('Liste « Participants » (ID-5)', () => {
   });
 
   describe('Supprimer un pseudo (ID-10)', () => {
-    const add = async (nickname: string) =>
-      (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
-        .body as ParticipantSheetDto;
+    const add = addParticipantSheet;
     const remove = (participantId: string) =>
       server().delete(apiUrl(participantEndpoints.remove, { participantId }));
 
@@ -633,9 +712,7 @@ describe('Liste « Participants » (ID-5)', () => {
   });
 
   describe('Ajouter un retardataire à un tirage publié (ID-14)', () => {
-    const add = async (nickname: string) =>
-      (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
-        .body as ParticipantSheetDto;
+    const add = addParticipantSheet;
     const addLatecomer = (participantId: string, timeSlotId: string) =>
       server().put(apiUrl(participantEndpoints.addLatecomer, { participantId, timeSlotId }));
     const drawOfFirstTimeSlot = async () =>
@@ -732,9 +809,7 @@ describe('Liste « Participants » (ID-5)', () => {
   });
 
   describe('Couper les liens d’un pseudo (ID-5, ID-8)', () => {
-    const add = async (nickname: string) =>
-      (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
-        .body as ParticipantSheetDto;
+    const add = addParticipantSheet;
     const unlinkPhones = (participantId: string) =>
       server().delete(apiUrl(participantEndpoints.unlinkPhones, { participantId }));
     const readPhone = (cookie: string) =>
@@ -783,9 +858,7 @@ describe('Liste « Participants » (ID-5)', () => {
   });
 
   describe('Fusionner deux pseudos (ID-11)', () => {
-    const add = async (nickname: string) =>
-      (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
-        .body as ParticipantSheetDto;
+    const add = addParticipantSheet;
     const merge = (participantId: string, destinationId: string) =>
       server().post(apiUrl(participantEndpoints.merge, { participantId, destinationId }));
     const readMergeVerdict = (participantId: string, destinationId: string) =>
