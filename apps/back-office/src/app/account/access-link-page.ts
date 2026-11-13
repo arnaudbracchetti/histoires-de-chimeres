@@ -2,6 +2,7 @@ import {
   afterNextRender,
   Component,
   computed,
+  effect,
   ElementRef,
   inject,
   Injector,
@@ -21,8 +22,9 @@ import { Field } from '../ui/field';
 import { AccountStore } from './account-store';
 
 /**
- * La page d'un lien d'accès (ID-6, ADR 0018), hors du rail, comme la connexion : « Choisis ton mot
- * de passe », avec le pseudo du compte. Ouvrir la page ne consomme pas le lien ; c'est l'envoi du
+ * La page d'un lien d'accès (ID-6, ADR 0018), hors du rail, comme la connexion : « Lune, choisis
+ * ton mot de passe », puis le pseudo en champ en lecture seule, que le gestionnaire de mots de
+ * passe du navigateur enregistre avec le mot de passe. Ouvrir la page ne consomme pas le lien ; c'est l'envoi du
  * mot de passe qui l'utilise, puis la personne est connectée et arrive au calendrier. Un lien
  * inconnu, utilisé ou expiré est dit à la place du formulaire. L'API sert la page sans `Referer`.
  */
@@ -38,12 +40,21 @@ import { AccountStore } from './account-store';
         <span>Histoires de Chimères</span>
       </div>
       @if (link(); as link) {
-        <h1 tabindex="-1">Choisis ton mot de passe</h1>
-        <p>
-          Pour le compte de <strong>{{ link.nickname }}</strong
-          >. Tu te connecteras ensuite par ton pseudo et ce mot de passe.
-        </p>
+        <h1 tabindex="-1">{{ title() }}</h1>
+        <p>{{ loginHint() }}</p>
         <form [formRoot]="form">
+          <!-- Le pseudo dans le formulaire : le gestionnaire de mots de passe enregistre la paire. -->
+          <div class="nickname">
+            <label for="access-link-nickname">Pseudo</label>
+            <input
+              id="access-link-nickname"
+              type="text"
+              name="username"
+              autocomplete="username"
+              readonly
+              [value]="link.nickname"
+            />
+          </div>
           <app-field label="Mot de passe" [help]="passwordHelp">
             <input type="password" autocomplete="new-password" [formField]="form.password" />
           </app-field>
@@ -112,8 +123,26 @@ import { AccountStore } from './account-store';
       }
 
       app-field,
+      .nickname,
       input {
         align-self: stretch;
+      }
+
+      /* Comme un app-field, ligne d'erreur réservée comprise : les champs restent alignés. */
+      .nickname {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xxs);
+        padding-bottom: calc(var(--font-size-meta) * 1.4);
+
+        label {
+          font-weight: 600;
+        }
+
+        input {
+          color: var(--text-muted);
+          background: var(--surface-2);
+        }
       }
 
       .refusal {
@@ -135,6 +164,12 @@ export class AccessLinkPage {
     token: this.token(),
   }));
   protected readonly link = currentValue(this.resource);
+  protected readonly title = computed(() => fr`${this.link()?.nickname}, choisis ton mot de passe`);
+  /** Le pseudo est répété : c'est lui qu'il faudra taper à la connexion. */
+  protected readonly loginHint = computed(
+    () =>
+      fr`Tu te connecteras ensuite avec ton pseudo, ${this.link()?.nickname}, et ce mot de passe.`,
+  );
   /** Le lien refusé par l'API : inconnu, déjà utilisé ou expiré. */
   protected readonly refusal = computed(() => {
     const error = this.resource.error();
@@ -159,7 +194,13 @@ export class AccessLinkPage {
   constructor() {
     const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
     const injector = inject(Injector);
-    afterNextRender(() => host.querySelector('input')?.focus(), { injector });
+    // Le lien lu, le formulaire s'affiche ; le pseudo ne se saisit pas : le focus va au mot de passe.
+    effect(() => {
+      if (!this.link()) return;
+      afterNextRender(() => host.querySelector<HTMLElement>('input[type=password]')?.focus(), {
+        injector,
+      });
+    });
   }
 
   private async choose(): Promise<void> {

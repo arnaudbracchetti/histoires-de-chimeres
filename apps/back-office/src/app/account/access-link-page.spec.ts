@@ -36,12 +36,23 @@ describe("Page du lien d'accès : choisir son mot de passe (ID-6, ADR 0018)", ()
     return { fixture, host, http, type };
   }
 
-  it('montre le pseudo du compte, et suggère une courte phrase', async () => {
+  it('titre par le pseudo du compte, et suggère une courte phrase', async () => {
     const { host } = await render((request) => request.flush({ nickname: 'Lune' }));
 
-    expect(host.querySelector('h1')?.textContent).toContain('Choisis ton mot de passe');
-    expect(host.textContent).toContain('Lune');
+    expect(host.querySelector('h1')?.textContent?.trim()).toBe('Lune, choisis ton mot de passe');
+    expect(host.querySelector('h1 + p')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      `Tu te connecteras ensuite avec ton pseudo, Lune, et ce mot de passe.`,
+    );
     expect(host.textContent).toContain('une courte phrase');
+  });
+
+  it('montre le pseudo en champ en lecture seule, pour le gestionnaire de mots de passe', async () => {
+    const { host } = await render((request) => request.flush({ nickname: 'Lune' }));
+
+    const nickname = host.querySelector<HTMLInputElement>('form input[autocomplete="username"]')!;
+    expect(nickname.readOnly).toBe(true);
+    expect(nickname.value).toBe('Lune');
+    expect(nickname.labels?.[0]?.textContent?.trim()).toBe('Pseudo');
   });
 
   it('envoie le mot de passe par le lien, puis mène au calendrier', async () => {

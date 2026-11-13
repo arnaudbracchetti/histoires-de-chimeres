@@ -45,8 +45,10 @@ test("lien d'accès : choisir son mot de passe, puis se reconnecter (ID-6)", asy
   const lune = await other.newPage();
   const response = await lune.goto(url);
   expect(response?.headers()['referrer-policy']).toBe('no-referrer');
-  await expect(lune.getByRole('heading', { name: 'Choisis ton mot de passe' })).toBeVisible();
-  await expect(lune.getByText('Lune', { exact: true })).toBeVisible();
+  await expect(lune.getByRole('heading', { name: 'Lune, choisis ton mot de passe' })).toBeVisible();
+  await expect(lune.getByRole('textbox', { name: 'Pseudo' })).toHaveValue('Lune');
+  await expect(lune.getByRole('textbox', { name: 'Pseudo' })).toHaveAttribute('readonly', '');
+  await expect(lune.getByLabel('Mot de passe', { exact: true })).toBeFocused();
   await lune.getByLabel('Mot de passe', { exact: true }).fill(PASSWORD);
   await lune.getByLabel('Mot de passe, une seconde fois').fill(PASSWORD);
   await lune.getByRole('button', { name: 'Choisir ce mot de passe' }).click();
