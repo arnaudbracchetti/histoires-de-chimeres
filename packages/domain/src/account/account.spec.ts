@@ -148,4 +148,17 @@ describe("Lien d'accès du compte (ID-6, ADR 0018)", () => {
     expect(account.computeAccessState(at('2027-03-30'))).toBe('active');
     expect(anAccountWithPassword().computeAccessState(at('2027-03-14'))).toBe('active');
   });
+
+  it("donne le temps restant d'un lien en attente, en minutes, et rien hors attente", () => {
+    const account = Account.createForParticipant('a1', 'p-a1');
+    expect(account.computeAccessLinkRemainingMinutes(at('2027-03-14'))).toBeNull();
+    account.createAccessLink('jeton-1', at('2027-03-14', '09:30'));
+
+    expect(account.computeAccessLinkRemainingMinutes(at('2027-03-14', '09:30'))).toBe(7 * 24 * 60);
+    expect(account.computeAccessLinkRemainingMinutes(at('2027-03-20', '23:00'))).toBe(10 * 60 + 30);
+    expect(account.computeAccessLinkRemainingMinutes(at('2027-03-21', '09:29'))).toBe(1);
+    expect(account.computeAccessLinkRemainingMinutes(at('2027-03-21', '09:30'))).toBeNull();
+    account.useAccessLink('h', at('2027-03-15'));
+    expect(account.computeAccessLinkRemainingMinutes(at('2027-03-15'))).toBeNull();
+  });
 });

@@ -7,9 +7,14 @@ import {
   apiUrl,
   participantEndpoints,
   type CreatedAccessLinkDto,
+  type ParticipantListEntryDto,
   type ParticipantSheetDto,
 } from '@chimeres/contract';
-import { insertAccountSession, insertSession } from '../../../test/account-session.js';
+import {
+  insertAccountSession,
+  insertSession,
+  TEST_ORGANIZER_NICKNAME,
+} from '../../../test/account-session.js';
 import { startApp } from '../../../test/app.js';
 import { setEnvironment } from '../../../test/environment.js';
 import { request, type Response } from '../../../test/http.js';
@@ -69,9 +74,13 @@ describe("Lien d'accès et choix du mot de passe (ID-6, ADR 0018)", () => {
   });
 
   const server = (cookie = organizerCookie) => request(app, cookie);
-  const createLink = async () =>
-    (await server().post(apiUrl(accessLinkEndpoints.create, { participantId })).expect(201))
-      .body as CreatedAccessLinkDto;
+  /** Crée un lien d'accès pour ce pseudo, Lune par défaut. */
+  const createLink = async (id = participantId) =>
+    (
+      await server()
+        .post(apiUrl(accessLinkEndpoints.create, { participantId: id }))
+        .expect(201)
+    ).body as CreatedAccessLinkDto;
   const readLink = (token: string) => request(app).get(apiUrl(accessLinkEndpoints.read, { token }));
   const choosePassword = (token: string, password = PASSWORD) =>
     request(app).post(apiUrl(accessLinkEndpoints.choosePassword, { token })).send({ password });
@@ -98,6 +107,7 @@ describe("Lien d'accès et choix du mot de passe (ID-6, ADR 0018)", () => {
     expect(await readAccountState()).toMatchObject({
       state: 'pending',
       accessLinkExpiresAt: { date: '2027-03-21', time: '09:30' },
+      accessLinkRemainingMinutes: 7 * 24 * 60,
     });
   });
 
@@ -226,5 +236,87 @@ describe("Lien d'accès et choix du mot de passe (ID-6, ADR 0018)", () => {
       openedAt: new Date(NOW),
     });
     await request(app, cookie).post(url).expect(403);
+  });
+
+  it('la liste « Participants » donne les rôles et l’état du compte de chaque pseudo (ID-16)', async () => {
+    const addParticipant = async (nickname: string) =>
+      (
+        (await server().post(apiUrl(participantEndpoints.add)).send({ nickname }).expect(201))
+          .body as ParticipantSheetDto
+      ).id;
+    const astre = await addParticipant('Astre');
+    await server().put(apiUrl(participantEndpoints.appointOrganizer, { participantId: astre }));
+    await createLink(astre);
+    // La session de l'Organisateur ne passe pas 7 jours sans activité (ADR 0019).
+    clock.advanceDays(6);
+    await server().get(apiUrl(participantEndpoints.list)).expect(200);
+    clock.advanceDays(1);
+    const brume = await addParticipant('Brume');
+    await server().put(apiUrl(participantEndpoints.appointOrganizer, { participantId: brume }));
+    await server().put(apiUrl(participantEndpoints.appointGameMaster, { participantId: brume }));
+    await createLink(brume);
+    await choosePassword(tokenOf(await createLink())).expect(200);
+    await addParticipant('Ciel');
+    const dune = await addParticipant('Dune');
+    await server().put(apiUrl(participantEndpoints.appointGameMaster, { participantId: dune }));
+
+    const { body } = await server().get(apiUrl(participantEndpoints.list)).expect(200);
+
+    expect(
+      (body as ParticipantListEntryDto[])
+        .filter(({ nickname }) => nickname !== TEST_ORGANIZER_NICKNAME)
+        .map(({ nickname, gameMaster, organizer, account }) => ({
+          nickname,
+          gameMaster,
+          organizer,
+          account,
+        })),
+    ).toEqual([
+      {
+        nickname: 'Astre',
+        gameMaster: false,
+        organizer: true,
+        account: {
+          onlyRole: 'organizer',
+          state: 'expired',
+          accessLinkExpiresAt: { date: '2027-03-21', time: '09:30' },
+          accessLinkRemainingMinutes: null,
+        },
+      },
+      {
+        nickname: 'Brume',
+        gameMaster: true,
+        organizer: true,
+        account: {
+          onlyRole: null,
+          state: 'pending',
+          accessLinkExpiresAt: { date: '2027-03-28', time: '09:30' },
+          accessLinkRemainingMinutes: 7 * 24 * 60,
+        },
+      },
+      { nickname: 'Ciel', gameMaster: false, organizer: false, account: null },
+      {
+        nickname: 'Dune',
+        gameMaster: true,
+        organizer: false,
+        account: {
+          onlyRole: 'game-master',
+          state: 'no-link',
+          accessLinkExpiresAt: null,
+          accessLinkRemainingMinutes: null,
+        },
+      },
+      {
+        nickname: 'Lune',
+        gameMaster: true,
+        organizer: false,
+        account: {
+          onlyRole: 'game-master',
+          state: 'active',
+          accessLinkExpiresAt: null,
+          accessLinkRemainingMinutes: null,
+        },
+      },
+    ]);
   });
 });

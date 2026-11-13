@@ -46,7 +46,7 @@ const ROLE_LABEL: Record<AccountRole, string> = {
   host: { '[attr.aria-busy]': 'gesture.running()' },
   template: `
     @if (banner(); as banner) {
-      <div class="banner" [style.--state]="banner.color">
+      <div class="banner" [attr.data-access-state]="banner.state">
         <app-icon [name]="banner.icon" />
         <span class="text">
           <strong>{{ banner.label }}</strong>
@@ -117,17 +117,17 @@ const ROLE_LABEL: Record<AccountRole, string> = {
         gap: var(--space-s);
         align-items: flex-start;
         padding: var(--space-s) var(--space-m);
-        border-left: 4px solid var(--state);
+        border-left: 4px solid var(--access-state);
         border-radius: var(--radius-control);
-        background: color-mix(in srgb, var(--state) 14%, var(--surface-2));
+        background: color-mix(in srgb, var(--access-state) 14%, var(--surface-2));
 
         > app-icon {
           margin-top: 0.2em;
-          color: var(--state);
+          color: var(--access-state);
         }
 
         strong {
-          color: var(--state);
+          color: var(--access-state);
         }
 
         button {

@@ -1,11 +1,13 @@
 import type { Page } from '@playwright/test';
 import {
+  accessLinkEndpoints,
   apiUrl,
   availabilityEndpoints,
   conventionEndpoints,
   drawEndpoints,
   gameMasterEndpoints,
   linkedPhoneEndpoints,
+  participantEndpoints,
   scenarioEndpoints,
   scheduleEndpoints,
   signUpEndpoints,
@@ -13,6 +15,7 @@ import {
   timeSlotEndpoints,
   type ConventionDto,
   type GameMasterDto,
+  type ParticipantSheetDto,
   type ScenarioDto,
   type ScheduleDto,
   type TimeSlotDto,
@@ -99,7 +102,7 @@ test('l’Organisateur retrouve un pseudo par une partie de son nom ou par le ti
   ).toBeVisible();
   await expect(nicknames(page)).toHaveText(['Élodie', 'Kaïros', ORGANIZER_NICKNAME, 'Sven']);
   const kairos = page.getByRole('row', { name: /Kaïros/ });
-  await expect(kairos.getByRole('rowheader')).toContainText('MJ');
+  await expect(kairos.getByRole('cell').first()).toHaveText('MJ');
   const elodie = page.getByRole('row', { name: /Élodie/ });
   await expect(elodie).toContainText('Créneau 1 · inscriptions ouvertes : 1 inscription');
   await expect(elodie.getByRole('cell').last()).toHaveText('1');
@@ -461,4 +464,57 @@ test('l’Organisateur fusionne un pseudo dans un autre, après avoir lu ce que 
 
   await page.goto('/gestion/participants');
   await expect(nicknames(page)).toHaveText(['Kaïros', ORGANIZER_NICKNAME, 'Sven']);
+});
+
+test('la liste « Participants » montre rôles et accès, avec la bascule et le filtre par état (ID-16)', async ({
+  page,
+}) => {
+  const add = async (nickname: string) =>
+    (await post<ParticipantSheetDto>(page, apiUrl(participantEndpoints.add), { nickname })).id;
+  const lune = await add('Lune');
+  await expectOk(
+    page.request.put(apiUrl(participantEndpoints.appointGameMaster, { participantId: lune })),
+  );
+  const sven = await add('Sven');
+  await expectOk(
+    page.request.put(apiUrl(participantEndpoints.appointOrganizer, { participantId: sven })),
+  );
+  await post(page, apiUrl(accessLinkEndpoints.create, { participantId: sven }), {});
+  await add('Ciel');
+
+  await page.goto('/gestion/participants');
+
+  const rows = page.locator('tbody tr');
+  const row = (nickname: string) => rows.filter({ hasText: nickname });
+  await expect(rows).toHaveCount(4);
+  await expect(row('Lune')).toContainText('MJ');
+  await expect(row('Lune')).toContainText('Lien à créer');
+  await expect(row('Sven')).toContainText('Organisateur');
+  await expect(row('Sven')).toContainText(/En attente · encore 7\sjours/);
+  await expect(row('Ciel')).toContainText('Participant');
+  const filters = page.getByRole('group', { name: 'Filtrer par accès au back office' });
+  // L'Organisateur des tests a un compte, sans mot de passe : « Lien à créer ».
+  await expect(filters.getByRole('button', { name: 'En attente 1' })).toBeVisible();
+  await expect(filters.getByRole('button', { name: 'Lien à créer 2' })).toBeVisible();
+
+  await filters.getByRole('button', { name: 'Tous les participants avec un compte 3' }).click();
+
+  await expect(rows).toHaveCount(3);
+  await expect(row('Ciel')).toHaveCount(0);
+  await expect(filters.getByRole('button', { name: 'Tous les participants 4' })).toBeVisible();
+
+  await filters.getByRole('button', { name: 'En attente 1' }).click();
+
+  await expect(rows).toHaveCount(1);
+  await expect(row('Sven')).toBeVisible();
+  await expect(filters.getByRole('button', { name: 'En attente 1' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+
+  await filters.getByRole('button', { name: 'Compte actif 0' }).click();
+
+  await expect(page.getByText('Aucun pseudo ne correspond')).toBeVisible();
+  await page.getByRole('button', { name: 'Effacer le filtre' }).click();
+  await expect(rows).toHaveCount(4);
 });

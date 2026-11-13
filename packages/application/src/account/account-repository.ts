@@ -6,6 +6,8 @@ export interface AccountRepository {
   findByNickname(nickname: string): Promise<Account | null>;
   /** Le compte, ou `null` s'il n'existe plus. */
   findById(accountId: string): Promise<Account | null>;
+  /** Tous les comptes, dans un ordre quelconque. */
+  list(): Promise<Account[]>;
   /** Le compte de ce participant, ou `null` s'il n'en a pas. */
   findByParticipantId(participantId: string): Promise<Account | null>;
   /** Le compte dont le dernier lien d'accès a cette empreinte de jeton, ou `null`. */

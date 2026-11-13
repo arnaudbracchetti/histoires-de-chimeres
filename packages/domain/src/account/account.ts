@@ -1,5 +1,9 @@
 import type { Convention } from '../convention/convention.js';
-import { isReachedAt, type LocalMoment } from '../convention/local-moment.js';
+import {
+  computeMinutesBetween,
+  isReachedAt,
+  type LocalMoment,
+} from '../convention/local-moment.js';
 import { Refusal } from '../refusal.js';
 
 /** Un rôle du back office (ID-16) : Organisateur, porté par le compte, ou MJ, porté par le participant. */
@@ -161,6 +165,15 @@ export class Account {
     const link = this.state.accessLink;
     if (!link || link.used) return 'no-link';
     return isReachedAt(link.expiresAt, now) ? 'expired' : 'pending';
+  }
+
+  /**
+   * Le temps qui reste au lien d'accès en attente à `now`, en minutes, à l'heure murale (ID-16) ;
+   * `null` hors de l'état « en attente ».
+   */
+  computeAccessLinkRemainingMinutes(now: LocalMoment): number | null {
+    if (this.computeAccessState(now) !== 'pending') return null;
+    return computeMinutesBetween(now, this.state.accessLink!.expiresAt);
   }
 }
 

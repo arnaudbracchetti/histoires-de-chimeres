@@ -28,6 +28,10 @@ export class PrismaAccountRepository implements AccountRepository {
     return row ? restore(row) : null;
   }
 
+  async list(): Promise<Account[]> {
+    return (await this.prisma.account.findMany()).map(restore);
+  }
+
   async findByParticipantId(participantId: string): Promise<Account | null> {
     const row = await this.prisma.account.findUnique({ where: { participantId } });
     return row ? restore(row) : null;

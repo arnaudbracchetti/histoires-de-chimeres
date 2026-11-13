@@ -23,7 +23,12 @@ describe('roleWithdrawalConsequences (ID-16)', () => {
       roleWithdrawalConsequences(
         aSheet({
           gameMaster: true,
-          account: { onlyRole: 'game-master', state: 'no-link', accessLinkExpiresAt: null },
+          account: {
+            onlyRole: 'game-master',
+            state: 'no-link',
+            accessLinkExpiresAt: null,
+            accessLinkRemainingMinutes: null,
+          },
         }),
         'game-master',
       ),
@@ -36,7 +41,12 @@ describe('roleWithdrawalConsequences (ID-16)', () => {
         aSheet({
           gameMaster: true,
           organizer: true,
-          account: { onlyRole: null, state: 'no-link', accessLinkExpiresAt: null },
+          account: {
+            onlyRole: null,
+            state: 'no-link',
+            accessLinkExpiresAt: null,
+            accessLinkRemainingMinutes: null,
+          },
         }),
         'game-master',
       ),
@@ -49,7 +59,12 @@ describe('roleWithdrawalConsequences (ID-16)', () => {
         aSheet({
           gameMaster: true,
           organizer: true,
-          account: { onlyRole: null, state: 'no-link', accessLinkExpiresAt: null },
+          account: {
+            onlyRole: null,
+            state: 'no-link',
+            accessLinkExpiresAt: null,
+            accessLinkRemainingMinutes: null,
+          },
         }),
         'organizer',
       ),
@@ -63,7 +78,12 @@ describe('roleWithdrawalConsequences (ID-16)', () => {
       roleWithdrawalConsequences(
         aSheet({
           organizer: true,
-          account: { onlyRole: 'organizer', state: 'no-link', accessLinkExpiresAt: null },
+          account: {
+            onlyRole: 'organizer',
+            state: 'no-link',
+            accessLinkExpiresAt: null,
+            accessLinkRemainingMinutes: null,
+          },
         }),
         'organizer',
       ),

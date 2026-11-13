@@ -114,9 +114,13 @@ import { PrismaParticipantReader } from './persistence/prisma-participant-reader
     },
     {
       provide: ReadParticipantList,
-      useFactory: (conventions: ConventionRepository, reader: ParticipantReader, clock: Clock) =>
-        new ReadParticipantList(conventions, reader, clock),
-      inject: [CONVENTION_REPOSITORY, PARTICIPANT_READER, CLOCK],
+      useFactory: (
+        conventions: ConventionRepository,
+        reader: ParticipantReader,
+        clock: Clock,
+        accounts: AccountRepository,
+      ) => new ReadParticipantList(conventions, reader, clock, accounts),
+      inject: [CONVENTION_REPOSITORY, PARTICIPANT_READER, CLOCK, ACCOUNT_REPOSITORY],
     },
     {
       provide: ReadParticipantSheet,

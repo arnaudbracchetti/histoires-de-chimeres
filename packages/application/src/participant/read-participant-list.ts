@@ -1,18 +1,26 @@
-import type { ParticipantListEntryDto, TimeSlotStateDto } from '@chimeres/contract';
+import type {
+  ParticipantAccountDto,
+  ParticipantListEntryDto,
+  TimeSlotStateDto,
+} from '@chimeres/contract';
 import { ComparableName } from '@chimeres/domain';
+import type { AccountRepository } from '../account/account-repository.js';
 import type { Clock } from '../clock.js';
 import type { ConventionRepository } from '../convention/convention-repository.js';
+import { toParticipantAccountDto } from './participant-account-dto.js';
 import type { ParticipantReader, ParticipantRecord } from './participant-reader.js';
 
 /**
  * La liste « Participants » (ID-5) : les pseudos que la recherche trouve, avec leurs inscriptions
- * par créneau, et l'état de chaque créneau à cet instant, terminé compris, que la convention calcule.
+ * par créneau, et l'état de chaque créneau à cet instant, terminé compris, que la convention
+ * calcule. Puis le rôle d'Organisateur et l'état du compte de chacun (ID-16).
  */
 export class ReadParticipantList {
   constructor(
     private readonly conventions: ConventionRepository,
     private readonly reader: ParticipantReader,
     private readonly clock: Clock,
+    private readonly accounts: AccountRepository,
   ) {}
 
   /**
@@ -20,11 +28,21 @@ export class ReadParticipantList {
    * absente, tous les pseudos.
    */
   async execute(search: string | undefined): Promise<ParticipantListEntryDto[]> {
-    const [convention, participants] = await Promise.all([
+    const [convention, participants, accounts] = await Promise.all([
       this.conventions.get(),
       this.reader.list(),
+      this.accounts.list(),
     ]);
     const now = this.clock.now();
+    const accountsByParticipant = new Map(
+      accounts.map((account) => [
+        account.participantId,
+        {
+          organizer: account.isOrganizer,
+          account: toParticipantAccountDto(account, convention, now),
+        },
+      ]),
+    );
     const timeSlots = convention.timeSlots.map(({ id }) => ({
       timeSlotId: id,
       rank: convention.getTimeSlotRank(id),
@@ -33,7 +51,14 @@ export class ReadParticipantList {
     const fragment = search?.trim() ? ComparableName.createFromText(search) : null;
     return participants.flatMap((participant) => {
       const match = fragment ? findMatch(participant, fragment) : { title: null };
-      return match ? [buildEntry(participant, timeSlots, match.title)] : [];
+      if (!match) return [];
+      const found = accountsByParticipant.get(participant.id);
+      return [
+        buildEntry(participant, timeSlots, match.title, {
+          organizer: found?.organizer ?? false,
+          account: found?.account ?? null,
+        }),
+      ];
     });
   }
 }
@@ -53,14 +78,19 @@ function findMatch(
   return signUp ? { title: signUp.title } : null;
 }
 
-/** La ligne du pseudo : ses inscriptions comptées sur chaque créneau, dans l'ordre de la journée. */
+/**
+ * La ligne du pseudo : ses inscriptions comptées sur chaque créneau, dans l'ordre de la journée, et
+ * son rôle d'Organisateur et son compte.
+ */
 function buildEntry(
   { signUps, ...participant }: ParticipantRecord,
   timeSlots: { timeSlotId: string; rank: number; state: TimeSlotStateDto }[],
   matchedGameTitle: string | null,
+  access: { organizer: boolean; account: ParticipantAccountDto | null },
 ): ParticipantListEntryDto {
   return {
     ...participant,
+    ...access,
     signUpCounts: timeSlots.map((slot) => ({
       ...slot,
       count: signUps.filter(({ timeSlotId }) => timeSlotId === slot.timeSlotId).length,

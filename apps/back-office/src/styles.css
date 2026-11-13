@@ -37,6 +37,26 @@
     --time-slot-state: var(--text-muted);
   }
 
+  /*
+   * La couleur de chaque état d'un compte (ID-16), à un seul endroit : le bandeau de l'onglet
+   * « Compte », la cellule et le filtre de la liste « Participants » la lisent dans `--access-state`.
+   */
+  [data-access-state='active'] {
+    --access-state: var(--success);
+  }
+
+  [data-access-state='pending'] {
+    --access-state: var(--accent);
+  }
+
+  [data-access-state='no-link'] {
+    --access-state: var(--warning);
+  }
+
+  [data-access-state='expired'] {
+    --access-state: var(--danger);
+  }
+
   body {
     /* Taille de base du back office : 13 px. */
     font-size: var(--font-size-body);

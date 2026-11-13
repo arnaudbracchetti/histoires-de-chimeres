@@ -403,8 +403,11 @@ La page « Pilotage du jour J » (`/pilotage`) suit les inscriptions de chaque c
 La liste des pseudos, de participant et de MJ (ID-5), dans l'ordre naturel.
 
 - **Recherche** : la phrase « Tape quelques lettres du pseudo, ou du titre d'une partie où il est inscrit. », puis le filtre texte des tableaux (`app-table-filter`), « Pseudo ou titre d'une partie ». L'API cherche ces lettres dans le pseudo (ID-7 : casse, accents et espaces ignorés, ponctuation comptée), sinon dans le titre des parties où il est inscrit, 250 ms après la dernière frappe. La liste garde ses lignes jusqu'à la réponse. Sans résultat : « Aucun pseudo ne correspond », avec « Effacer la recherche ».
-- **Colonnes** : Pseudo, Inscriptions par créneau, Téléphones (nombre de téléphones reliés, rien sur l'appareil).
-  - Le pseudo tel qu'il a été saisi, en gras ; « MJ » en gris à côté pour un MJ. Trouvé par le titre d'une partie, une seconde ligne en gris : « inscrit à « Brumes » ».
+- **Bascule et filtres** (ID-16), au-dessus de la recherche, pour suivre la remise des liens avant la convention : d'abord la bascule « Tous les participants avec un compte » ↔ « Tous les participants », qui affiche le choix à venir et son nombre ; puis un filtre par état du compte, « Compte actif », « En attente », « Lien à créer », « Lien expiré », chacun avec son nombre, un filet gauche de 4 px à la couleur de son état, et le fond teinté une fois choisi (`aria-pressed`). Un second clic efface le filtre d'état, la bascule aussi. Les nombres portent sur les lignes de la recherche. Sans ligne gardée : « Aucun pseudo ne correspond », avec « Effacer le filtre ».
+- **Colonnes** : Pseudo, Rôle, Accès au back office, Inscriptions par créneau, Téléphones (nombre de téléphones reliés, rien sur l'appareil).
+  - Le pseudo tel qu'il a été saisi, en gras. Trouvé par le titre d'une partie, une seconde ligne en gris : « inscrit à « Brumes » ».
+  - Rôle : les badges de la [fiche](#fiche-dun-pseudo), « MJ », « Organisateur », ou « Participant » sans rôle.
+  - Accès au back office : l'état du compte, icône et libellé du bandeau de l'onglet Compte, en sa couleur de statut (« En attente · encore 5 jours ») ; rien sans compte.
   - Inscriptions par créneau : un rond par créneau (`app-pip`), comme les disponibilités des MJ, avec le nombre d'inscriptions dedans (de secours comprises, une partie double sur son premier créneau). Contour à la couleur de l'état du créneau, rond teinté s'il y a au moins une inscription, vide avec « 0 » sinon, atténué pour un créneau terminé. Infobulle et texte pour lecteur d'écran : « Créneau 2 · tirage publié : 1 inscription ».
 - La liste se tient à jour seule, comme le pilotage (§6, Fraîcheur).
 - Le pseudo de chaque ligne mène à sa fiche.
@@ -428,7 +431,7 @@ La liste des pseudos, de participant et de MJ (ID-5), dans l'ordre naturel.
 - **Téléphones** : « Relié à 9 h 12 », un par ligne, rien sur l'appareil. Sans téléphone : « Aucun téléphone relié : la personne lit ses résultats à l'accueil. »
 - **Compte** (ID-16) : un bandeau d'état, tel que l'API le dit (un MJ créé sans compte n'en a pas), avec un filet gauche de 4 px et un fond à 14 % de la couleur de statut, son icône, une phrase d'aide et son action à droite (secondaire) :
   - « Compte actif » (`circle-check`, vert) : « Le mot de passe est choisi : la personne se connecte seule. » ; « Créer un nouveau lien » ;
-  - « En attente · lien valable jusqu'au dimanche 21 mars à 9 h 30 » (`hourglass`, orange) : « Le lien d'accès est créé, la personne ne l'a pas encore suivi. » ; « Créer un nouveau lien » ;
+  - « En attente · encore 5 jours » (`hourglass`, orange), le temps qui reste au lien : en jours entiers, puis « encore 3 h » le dernier jour, et « encore moins d'une heure » la dernière heure : « Le lien d'accès est créé, la personne ne l'a pas encore suivi. » ; « Créer un nouveau lien » ;
   - « Lien à créer » (`triangle-alert`, jaune) : « Le compte existe, mais aucun lien d'accès n'a été remis. » ; « Créer le lien d'accès » ;
   - « Lien expiré le dimanche 21 mars à 9 h 30 » (`octagon-alert`, rouge brique) : « Le lien n'a pas été suivi à temps : crée-en un nouveau. » ; « Créer un nouveau lien ».
 

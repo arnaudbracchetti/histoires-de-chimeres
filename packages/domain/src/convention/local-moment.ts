@@ -19,3 +19,18 @@ export function isReachedAt(moment: LocalMoment | null, now: LocalMoment): boole
   if (now.date !== moment.date) return now.date > moment.date;
   return !now.time.isBefore(moment.time);
 }
+
+/**
+ * Les minutes de `from` à `to`, à l'heure murale : un changement d'heure entre les deux n'est pas
+ * compté. Négatif si `to` est avant `from`.
+ */
+export function computeMinutesBetween(from: LocalMoment, to: LocalMoment): number {
+  const dayMinutes = (moment: LocalMoment) =>
+    Date.UTC(...splitDate(moment.date)) / 60_000 + moment.time.minutes;
+  return dayMinutes(to) - dayMinutes(from);
+}
+
+function splitDate(date: string): [number, number, number] {
+  const [year, month, day] = date.split('-').map(Number) as [number, number, number];
+  return [year, month - 1, day];
+}

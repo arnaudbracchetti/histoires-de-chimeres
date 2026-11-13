@@ -20,6 +20,10 @@ export type ParticipantListEntryDto = {
   nickname: string;
   /** Le pseudo est celui d'un MJ (ADR 0012). */
   gameMaster: boolean;
+  /** Son compte a le rôle Organisateur (ID-16). */
+  organizer: boolean;
+  /** Son compte du back office, ou `null` s'il n'en a pas (ID-16). */
+  account: ParticipantAccountDto | null;
   /**
    * Ses inscriptions par créneau, un par créneau, dans l'ordre de la journée : aux parties qui y
    * commencent, de secours comprises (IN-4). Une partie double ne compte que sur son premier créneau.
@@ -93,6 +97,11 @@ export type ParticipantAccountDto = {
   state: AccessStateDto;
   /** La fin de validité du lien d'accès, en cours ou expiré, ou `null` sans lien à suivre. */
   accessLinkExpiresAt: LocalMomentDto | null;
+  /**
+   * Le temps qui reste au lien en attente, en minutes, au moment de la lecture, ou `null` hors
+   * attente.
+   */
+  accessLinkRemainingMinutes: number | null;
 };
 
 /** La fiche d'un pseudo, de participant ou de MJ (ID-5). */

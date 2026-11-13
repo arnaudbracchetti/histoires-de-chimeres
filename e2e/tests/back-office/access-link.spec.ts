@@ -31,7 +31,7 @@ test("lien d'accès : choisir son mot de passe, puis se reconnecter (ID-6)", asy
   const url = await dialog.getByRole('textbox', { name: "Lien d'accès" }).inputValue();
   expect(url).toMatch(/\/gestion\/lien-d-acces\/[\w-]{43}$/);
   await dialog.getByRole('button', { name: 'Fermer' }).click();
-  await expect(page.getByText(/En attente · lien valable jusqu'au/)).toBeVisible();
+  await expect(page.getByText(/En attente · encore 7\sjours/)).toBeVisible();
 
   // Une autre personne, sur un autre navigateur : aucune session.
   const other = await browser.newContext();

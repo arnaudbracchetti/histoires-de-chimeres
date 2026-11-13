@@ -1,15 +1,11 @@
-import type {
-  ParticipantAccountDto,
-  ParticipantResultDto,
-  ParticipantSheetDto,
-} from '@chimeres/contract';
-import type { Account, Convention, LocalMoment, ParticipantResult } from '@chimeres/domain';
+import type { ParticipantResultDto, ParticipantSheetDto } from '@chimeres/contract';
+import type { ParticipantResult } from '@chimeres/domain';
 import type { AccountRepository } from '../account/account-repository.js';
-import { toLocalMomentDto } from '../account/local-moment-dto.js';
 import type { Clock } from '../clock.js';
 import type { ConventionRepository } from '../convention/convention-repository.js';
 import type { ScheduleReader } from '../game/schedule-reader.js';
 import type { ScenarioRepository } from '../scenario/scenario-repository.js';
+import { toParticipantAccountDto } from './participant-account-dto.js';
 import type { ParticipantReader } from './participant-reader.js';
 
 /**
@@ -49,7 +45,7 @@ export class ReadParticipantSheet {
       nickname: participant.nickname.text,
       gameMaster: convention.isParticipantGameMaster(participant.id),
       organizer: account?.isOrganizer ?? false,
-      account: account && toAccountDto(account, convention, now),
+      account: account && toParticipantAccountDto(account, convention, now),
       signedUpGameIds: situation.signedUpGameIds,
       backupGameIds: situation.backupGameIds,
       timeSlots: convention
@@ -70,22 +66,6 @@ export class ReadParticipantSheet {
       linkedPhones,
     };
   }
-}
-
-/** Le compte du pseudo : son seul rôle, son état, et la fin de son lien quand elle compte. */
-function toAccountDto(
-  account: Account,
-  convention: Convention,
-  now: LocalMoment,
-): ParticipantAccountDto {
-  const state = account.computeAccessState(now);
-  const expiresAt = account.accessLinkExpiresAt;
-  const linkToFollow = expiresAt && (state === 'pending' || state === 'expired');
-  return {
-    onlyRole: account.findOnlyRole(convention),
-    state,
-    accessLinkExpiresAt: linkToFollow ? toLocalMomentDto(expiresAt) : null,
-  };
 }
 
 /** Le résultat, la partie désignée par son titre. */

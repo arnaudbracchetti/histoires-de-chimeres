@@ -12,6 +12,8 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import {
   participantEndpoints,
+  type AccessStateDto,
+  type ParticipantListEntryDto,
   type ParticipantSheetDto,
   type TimeSlotSignUpCountDto,
 } from '@chimeres/contract';
@@ -23,9 +25,12 @@ import { PageHeader } from '../shell/page-header';
 import { TIME_SLOT_STATES } from '../time-slots/time-slot-state';
 import { Button } from '../ui/button';
 import { EmptyState } from '../ui/empty-state';
+import { Icon } from '../ui/icon';
 import { Pip } from '../ui/pip';
 import { TableFilter } from '../ui/table-filter';
+import { ACCESS_STATE_FILTERS, describeAccessState } from './access-state';
 import { NewParticipant } from './new-participant';
+import { RoleBadges } from './role-badges';
 
 /** Le délai entre la dernière frappe et la recherche : une requête par mot, pas par lettre. */
 const SEARCH_DELAY_MS = 250;
@@ -33,14 +38,27 @@ const SEARCH_DELAY_MS = 250;
 /**
  * La liste « Participants » (ID-5, docs/design/patterns.md, Participants) : la recherche, que l'API
  * fait, par une partie du pseudo (ID-7) ou du titre d'une partie où il est inscrit, puis un pseudo
- * par ligne, qui mène à sa fiche, « MJ » en gris pour un MJ, ses inscriptions par créneau en ronds, et son nombre de
- * téléphones reliés. La liste se tient à jour seule (`liveResource()`), et garde ses lignes pendant
- * une recherche. « Créer un pseudo », sous la liste, ouvre une ligne « Nouveau pseudo » en dernier
+ * par ligne, qui mène à sa fiche, ses rôles en badges, l'état de son accès au back office, ses
+ * inscriptions par créneau en ronds, et son nombre de téléphones reliés (ID-16). En tête, la bascule
+ * « Tous les participants avec un compte » ↔ « Tous les participants », puis un filtre par état du
+ * compte, chacun avec son nombre, sur les lignes de la recherche. La liste se tient à jour seule
+ * (`liveResource()`), et garde ses lignes pendant une recherche. « Créer un pseudo », sous la liste, ouvre une ligne « Nouveau pseudo » en dernier
  * (ID-12) ; le pseudo créé, sa fiche s'ouvre.
  */
 @Component({
   selector: 'app-participants-page',
-  imports: [Button, EmptyState, Loadable, NewParticipant, PageHeader, Pip, RouterLink, TableFilter],
+  imports: [
+    Button,
+    EmptyState,
+    Icon,
+    Loadable,
+    NewParticipant,
+    PageHeader,
+    Pip,
+    RoleBadges,
+    RouterLink,
+    TableFilter,
+  ],
   template: `
     <app-page-header title="Participants">
       <p appPageSubtitle class="freshness">
@@ -59,6 +77,28 @@ const SEARCH_DELAY_MS = 250;
             </button>
           </app-empty-state>
         } @else {
+          <div class="filters" role="group" aria-label="Filtrer par accès au back office">
+            <button type="button" class="filter scope" (click)="toggleAccountsOnly()">
+              @if (accountsOnly()) {
+                Tous les participants <span class="count">{{ participants.length }}</span>
+              } @else {
+                Tous les participants avec un compte
+                <span class="count">{{ accountCount() }}</span>
+              }
+            </button>
+            <span class="separator" aria-hidden="true"></span>
+            @for (filter of stateFilters; track filter.state) {
+              <button
+                type="button"
+                class="filter"
+                [attr.data-access-state]="filter.state"
+                [attr.aria-pressed]="stateFilter() === filter.state"
+                (click)="toggleStateFilter(filter.state)"
+              >
+                {{ filter.label }} <span class="count">{{ stateCounts()[filter.state] }}</span>
+              </button>
+            }
+          </div>
           <p class="help">
             Tape quelques lettres du pseudo, ou du titre d'une partie où il est inscrit.
           </p>
@@ -74,6 +114,8 @@ const SEARCH_DELAY_MS = 250;
             <thead>
               <tr>
                 <th scope="col">Pseudo</th>
+                <th scope="col">Rôle</th>
+                <th scope="col">Accès au back office</th>
                 <th scope="col">Inscriptions par créneau</th>
                 <th scope="col" class="number">Téléphones</th>
               </tr>
@@ -85,13 +127,18 @@ const SEARCH_DELAY_MS = 250;
                     <a class="nickname" [routerLink]="['/participants', row.participant.id]">{{
                       row.participant.nickname
                     }}</a>
-                    @if (row.participant.gameMaster) {
-                      <span class="role">MJ</span>
-                    }
                     @if (row.participant.matchedGameTitle; as title) {
                       <span class="match">inscrit à «&nbsp;{{ title }}&nbsp;»</span>
                     }
                   </th>
+                  <td><app-role-badges [roles]="row.participant" /></td>
+                  <td>
+                    @if (row.access; as access) {
+                      <span class="access" [attr.data-access-state]="access.state">
+                        <app-icon [name]="access.icon" />{{ access.label }}
+                      </span>
+                    }
+                  </td>
                   <td>
                     <span class="visually-hidden">{{ row.summary }}</span>
                     <span class="pips" aria-hidden="true">
@@ -109,9 +156,18 @@ const SEARCH_DELAY_MS = 250;
                   <td class="number">{{ row.participant.linkedPhoneCount }}</td>
                 </tr>
               } @empty {
-                @if (search()) {
+                @if (filtered()) {
                   <tr>
-                    <td class="none" colspan="3">
+                    <td class="none" colspan="5">
+                      Aucun pseudo ne correspond
+                      <button type="button" appButton="quiet" (click)="clearFilters()">
+                        Effacer le filtre
+                      </button>
+                    </td>
+                  </tr>
+                } @else if (search()) {
+                  <tr>
+                    <td class="none" colspan="5">
                       Aucun pseudo ne correspond
                       <button type="button" appButton="quiet" (click)="clearSearch()">
                         Effacer la recherche
@@ -122,7 +178,7 @@ const SEARCH_DELAY_MS = 250;
               }
               @if (adding()) {
                 <tr class="new">
-                  <td colspan="3">
+                  <td colspan="5">
                     <app-new-participant (added)="onAdded($event)" (cancelled)="closeNew()" />
                   </td>
                 </tr>
@@ -172,7 +228,56 @@ const SEARCH_DELAY_MS = 250;
       }
 
       table {
-        width: 44rem;
+        width: 72rem;
+      }
+
+      .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-xs);
+      }
+
+      /* Un filtre d'état porte la couleur de statut de son état, à gauche ; la bascule, en gris. */
+      .filter {
+        padding: 0 var(--space-s);
+        border: 1px solid
+          color-mix(in srgb, var(--access-state, var(--text-muted)) 50%, transparent);
+        border-left: 4px solid var(--access-state, var(--text-muted));
+        border-radius: var(--radius-control);
+        background: transparent;
+        color: var(--text);
+        font: inherit;
+        font-size: var(--font-size-meta);
+        cursor: pointer;
+
+        &[aria-pressed='true'] {
+          background: color-mix(in srgb, var(--access-state) 20%, transparent);
+          font-weight: 600;
+        }
+      }
+
+      .scope {
+        border-left-width: 1px;
+      }
+
+      .count {
+        color: var(--text-muted);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .separator {
+        width: 1px;
+        margin-inline: var(--space-xs);
+        background: var(--border);
+      }
+
+      .access {
+        display: inline-flex;
+        gap: var(--space-xs);
+        align-items: center;
+        color: var(--access-state);
+        font-size: var(--font-size-meta);
+        font-weight: 600;
       }
 
       .number {
@@ -191,12 +296,6 @@ const SEARCH_DELAY_MS = 250;
 
       .nickname {
         font-weight: 600;
-      }
-
-      .role {
-        margin-left: var(--space-xs);
-        color: var(--text-muted);
-        font-weight: 400;
       }
 
       .match {
@@ -231,6 +330,29 @@ export class ParticipantsPage {
     apiQueryResource(participantEndpoints.list, () => ({ search: this.search() })),
   );
 
+  /** La bascule : seulement les pseudos qui ont un compte, ou tous. */
+  protected readonly accountsOnly = signal(false);
+  /** L'état de compte choisi, ou `null` sans filtre d'état. */
+  protected readonly stateFilter = signal<AccessStateDto | null>(null);
+  protected readonly stateFilters = ACCESS_STATE_FILTERS;
+  /** Un filtre de la bascule ou d'état cache des lignes. */
+  protected readonly filtered = computed(() => this.accountsOnly() || this.stateFilter() !== null);
+
+  /** Le nombre de pseudos de la recherche qui ont un compte. */
+  protected readonly accountCount = computed(
+    () => (this.list.value() ?? []).filter(({ account }) => account).length,
+  );
+  /** Le nombre de pseudos de la recherche dans chaque état. */
+  protected readonly stateCounts = computed(() => {
+    const states = (this.list.value() ?? []).map(({ account }) => account?.state);
+    return Object.fromEntries(
+      ACCESS_STATE_FILTERS.map(({ state }) => [
+        state,
+        states.filter((one) => one === state).length,
+      ]),
+    ) as Record<AccessStateDto, number>;
+  });
+
   /** La ligne « Nouveau pseudo » est ouverte. */
   protected readonly adding = signal(false);
 
@@ -244,16 +366,49 @@ export class ParticipantsPage {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.timer));
   }
 
-  /** Chaque pseudo, avec un rond par créneau et leur texte pour le lecteur d'écran. */
+  /**
+   * Chaque pseudo que les filtres gardent, avec l'état de son compte, un rond par créneau et leur
+   * texte pour le lecteur d'écran.
+   */
   protected readonly rows = computed(() =>
-    (this.list.value() ?? []).map((participant) => {
-      const pips = participant.signUpCounts.map((slot) => ({
-        ...slot,
-        title: formatPipTitle(slot),
-      }));
-      return { participant, pips, summary: pips.map(({ title }) => `${title}.`).join(' ') };
-    }),
+    (this.list.value() ?? [])
+      .filter((participant) => this.isKept(participant))
+      .map((participant) => {
+        const pips = participant.signUpCounts.map((slot) => ({
+          ...slot,
+          title: formatPipTitle(slot),
+        }));
+        return {
+          participant,
+          access: participant.account && describeAccessState(participant.account),
+          pips,
+          summary: pips.map(({ title }) => `${title}.`).join(' '),
+        };
+      }),
   );
+
+  /** Passe de tous les pseudos à ceux qui ont un compte, et retour ; le filtre d'état s'efface. */
+  protected toggleAccountsOnly(): void {
+    this.accountsOnly.update((only) => !only);
+    this.stateFilter.set(null);
+  }
+
+  /** Choisit un état, ou l'efface s'il était choisi. */
+  protected toggleStateFilter(state: AccessStateDto): void {
+    this.stateFilter.update((chosen) => (chosen === state ? null : state));
+  }
+
+  protected clearFilters(): void {
+    this.accountsOnly.set(false);
+    this.stateFilter.set(null);
+  }
+
+  /** Le pseudo passe la bascule et le filtre d'état. */
+  private isKept({ account }: ParticipantListEntryDto): boolean {
+    if (this.accountsOnly() && !account) return false;
+    const state = this.stateFilter();
+    return state === null || account?.state === state;
+  }
 
   protected delaySearch(text: string): void {
     this.typed.set(text);
