@@ -97,6 +97,12 @@ model Account {
   organizer     Boolean          @default(false)
   /// Hachage scrypt du mot de passe, ou rien tant qu'aucun n'est choisi (ADR 0018).
   passwordHash  String?
+  /// Empreinte SHA-256 du jeton du dernier lien d'accès, jamais le jeton (ADR 0018).
+  accessLinkTokenHash String?   @unique
+  /// Fin de validité du lien d'accès : 7 jours après sa création.
+  accessLinkExpiresAt DateTime?
+  /// Le lien d'accès a servi : il reste, pour dire « déjà utilisé ».
+  accessLinkUsed      Boolean   @default(false)
   sessions      AccountSession[]
 }
 

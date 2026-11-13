@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { formatConventionDate, formatDayAndMonth } from './date.js';
+import { NBSP } from './french.js';
+import { formatConventionDate, formatDayAndMonth, formatLocalMoment } from './date.js';
 
 describe('formatConventionDate', () => {
   it('écrit le jour, le quantième, le mois et l’année', () => {
@@ -22,5 +23,19 @@ describe('formatDayAndMonth', () => {
 
   it('écrit le premier du mois « 1er »', () => {
     expect(formatDayAndMonth(new Date(2027, 4, 1))).toBe('1er mai');
+  });
+});
+
+describe('formatLocalMoment', () => {
+  it("écrit le jour, le quantième, le mois et l'heure, sans l'année", () => {
+    expect(formatLocalMoment({ date: '2027-03-21', time: '09:30' })).toBe(
+      `dimanche 21 mars à 9${NBSP}h${NBSP}30`,
+    );
+  });
+
+  it('écrit le premier du mois « 1er »', () => {
+    expect(formatLocalMoment({ date: '2027-05-01', time: '14:00' })).toBe(
+      `samedi 1er mai à 14${NBSP}h${NBSP}00`,
+    );
   });
 });

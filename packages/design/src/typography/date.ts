@@ -1,3 +1,5 @@
+import { formatTime } from './time.js';
+
 const FORMAT = new Intl.DateTimeFormat('fr-FR', {
   weekday: 'long',
   day: 'numeric',
@@ -28,4 +30,19 @@ export function formatConventionDate(date: string | null): string {
 /** « 26 octobre », « 1er mai » : le jour d'un instant, à l'heure locale. */
 export function formatDayAndMonth(instant: Date): string {
   return withFirst(DAY_AND_MONTH, instant);
+}
+
+const WEEKDAY_DAY_AND_MONTH = new Intl.DateTimeFormat('fr-FR', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'UTC',
+});
+
+/**
+ * « dimanche 21 mars à 9 h 30 » : un moment à l'heure locale de la convention, `date` en
+ * `AAAA-MM-JJ` et `time` en `HH:MM`, sans conversion de fuseau.
+ */
+export function formatLocalMoment({ date, time }: { date: string; time: string }): string {
+  return `${withFirst(WEEKDAY_DAY_AND_MONTH, new Date(`${date}T00:00:00Z`))} à ${formatTime(time)}`;
 }

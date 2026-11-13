@@ -239,6 +239,7 @@ const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', da
                 [sheet]="sheet"
                 (changed)="resource.set($event)"
                 (refused)="resource.reload()"
+                (accessLinkCreated)="resource.reload()"
               />
             </ng-template>
           </div>

@@ -21,7 +21,10 @@ describe('roleWithdrawalConsequences (ID-16)', () => {
   it('dit que les disponibilités du MJ partent, et son compte avec son dernier rôle', () => {
     expect(
       roleWithdrawalConsequences(
-        aSheet({ gameMaster: true, account: { onlyRole: 'game-master' } }),
+        aSheet({
+          gameMaster: true,
+          account: { onlyRole: 'game-master', state: 'no-link', accessLinkExpiresAt: null },
+        }),
         'game-master',
       ),
     ).toEqual(['Ses disponibilités seront supprimées.', ACCOUNT_REMOVED]);
@@ -30,7 +33,11 @@ describe('roleWithdrawalConsequences (ID-16)', () => {
   it("garde le compte d'un MJ qui reste Organisateur", () => {
     expect(
       roleWithdrawalConsequences(
-        aSheet({ gameMaster: true, organizer: true, account: { onlyRole: null } }),
+        aSheet({
+          gameMaster: true,
+          organizer: true,
+          account: { onlyRole: null, state: 'no-link', accessLinkExpiresAt: null },
+        }),
         'game-master',
       ),
     ).toEqual(['Ses disponibilités seront supprimées.']);
@@ -39,7 +46,11 @@ describe('roleWithdrawalConsequences (ID-16)', () => {
   it('dit ce qui reste à un Organisateur qui reste MJ', () => {
     expect(
       roleWithdrawalConsequences(
-        aSheet({ gameMaster: true, organizer: true, account: { onlyRole: null } }),
+        aSheet({
+          gameMaster: true,
+          organizer: true,
+          account: { onlyRole: null, state: 'no-link', accessLinkExpiresAt: null },
+        }),
         'organizer',
       ),
     ).toEqual([
@@ -50,7 +61,10 @@ describe('roleWithdrawalConsequences (ID-16)', () => {
   it("supprime le compte d'un Organisateur sans autre rôle", () => {
     expect(
       roleWithdrawalConsequences(
-        aSheet({ organizer: true, account: { onlyRole: 'organizer' } }),
+        aSheet({
+          organizer: true,
+          account: { onlyRole: 'organizer', state: 'no-link', accessLinkExpiresAt: null },
+        }),
         'organizer',
       ),
     ).toEqual([ACCOUNT_REMOVED]);

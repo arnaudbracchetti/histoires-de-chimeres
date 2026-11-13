@@ -1,8 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { form, FormField, FormRoot, validate } from '@angular/forms/signals';
-import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@chimeres/contract';
-import { countOf, fr } from '@chimeres/design';
-import { passwordRules } from '../forms/password-rules';
+import { fr } from '@chimeres/design';
+import { PASSWORD_HELP, passwordRules } from '../forms/password-rules';
 import { submitWith } from '../forms/submit-with';
 import { Announcer } from '../shell/announcer';
 import { PageHeader } from '../shell/page-header';
@@ -94,7 +93,7 @@ const EMPTY_MODEL = { currentPassword: '', password: '', passwordConfirmation: '
   `,
 })
 export class AccountPage {
-  protected readonly passwordHelp = fr`De ${PASSWORD_MIN_LENGTH} à ${countOf(PASSWORD_MAX_LENGTH, 'caractère', 'caractères')}, espaces compris : une courte phrase convient.`;
+  protected readonly passwordHelp = PASSWORD_HELP;
   protected readonly sessionsHelp = fr`Tes autres sessions, sur d'autres ordinateurs, seront fermées.`;
 
   private readonly store = inject(AccountStore);

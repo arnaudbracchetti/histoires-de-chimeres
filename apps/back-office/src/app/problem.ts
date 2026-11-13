@@ -23,7 +23,9 @@ export function readProblem(error: unknown): FormProblem {
   }
   if (error.status === 0) return { fieldErrors: [], notice: { title: OFFLINE } };
   const problem = error.error as Partial<ProblemDto> | null;
-  if (error.status >= 500 || !problem?.title) {
+  // Un 500 reste sobre ; un autre 5xx garde le texte de l'API, s'il vient d'elle (503 d'une
+  // configuration manquante), et non d'un proxy.
+  if (error.status === 500 || !problem?.title) {
     return { fieldErrors: [], notice: { title: INTERNAL_ERROR } };
   }
   if (problem.errors?.length) {

@@ -156,6 +156,14 @@ export type RefusalParams = {
   'password-is-nickname': Record<string, never>;
   /** Un Organisateur ne se retire pas lui-même le rôle d'Organisateur (ID-16). */
   'own-organizer-role-withdrawal': Record<string, never>;
+  /** Aucun compte n'a de lien d'accès à ce jeton : mal copié, ou remplacé par un plus récent (ADR 0018). */
+  'access-link-unknown': Record<string, never>;
+  /** Le lien d'accès a déjà servi à choisir le mot de passe (ADR 0018). */
+  'access-link-used': Record<string, never>;
+  /** Le lien d'accès a dépassé ses 7 jours (ADR 0018). */
+  'access-link-expired': Record<string, never>;
+  /** Le pseudo n'a pas de compte du back office : aucun lien d'accès à lui créer (ID-16). */
+  'account-not-found': Record<string, never>;
 };
 
 export type RefusalCode = keyof RefusalParams;

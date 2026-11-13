@@ -408,6 +408,30 @@ export const problemCatalogue: Catalogue = {
     detail: () =>
       fr`Tu ne peux pas te retirer toi-même le rôle d'Organisateur : un autre Organisateur peut le faire.`,
   },
+  'access-link-unknown': {
+    title: "Lien d'accès inconnu",
+    detail: () =>
+      fr`Ce lien d'accès ne marche pas : il est incomplet, ou un plus récent l'a remplacé. Demande un nouveau lien à un Organisateur.`,
+    status: 404,
+  },
+  'access-link-used': {
+    title: "Lien d'accès déjà utilisé",
+    detail: () =>
+      fr`Ce lien d'accès a déjà servi à choisir un mot de passe. Connecte-toi, ou demande un nouveau lien à un Organisateur.`,
+    status: 410,
+  },
+  'access-link-expired': {
+    title: "Lien d'accès expiré",
+    detail: () =>
+      fr`Ce lien d'accès a dépassé ses 7 jours. Demande un nouveau lien à un Organisateur.`,
+    status: 410,
+  },
+  'account-not-found': {
+    title: 'Pas de compte',
+    detail: () =>
+      fr`Ce pseudo n'a pas de compte du back office : donne-lui un rôle pour lui en créer un.`,
+    status: 404,
+  },
   'malformed-request': {
     title: 'Requête illisible',
     detail: () => 'Le serveur ne comprend pas cette requête : recharge la page, puis recommence.',
@@ -480,6 +504,12 @@ export const problemCatalogue: Catalogue = {
     detail: () =>
       fr`Cette modification ne vient pas de l'application : recharge la page, puis recommence.`,
     status: 403,
+  },
+  'public-url-missing': {
+    title: 'Adresse du site manquante',
+    detail: () =>
+      fr`Le serveur ne connaît pas son adresse publique (PUBLIC_URL) : le lien d'accès ne peut pas se construire. Ajoute-la à sa configuration, puis redémarre-le.`,
+    status: 503,
   },
   'push-not-configured': {
     title: 'Notifications non prises en charge',

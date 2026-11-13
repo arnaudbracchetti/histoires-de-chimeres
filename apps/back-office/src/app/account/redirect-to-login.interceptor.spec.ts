@@ -53,4 +53,14 @@ describe('Session terminée', () => {
 
     expect(navigate).not.toHaveBeenCalled();
   });
+
+  it("laisse la page d'un lien d'accès, ouverte sans session (ADR 0018)", async () => {
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/lien-d-acces/jeton');
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+
+    await readScheduleRefusedByApi(401, { code: 'not-logged-in', status: 401 });
+
+    expect(navigate).not.toHaveBeenCalled();
+  });
 });

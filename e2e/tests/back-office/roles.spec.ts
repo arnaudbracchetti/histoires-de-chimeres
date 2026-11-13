@@ -23,7 +23,7 @@ test('donne puis retire le rôle MJ depuis l’onglet « Compte » (ID-16)', asy
 
   await expect(gameMaster).toBeChecked();
   await expect(header.getByText('MJ', { exact: true })).toBeVisible();
-  await expect(page.getByText('Ce pseudo a un compte du back office.')).toBeVisible();
+  await expect(page.getByText('Lien à créer')).toBeVisible();
 
   await gameMaster.click();
   const dialog = page.getByRole('alertdialog', { name: 'Retirer le rôle MJ à « Lune » ?' });

@@ -1,4 +1,6 @@
 import { Routes } from '@angular/router';
+import { backOfficePaths } from '@chimeres/contract';
+import { AccessLinkPage } from './account/access-link-page';
 import { AccountPage } from './account/account-page';
 import { LoginPage } from './account/login-page';
 import { CalendarPage } from './schedule/calendar-page';
@@ -18,6 +20,11 @@ import { leaveUnsaved } from './shell/leave-unsaved';
 export const routes: Routes = [
   { path: '', title: 'Calendrier', component: CalendarPage },
   { path: 'connexion', title: 'Connexion', component: LoginPage },
+  {
+    path: backOfficePaths.accessLink,
+    title: 'Choisis ton mot de passe',
+    component: AccessLinkPage,
+  },
   { path: 'mon-compte', title: 'Mon compte', component: AccountPage },
   { path: 'mj', title: 'MJ', component: GameMastersPage },
   { path: 'mj/:id', title: 'Fiche du MJ', component: GameMasterPage },

@@ -2,6 +2,9 @@ import { validate, type SchemaPath } from '@angular/forms/signals';
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@chimeres/contract';
 import { countOf, fr } from '@chimeres/design';
 
+/** L'aide sous le champ d'un nouveau mot de passe : elle suggère une courte phrase (ADR 0018). */
+export const PASSWORD_HELP = fr`De ${PASSWORD_MIN_LENGTH} à ${countOf(PASSWORD_MAX_LENGTH, 'caractère', 'caractères')}, espaces compris : une courte phrase convient.`;
+
 /**
  * Le mot de passe choisi pour un compte (ADR 0018) : de 10 à 128 caractères, espaces compris,
  * comptés un par un comme le domaine, émojis compris. L'égalité au pseudo reste à l'API.

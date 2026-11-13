@@ -6,7 +6,9 @@ __PUBLIC_DOMAIN__ {
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         X-Content-Type-Options "nosniff"
-        Referrer-Policy "strict-origin-when-cross-origin"
+        # « ? » : seulement si l'app n'en pose pas. La page d'un lien d'accès garde son
+        # « no-referrer » (ADR 0018) ; « -Server » applique le bloc après la réponse de l'app.
+        ?Referrer-Policy "strict-origin-when-cross-origin"
         X-Frame-Options "DENY"
         -Server
     }

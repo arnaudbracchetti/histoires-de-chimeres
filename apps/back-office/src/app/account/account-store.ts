@@ -1,5 +1,10 @@
 import { Injectable } from '@angular/core';
-import { accountEndpoints, type ChangeOwnPasswordBody, type LogInBody } from '@chimeres/contract';
+import {
+  accessLinkEndpoints,
+  accountEndpoints,
+  type ChangeOwnPasswordBody,
+  type LogInBody,
+} from '@chimeres/contract';
 import { injectApiCall } from '../api-call';
 import { apiResource, currentValue } from '../api-resource';
 
@@ -17,6 +22,16 @@ export class AccountStore {
   /** Se connecter. Une erreur HTTP rejette la promesse, comme `apiCall()`. */
   async logIn(body: LogInBody): Promise<void> {
     this.account.set(await this.apiCall(accountEndpoints.logIn, { body }));
+  }
+
+  /** Choisir son mot de passe par un lien d'accès : la personne est connectée (ADR 0018). */
+  async choosePasswordByAccessLink(token: string, password: string): Promise<void> {
+    this.account.set(
+      await this.apiCall(accessLinkEndpoints.choosePassword, {
+        params: { token },
+        body: { password },
+      }),
+    );
   }
 
   /** Se déconnecter : la session est supprimée côté serveur. */

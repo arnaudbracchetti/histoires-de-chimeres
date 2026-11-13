@@ -1,3 +1,4 @@
+import type { LocalMomentDto } from './account.js';
 import { endpoint } from './endpoint.js';
 import type { TimeSlotStateDto } from './front-office.js';
 
@@ -79,10 +80,19 @@ export type ParticipantLinkedPhoneDto = {
 /** Un rôle du back office (ID-16) : Organisateur, porté par le compte, ou MJ, porté par le participant. */
 export type AccountRole = 'organizer' | 'game-master';
 
+/**
+ * L'état d'un compte (ID-16) : mot de passe choisi (`active`), lien d'accès en cours (`pending`),
+ * lien expiré sans mot de passe (`expired`), ni l'un ni l'autre (`no-link`).
+ */
+export type AccessStateDto = 'active' | 'pending' | 'expired' | 'no-link';
+
 /** Le compte d'un pseudo, sur sa fiche (ID-16). */
 export type ParticipantAccountDto = {
   /** Son seul rôle, dont le retrait supprimerait le compte, ou `null` s'il en a deux. */
   onlyRole: AccountRole | null;
+  state: AccessStateDto;
+  /** La fin de validité du lien d'accès, en cours ou expiré, ou `null` sans lien à suivre. */
+  accessLinkExpiresAt: LocalMomentDto | null;
 };
 
 /** La fiche d'un pseudo, de participant ou de MJ (ID-5). */

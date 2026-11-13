@@ -1,11 +1,22 @@
 export {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
+  accessLinkEndpoints,
   accountEndpoints,
+  type AccessLinkDto,
   type ChangeOwnPasswordBody,
+  type ChooseAccessLinkPasswordBody,
   type ConnectedAccountDto,
+  type CreatedAccessLinkDto,
+  type LocalMomentDto,
   type LogInBody,
 } from './account.js';
+export {
+  ACCESS_LINK_PAGES,
+  BACK_OFFICE_ROOT,
+  backOfficePaths,
+  buildAccessLinkPath,
+} from './back-office-paths.js';
 export {
   CONVENTION_NAME_MAX_LENGTH,
   conventionEndpoints,
@@ -152,6 +163,7 @@ export {
 } from './push-subscription.js';
 export {
   participantEndpoints,
+  type AccessStateDto,
   type AccountRole,
   type ParticipantAccountDto,
   type MergeOutcomeDto,

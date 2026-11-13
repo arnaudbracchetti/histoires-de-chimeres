@@ -21,6 +21,7 @@ import { AccessDeniedError } from '../account/access-denied.error.js';
 import { CrossSiteRequestError } from './cross-site-request.error.js';
 import { ImageRefusedError } from './image-refused.error.js';
 import { MalformedRequestError } from './malformed-request.error.js';
+import { PublicUrlMissingError } from './public-url-missing.error.js';
 import { PushNotConfiguredError } from './push-not-configured.error.js';
 import { TooManyAttemptsError } from './too-many-attempts.error.js';
 import { problemCatalogue } from './problem-catalogue.js';
@@ -83,6 +84,9 @@ export class ProblemFilter extends BaseExceptionFilter {
     }
     if (error instanceof CrossSiteRequestError) {
       return problem(HttpStatus.FORBIDDEN, 'cross-site-request', {});
+    }
+    if (error instanceof PublicUrlMissingError) {
+      return problem(HttpStatus.SERVICE_UNAVAILABLE, 'public-url-missing', {});
     }
     if (error instanceof PushNotConfiguredError) {
       return problem(HttpStatus.NOT_FOUND, 'push-not-configured', {});

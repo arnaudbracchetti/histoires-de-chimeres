@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { Convention } from '../convention/convention.js';
 import { PresenceCode } from '../convention/presence-code.js';
+import type { LocalMoment } from '../convention/local-moment.js';
+import { TimeOfDay } from '../convention/time-of-day.js';
 import { Refusal } from '../refusal.js';
 import { Account } from './account.js';
 
@@ -84,5 +86,66 @@ describe('Compte sans rôle (ID-16)', () => {
     convention.appointGameMaster('g1', 'p-a1');
 
     expect(Account.createForParticipant('a1', 'p-a1').isWithoutRole(convention)).toBe(false);
+  });
+});
+
+describe("Lien d'accès du compte (ID-6, ADR 0018)", () => {
+  const at = (date: string, time = '10:00'): LocalMoment => ({ date, time: TimeOfDay.parse(time) });
+
+  function anAccountWithPassword(): Account {
+    const account = Account.createForParticipant('a1', 'p-a1');
+    account.replacePasswordHash('hachage');
+    return account;
+  }
+
+  it('vaut 7 jours, jusqu’à la même heure', () => {
+    const account = Account.createForParticipant('a1', 'p-a1');
+    account.createAccessLink('jeton-1', at('2027-03-14', '08:30'));
+    expect(account.accessLinkExpiresAt).toEqual(at('2027-03-21', '08:30'));
+  });
+
+  it('remet le compte à zéro : le mot de passe est effacé', () => {
+    const account = anAccountWithPassword();
+    account.createAccessLink('jeton-1', at('2027-03-14'));
+    expect(account.passwordHash).toBeNull();
+  });
+
+  it('fait choisir le mot de passe, une seule fois', () => {
+    const account = Account.createForParticipant('a1', 'p-a1');
+    account.createAccessLink('jeton-1', at('2027-03-14'));
+    account.useAccessLink('nouveau-hachage', at('2027-03-20'));
+    expect(account.passwordHash).toBe('nouveau-hachage');
+    const refusal = catchRefusal(() => account.useAccessLink('autre', at('2027-03-20')));
+    expect(refusal.code).toBe('access-link-used');
+    expect(account.passwordHash).toBe('nouveau-hachage');
+  });
+
+  it('refuse un lien expiré, dès son heure de fin', () => {
+    const account = Account.createForParticipant('a1', 'p-a1');
+    account.createAccessLink('jeton-1', at('2027-03-14', '10:00'));
+    const refusal = catchRefusal(() => account.useAccessLink('h', at('2027-03-21', '10:00')));
+    expect(refusal.code).toBe('access-link-expired');
+    expect(account.passwordHash).toBeNull();
+  });
+
+  it('un nouveau lien remplace le précédent, même utilisé', () => {
+    const account = Account.createForParticipant('a1', 'p-a1');
+    account.createAccessLink('jeton-1', at('2027-03-14'));
+    account.useAccessLink('h', at('2027-03-14'));
+    account.createAccessLink('jeton-2', at('2027-03-15'));
+    expect(account.accessLinkTokenHash).toBe('jeton-2');
+    account.useAccessLink('h2', at('2027-03-15'));
+    expect(account.passwordHash).toBe('h2');
+  });
+
+  it("donne l'état du compte : actif, en attente, lien expiré, lien à créer", () => {
+    const account = Account.createForParticipant('a1', 'p-a1');
+    expect(account.computeAccessState(at('2027-03-14'))).toBe('no-link');
+    account.createAccessLink('jeton-1', at('2027-03-14'));
+    expect(account.computeAccessState(at('2027-03-20'))).toBe('pending');
+    expect(account.computeAccessState(at('2027-03-21'))).toBe('expired');
+    account.useAccessLink('h', at('2027-03-15'));
+    expect(account.computeAccessState(at('2027-03-30'))).toBe('active');
+    expect(anAccountWithPassword().computeAccessState(at('2027-03-14'))).toBe('active');
   });
 });

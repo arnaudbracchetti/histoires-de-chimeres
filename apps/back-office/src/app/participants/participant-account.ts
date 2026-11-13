@@ -1,7 +1,9 @@
 import { Component, computed, inject, input, output } from '@angular/core';
 import {
+  accessLinkEndpoints,
   participantEndpoints,
   type AccountRole,
+  type ParticipantAccountDto,
   type ParticipantSheetDto,
 } from '@chimeres/contract';
 import { fr } from '@chimeres/design';
@@ -11,6 +13,9 @@ import { injectGesture } from '../gesture';
 import { Announcer } from '../shell/announcer';
 import { Confirmation } from '../ui/confirmation';
 import { Icon } from '../ui/icon';
+import { Button } from '../ui/button';
+import { AccessLinkDialog } from './access-link-dialog';
+import { describeAccessState } from './access-state';
 import { roleWithdrawalConsequences } from './role-withdrawal-consequences';
 
 const APPOINT = {
@@ -37,16 +42,25 @@ const ROLE_LABEL: Record<AccountRole, string> = {
  */
 @Component({
   selector: 'app-participant-account',
-  imports: [Icon],
+  imports: [Button, Icon],
   host: { '[attr.aria-busy]': 'gesture.running()' },
   template: `
-    <p class="account" [class.none]="!hasAccount()">
-      @if (hasAccount()) {
-        Ce pseudo a un compte du back office.
-      } @else {
+    @if (banner(); as banner) {
+      <div class="banner" [style.--state]="banner.color">
+        <app-icon [name]="banner.icon" />
+        <span class="text">
+          <strong>{{ banner.label }}</strong>
+          <span class="help">{{ banner.help }}</span>
+        </span>
+        <button type="button" appButton="secondary" (click)="createAccessLink()">
+          {{ banner.action }}
+        </button>
+      </div>
+    } @else {
+      <p class="account none">
         Pas de compte&nbsp;: participant seulement. Donne-lui un rôle pour lui créer un compte.
-      }
-    </p>
+      </p>
+    }
     <fieldset>
       <legend>Rôles dans le back office</legend>
       <label class="role" [class.on]="sheet().gameMaster" style="--role: var(--role-game-master)">
@@ -95,6 +109,30 @@ const ROLE_LABEL: Record<AccountRole, string> = {
 
         &.none {
           color: var(--text-muted);
+        }
+      }
+
+      .banner {
+        display: flex;
+        gap: var(--space-s);
+        align-items: flex-start;
+        padding: var(--space-s) var(--space-m);
+        border-left: 4px solid var(--state);
+        border-radius: var(--radius-control);
+        background: color-mix(in srgb, var(--state) 14%, var(--surface-2));
+
+        > app-icon {
+          margin-top: 0.2em;
+          color: var(--state);
+        }
+
+        strong {
+          color: var(--state);
+        }
+
+        button {
+          margin-left: auto;
+          flex: none;
         }
       }
 
@@ -159,16 +197,54 @@ export class ParticipantAccount {
   readonly changed = output<ParticipantSheetDto>();
   /** Un refus : la fiche est peut-être périmée. */
   readonly refused = output<void>();
+  /** Un lien d'accès créé : l'état du compte a changé, la fiche est à relire. */
+  readonly accessLinkCreated = output<void>();
 
   private readonly account = inject(AccountStore);
   private readonly confirmation = inject(Confirmation);
   private readonly announcer = inject(Announcer);
+  private readonly accessLinkDialog = inject(AccessLinkDialog);
   private readonly apiCall = injectApiCall();
   protected readonly gesture = injectGesture({ errorDialog: true });
 
-  protected readonly hasAccount = computed(() => this.sheet().account !== null);
+  /** Le bandeau de l'état du compte, ou rien sans compte. */
+  protected readonly banner = computed(() => {
+    const account = this.sheet().account;
+    return account && describeAccessState(account);
+  });
   /** Le pseudo est celui de l'Organisateur connecté. */
   protected readonly isMe = computed(() => this.account.value()?.participantId === this.sheet().id);
+
+  /**
+   * Crée un lien d'accès (ADR 0018), puis le montre. Il remet le compte à zéro : sur un compte actif,
+   * une confirmation rouge le dit ; sur un lien en attente, une confirmation orange dit que l'ancien
+   * ne marchera plus.
+   */
+  protected async createAccessLink(): Promise<void> {
+    const sheet = this.sheet();
+    const account = sheet.account!;
+    const call = () =>
+      this.apiCall(accessLinkEndpoints.create, { params: { participantId: sheet.id } });
+    const consequences = describeAccessLinkConsequences(sheet.nickname, account);
+    let link: Awaited<ReturnType<typeof call>> | undefined;
+    if (consequences.length) {
+      await this.confirmation.ask({
+        question: fr`Créer un nouveau lien d'accès pour « ${sheet.nickname} » ?`,
+        consequences,
+        confirmLabel: 'Créer le lien',
+        tone: account.state === 'active' ? 'danger' : 'primary',
+        action: async () => (link = await call()),
+        onStale: () => this.refused.emit(),
+      });
+    } else {
+      const outcome = await this.gesture.run(call);
+      if (outcome.status === 'refused') this.refused.emit();
+      if (outcome.status === 'done') link = outcome.value;
+    }
+    if (!link) return;
+    this.accessLinkCreated.emit();
+    await this.accessLinkDialog.show(link, sheet.nickname);
+  }
 
   /** La case ne change qu'avec la fiche relue : le geste passe d'abord, confirmation comprise. */
   protected toggle(event: Event, role: AccountRole): void {
@@ -212,4 +288,18 @@ export class ParticipantAccount {
     });
     if (done) this.announcer.announce(fr`Rôle ${ROLE_LABEL[role]} retiré à « ${sheet.nickname} ».`);
   }
+}
+
+/** Ce qu'un nouveau lien efface : le mot de passe et les sessions d'un compte actif, l'ancien lien. */
+function describeAccessLinkConsequences(
+  nickname: string,
+  account: ParticipantAccountDto,
+): string[] {
+  if (account.state === 'active') {
+    return [
+      fr`Son mot de passe est effacé tout de suite, et ses sessions ouvertes sont fermées. « ${nickname} » en choisira un nouveau par le lien.`,
+    ];
+  }
+  if (account.state === 'pending') return [fr`Le lien déjà créé ne marchera plus.`];
+  return [];
 }

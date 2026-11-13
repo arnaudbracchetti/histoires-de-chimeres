@@ -1,3 +1,5 @@
+import { readPublicUrl } from '../http/public-url.js';
+
 /**
  * Les réglages de l'envoi push : les clés VAPID qui signent les envois, le contact donné aux
  * services push, et l'adresse publique du front office, que la notification ouvre.
@@ -19,7 +21,7 @@ export function pushSettingsFromEnvironment(): PushSettings | null {
   const publicKey = process.env['VAPID_PUBLIC_KEY'];
   const privateKey = process.env['VAPID_PRIVATE_KEY'];
   const subject = process.env['VAPID_SUBJECT'];
-  const publicUrl = process.env['PUBLIC_URL']?.replace(/\/+$/, '');
+  const publicUrl = readPublicUrl();
   return publicKey && privateKey && subject && publicUrl
     ? { publicKey, privateKey, subject, publicUrl }
     : null;

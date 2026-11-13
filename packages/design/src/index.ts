@@ -1,6 +1,6 @@
 export { initialOf } from './initial-of.js';
 export { formatAgeLine } from './typography/age-line.js';
-export { formatConventionDate, formatDayAndMonth } from './typography/date.js';
+export { formatConventionDate, formatDayAndMonth, formatLocalMoment } from './typography/date.js';
 export {
   countOf,
   formatCount,
