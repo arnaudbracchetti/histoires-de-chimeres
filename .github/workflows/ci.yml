@@ -1,0 +1,54 @@
+# Vérification de chaque push de main, de chaque PR et de chaque tag de version (#196).
+# Base : docs/research/ci-github-actions.md.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: chimeres
+          POSTGRES_PASSWORD: chimeres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U chimeres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DATABASE_URL: postgresql://chimeres:chimeres@localhost:5432/chimeres_test?schema=public
+      TEST_WORKERS: 4
+    steps:
+      - uses: actions/checkout@v7
+      # Sans `version` : l'action lit `packageManager` et échouerait si les deux différaient.
+      - uses: pnpm/action-setup@v6
+        with:
+          cache: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: pnpm install
+      - run: pnpm check:migrations
+      # Le lint (type-aware) et les tests lisent les packages par leur dist/ et le client Prisma généré.
+      - run: pnpm build:packages
+      - run: pnpm --filter api exec prisma generate
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm --filter api test:e2e
