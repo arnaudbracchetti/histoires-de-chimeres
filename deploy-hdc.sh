@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ============================================================
 # Exploitation d'Histoires de chimères sur le serveur de production (hdc.nekbet.fr).
-# Copié à la main dans le dossier du compte deploy. Modèle : deploy-agilometre.sh.
+# Copié à la main dans /opt/hdc (docs/deploy-production.md). Modèle : deploy-agilometre.sh.
 #
 # Usage :
 #   ./deploy-hdc.sh vX.Y.Z            déploie cette version
@@ -231,7 +231,8 @@ prepare_b2_remote() {
     return 1
   fi
   command -v rclone > /dev/null || { err "rclone n'est pas installé sur le serveur"; return 1; }
-  export RCLONE_B2_ACCOUNT="$key_id" RCLONE_B2_KEY="$key"
+  # Config vide : rclone ne cherche plus de rclone.conf, ni ne le signale.
+  export RCLONE_CONFIG=/dev/null RCLONE_B2_ACCOUNT="$key_id" RCLONE_B2_KEY="$key"
   B2_REMOTE=":b2:$bucket"
 }
 
@@ -534,7 +535,8 @@ choose_and_restore_dump() {
     return 1
   fi
 
-  # Un dump avant-vX.Y.Z ou avant-restauration-…-vX.Y.Z a le schéma de vX.Y.Z : il relance vX.Y.Z.
+  # Un dump avant-vX.Y.Z (schéma de la version d'avant : vX.Y.Z y rejoue ses migrations) ou
+  # avant-restauration-…-vX.Y.Z (schéma de vX.Y.Z) relance vX.Y.Z.
   local current_tag tag
   current_tag="$(env_value IMAGE_TAG)"
   if [[ "$(basename "$file")" =~ ^avant-(restauration-[0-9-]+-)?(v[0-9]+\.[0-9]+\.[0-9]+)\.dump$ ]]; then
