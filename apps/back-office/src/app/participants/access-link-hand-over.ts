@@ -3,16 +3,17 @@ import type { CreatedAccessLinkDto } from '@chimeres/contract';
 import { formatLocalMoment, fr } from '@chimeres/design';
 import { QrCode } from '../poster/qr-code';
 import { Button } from '../ui/button';
+import { Icon } from '../ui/icon';
 
 /**
  * Le lien d'accès qu'un Organisateur vient de créer (ID-6, ADR 0018), à remettre de vive voix ou
  * par message : en QR code et en texte, avec « Copier le lien ». L'URL n'est montrée qu'ici, une
- * seule fois : l'API ne la redonne pas. Repris par le dialogue du lien et par l'assistant « Créer
+ * seule fois : l'API ne la redonne pas, et un avertissement jaune le dit. Repris par le dialogue du lien et par l'assistant « Créer
  * un pseudo ».
  */
 @Component({
   selector: 'app-access-link-hand-over',
-  imports: [Button, QrCode],
+  imports: [Button, Icon, QrCode],
   template: `
     <p>{{ handOver() }}</p>
     <div class="link">
@@ -29,6 +30,13 @@ import { Button } from '../ui/button';
           {{ copied() ? 'Lien copié' : 'Copier le lien' }}
         </button>
         <p class="meta">{{ validity() }}</p>
+      </div>
+    </div>
+    <div class="once" role="note">
+      <app-icon name="triangle-alert" />
+      <div>
+        <p class="once-title">{{ onceTitle }}</p>
+        <p class="meta">{{ onceDetail }}</p>
       </div>
     </div>
   `,
@@ -73,6 +81,21 @@ import { Button } from '../ui/button';
         color: var(--text-muted);
         font-size: var(--font-size-meta);
       }
+
+      .once {
+        display: flex;
+        gap: var(--space-s);
+        align-items: flex-start;
+      }
+
+      .once app-icon,
+      .once-title {
+        color: var(--warning);
+      }
+
+      .once app-icon {
+        padding-block-start: 0.2em;
+      }
     }
   `,
 })
@@ -90,6 +113,9 @@ export class AccessLinkHandOver {
     () =>
       fr`Valable jusqu'au ${formatLocalMoment(this.link().expiresAt)}, une seule fois. Créer un autre lien annule celui-ci.`,
   );
+
+  protected readonly onceTitle = fr`Attention : ce lien ne s'affichera plus une fois cette fenêtre fermée.`;
+  protected readonly onceDetail = fr`Copie-le ou fais scanner le QR code maintenant. Sinon, il faudra créer un nouveau lien, qui annulera celui-ci.`;
 
   protected async copy(): Promise<void> {
     await navigator.clipboard.writeText(this.link().url);

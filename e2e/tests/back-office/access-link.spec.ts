@@ -35,6 +35,7 @@ test("lien d'accès : choisir son mot de passe, puis se reconnecter (ID-6)", asy
   const dialog = page.getByRole('dialog', { name: /Lien d.accès de «\s?Lune\s?»/ });
   await expect(dialog.getByRole('img', { name: "QR code du lien d'accès" })).toBeVisible();
   await expect(dialog.getByText(/Valable jusqu'au .*, une seule fois/)).toBeVisible();
+  await expect(dialog.getByText(/ce lien ne s.affichera plus une fois cette fenêtre fermée/)).toBeVisible();
   const url = await dialog.getByRole('textbox', { name: "Lien d'accès" }).inputValue();
   expect(url).toMatch(/\/gestion\/lien-d-acces\/[\w-]{43}$/);
   await dialog.getByRole('button', { name: 'Fermer' }).click();
