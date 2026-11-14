@@ -99,6 +99,10 @@ _Avoid_: Session, appareil, connexion
 Message envoyé aux téléphones reliés à un pseudo, que le téléphone affiche même quand l'application est fermée.
 _Avoid_: Push, alerte (réservé à ce que la page affiche elle-même : un message d'erreur, ou l'alerte de changement de NO-5, application ouverte)
 
+**Message d'un Organisateur** · `OrganizerMessage`:
+Texte libre qu'un Organisateur envoie à un seul pseudo, par une Notification. Il ne vient d'aucun geste sur le programme ou le tirage.
+_Avoid_: Message (seul), annonce, message libre
+
 **Fusionner** · `merge`:
 Geste d'un Organisateur qui fait passer les inscriptions et le résultat des tirages d'un pseudo de participant sur un autre pseudo, puis supprime le premier.
 _Avoid_: Report, transfert, regrouper
