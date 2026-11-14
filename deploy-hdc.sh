@@ -22,6 +22,15 @@ set -euo pipefail
 # En cas d'échec : arrêt de l'app, base recréée vide, pg_restore du dump de l'étape 3, relance
 # de la version précédente. Au premier déploiement, sans version précédente : arrêt avec l'erreur.
 #
+# Revenir à la version précédente (option 2), un seul cran : N et N-1 sont lus dans la dernière
+# ligne de deploiements.log (pas de N-1, ou N-1 plus récent que N après un retour : arrêt). Les
+# migrations de N absentes de N-1 sont lues dans les deux images (docker run --rm). Si l'une porte
+# « -- incompatible », le retour restaure le dump avant-vN. Sinon, une question : N écrit-il une
+# valeur nouvelle ? Oui : même restauration. Non : N-1 est relancé sur la base telle quelle, sans
+# perdre les inscriptions faites depuis le déploiement. La restauration suit le déroulé de l'option
+# 4 (RESTAURER, dump avant-restauration). Puis healthy, version contrôlée, ligne au journal (dump
+# « - » sans restauration). Si N-1 ne démarre pas sans restauration, N est relancé.
+#
 # deploiements.log, une ligne par déploiement réussi : date, tag déployé, tag précédent (- s'il n'y
 # en a pas), dump fait avant. La dernière ligne donne la version en place (N) et la précédente (N-1).
 #
@@ -100,6 +109,12 @@ last_log_field() {
 }
 current_tag_from_log() { last_log_field 2; }
 previous_tag_from_log() { last_log_field 3; }
+
+# Ajoute au journal la ligne : date, tag $1 en place, tag $2 quitté (- si vide), dump $3 (- si vide).
+append_log_line() { echo "$(date -Iseconds) $1 ${2:--} ${3:--}" >> "$LOG_FILE"; }
+
+# Vrai si la réponse $1 est « o » ou « O ».
+answered_yes() { [ "$1" = "o" ] || [ "$1" = "O" ]; }
 
 # Le plus ancien des tags donnés (les vides sont ignorés).
 oldest_tag() { printf '%s\n' "$@" | grep -v '^$' | sort -V | head -n 1 || true; }
@@ -220,6 +235,14 @@ prepare_b2_remote() {
   B2_REMOTE=":b2:$bucket"
 }
 
+# Tire l'image du tag $1 si elle n'est pas sur le serveur.
+ensure_image() {
+  if ! docker image inspect "$IMAGE:$1" > /dev/null 2>&1 && ! docker pull "$IMAGE:$1"; then
+    err "image $IMAGE:$1 introuvable. Rien n'a été touché."
+    return 1
+  fi
+}
+
 # Efface les images de l'app autres que $1 et $2 (jamais celle de Postgres).
 remove_old_images() {
   docker images "$IMAGE" --format '{{.Tag}}' \
@@ -274,7 +297,7 @@ action_deploy() {
 
   step "Démarrage de $new_tag (version en place : ${current_tag:-aucune})"
   if start_app "$new_tag"; then
-    echo "$(date -Iseconds) $new_tag ${current_tag:--} $dump" >> "$LOG_FILE"
+    append_log_line "$new_tag" "$current_tag" "$dump"
     ok "$new_tag répond sur https://$(public_domain)"
     step "Ménage des images"
     remove_old_images "$new_tag" "$current_tag"
@@ -298,6 +321,110 @@ action_deploy() {
   fi
   err "CRITIQUE : le retour à $current_tag a échoué. Intervention manuelle immédiate sur le serveur."
   err "Dump d'avant le déploiement : $dump"
+  return 2
+}
+
+# ── 2. Revenir à la version précédente ───────────────────────────────
+# Migrations embarquées dans l'image du tag $1, une par ligne, triées.
+image_migrations() {
+  # shellcheck disable=SC2016 # la boucle se lit dans le conteneur.
+  docker run --rm "$IMAGE:$1" sh -c 'for d in prisma/migrations/*/; do [ -d "$d" ] && basename "$d"; done; true' \
+    < /dev/null | sort
+}
+
+# Vrai si le fichier migration.sql de $2 dans l'image du tag $1 porte « -- incompatible : <raison> »
+# (motif de apps/api/scripts/check-migrations.ts, où que soit le commentaire dans la ligne), ou
+# s'il est illisible : dans le doute, le retour restaure.
+# Le fichier est lu en entier avant grep -q : dans un tube, grep -q s'arrête au premier résultat,
+# docker reçoit SIGPIPE, et pipefail rendrait faux. L'insécable (octets \xc2\xa0) devient une
+# espace avant grep : ainsi le motif ne dépend ni de la locale ni du grep du serveur.
+is_incompatible_migration() {
+  local sql
+  sql="$(docker run --rm "$IMAGE:$1" cat "prisma/migrations/$2/migration.sql" < /dev/null)" || {
+    warn "$2/migration.sql illisible dans $IMAGE:$1 : comptée incompatible."
+    return 0
+  }
+  sql="${sql//$'\xc2\xa0'/ }"
+  LC_ALL=C grep -qiE -e '--[[:space:]]*incompatible[[:space:]]*:[[:space:]]*[^[:space:]]' <<< "$sql"
+}
+
+action_rollback() {
+  local current_tag previous_tag
+  current_tag="$(current_tag_from_log)"
+  previous_tag="$(previous_tag_from_log)"
+  if [ -z "$current_tag" ] || [ -z "$previous_tag" ]; then
+    err "pas de version précédente dans $LOG_FILE : retour impossible."
+    return 1
+  fi
+  # Après un retour, N-1 est la version quittée, plus récente : y aller, c'est la redéployer.
+  if is_older "$current_tag" "$previous_tag"; then
+    err "$current_tag est déjà le retour de $previous_tag. Pour relancer $previous_tag : option 1."
+    return 1
+  fi
+
+  local answer
+  read -rp "Revenir de $current_tag à $previous_tag ? [o/N] " answer
+  if ! answered_yes "$answer"; then
+    warn "retour annulé, rien n'a été touché."
+    return 1
+  fi
+
+  ensure_image "$current_tag" || return 1
+  ensure_image "$previous_tag" || return 1
+
+  step "Migrations de $current_tag absentes de $previous_tag"
+  local current_migrations previous_migrations new_migrations=() migration incompatible=false
+  if ! current_migrations="$(image_migrations "$current_tag")" \
+    || ! previous_migrations="$(image_migrations "$previous_tag")"; then
+    err "lecture des migrations impossible. Rien n'a été touché."
+    return 1
+  fi
+  mapfile -t new_migrations < <(comm -23 <(echo "$current_migrations") <(echo "$previous_migrations") \
+    | grep -v '^$' || true)
+  [ "${#new_migrations[@]}" -gt 0 ] || echo "   aucune"
+  for migration in "${new_migrations[@]}"; do
+    if is_incompatible_migration "$current_tag" "$migration"; then
+      echo "   $migration : -- incompatible"
+      incompatible=true
+    else
+      echo "   $migration"
+    fi
+  done
+
+  local restore=false
+  if "$incompatible"; then
+    warn "$current_tag a une migration incompatible : $previous_tag ne tourne pas sur ce schéma."
+    warn "le retour restaure le dump fait avant $current_tag."
+    restore=true
+  else
+    read -rp "$current_tag écrit-il une valeur nouvelle ? [o/N] " answer
+    if answered_yes "$answer"; then restore=true; fi
+  fi
+
+  if "$restore"; then
+    local dump="$DUMP_DIR/avant-$current_tag.dump"
+    if [ ! -f "$dump" ]; then
+      err "$dump introuvable : retour arrêté, rien n'a été touché. Restaurer un autre dump (option 4)."
+      return 1
+    fi
+    confirm_and_restore_dump "$dump" "$previous_tag"
+    return
+  fi
+
+  step "Démarrage de $previous_tag, sans restauration"
+  if start_app "$previous_tag"; then
+    append_log_line "$previous_tag" "$current_tag" ""
+    ok "$previous_tag répond sur https://$(public_domain)"
+    return 0
+  fi
+
+  warn "Relance de $current_tag"
+  if start_app "$current_tag"; then
+    ok "$current_tag répond de nouveau"
+    err "Le retour à $previous_tag a échoué et a été annulé. Voir le journal ci-dessus."
+    return 1
+  fi
+  err "CRITIQUE : ni $previous_tag ni $current_tag ne repart. Intervention manuelle immédiate sur le serveur."
   return 2
 }
 
@@ -419,11 +546,16 @@ choose_and_restore_dump() {
     err "IMAGE_TAG manque dans $ENV_FILE : version à relancer inconnue. Rien n'a été touché."
     return 1
   fi
-  if ! docker image inspect "$IMAGE:$tag" > /dev/null 2>&1 && ! docker pull "$IMAGE:$tag"; then
-    err "image $IMAGE:$tag introuvable. Rien n'a été touché."
-    return 1
-  fi
+  ensure_image "$tag" || return 1
+  confirm_and_restore_dump "$file" "$tag"
+}
 
+# Affiche le dump $1, demande de taper RESTAURER, fait un dump avant-restauration, restaure $1 et
+# relance le tag $2. Ajoute une ligne au journal si $2 n'y est pas la version en place.
+# Sert à l'option 4 comme à l'option 2.
+confirm_and_restore_dump() {
+  local file="$1" tag="$2" current_tag
+  current_tag="$(env_value IMAGE_TAG)"
   echo ""
   echo "   Dump        : $(basename "$file")"
   echo "   Date        : $(paris_date -r "$file" '+%d/%m/%Y à %H:%M') (heure de Paris)"
@@ -455,7 +587,7 @@ choose_and_restore_dump() {
   local logged_tag
   logged_tag="$(current_tag_from_log)"
   if [ "$tag" != "$logged_tag" ]; then
-    echo "$(date -Iseconds) $tag ${logged_tag:--} $before" >> "$LOG_FILE"
+    append_log_line "$tag" "$logged_tag" "$before"
   fi
   ok "$(basename "$file") restauré, $tag répond sur https://$(public_domain)"
 }
@@ -488,8 +620,6 @@ action_status() {
   echo "   Place prise par toutes les images Docker : $(docker system df --format '{{if eq .Type "Images"}}{{.Size}}{{end}}' | grep -v '^$' || true)"
 }
 
-coming_soon() { warn "à venir."; }
-
 menu() {
   while true; do
     echo ""
@@ -505,7 +635,7 @@ menu() {
     # « || true » : sous set -e, l'échec d'une action ramène au menu au lieu de quitter le script.
     case "$choice" in
       1) action_deploy || true ;;
-      2) coming_soon ;;
+      2) action_rollback || true ;;
       3) action_manual_backup || true ;;
       4) action_restore || true ;;
       5) action_status || true ;;
