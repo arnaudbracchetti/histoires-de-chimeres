@@ -9,7 +9,7 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { form, FormField, FormRoot, validate } from '@angular/forms/signals';
+import { form, FormField, FormRoot } from '@angular/forms/signals';
 import { Router, RouterLink } from '@angular/router';
 import { accessLinkEndpoints } from '@chimeres/contract';
 import { fr } from '@chimeres/design';
@@ -19,18 +19,19 @@ import { submitWith } from '../forms/submit-with';
 import { readProblem } from '../problem';
 import { Button } from '../ui/button';
 import { Field } from '../ui/field';
+import { PasswordReveal } from '../ui/password-reveal';
 import { AccountStore } from './account-store';
 
 /**
  * La page d'un lien d'accès (ID-6, ADR 0018), hors du rail, comme la connexion : « Lune, choisis
  * ton mot de passe », puis le pseudo en champ en lecture seule, que le gestionnaire de mots de
- * passe du navigateur enregistre avec le mot de passe. Ouvrir la page ne consomme pas le lien ; c'est l'envoi du
+ * passe du navigateur enregistre avec le mot de passe, saisi une fois, l'œil pour le vérifier. Ouvrir la page ne consomme pas le lien ; c'est l'envoi du
  * mot de passe qui l'utilise, puis la personne est connectée et arrive au calendrier. Un lien
  * inconnu, utilisé ou expiré est dit à la place du formulaire. L'API sert la page sans `Referer`.
  */
 @Component({
   selector: 'app-access-link-page',
-  imports: [Button, Field, FormField, FormRoot, RouterLink],
+  imports: [Button, Field, FormField, FormRoot, PasswordReveal, RouterLink],
   template: `
     <div class="box">
       <div class="brand">
@@ -56,14 +57,9 @@ import { AccountStore } from './account-store';
             />
           </div>
           <app-field label="Mot de passe" [help]="passwordHelp">
-            <input type="password" autocomplete="new-password" [formField]="form.password" />
-          </app-field>
-          <app-field label="Mot de passe, une seconde fois">
-            <input
-              type="password"
-              autocomplete="new-password"
-              [formField]="form.passwordConfirmation"
-            />
+            <app-password-reveal>
+              <input type="password" autocomplete="new-password" [formField]="form.password" />
+            </app-password-reveal>
           </app-field>
           <button type="submit" appButton="primary">
             {{ form().submitting() ? 'Enregistrement…' : 'Choisir ce mot de passe' }}
@@ -176,20 +172,11 @@ export class AccessLinkPage {
     return error ? readProblem(error).notice : undefined;
   });
 
-  private readonly model = signal({ password: '', passwordConfirmation: '' });
+  private readonly model = signal({ password: '' });
 
-  protected readonly form = form(
-    this.model,
-    (path) => {
-      passwordRules(path.password);
-      validate(path.passwordConfirmation, ({ value, valueOf }) =>
-        value() === valueOf(path.password)
-          ? undefined
-          : { kind: 'mismatch', message: fr`Les deux saisies du mot de passe diffèrent.` },
-      );
-    },
-    { submission: submitWith(() => this.choose()) },
-  );
+  protected readonly form = form(this.model, (path) => passwordRules(path.password), {
+    submission: submitWith(() => this.choose()),
+  });
 
   constructor() {
     const host = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;

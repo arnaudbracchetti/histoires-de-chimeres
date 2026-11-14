@@ -61,7 +61,6 @@ describe("Page du lien d'accès : choisir son mot de passe (ID-6, ADR 0018)", ()
       request.flush({ nickname: 'Lune' }),
     );
     type(0, 'une longue phrase');
-    type(1, 'une longue phrase');
 
     host.querySelector<HTMLButtonElement>('button[type=submit]')!.click();
     await fixture.whenStable();

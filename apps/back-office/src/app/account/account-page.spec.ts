@@ -44,7 +44,6 @@ describe('Page « Mon compte » : changer son mot de passe (ADR 0019)', () => {
     const { fixture, host, input, type, send } = await render();
     type('Mot de passe actuel', 'une longue phrase');
     type('Nouveau mot de passe', 'une autre longue phrase');
-    type('Nouveau mot de passe, une seconde fois', 'une autre longue phrase');
 
     const sent = send();
     const request = TestBed.inject(HttpTestingController).expectOne(
@@ -62,7 +61,6 @@ describe('Page « Mon compte » : changer son mot de passe (ADR 0019)', () => {
 
     expect(input('Mot de passe actuel').value).toBe('');
     expect(input('Nouveau mot de passe').value).toBe('');
-    expect(input('Nouveau mot de passe, une seconde fois').value).toBe('');
     expect(host.textContent).toContain('Enregistré');
   });
 
@@ -70,7 +68,6 @@ describe('Page « Mon compte » : changer son mot de passe (ADR 0019)', () => {
     const { fixture, host, input, type, send } = await render();
     type('Mot de passe actuel', 'pas le bon mot');
     type('Nouveau mot de passe', 'une autre longue phrase');
-    type('Nouveau mot de passe, une seconde fois', 'une autre longue phrase');
 
     const sent = send();
     const message = 'Vérifie ton mot de passe actuel.';
@@ -106,15 +103,23 @@ describe('Page « Mon compte » : changer son mot de passe (ADR 0019)', () => {
     expect(host.textContent).toMatch(/Le mot de passe fait au moins 10\scaractères/);
   });
 
-  it('ne part pas si le nouveau mot de passe, saisi deux fois, diffère', async () => {
-    const { host, type, send } = await render();
-    type('Mot de passe actuel', 'une longue phrase');
-    type('Nouveau mot de passe', 'une autre longue phrase');
-    type('Nouveau mot de passe, une seconde fois', 'une autre longue frase');
+  it('affiche le nouveau mot de passe en clair par son œil, et le remasque à l’envoi', async () => {
+    const { fixture, host, input, type, send } = await render();
+    const eyes = host.querySelectorAll<HTMLButtonElement>('button[aria-pressed]');
+    expect(eyes).toHaveLength(2);
 
+    eyes[1]!.click();
+    fixture.detectChanges();
+
+    expect(eyes[1]!.getAttribute('aria-label')).toBe('Afficher le mot de passe');
+    expect(eyes[1]!.getAttribute('aria-pressed')).toBe('true');
+    expect(input('Nouveau mot de passe').type).toBe('text');
+    expect(input('Mot de passe actuel').type).toBe('password');
+
+    type('Nouveau mot de passe', 'court');
     await send();
 
-    TestBed.inject(HttpTestingController).expectNone(apiUrl(accountEndpoints.changePassword));
-    expect(host.textContent).toContain('Les deux saisies du nouveau mot de passe diffèrent.');
+    expect(input('Nouveau mot de passe').type).toBe('password');
+    expect(eyes[1]!.getAttribute('aria-pressed')).toBe('false');
   });
 });

@@ -66,27 +66,22 @@ describe('Page de connexion', () => {
     return rendered;
   }
 
-  const dialog = () => document.querySelector<HTMLElement>('[role="alertdialog"]');
-
-  it('ouvre le refus dans le dialogue d’erreur, et efface la boîte de connexion', async () => {
+  it('écrit le refus dans la boîte, à la place de l’aide, sans dialogue', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl');
     const { host } = await failLogIn();
 
-    expect(host.querySelector('form')).toBeNull();
-    expect(dialog()?.querySelector('h2')?.textContent).toBe('Pseudo ou mot de passe incorrect');
-    expect(dialog()?.textContent).toContain('Vérifie.');
+    const outcome = host.querySelector('[aria-live]')!;
+    expect(outcome.querySelector('strong')?.textContent).toBe('Pseudo ou mot de passe incorrect');
+    expect(outcome.textContent).toContain('Vérifie.');
+    expect(outcome.textContent).not.toContain('Mot de passe oublié');
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull();
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it('le dialogue fermé, rend la boîte de connexion, pseudo gardé, mot de passe vidé', async () => {
+  it('après un refus, garde le pseudo, vide le mot de passe et y met le focus', async () => {
     const { fixture, host } = await failLogIn();
-
-    dialog()!.querySelector<HTMLButtonElement>('button.close')!.click();
-    await fixture.whenStable();
-    fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(dialog()).toBeNull();
     expect(host.querySelector<HTMLInputElement>('input[type=text]')?.value).toBe('Kaïros');
     const password = host.querySelector<HTMLInputElement>('input[type=password]')!;
     expect(password.value).toBe('');

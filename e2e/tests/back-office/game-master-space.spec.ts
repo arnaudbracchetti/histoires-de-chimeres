@@ -36,7 +36,6 @@ async function gameMasterByAccessLink(page: Page, browser: Browser, nickname: st
   const gameMaster = await context.newPage();
   await gameMaster.goto(accessLink!.url);
   await gameMaster.getByLabel('Mot de passe', { exact: true }).fill(PASSWORD);
-  await gameMaster.getByLabel('Mot de passe, une seconde fois').fill(PASSWORD);
   await gameMaster.getByRole('button', { name: 'Choisir ce mot de passe' }).click();
   return { gameMaster, gameMasterId: gameMasterId! };
 }

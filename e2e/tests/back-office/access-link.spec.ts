@@ -50,7 +50,6 @@ test("lien d'accès : choisir son mot de passe, puis se reconnecter (ID-6)", asy
   await expect(lune.getByRole('textbox', { name: 'Pseudo' })).toHaveAttribute('readonly', '');
   await expect(lune.getByLabel('Mot de passe', { exact: true })).toBeFocused();
   await lune.getByLabel('Mot de passe', { exact: true }).fill(PASSWORD);
-  await lune.getByLabel('Mot de passe, une seconde fois').fill(PASSWORD);
   await lune.getByRole('button', { name: 'Choisir ce mot de passe' }).click();
 
   const rail = lune.locator('app-rail');
@@ -58,9 +57,24 @@ test("lien d'accès : choisir son mot de passe, puis se reconnecter (ID-6)", asy
   await rail.getByRole('button', { name: 'Se déconnecter' }).click();
 
   await expect(lune.getByRole('heading', { name: 'Connexion' })).toBeVisible();
+  const password = lune.getByLabel('Mot de passe', { exact: true });
+  const logIn = lune.getByRole('button', { name: 'Se connecter' });
+
+  // Une faute de frappe : le refus s'écrit sous le bouton, qui ne bouge pas.
   await lune.getByLabel('Pseudo').fill('lune');
-  await lune.getByLabel('Mot de passe').fill(PASSWORD);
-  await lune.getByRole('button', { name: 'Se connecter' }).click();
+  await password.fill('pas le bon mot de passe');
+  const before = await logIn.boundingBox();
+  await logIn.click();
+  await expect(lune.getByText('Pseudo ou mot de passe incorrect')).toBeVisible();
+  expect(await logIn.boundingBox()).toEqual(before);
+  await expect(password).toBeFocused();
+  await expect(password).toHaveValue('');
+
+  // L'œil montre la saisie en clair.
+  await password.fill(PASSWORD);
+  await lune.getByRole('button', { name: 'Afficher le mot de passe' }).click();
+  await expect(password).toHaveAttribute('type', 'text');
+  await logIn.click();
   await expect(rail.getByText('Lune', { exact: true })).toBeVisible();
   await other.close();
 
