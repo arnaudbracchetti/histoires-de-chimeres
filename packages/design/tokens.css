@@ -21,7 +21,7 @@
     --success: #6cc08b; /* Vert */
     --warning: #e8d25c; /* Jaune */
     --danger: #f07f63; /* Rouge brique */
-    --danger-fill: #b23a26; /* Rouge (bouton) */
+    --danger-fill: #962c1c; /* Rouge (bouton) */
     /* Rôles du back office (ID-16), hors des couleurs de statut : un rôle n'est pas un état. */
     --role-game-master: #b69cff; /* Violet MJ */
     --role-organizer: #4fd1c5; /* Turquoise Organisateur */

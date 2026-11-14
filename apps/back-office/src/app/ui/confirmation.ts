@@ -81,15 +81,16 @@ let nextId = 0;
   styleUrl: './dialog.css',
   styles: `
     @layer components {
-      .warning,
-      .danger {
+      /* Sur le seul paragraphe : le bouton destructeur porte aussi la classe danger. */
+      p.warning,
+      p.danger {
         display: flex;
         gap: var(--space-xs);
         align-items: baseline;
         color: var(--warning);
       }
 
-      .danger {
+      p.danger {
         color: var(--danger);
       }
     }
