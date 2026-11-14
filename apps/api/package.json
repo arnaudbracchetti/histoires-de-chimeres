@@ -10,11 +10,12 @@
     "predev": "prisma generate",
     "dev": "nest start --watch",
     "start:prod": "node dist/main.js",
-    "lint": "oxlint --type-aware src/ test/",
+    "lint": "oxlint --type-aware src/ test/ scripts/",
     "pretest": "prisma generate",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "test:e2e": "vitest run --config ./vitest.config.e2e.ts"
+    "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
+    "check:migrations": "tsx scripts/check-migrations.ts"
   },
   "dependencies": {
     "@chimeres/application": "workspace:*",

@@ -62,6 +62,30 @@ type rend évident.
 - Une erreur affichée ne décale jamais rien dans la page (voir `docs/design/patterns.md`,
   Validation).
 
+## Migrations de la base
+
+Le retour arrière relance l'image précédente sur le schéma de la nouvelle version, sans restaurer
+la base (ADR 0021). Chaque migration doit donc le permettre.
+
+- **Un seul cran garanti** : la version N-1 tourne sur le schéma de N. Pas plus loin : remonter
+  à N-2 passe par la restauration d'un dump.
+- **Une version n'ajoute que** : une table, un index, une colonne nullable, ou une colonne
+  `NOT NULL` avec un `DEFAULT`. N-1 ignore ce qu'elle ne connaît pas.
+- **Un changement destructif se fait sur deux versions** : N cesse de lire et d'écrire la colonne
+  ou la table, N+1 la supprime. Même chose pour rendre une colonne obligatoire ou changer son type.
+- **Un renommage se fait par ajout** : N ajoute la nouvelle colonne, y copie l'ancienne et écrit
+  dans les deux ; N+1 ne lit plus que la nouvelle ; une version suivante supprime l'ancienne.
+- **Exception** : une migration qui ne peut pas suivre ces règles porte la ligne
+  `-- incompatible : <raison>`. Le retour arrière de cette version passe alors par le dump fait
+  avant le déploiement, et on le signale à la publication.
+- **Une valeur nouvelle dans une colonne existante** (une valeur d'énumération, un nouvel état)
+  ne change pas le schéma, mais N-1 ne sait pas la lire : on la signale à la publication, et le
+  retour arrière restaure le dump.
+- `pnpm check:migrations` refuse, dans les migrations postérieures au premier déploiement, tout
+  `DROP`, `RENAME`, `SET NOT NULL` ou `ALTER COLUMN … TYPE` sans la ligne `-- incompatible`
+  (`apps/api/scripts/check-migrations.ts`). Les migrations écrites par `prisma migrate dev` sont
+  à relire : un renommage dans `schema.prisma` y devient un `DROP` suivi d'un `ADD`.
+
 ## Langues
 
 - Code en anglais, commentaires et textes visibles en français (ADR 0003).

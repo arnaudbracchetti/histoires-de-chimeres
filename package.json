@@ -21,6 +21,7 @@
     "format": "prettier --write .",
     "prisma:migrate": "pnpm --filter api exec prisma migrate dev",
     "prisma:seed": "pnpm --filter api exec prisma db seed",
+    "check:migrations": "pnpm --filter api check:migrations",
     "test:e2e": "pnpm build:packages && docker compose rm -sf app-e2e && pnpm --filter e2e test:e2e"
   },
   "devDependencies": {
