@@ -59,6 +59,16 @@ describe('Textes des avertissements de suivi', () => {
     ]);
   });
 
+  it('dit « plein » quand la demande atteint la capacité maximum', () => {
+    const { title, detail } = writeSignUpWarning({
+      code: 'nearly-full',
+      level: 'warning',
+      params: { demand: 22, maxCapacity: 22 },
+    });
+
+    expect([title, plain(detail)]).toEqual(['Plein', '22 participants pour 22 places au plus.']);
+  });
+
   it('n’écrit aucun nombre nul dans l’énumération de « trop de parties »', () => {
     const detail = (gamesBelowMinimum: number, participantsMayBeLeftWithoutTable: number) =>
       plain(
@@ -84,7 +94,7 @@ describe('Textes des avertissements de suivi', () => {
     expect(detail(0, 0)).toBe(reason);
   });
 
-  it('dit combien de parties sont sous leur minimum, et qui risque de rester sans table', () => {
+  it('dit combien de parties sont sous leur minimum, et qui risque de rester sans table, ou à défaut qu’elles risquent d’être annulées', () => {
     const write = (gamesBelowMinimum: number, participantsMayBeLeftWithoutTable: number) => {
       const { title, detail } = writeSignUpWarning({
         code: 'games-below-minimum',
@@ -105,7 +115,11 @@ describe('Textes des avertissements de suivi', () => {
     ]);
     expect(write(1, 0)).toEqual([
       '1 partie sous son minimum',
-      'Aucun participant ne risque de rester sans table.',
+      "Elle risque d'être annulée au tirage.",
+    ]);
+    expect(write(2, 0)).toEqual([
+      '2 parties sous leur minimum',
+      "Elles risquent d'être annulées au tirage.",
     ]);
   });
 });

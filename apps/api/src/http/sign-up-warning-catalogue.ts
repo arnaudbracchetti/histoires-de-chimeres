@@ -44,7 +44,7 @@ export const signUpWarningCatalogue: {
       fr`Toutes ${plural(participantCount, 'ses', 'leurs')} parties du créneau sont très demandées.`,
   },
   'nearly-full': {
-    title: () => fr`Presque plein`,
+    title: ({ demand, maxCapacity }) => (demand >= maxCapacity ? fr`Plein` : fr`Presque plein`),
     detail: ({ demand, maxCapacity }) =>
       fr`${participants(demand)} pour ${seats(maxCapacity)} au plus.`,
   },
@@ -63,10 +63,12 @@ export const signUpWarningCatalogue: {
   },
   'games-below-minimum': {
     title: ({ gamesBelowMinimum: count }) => gamesBelowMinimum(count),
-    detail: ({ participantsMayBeLeftWithoutTable: count }) =>
+    detail: ({ gamesBelowMinimum: games, participantsMayBeLeftWithoutTable: count }) =>
       count > 0
         ? fr`${mayBeLeftWithoutTable(count)}.`
-        : fr`Aucun participant ne risque de rester sans table.`,
+        : games > 1
+          ? fr`Elles risquent d'être annulées au tirage.`
+          : fr`Elle risque d'être annulée au tirage.`,
   },
 };
 

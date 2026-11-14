@@ -193,11 +193,17 @@ const LAUNCHED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, strin
                     overflow="danger"
                   />
                   <app-time-slot-state [state]="slot.state" />
-                  @if (slot.warnings.length) {
-                    <span class="warning-count" [class.danger]="isDanger(slot)"
-                      ><app-icon [name]="levelIcons[isDanger(slot) ? 'danger' : 'warning']" />{{
-                        countOf(slot.warnings.length, 'avertissement', 'avertissements')
-                      }}</span
+                  @if (slot.warnings[0]; as top) {
+                    <span class="top-warning" [class]="top.level"
+                      ><app-icon [name]="levelIcons[top.level]" /><span
+                        >{{ top.title
+                        }}@if (slot.warnings.length > 1) {
+                          <span class="more" aria-hidden="true"
+                            >&nbsp;+{{ slot.warnings.length - 1 }}</span
+                          ><span class="visually-hidden"
+                            >, et {{ otherWarnings(slot.warnings.length - 1) }}</span
+                          >}</span
+                      ></span
                     >
                   }
                 } @else {
@@ -259,18 +265,6 @@ const LAUNCHED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, strin
                     @if (!slot.demand) {
                       <p class="quiet">Aucune inscription sur ce créneau pour l'instant.</p>
                     }
-                    @if (slot.id === drawableSlot()?.id) {
-                      <p>
-                        <button type="button" appButton="primary" (click)="launch(slot)">
-                          Lancer le tirage
-                        </button>
-                      </p>
-                    } @else if (drawableSlot(); as drawable) {
-                      <p class="quiet">
-                        Le tirage de ce créneau se lance après la publication du créneau
-                        {{ drawable.rank }}.
-                      </p>
-                    }
                     @if (slot.warnings.length) {
                       <ul class="warnings" aria-label="Avertissements de suivi">
                         @for (warning of slot.warnings; track warning.code) {
@@ -286,6 +280,18 @@ const LAUNCHED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, strin
                           </li>
                         }
                       </ul>
+                    }
+                    @if (slot.id === drawableSlot()?.id) {
+                      <p>
+                        <button type="button" appButton="primary" (click)="launch(slot)">
+                          Lancer le tirage
+                        </button>
+                      </p>
+                    } @else if (drawableSlot(); as drawable) {
+                      <p class="quiet">
+                        Le tirage de ce créneau se lance après la publication du créneau
+                        {{ drawable.rank }}.
+                      </p>
                     }
                   } @else {
                     @if (slot.draw; as draw) {
@@ -479,8 +485,17 @@ const LAUNCHED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, strin
         }
       }
 
+      /*
+       * Créneau terminé : atténué par ses couleurs, jamais par l'opacité, qui ferait tomber son texte
+       * sous 4,5:1 (Texte secondaire sur Anthracite 1 : 6,79:1). Choisi, il garde sa bordure orange.
+       */
       .tile.ended {
-        opacity: 0.45;
+        background: var(--surface-1);
+        color: var(--text-muted);
+
+        &:hover {
+          background: var(--surface-2);
+        }
       }
 
       .tile app-time-slot-state {
@@ -505,16 +520,29 @@ const LAUNCHED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, strin
         line-height: var(--line-height-title);
       }
 
-      .warning-count {
-        display: inline-flex;
+      /* Le plus grave des avertissements, avec son titre écrit par l'API, puis « +2 ». */
+      .top-warning {
+        display: flex;
         gap: var(--space-xs);
-        align-items: center;
+        align-items: baseline;
         margin-top: var(--space-xs);
         color: var(--warning);
         font-size: var(--font-size-meta);
+        font-weight: 600;
 
         &.danger {
           color: var(--danger);
+        }
+
+        app-icon {
+          flex: none;
+          align-self: center;
+        }
+
+        .more {
+          color: var(--text-muted);
+          font-variant-numeric: tabular-nums;
+          font-weight: 400;
         }
       }
 
@@ -713,9 +741,9 @@ export class SignUpTrackingPage {
     return (this.value()?.games ?? []).filter(({ timeSlotIds }) => timeSlotIds[0] === slot.id);
   }
 
-  /** Le plus grave des avertissements du créneau est rouge : l'icône de sa tuile. */
-  protected isDanger(slot: TimeSlotTrackingDto): boolean {
-    return slot.warnings.some(({ level }) => level === 'danger');
+  /** Ce que le lecteur d'écran entend à la place du « +2 » de la tuile. */
+  protected otherWarnings(count: number): string {
+    return countOf(count, 'autre avertissement', 'autres avertissements');
   }
 
   /** La jauge du créneau se remplit en jaune : il porte `nearly-full` ou `too-many-games`. */
@@ -735,17 +763,19 @@ export class SignUpTrackingPage {
   }
 
   /**
-   * Lance le tirage du créneau, après une confirmation qui rappelle ses inscrits, ses places et ses
-   * avertissements de suivi rouges. Le suivi se relit ensuite, et la région `aria-live` l'annonce.
+   * Lance le tirage du créneau, après une confirmation qui rappelle ses inscrits, ses places et tous
+   * ses avertissements de suivi, chacun dans sa couleur : les jaunes disent aussi s'il faut programmer
+   * ou retirer une partie avant de fermer les inscriptions. Le suivi se relit ensuite, et la région
+   * `aria-live` l'annonce.
    */
   protected async launch(slot: TimeSlotTrackingDto) {
     const launched = await this.confirmation.ask({
       question: fr`Lancer le tirage du créneau ${slot.rank} ?`,
       consequences: [
         fr`${countOf(slot.demand, 'participant', 'participants')} ${plural(slot.demand, 'est inscrit', 'sont inscrits')} sur ce créneau, pour ${formatSeatRange(slot.capacity)} ${this.places(slot.capacity.max)}.`,
-        ...slot.warnings
-          .filter(({ level }) => level === 'danger')
-          .map(({ title, detail }) => fr`${title}. ${detail}`),
+        ...slot.warnings.map(
+          ({ title, detail, level }): Consequence => ({ text: fr`${title}. ${detail}`, level }),
+        ),
         fr`Les inscriptions du créneau seront fermées. Personne n'est notifié avant la publication.`,
       ],
       confirmLabel: 'Lancer le tirage',

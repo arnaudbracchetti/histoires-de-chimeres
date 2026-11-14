@@ -44,6 +44,7 @@ Un seul thème, sombre. Les jetons sont des **jetons de rôle** en anglais, pos�
 | Texte sur Charbon                    | 14,98:1        |
 | Texte sur Anthracite 3               | 11,56:1        |
 | Texte secondaire sur Charbon         | 7,28:1         |
+| Texte secondaire sur Anthracite 1    | 6,79:1         |
 | Texte secondaire sur Anthracite 2    | 6,25:1         |
 | Texte secondaire sur Anthracite 3    | 5,62:1         |
 | Orange sur Charbon                   | 7,93:1         |

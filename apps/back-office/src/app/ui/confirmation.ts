@@ -9,7 +9,8 @@ import { Icon } from './icon';
  * Une conséquence, un paragraphe : son texte, ou un avertissement jaune, avec son icône
  * (docs/design/patterns.md, Statuts).
  */
-export type Consequence = string | { text: string; level: 'warning' };
+/** Un paragraphe du dialogue : sans couleur, ou un avertissement jaune ou rouge, avec son icône. */
+export type Consequence = string | { text: string; level: 'warning' | 'danger' };
 
 export type ConfirmationRequest = {
   /** Question qui nomme l'objet : « Supprimer le créneau 2 ? ». */
@@ -56,7 +57,11 @@ let nextId = 0;
       @if (typeof consequence === 'string') {
         <p>{{ consequence }}</p>
       } @else {
-        <p class="warning"><app-icon name="triangle-alert" />{{ consequence.text }}</p>
+        <p [class]="consequence.level">
+          <app-icon [name]="consequence.level === 'danger' ? 'octagon-alert' : 'triangle-alert'" />{{
+            consequence.text
+          }}
+        </p>
       }
     }
     @if (refusal(); as message) {
@@ -76,11 +81,16 @@ let nextId = 0;
   styleUrl: './dialog.css',
   styles: `
     @layer components {
-      .warning {
+      .warning,
+      .danger {
         display: flex;
         gap: var(--space-xs);
         align-items: baseline;
         color: var(--warning);
+      }
+
+      .danger {
+        color: var(--danger);
       }
     }
   `,

@@ -527,7 +527,7 @@ describe('Pilotage du jour J', () => {
       );
     });
 
-    it('demande une confirmation qui rappelle les inscrits, les places et les avertissements rouges', async () => {
+    it('demande une confirmation qui rappelle les inscrits, les places et tous les avertissements, dans leur couleur', async () => {
       const { button, dialog, settle } = await render({
         ...TRACKING,
         timeSlots: TRACKING.timeSlots.map((slot) =>
@@ -560,7 +560,17 @@ describe('Pilotage du jour J', () => {
       expect([...dialog()!.querySelectorAll('p')].map((paragraph) => text(paragraph))).toEqual([
         '26 participants sont inscrits sur ce créneau, pour 14 à 22 places.',
         'Il manque 4 places. 26 participants pour 22 places au plus.',
+        'Presque plein. Rien de grave.',
         "Les inscriptions du créneau seront fermées. Personne n'est notifié avant la publication.",
+      ]);
+      expect(
+        [...dialog()!.querySelectorAll('p.danger, p.warning')].map((paragraph) => [
+          paragraph.className,
+          paragraph.querySelector('use')?.getAttribute('href'),
+        ]),
+      ).toEqual([
+        ['danger', expect.stringContaining('octagon-alert')],
+        ['warning', expect.stringContaining('triangle-alert')],
       ]);
       expect(document.activeElement?.textContent?.trim()).toBe('Annuler');
       expect(
@@ -1669,23 +1679,28 @@ describe('Pilotage du jour J', () => {
       ).toEqual(['Sans partie · 1']);
     });
 
-    it('compte les avertissements sur la tuile, avec l’icône du plus grave', async () => {
+    it('écrit sur la tuile le plus grave des avertissements, puis le nombre des autres', async () => {
       const { tiles } = await render(withWarnings(WARNINGS));
+      const top = tiles()[1]!.querySelector('.top-warning')!;
 
-      expect(text(tiles()[1]!.querySelector('.warning-count'))).toBe('3 avertissements');
-      expect(tiles()[1]!.querySelector('.warning-count use')?.getAttribute('href')).toContain(
-        'octagon-alert',
+      expect(top.textContent?.replaceAll(/\s+/g, ' ')).toBe(
+        'Il manque 4 places +2, et 2 autres avertissements',
       );
-      expect(tiles()[2]!.querySelector('.warning-count')).toBeNull();
+      expect(text(top.querySelector('.more'))).toBe('+2');
+      expect(top.querySelector('.more')?.getAttribute('aria-hidden')).toBe('true');
+      expect(top.classList).toContain('danger');
+      expect(top.querySelector('use')?.getAttribute('href')).toContain('octagon-alert');
+      expect(tiles()[2]!.querySelector('.top-warning')).toBeNull();
     });
 
-    it('compte un seul avertissement jaune, au singulier', async () => {
+    it('écrit seul un avertissement jaune unique, sans compteur', async () => {
       const { tiles } = await render(withWarnings([WARNINGS[2]!]));
+      const top = tiles()[1]!.querySelector('.top-warning')!;
 
-      expect(text(tiles()[1]!.querySelector('.warning-count'))).toBe('1 avertissement');
-      expect(tiles()[1]!.querySelector('.warning-count use')?.getAttribute('href')).toContain(
-        'triangle-alert',
-      );
+      expect(text(top)).toBe('1 partie sous son minimum');
+      expect(top.querySelector('.more')).toBeNull();
+      expect(top.classList).toContain('warning');
+      expect(top.querySelector('use')?.getAttribute('href')).toContain('triangle-alert');
     });
 
     it('remplit en jaune la jauge d’un créneau « presque plein » ou qui a « trop de parties »', async () => {
