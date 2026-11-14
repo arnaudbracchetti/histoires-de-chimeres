@@ -26,7 +26,8 @@ services:
     restart: unless-stopped
 
   app:
-    image: ghcr.io/arnaudbracchetti/histoires-de-chimeres-app:${IMAGE_TAG:-latest}
+    # Version obligatoire (#197) : sans IMAGE_TAG, docker compose refuse de démarrer.
+    image: ghcr.io/arnaudbracchetti/histoires-de-chimeres-app:${IMAGE_TAG:?IMAGE_TAG manque dans .env (ex. IMAGE_TAG=v1.2.3)}
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?schema=public
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}

@@ -60,7 +60,7 @@ Pièges :
 
 ## Déploiement
 
-GitHub Actions (`.github/workflows/ci.yml`) : le job `verify` passe sur chaque push de main, chaque PR et chaque tag `v*.*.*`. Contrôle des migrations, construction des packages, `prisma generate`, lint, `test`, puis suite HTTP contre un service PostgreSQL. Aucun secret.
+GitHub Actions (`.github/workflows/ci.yml`) : le job `verify` passe sur chaque push de main, chaque PR et chaque tag `v*.*.*`. Contrôle des migrations, construction des packages, `prisma generate`, lint, `test`, puis suite HTTP contre un service PostgreSQL. Aucun secret. Sur un tag `vX.Y.Z`, le job `image` (après `verify`) vérifie que le commit est sur main, puis publie `ghcr.io/arnaudbracchetti/histoires-de-chimeres-app:<tag>`, à la version seule (`APP_VERSION=<tag>`, pas de `latest`). `docker-compose.prod.yml` exige `IMAGE_TAG` : sans lui, toute commande `docker compose` échoue.
 
 Une seule image (`Dockerfile`), sur le modèle d'Agilometre (`/home/arnaud/projets/agilometre`). NestJS y sert le front office sur `/`, le back office sur `/gestion/` et l'API sur `/api`. Le service worker du front office a pour scope `/` : son `ngsw-config.json` exclut `/gestion` et `/api` de ses `navigationUrls`. À la différence d'Agilometre, l'image n'embarque que les dépendances de production de l'API (étape `prod-deps`, CLI Prisma comprise pour les migrations).
 

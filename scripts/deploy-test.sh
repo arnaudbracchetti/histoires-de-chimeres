@@ -68,7 +68,8 @@ ok "image chargée sur le serveur"
 start_tag() {
   remote "set -e
     cd $DEPLOY_DIR
-    sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=$1/' .env
+    # Sans la ligne, docker-compose.prod.yml refuse de démarrer : on l'ajoute.
+    grep -q '^IMAGE_TAG=' .env && sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=$1/' .env || echo 'IMAGE_TAG=$1' >> .env
     docker compose -f docker-compose.prod.yml up -d --pull never
     for i in \$(seq 1 $((HEALTH_TIMEOUT / 5))); do
       [ \"\$(docker inspect -f '{{.State.Health.Status}}' $CONTAINER)\" = healthy ] && exit 0
