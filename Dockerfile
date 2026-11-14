@@ -32,7 +32,10 @@ COPY . .
 RUN pnpm build
 
 FROM base AS runtime
-ENV NODE_ENV=production
+# Le tag Git de l'image, renvoyé par /api/health (« dev » sans build-arg). Déclaré dans l'étape
+# finale seule : un changement de version ne fait pas reconstruire les étapes de build.
+ARG APP_VERSION
+ENV NODE_ENV=production APP_VERSION=$APP_VERSION
 WORKDIR /repo
 
 # node_modules vient de prod-deps : sans les outils de build, l'image est plus légère, et

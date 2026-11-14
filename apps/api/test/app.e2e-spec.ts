@@ -13,13 +13,25 @@ describe('Application (e2e)', () => {
 
   afterEach(async () => {
     await app.close();
+    vi.unstubAllEnvs();
   });
 
-  it('répond au contrôle de santé', () => {
+  it('répond au contrôle de santé, en version « dev » hors image', () => {
+    vi.stubEnv('APP_VERSION', undefined);
+
     return request(app)
       .get(apiUrl(healthEndpoints.check))
       .expect(200)
-      .expect({ status: 'ok' });
+      .expect({ status: 'ok', version: 'dev' });
+  });
+
+  it("donne la version de l'image, lue dans APP_VERSION", () => {
+    vi.stubEnv('APP_VERSION', 'v1.2.3');
+
+    return request(app)
+      .get(apiUrl(healthEndpoints.check))
+      .expect(200)
+      .expect({ status: 'ok', version: 'v1.2.3' });
   });
 
   it('répond 404 à une route inconnue, sans la traiter en erreur interne', () => {
