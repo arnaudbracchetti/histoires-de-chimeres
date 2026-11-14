@@ -23,7 +23,7 @@ import { QrCode } from './qr-code';
   selector: 'app-poster-page',
   imports: [Button, Loadable, PageHeader, QrCode],
   template: `
-    <app-page-header title="Informations de connexion">
+    <app-page-header title="Informations de connexion" width="full">
       <button appButton="primary" type="button" (click)="print()">Imprimer l'affiche</button>
     </app-page-header>
     <app-loadable [resource]="store.convention" failure="Impossible de charger la convention.">

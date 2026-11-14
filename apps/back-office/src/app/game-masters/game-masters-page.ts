@@ -7,14 +7,7 @@ import { PageHeader } from '../shell/page-header';
   imports: [GameMasterList, PageHeader],
   template: `
     <app-page-header title="MJ" />
-    <app-game-master-list />
-  `,
-  styles: `
-    @layer components {
-      app-game-master-list {
-        padding: var(--space-l) var(--space-xl);
-      }
-    }
+    <app-game-master-list class="page-body" />
   `,
 })
 export class GameMastersPage {}

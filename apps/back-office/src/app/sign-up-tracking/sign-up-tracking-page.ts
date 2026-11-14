@@ -149,7 +149,7 @@ const LAUNCHED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, strin
     TrackedReservePanel,
   ],
   template: `
-    <app-page-header title="Pilotage du jour J">
+    <app-page-header title="Pilotage du jour J" width="full">
       <p appPageSubtitle class="freshness">
         @if (tracking.ageLine(); as line) {
           <button type="button" (click)="tracking.reload()">{{ line }}</button>

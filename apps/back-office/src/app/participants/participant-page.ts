@@ -125,6 +125,7 @@ const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', da
       }
     </app-page-header>
     <app-loadable
+      class="page-body"
       [resource]="resource"
       failure="Impossible de charger le pseudo."
       notFound="Ce pseudo n'existe pas, ou plus."
@@ -253,11 +254,6 @@ const REMOVE: MoreMenuItem = { value: 'remove', label: 'Supprimer le pseudo', da
       app-loadable {
         display: flex;
         flex-direction: column;
-        padding: var(--space-l) var(--space-xl);
-      }
-
-      .binder {
-        max-width: 48rem;
       }
 
       /* La ligne des rôles a sa place réservée : elle ne décale rien en apparaissant. */

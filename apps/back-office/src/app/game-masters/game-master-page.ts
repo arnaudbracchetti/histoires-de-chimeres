@@ -108,6 +108,7 @@ type TabValue = 'scenarios' | 'availabilities' | 'games';
     </app-page-header>
     @if (gameMasterId()) {
       <app-loadable
+        class="page-body"
         [resource]="resource"
         failure="Impossible de charger le MJ."
         notFound="Ce MJ n'existe pas, ou plus."
@@ -130,16 +131,6 @@ type TabValue = 'scenarios' | 'availabilities' | 'games';
             </div>
             <div ngTabPanel value="scenarios" class="panel">
               <ng-template ngTabContent>
-                @if (canPropose()) {
-                  <div class="panel-actions">
-                    <a
-                      appButton="primary"
-                      [routerLink]="['/mj', gameMaster.id, 'nouveau-scenario']"
-                    >
-                      Proposer un scénario
-                    </a>
-                  </div>
-                }
                 @if (gameMaster.scenarios.length) {
                   <ul class="rows scenarios">
                     @for (scenario of gameMaster.scenarios; track scenario.id) {
@@ -157,6 +148,15 @@ type TabValue = 'scenarios' | 'availabilities' | 'games';
                   </ul>
                 } @else {
                   <p class="none">Aucun scénario pour l'instant.</p>
+                }
+                @if (canPropose()) {
+                  <a
+                    appButton="primary"
+                    class="propose"
+                    [routerLink]="['/mj', gameMaster.id, 'nouveau-scenario']"
+                  >
+                    Proposer un scénario
+                  </a>
                 }
               </ng-template>
             </div>
@@ -200,7 +200,7 @@ type TabValue = 'scenarios' | 'availabilities' | 'games';
         }
       </app-loadable>
     } @else if (account()) {
-      <p class="body none">Ton compte n'est pas celui d'un MJ&nbsp;: tu n'as pas de fiche.</p>
+      <p class="page-body none">Ton compte n'est pas celui d'un MJ&nbsp;: tu n'as pas de fiche.</p>
     }
   `,
   styles: `
@@ -209,21 +209,15 @@ type TabValue = 'scenarios' | 'availabilities' | 'games';
         display: flex;
         flex-direction: column;
         gap: var(--space-xl);
-        padding: var(--space-l) var(--space-xl);
-      }
-
-      .body {
-        padding: var(--space-l) var(--space-xl);
       }
 
       .none {
         color: var(--text-muted);
       }
 
-      .panel-actions {
-        display: flex;
-        justify-content: flex-end;
-        margin-bottom: var(--space-m);
+      /* Sous la liste qu'il alimente, comme « Ajouter un MJ » sous le tableau des MJ. */
+      .propose {
+        margin-top: var(--space-m);
       }
 
       .rows {
@@ -248,11 +242,11 @@ type TabValue = 'scenarios' | 'availabilities' | 'games';
       }
 
       .scenarios {
-        grid-template-columns: 32px minmax(12rem, max-content) repeat(3, max-content);
+        grid-template-columns: 32px minmax(12rem, 1fr) repeat(3, max-content);
       }
 
       .games {
-        grid-template-columns: max-content minmax(12rem, max-content) max-content;
+        grid-template-columns: max-content minmax(12rem, 1fr) max-content;
       }
 
       app-scenario-illustration {

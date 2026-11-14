@@ -139,6 +139,16 @@
 
 @layer components {
   /*
+   * Corps d'une page à colonne (docs/design/patterns.md, Le back office sur l'écran) : la largeur
+   * de `--page-width`, alignée à gauche, la même que celle de son en-tête. Une page pleine largeur
+   * (Calendrier, Pilotage du jour J, Informations de connexion) ne la porte pas.
+   */
+  .page-body {
+    max-width: calc(var(--page-width) + 2 * var(--space-xl));
+    padding: var(--space-l) var(--space-xl);
+  }
+
+  /*
    * Boîte des dialogues de placement : « Programmer sur… », « Déplacer vers… » et « Programmer
    * ici… ». La ligne du refus est réservée : un refus ne décale rien.
    */

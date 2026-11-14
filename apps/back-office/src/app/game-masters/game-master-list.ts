@@ -104,9 +104,8 @@ import { ParticipantCreation } from '../participants/participant-creation';
         align-items: flex-start;
       }
 
-      /* Largeur fixe : assez pour la ligne « Nouveau MJ », son champ et ses boutons. */
       table {
-        width: 46rem;
+        width: 100%;
       }
 
       .number {

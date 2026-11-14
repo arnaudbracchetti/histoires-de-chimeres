@@ -56,7 +56,7 @@ const SEARCH_DELAY_MS = 250;
       </p>
       <button type="button" appButton="primary" (click)="create()">Créer un pseudo</button>
     </app-page-header>
-    <app-loadable [resource]="list.firstRead" failure="Impossible de charger les participants.">
+    <app-loadable class="page-body" [resource]="list.firstRead" failure="Impossible de charger les participants.">
       @if (list.value(); as participants) {
         @if (!participants.length && !search()) {
           <app-empty-state>
@@ -178,7 +178,6 @@ const SEARCH_DELAY_MS = 250;
         flex-direction: column;
         gap: var(--space-m);
         align-items: flex-start;
-        padding: var(--space-l) var(--space-xl);
       }
 
       /* La ligne d'âge a sa place réservée : elle ne décale rien en apparaissant. */
@@ -205,7 +204,7 @@ const SEARCH_DELAY_MS = 250;
       }
 
       table {
-        width: 72rem;
+        width: 100%;
       }
 
       .filters {

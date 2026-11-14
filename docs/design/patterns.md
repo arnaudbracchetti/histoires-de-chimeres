@@ -15,6 +15,12 @@ Cette page décrit les patterns du back office. Une partie vaut aussi pour le fr
 
 Le back office se conçoit pour un portable, à **1280 px de large et plus**. En dessous de 1280 px, le rail se replie de lui-même. En dessous de 1024 px, rien n'est garanti : le back office ne vise ni la tablette ni le téléphone.
 
+**Deux gabarits de page**, pour qu'une action ne s'isole jamais loin de son contenu sur un grand écran :
+
+- **La colonne** (par défaut) : 60rem (`--page-width`), alignée à gauche contre le rail, pas centrée. L'en-tête suit la même colonne : son fond court sur toute la largeur, mais son action de droite tombe au-dessus du bord droit du contenu. Le corps porte la classe `.page-body`. Les tableaux prennent toute la largeur de la colonne ; un formulaire garde sa largeur de lecture (32 à 40rem) à l'intérieur.
+- **La pleine largeur** (`<app-page-header width="full">`) : seulement pour les pages qui montrent la journée entière ou s'en servent, le Calendrier, le Pilotage du jour J et les Informations de connexion.
+- **Une action d'ajout se place sous ce qu'elle ajoute**, à gauche : « Ajouter un MJ » sous le tableau des MJ, « Proposer un scénario » sous la liste des scénarios d'un MJ. Seule l'action principale de la page va dans l'en-tête.
+
 Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est en CSS natif ([ADR 0006](../adr/0006-interface-sans-bibliotheque-de-composants.md), [ecriture-css.md](ecriture-css.md)).
 
 ## Coquille
@@ -88,7 +94,7 @@ Forme retenue sur prototype, face au tableau à ligne en édition, aux étiquett
 - **La liste** est un tableau (voir [Tableaux](#tableaux)) : le pseudo, lien vers la fiche, triable, avec un filtre texte au-dessus. Le filtre ignore la casse et les accents.
 - **« Ajouter un MJ »** (secondaire), **sous le tableau**, ouvre l'assistant « Créer un pseudo » (voir [Participants](#participants)), le rôle MJ coché d'avance. La liste est relue à sa fermeture.
 - **La fiche** : « MJ › pseudo ». Un crayon à côté du titre (« Modifier le pseudo ») remplace le h1 par le champ, avec « Enregistrer » et « Annuler ». Entrée enregistre, Échap ferme, le refus s'affiche sous le champ, et le focus revient au crayon. « Supprimer le MJ » est dans le menu « ⋯ » de l'en-tête.
-- **Trois onglets de classeur** (voir [Onglets de classeur](#onglets-de-classeur)) : Scénarios (par défaut, « Proposer un scénario » en bouton principal en haut à droite de l'onglet), Disponibilités (la frise, sur toute la largeur, et le compteur « déclarés / créneaux » sur l'onglet), Parties (créneau, scénario, table).
+- **Trois onglets de classeur** (voir [Onglets de classeur](#onglets-de-classeur)) : Scénarios (par défaut, « Proposer un scénario » en bouton principal sous la liste), Disponibilités (la frise, sur la largeur de la colonne, et le compteur « déclarés / créneaux » sur l'onglet), Parties (créneau, scénario, table).
 - **Ma fiche** : la fiche du MJ connecté, titrée par son pseudo, sans crayon, sans « ⋯ » ni fil d'Ariane. Ses onglets : Mes scénarios, Mes disponibilités, Mes parties. Un MJ seul qui ouvre sa fiche par `/gestion/mj/<id>` arrive sur Ma fiche.
 - **Scénarios de la convention** (la liste des scénarios, pour un MJ) : un filtre « Tous / Les miens » à côté du filtre texte. Le MJ d'un autre scénario s'affiche sans lien, et la page de ce scénario se lit seulement : image, jeu, places, durée, avertissements, présentation rendue, sans « ⋯ » ni formulaire.
 - **Sans MJ**, l'état vide gravé invite à « Créer le premier MJ », qui ouvre l'assistant comme « Ajouter un MJ ».

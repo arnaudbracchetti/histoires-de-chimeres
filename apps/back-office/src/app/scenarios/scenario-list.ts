@@ -141,7 +141,7 @@ const SORT_KEYS = {
       }
 
       table {
-        width: 64rem;
+        width: 100%;
       }
 
       .tools {

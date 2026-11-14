@@ -59,6 +59,7 @@ const MENU: readonly MoreMenuItem[] = [
       }
     </app-page-header>
     <app-loadable
+      class="page-body"
       [resource]="resource"
       failure="Impossible de charger le scénario."
       notFound="Ce scénario n'existe pas, ou plus."
@@ -108,7 +109,6 @@ const MENU: readonly MoreMenuItem[] = [
         display: flex;
         flex-direction: column;
         gap: var(--space-l);
-        padding: var(--space-l) var(--space-xl);
       }
 
       .game-master {

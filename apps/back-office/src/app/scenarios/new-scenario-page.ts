@@ -26,6 +26,7 @@ import { fr } from '@chimeres/design';
   template: `
     <app-page-header title="Nouveau scénario" [trail]="trail()" />
     <app-loadable
+      class="page-body"
       [resource]="gameMaster"
       failure="Impossible de charger le MJ."
       notFound="Ce MJ n'existe pas, ou plus."
@@ -45,7 +46,6 @@ import { fr } from '@chimeres/design';
         display: flex;
         flex-direction: column;
         gap: var(--space-l);
-        padding: var(--space-l) var(--space-xl);
       }
 
       .image-zone {

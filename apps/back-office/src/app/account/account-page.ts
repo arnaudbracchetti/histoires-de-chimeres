@@ -28,7 +28,7 @@ const EMPTY_MODEL = { currentPassword: '', password: '' };
         <p appPageSubtitle class="nickname">{{ me.nickname }}</p>
       }
     </app-page-header>
-    <section aria-labelledby="password-title">
+    <section class="page-body" aria-labelledby="password-title">
       <h2 id="password-title">Mot de passe</h2>
       <form [formRoot]="form">
         <app-field label="Mot de passe actuel">
@@ -60,7 +60,6 @@ const EMPTY_MODEL = { currentPassword: '', password: '' };
         display: flex;
         flex-direction: column;
         gap: var(--space-m);
-        padding: var(--space-l) var(--space-xl);
       }
 
       h2 {

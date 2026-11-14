@@ -9,14 +9,7 @@ import { PageHeader } from '../shell/page-header';
   imports: [PageHeader, ScenarioList],
   template: `
     <app-page-header [title]="title()" />
-    <app-scenario-list />
-  `,
-  styles: `
-    @layer components {
-      app-scenario-list {
-        padding: var(--space-l) var(--space-xl);
-      }
-    }
+    <app-scenario-list class="page-body" />
   `,
 })
 export class ScenariosPage {

@@ -70,6 +70,9 @@
     --line-height-title: 1.2;
     --line-height-display: 1.1; /* pseudo affiché en grand */
 
+    /* Dimensions du back office */
+    --page-width: 60rem; /* colonne d'une page, en-tête compris (docs/design/patterns.md) */
+
     /* Dimensions du front office */
     --touch-target: 44px; /* plus petite cible tactile */
     --button-height: 48px;

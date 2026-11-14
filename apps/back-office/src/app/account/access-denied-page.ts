@@ -10,7 +10,7 @@ import { AccountStore, MY_SHEET_PATH } from './account-store';
   imports: [Button, PageHeader, RouterLink],
   template: `
     <app-page-header title="Accès refusé" />
-    <div class="body">
+    <div class="body page-body">
       <p>Ton compte ne donne pas accès à cette page&nbsp;: elle est réservée aux Organisateurs.</p>
       @if (account()?.gameMasterId) {
         <a appButton="secondary" [routerLink]="mySheet">Revenir à ma fiche</a>
@@ -24,7 +24,6 @@ import { AccountStore, MY_SHEET_PATH } from './account-store';
         flex-direction: column;
         gap: var(--space-m);
         align-items: flex-start;
-        padding: var(--space-l) var(--space-xl);
       }
     }
   `,

@@ -15,7 +15,7 @@ import { EmptyState } from '../ui/empty-state';
   selector: 'app-calendar-page',
   imports: [Button, EmptyState, Loadable, PageHeader, RouterLink, ScheduleBoard],
   template: `
-    <app-page-header title="Calendrier" />
+    <app-page-header title="Calendrier" width="full" />
     <app-loadable [resource]="store.convention" failure="Impossible de charger la convention.">
       @if (convention(); as convention) {
         @if (!convention.timeSlots.length) {
