@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { Account } from '../account/account.js';
 import { Refusal } from '../refusal.js';
 import { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Convention } from './convention.js';
 import { PresenceCode } from './presence-code.js';
 import { TimeOfDay } from './time-of-day.js';
+
+/** L'Organisateur qui supprime, dont le pseudo n'est pas celui qu'il supprime (ID-16). */
+const OTHER_ORGANIZER = Account.createForParticipant('a-other', 'p-other');
+/** Aucun pseudo n'a de compte. */
+const NO_ACCOUNTS: Account[] = [];
 
 function aConvention(): Convention {
   return Convention.restore({
@@ -143,7 +149,12 @@ describe('MJ de la convention', () => {
       const convention = aConvention();
       convention.addGameMaster('g1', 'p-g1', 'Élodie');
 
-      convention.removeGameMaster('g1', ScenarioCatalogue.restore([]));
+      convention.removeGameMaster(
+        'g1',
+        ScenarioCatalogue.restore([]),
+        OTHER_ORGANIZER,
+        NO_ACCOUNTS,
+      );
 
       expect(convention.participants).toEqual([]);
     });
@@ -189,7 +200,7 @@ describe('MJ de la convention', () => {
       { id: 's1', gameMasterId: 'g2', duration: 1, minSeats: 3, maxSeats: 5 },
     ]);
 
-    convention.removeGameMaster('g1', catalogue);
+    convention.removeGameMaster('g1', catalogue, OTHER_ORGANIZER, NO_ACCOUNTS);
 
     expect(gameMastersOf(convention)).toEqual(['g2 Kaïros']);
   });
@@ -202,10 +213,27 @@ describe('MJ de la convention', () => {
       { id: 's2', gameMasterId: 'g1', duration: 1, minSeats: 3, maxSeats: 5 },
     ]);
 
-    const refusal = refusalOf(() => convention.removeGameMaster('g1', catalogue));
+    const refusal = refusalOf(() =>
+      convention.removeGameMaster('g1', catalogue, OTHER_ORGANIZER, NO_ACCOUNTS),
+    );
 
     expect(refusal.code).toBe('game-master-has-scenarios');
     expect(refusal.params).toEqual({ scenarios: 2 });
+    expect(gameMastersOf(convention)).toEqual(['g1 Élodie']);
+  });
+
+  it("refuse qu'un Organisateur MJ supprime son propre pseudo, après la règle des scénarios (ID-16, PR-12)", () => {
+    const convention = aConvention();
+    convention.addGameMaster('g1', 'p-g1', 'Élodie');
+    const elodie = Account.createForParticipant('a1', 'p-g1');
+    const withScenario = ScenarioCatalogue.restore([
+      { id: 's1', gameMasterId: 'g1', duration: 1, minSeats: 3, maxSeats: 5 },
+    ]);
+    const remove = (catalogue: ScenarioCatalogue) =>
+      refusalOf(() => convention.removeGameMaster('g1', catalogue, elodie, [elodie])).code;
+
+    expect(remove(withScenario)).toBe('game-master-has-scenarios');
+    expect(remove(ScenarioCatalogue.restore([]))).toBe('own-nickname-removal');
     expect(gameMastersOf(convention)).toEqual(['g1 Élodie']);
   });
 
@@ -216,7 +244,13 @@ describe('MJ de la convention', () => {
     ],
     [
       'supprimer un',
-      (convention: Convention) => convention.removeGameMaster('x', ScenarioCatalogue.restore([])),
+      (convention: Convention) =>
+        convention.removeGameMaster(
+          'x',
+          ScenarioCatalogue.restore([]),
+          OTHER_ORGANIZER,
+          NO_ACCOUNTS,
+        ),
     ],
   ])('refuse de %s MJ inconnu', (_, action) => {
     const convention = aConvention();

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Account } from '../account/account.js';
 import { Refusal } from '../refusal.js';
 import { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Scenario, type Duration } from '../scenario/scenario.js';
@@ -6,6 +7,11 @@ import { Convention } from './convention.js';
 import type { LocalMoment } from './local-moment.js';
 import { PresenceCode } from './presence-code.js';
 import { TimeOfDay } from './time-of-day.js';
+
+/** L'Organisateur qui supprime, dont le pseudo n'est pas celui qu'il supprime (ID-16). */
+const OTHER_ORGANIZER = Account.createForParticipant('a-other', 'p-other');
+/** Aucun pseudo n'a de compte. */
+const NO_ACCOUNTS: Account[] = [];
 
 // Les règles des inscriptions (module `SignUps`), à travers `Convention` : son interface est la surface de test.
 
@@ -487,7 +493,7 @@ describe('Supprimer un MJ (PR-12)', () => {
     convention.signUpForGame('p-g3', 'brumes', CATALOGUE);
     convention.signUpForGame('p1', 'brumes', CATALOGUE);
 
-    convention.removeGameMaster('g3', ScenarioCatalogue.restore([]));
+    convention.removeGameMaster('g3', ScenarioCatalogue.restore([]), OTHER_ORGANIZER, NO_ACCOUNTS);
 
     expect(signUpsOf(convention)).toEqual(['p1 brumes']);
   });
@@ -654,7 +660,7 @@ describe('Cesser d’être participant sans partie', () => {
     convention.signUpForGame('p-g3', 'neons', CATALOGUE);
     convention.unscheduleGame('neons');
 
-    convention.removeGameMaster('g3', ScenarioCatalogue.restore([]));
+    convention.removeGameMaster('g3', ScenarioCatalogue.restore([]), OTHER_ORGANIZER, NO_ACCOUNTS);
 
     expect(convention.participantsWithoutGame).toEqual([]);
   });

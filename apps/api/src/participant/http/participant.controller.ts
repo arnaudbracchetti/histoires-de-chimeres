@@ -114,9 +114,10 @@ export class ParticipantController {
   @Delete(participantEndpoints.remove.path)
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(
+    @ActingAccountId() actingAccountId: string,
     @Param('participantId') participantId: string,
   ): Promise<ResponseOf<typeof participantEndpoints.remove>> {
-    return this.removeParticipant.execute(participantId);
+    return this.removeParticipant.execute(actingAccountId, participantId);
   }
 
   /** Fusionne le pseudo dans la destination (ID-11), et rend la fiche de la destination. */

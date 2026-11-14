@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Account } from '../account/account.js';
 import type { Notification } from '../notification.js';
 import { Refusal } from '../refusal.js';
 import { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
@@ -12,6 +13,11 @@ import type { LocalMoment } from './local-moment.js';
 import { ParticipantWithoutGame } from './participant-without-game.js';
 import { PresenceCode } from './presence-code.js';
 import { TimeOfDay } from './time-of-day.js';
+
+/** L'Organisateur qui supprime, dont le pseudo n'est pas celui qu'il supprime (ID-16). */
+const OTHER_ORGANIZER = Account.createForParticipant('a-other', 'p-other');
+/** Aucun pseudo n'a de compte. */
+const NO_ACCOUNTS: Account[] = [];
 
 // Les règles des Tirages (module `Draws`), à travers `Convention` : son interface est la surface de test.
 
@@ -351,7 +357,7 @@ describe('Supprimer un MJ (PR-12)', () => {
     convention.signUpForGame('p1', 'brumes', CATALOGUE);
     convention.launchDraw('s1', CATALOGUE, FIRST_GAME, RANDOM);
 
-    convention.removeGameMaster('g3', CATALOGUE);
+    convention.removeGameMaster('g3', CATALOGUE, OTHER_ORGANIZER, NO_ACCOUNTS);
 
     expect(assignmentsOf(convention, 's1')).toEqual(['p1 brumes']);
   });

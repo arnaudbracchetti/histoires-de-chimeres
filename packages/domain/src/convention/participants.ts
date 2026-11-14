@@ -1,3 +1,4 @@
+import type { Account } from '../account/account.js';
 import { ComparableName } from '../comparable-name.js';
 import { Refusal } from '../refusal.js';
 import type { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
@@ -264,14 +265,18 @@ export class Participants {
   /**
    * Refuse de fusionner la source dans la destination (ID-11), dans l'ordre : une source ou une
    * destination inconnue, une source égale à la destination, une source MJ, qui se gère par sa fiche
-   * de MJ (PR-12). La destination peut être MJ.
+   * de MJ (PR-12), une source qui a un compte parmi `accounts`, tous les comptes : on lui retire
+   * d'abord ses rôles (ID-16). La destination peut être MJ, et avoir un compte, qui ne change pas.
    */
-  verifyMergeAllowed(sourceId: string, destinationId: string): void {
+  verifyMergeAllowed(sourceId: string, destinationId: string, accounts: readonly Account[]): void {
     const source = this.allParticipants.findExistingItemById(sourceId);
     this.allParticipants.verifyItemExists(destinationId);
     if (source.id === destinationId) throw new Refusal('merge-into-itself', {});
     if (this.hasGameMasterRole(source)) {
       throw new Refusal('participant-is-game-master', { nickname: source.nickname.text });
+    }
+    if (accounts.some(({ participantId }) => participantId === source.id)) {
+      throw new Refusal('merge-source-has-account', { nickname: source.nickname.text });
     }
   }
 
@@ -279,8 +284,12 @@ export class Participants {
    * Les participants sans la source, fusionnée dans la destination (ID-11), dont le pseudo redevient
    * libre. Refuse comme `verifyMergeAllowed()`.
    */
-  getParticipantsAfterMergingParticipant(sourceId: string, destinationId: string): Participants {
-    this.verifyMergeAllowed(sourceId, destinationId);
+  getParticipantsAfterMergingParticipant(
+    sourceId: string,
+    destinationId: string,
+    accounts: readonly Account[],
+  ): Participants {
+    this.verifyMergeAllowed(sourceId, destinationId, accounts);
     return this.getParticipantsAfterRemovingParticipant(sourceId);
   }
 

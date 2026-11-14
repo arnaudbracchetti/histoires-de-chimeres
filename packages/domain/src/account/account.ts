@@ -103,6 +103,14 @@ export class Account {
   }
 
   /**
+   * Le pseudo du compte peut être supprimé à la demande du compte `actingAccount` (ID-10, ID-16) :
+   * un Organisateur ne supprime pas son propre pseudo, ce qui garde au moins un Organisateur.
+   */
+  verifyNicknameRemovableBy(actingAccount: Account): void {
+    if (actingAccount.id === this.id) throw new Refusal('own-nickname-removal', {});
+  }
+
+  /**
    * Le compte n'a plus de rôle : ni Organisateur, ni MJ sur la convention (ID-16). Il doit alors
    * disparaître.
    */

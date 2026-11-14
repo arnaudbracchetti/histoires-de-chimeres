@@ -156,6 +156,10 @@ export type RefusalParams = {
   'password-is-nickname': Record<string, never>;
   /** Un Organisateur ne se retire pas lui-même le rôle d'Organisateur (ID-16). */
   'own-organizer-role-withdrawal': Record<string, never>;
+  /** Un Organisateur ne supprime pas son propre pseudo (ID-10, ID-16). */
+  'own-nickname-removal': Record<string, never>;
+  /** La source d'une fusion a un compte : on lui retire d'abord ses rôles (ID-11, ID-16). */
+  'merge-source-has-account': { nickname: string };
   /** Aucun compte n'a de lien d'accès à ce jeton : mal copié, ou remplacé par un plus récent (ADR 0018). */
   'access-link-unknown': Record<string, never>;
   /** Le lien d'accès a déjà servi à choisir le mot de passe (ADR 0018). */

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Account } from '../account/account.js';
 import { Refusal } from '../refusal.js';
 import { Convention } from './convention.js';
 import { Assignment, Draw } from './draw.js';
@@ -7,6 +8,11 @@ import { ParticipantWithoutGame } from './participant-without-game.js';
 import { PresenceCode } from './presence-code.js';
 import { SignUp } from './sign-up.js';
 import { TimeOfDay } from './time-of-day.js';
+
+/** L'Organisateur qui supprime, dont le pseudo n'est pas celui qu'il supprime (ID-16). */
+const OTHER_ORGANIZER = Account.createForParticipant('a-other', 'p-other');
+/** Aucun pseudo n'a de compte. */
+const NO_ACCOUNTS: Account[] = [];
 
 function aConvention(): Convention {
   return Convention.restore({
@@ -477,7 +483,7 @@ describe('Supprimer un pseudo (ID-10)', () => {
   it('retire le pseudo, ses inscriptions, son état sans partie et ses résultats, même après la publication', () => {
     const convention = buildConventionWithTwoDraws();
 
-    convention.removeParticipant('p1');
+    convention.removeParticipant('p1', OTHER_ORGANIZER, NO_ACCOUNTS);
 
     expect(participantsOf(convention)).toEqual(['p2 Lune']);
     expect(convention.signUps).toEqual([new SignUp('p2', 'brumes')]);
@@ -490,7 +496,7 @@ describe('Supprimer un pseudo (ID-10)', () => {
 
   it('libère le pseudo : qui le saisit ensuite crée un nouveau pseudo (ID-1)', () => {
     const convention = withElodie();
-    convention.removeParticipant('p1');
+    convention.removeParticipant('p1', OTHER_ORGANIZER, NO_ACCOUNTS);
 
     const identification = convention.identifyByNickname('p2', 'K7M2', 'Élodie', null, NOW);
 
@@ -501,16 +507,39 @@ describe('Supprimer un pseudo (ID-10)', () => {
     const convention = aConvention();
     convention.addGameMaster('g1', 'p-g1', 'Kaïros');
 
-    const refusal = refusalOf(() => convention.removeParticipant('p-g1'));
+    const refusal = refusalOf(() =>
+      convention.removeParticipant('p-g1', OTHER_ORGANIZER, NO_ACCOUNTS),
+    );
 
     expect(refusal.code).toBe('participant-is-game-master');
     expect(participantsOf(convention)).toEqual(['p-g1 Kaïros']);
     expect(convention.gameMasters).toHaveLength(1);
   });
 
+  it("refuse qu'un Organisateur supprime son propre pseudo, mais pas celui d'un autre (ID-16)", () => {
+    const convention = withElodie();
+    const elodie = Account.createForParticipant('a1', 'p1');
+
+    const refusal = refusalOf(() => convention.removeParticipant('p1', elodie, [elodie]));
+    convention.removeParticipant('p1', OTHER_ORGANIZER, [elodie]);
+
+    expect(refusal.code).toBe('own-nickname-removal');
+    expect(participantsOf(convention)).toEqual([]);
+  });
+
+  it("refuse d'abord un MJ, avant son propre pseudo (PR-12)", () => {
+    const convention = aConvention();
+    convention.addGameMaster('g1', 'p-g1', 'Kaïros');
+    const kairos = Account.createForParticipant('a1', 'p-g1');
+
+    const refusal = refusalOf(() => convention.removeParticipant('p-g1', kairos, [kairos]));
+
+    expect(refusal.code).toBe('participant-is-game-master');
+  });
+
   it('refuse de supprimer un participant inconnu', () => {
-    expect(refusalOf(() => aConvention().removeParticipant('x')).code).toBe(
-      'participant-not-found',
-    );
+    expect(
+      refusalOf(() => aConvention().removeParticipant('x', OTHER_ORGANIZER, NO_ACCOUNTS)).code,
+    ).toBe('participant-not-found');
   });
 });

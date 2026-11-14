@@ -68,19 +68,24 @@ import { PrismaParticipantReader } from './persistence/prisma-participant-reader
     },
     {
       provide: RemoveParticipant,
-      useFactory: (repository: ConventionRepository) => new RemoveParticipant(repository),
-      inject: [CONVENTION_REPOSITORY],
+      useFactory: (conventions: ConventionRepository, accounts: AccountRepository) =>
+        new RemoveParticipant(conventions, accounts),
+      inject: [CONVENTION_REPOSITORY, ACCOUNT_REPOSITORY],
     },
     {
       provide: MergeParticipant,
-      useFactory: (repository: ConventionRepository) => new MergeParticipant(repository),
-      inject: [CONVENTION_REPOSITORY],
+      useFactory: (conventions: ConventionRepository, accounts: AccountRepository) =>
+        new MergeParticipant(conventions, accounts),
+      inject: [CONVENTION_REPOSITORY, ACCOUNT_REPOSITORY],
     },
     {
       provide: ReadMergeVerdict,
-      useFactory: (conventions: ConventionRepository, schedule: ScheduleReader) =>
-        new ReadMergeVerdict(conventions, schedule),
-      inject: [CONVENTION_REPOSITORY, SCHEDULE_READER],
+      useFactory: (
+        conventions: ConventionRepository,
+        schedule: ScheduleReader,
+        accounts: AccountRepository,
+      ) => new ReadMergeVerdict(conventions, schedule, accounts),
+      inject: [CONVENTION_REPOSITORY, SCHEDULE_READER, ACCOUNT_REPOSITORY],
     },
     {
       provide: SignUpParticipantForGame,

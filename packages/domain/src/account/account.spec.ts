@@ -41,6 +41,20 @@ describe('Rôle Organisateur du compte (ID-16)', () => {
   });
 });
 
+describe('Suppression du pseudo du compte (ID-10, ID-16)', () => {
+  it("laisse un Organisateur supprimer le pseudo d'un autre compte", () => {
+    expect(() => anOrganizer('a2').verifyNicknameRemovableBy(anOrganizer('a1'))).not.toThrow();
+  });
+
+  it("refuse qu'un Organisateur supprime son propre pseudo", () => {
+    const refusal = catchRefusal(() =>
+      anOrganizer('a1').verifyNicknameRemovableBy(anOrganizer('a1')),
+    );
+
+    expect(refusal.code).toBe('own-nickname-removal');
+  });
+});
+
 describe('Compte sans rôle (ID-16)', () => {
   function aConvention(): Convention {
     const convention = Convention.restore({

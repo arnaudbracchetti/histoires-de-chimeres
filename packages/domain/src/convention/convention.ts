@@ -1,3 +1,4 @@
+import type { Account } from '../account/account.js';
 import { ComparableName } from '../comparable-name.js';
 import { buildParticipantRecipients, type Notification } from '../notification.js';
 import { Refusal } from '../refusal.js';
@@ -419,14 +420,20 @@ export class Convention {
   /**
    * Supprime un MJ, et avec lui ses disponibilités et son participant, donc ses téléphones reliés,
    * ses inscriptions, son état sans partie et ses affectations de tous les tirages. Un MJ qui a au
-   * moins un scénario reste (PR-12) : le catalogue, entier, le dit.
+   * moins un scénario reste (PR-12) : le catalogue, entier, le dit. Puis un Organisateur ne
+   * supprime pas son propre pseudo (ID-16) : `accounts`, tous les comptes, disent si le pseudo est
+   * celui de `actingAccount`.
    */
-  removeGameMaster(id: string, catalogue: ScenarioCatalogue): void {
+  removeGameMaster(
+    id: string,
+    catalogue: ScenarioCatalogue,
+    actingAccount: Account,
+    accounts: readonly Account[],
+  ): void {
     const participantId = this.allParticipants.findExistingGameMasterById(id).participant.id;
-    this.allParticipants = this.allParticipants.getParticipantsAfterRemovingGameMaster(
-      id,
-      catalogue,
-    );
+    const participants = this.allParticipants.getParticipantsAfterRemovingGameMaster(id, catalogue);
+    verifyNicknameRemovable(participantId, actingAccount, accounts);
+    this.allParticipants = participants;
     this.removeParticipantFromSignUpsAndDraws(participantId);
   }
 
@@ -435,11 +442,18 @@ export class Convention {
    * ses téléphones reliés, ses inscriptions, son état sans partie et son résultat dans tous les
    * tirages, puis son pseudo redevient libre. Une partie publiée compte un joueur de moins, sans
    * proposer la place à personne. Un MJ est refusé : il se supprime par `removeGameMaster()`
-   * (PR-12). Personne n'est notifié (NO-4).
+   * (PR-12). Puis un Organisateur ne supprime pas son propre pseudo (ID-16) : `accounts`, tous les
+   * comptes, disent si le pseudo est celui de `actingAccount`. Personne n'est notifié (NO-4).
    */
-  removeParticipant(participantId: string): void {
-    this.allParticipants =
+  removeParticipant(
+    participantId: string,
+    actingAccount: Account,
+    accounts: readonly Account[],
+  ): void {
+    const participants =
       this.allParticipants.getParticipantsAfterRemovingParticipant(participantId);
+    verifyNicknameRemovable(participantId, actingAccount, accounts);
+    this.allParticipants = participants;
     this.removeParticipantFromSignUpsAndDraws(participantId);
   }
 
@@ -448,12 +462,14 @@ export class Convention {
    * reçoit ses inscriptions, son état sans partie et ses affectations, selon les règles des
    * Inscriptions et des Tirages, lues sur l'état d'avant la fusion. La source est supprimée : ses
    * téléphones reliés perdent leur lien. Refuse une source ou une destination inconnue, une source
-   * égale à la destination, une source MJ (PR-12). Personne n'est notifié (NO-4).
+   * égale à la destination, une source MJ (PR-12), une source qui a un compte parmi `accounts`, tous
+   * les comptes (ID-16). Personne n'est notifié (NO-4).
    */
-  mergeParticipant(sourceId: string, destinationId: string): void {
+  mergeParticipant(sourceId: string, destinationId: string, accounts: readonly Account[]): void {
     const participants = this.allParticipants.getParticipantsAfterMergingParticipant(
       sourceId,
       destinationId,
+      accounts,
     );
     const collaborators = this.buildSignUpMergeCollaborators();
     this.allSignUps = this.allSignUps.getSignUpsAfterMergingParticipant(
@@ -474,8 +490,12 @@ export class Convention {
    * Ce que `mergeParticipant()` fera, créneau par créneau, dans l'ordre de la journée, sans rien
    * changer : le même calcul que la fusion. Refuse comme elle.
    */
-  computeMergeVerdict(sourceId: string, destinationId: string): MergeTimeSlotVerdict[] {
-    this.allParticipants.verifyMergeAllowed(sourceId, destinationId);
+  computeMergeVerdict(
+    sourceId: string,
+    destinationId: string,
+    accounts: readonly Account[],
+  ): MergeTimeSlotVerdict[] {
+    this.allParticipants.verifyMergeAllowed(sourceId, destinationId, accounts);
     const collaborators = this.buildSignUpMergeCollaborators();
     const signUpMerge = this.allSignUps.computeSignUpMerge(
       sourceId,
@@ -1595,3 +1615,17 @@ const TABLE_NAMING_RULES: NamingRules<Table> = {
   refuseTooLongName: (max) => new Refusal('table-name-too-long', { max }),
   refuseTakenName: (namesake) => new Refusal('table-name-taken', { name: namesake.name.text }),
 };
+
+/**
+ * Refuse que `actingAccount` supprime son propre pseudo (ID-16), en demandant au compte du
+ * participant, s'il en a un parmi `accounts`, tous les comptes.
+ */
+function verifyNicknameRemovable(
+  participantId: string,
+  actingAccount: Account,
+  accounts: readonly Account[],
+): void {
+  accounts
+    .find((account) => account.participantId === participantId)
+    ?.verifyNicknameRemovableBy(actingAccount);
+}

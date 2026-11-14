@@ -20,6 +20,7 @@ import {
   type GameMasterNicknameBody,
   type ResponseOf,
 } from '@chimeres/contract';
+import { ActingAccountId } from '../../account/http/acting-account-id.decorator.js';
 import { ZodPipe } from '../../http/zod.pipe.js';
 import { GAME_MASTER_READER } from '../game-master-reader.token.js';
 import { readSheetOrRefuse } from './game-master-sheet.js';
@@ -59,8 +60,9 @@ export class GameMasterController {
   @Delete(gameMasterEndpoints.remove.path)
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(
+    @ActingAccountId() actingAccountId: string,
     @Param('gameMasterId') gameMasterId: string,
   ): Promise<ResponseOf<typeof gameMasterEndpoints.remove>> {
-    return this.removeGameMaster.execute(gameMasterId);
+    return this.removeGameMaster.execute(actingAccountId, gameMasterId);
   }
 }

@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { Account } from '../account/account.js';
 import { Refusal } from '../refusal.js';
 import { ScenarioCatalogue } from '../scenario/scenario-catalogue.js';
 import { Convention } from './convention.js';
 import { PresenceCode } from './presence-code.js';
 import { TimeOfDay } from './time-of-day.js';
+
+/** L'Organisateur qui supprime, dont le pseudo n'est pas celui qu'il supprime (ID-16). */
+const OTHER_ORGANIZER = Account.createForParticipant('a-other', 'p-other');
+/** Aucun pseudo n'a de compte. */
+const NO_ACCOUNTS: Account[] = [];
 
 const at = TimeOfDay.parse;
 
@@ -129,7 +135,7 @@ describe('Disponibilités des MJ (PR-2)', () => {
     convention.declareGameMasterAvailability('g1', 's1');
     convention.declareGameMasterAvailability('g2', 's1');
 
-    convention.removeGameMaster('g1', ScenarioCatalogue.restore([]));
+    convention.removeGameMaster('g1', ScenarioCatalogue.restore([]), OTHER_ORGANIZER, NO_ACCOUNTS);
 
     expect(convention.countAvailabilitiesOnTimeSlot('s1')).toBe(1);
   });

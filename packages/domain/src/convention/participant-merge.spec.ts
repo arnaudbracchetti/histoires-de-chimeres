@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { Account } from '../account/account.js';
 import { Refusal } from '../refusal.js';
 import { Scenario, type Duration } from '../scenario/scenario.js';
 import { Convention } from './convention.js';
@@ -12,6 +13,8 @@ import { TimeOfDay } from './time-of-day.js';
 // La fusion de deux pseudos (ID-11), à travers `Convention` : son interface est la surface de test.
 
 const at = TimeOfDay.parse;
+/** Aucun pseudo n'a de compte. */
+const NO_ACCOUNTS: Account[] = [];
 const NOW: LocalMoment = { date: '2027-03-14', time: at('08:00') };
 
 function aScenario(id: string, gameMasterId: string, duration: Duration = 1): Scenario {
@@ -113,16 +116,16 @@ const findDraw = (convention: Convention, timeSlotId: string) =>
 describe('Fusionner deux pseudos (ID-11)', () => {
   describe('refus', () => {
     it('refuse une source ou une destination inconnue', () => {
-      expect(catchRefusal(() => aConvention().mergeParticipant('x', 'p2')).code).toBe(
+      expect(catchRefusal(() => aConvention().mergeParticipant('x', 'p2', NO_ACCOUNTS)).code).toBe(
         'participant-not-found',
       );
-      expect(catchRefusal(() => aConvention().mergeParticipant('p1', 'x')).code).toBe(
+      expect(catchRefusal(() => aConvention().mergeParticipant('p1', 'x', NO_ACCOUNTS)).code).toBe(
         'participant-not-found',
       );
     });
 
     it('refuse de fusionner un pseudo dans lui-même', () => {
-      const refusal = catchRefusal(() => aConvention().mergeParticipant('p1', 'p1'));
+      const refusal = catchRefusal(() => aConvention().mergeParticipant('p1', 'p1', NO_ACCOUNTS));
 
       expect(refusal.code).toBe('merge-into-itself');
     });
@@ -130,13 +133,39 @@ describe('Fusionner deux pseudos (ID-11)', () => {
     it('refuse une source MJ, qui se gère depuis sa fiche de MJ (PR-12)', () => {
       const convention = aConvention();
 
-      const refusal = catchRefusal(() => convention.mergeParticipant('p-g1', 'p2'));
+      const refusal = catchRefusal(() => convention.mergeParticipant('p-g1', 'p2', NO_ACCOUNTS));
 
       expect(refusal).toMatchObject({
         code: 'participant-is-game-master',
         params: { nickname: 'Brann' },
       });
       expect(listParticipants(convention)).toContain('p-g1 Brann');
+    });
+
+    it('refuse une source qui a un compte : on lui retire d’abord ses rôles (ID-16)', () => {
+      const convention = aConvention();
+      const accounts = [Account.createForParticipant('a1', 'p1')];
+
+      const refusals = [
+        catchRefusal(() => convention.computeMergeVerdict('p1', 'p2', accounts)),
+        catchRefusal(() => convention.mergeParticipant('p1', 'p2', accounts)),
+      ];
+
+      for (const refusal of refusals) {
+        expect(refusal).toMatchObject({
+          code: 'merge-source-has-account',
+          params: { nickname: 'Élodie' },
+        });
+      }
+      expect(listParticipants(convention)).toContain('p1 Élodie');
+    });
+
+    it('accepte une destination qui a un compte', () => {
+      const convention = aConvention();
+
+      convention.mergeParticipant('p1', 'p2', [Account.createForParticipant('a2', 'p2')]);
+
+      expect(listParticipants(convention)).not.toContain('p1 Élodie');
     });
   });
 
@@ -145,7 +174,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
       signUps: [new SignUp('p1', 'brumes'), new SignUp('p1', 'epice'), new SignUp('p2', 'brumes')],
     });
 
-    convention.mergeParticipant('p1', 'p2');
+    convention.mergeParticipant('p1', 'p2', NO_ACCOUNTS);
 
     expect(listParticipants(convention)).toEqual(['p-g1 Brann', 'p-g2 Kaïros', 'p2 Lune']);
     expect(listSignUps(convention)).toEqual(['p2 brumes', 'p2 epice']);
@@ -163,7 +192,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         ],
       });
 
-      convention.mergeParticipant('p1', 'p2');
+      convention.mergeParticipant('p1', 'p2', NO_ACCOUNTS);
 
       expect(findDraw(convention, 's1')?.assignments).toEqual([
         new Assignment('p2', 'brumes', false),
@@ -181,7 +210,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         ],
       });
 
-      convention.mergeParticipant('p1', 'p2');
+      convention.mergeParticipant('p1', 'p2', NO_ACCOUNTS);
 
       expect(findDraw(convention, 's1')?.assignments).toEqual([
         new Assignment('p2', 'brumes', true),
@@ -198,7 +227,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         ],
       });
 
-      convention.mergeParticipant('p1', 'p2');
+      convention.mergeParticipant('p1', 'p2', NO_ACCOUNTS);
 
       expect(findDraw(convention, 's1')?.assignments).toEqual([
         new Assignment('p2', null, true),
@@ -216,7 +245,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         ],
       });
 
-      convention.mergeParticipant('p1', 'p2');
+      convention.mergeParticipant('p1', 'p2', NO_ACCOUNTS);
 
       expect(findDraw(convention, 's1')?.assignments).toEqual([new Assignment('p2', null, false)]);
     });
@@ -229,7 +258,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         ],
       });
 
-      convention.mergeParticipant('p1', 'p2');
+      convention.mergeParticipant('p1', 'p2', NO_ACCOUNTS);
 
       expect(convention.draws).toEqual([
         new Draw('s1', true, []),
@@ -248,7 +277,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         ],
       });
 
-      convention.mergeParticipant('p1', 'p2');
+      convention.mergeParticipant('p1', 'p2', NO_ACCOUNTS);
 
       expect(convention.draws).toEqual([
         new Draw('s1', true, [new Assignment('p2', 'epice', false)]),
@@ -264,7 +293,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         ],
       });
 
-      convention.mergeParticipant('p1', 'p2');
+      convention.mergeParticipant('p1', 'p2', NO_ACCOUNTS);
 
       expect(findDraw(convention, 's2')?.assignments).toEqual([]);
     });
@@ -278,7 +307,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         draws: [new Draw('s1', false, [new Assignment('p1', 'epice', false)])],
       });
 
-      convention.mergeParticipant('p1', 'p-g1');
+      convention.mergeParticipant('p1', 'p-g1', NO_ACCOUNTS);
 
       expect(listSignUps(convention)).toEqual(['p-g1 epice']);
       expect(findDraw(convention, 's1')?.assignments).toEqual([]);
@@ -297,7 +326,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         ],
       });
 
-      convention.mergeParticipant('p1', 'p-g2');
+      convention.mergeParticipant('p1', 'p-g2', NO_ACCOUNTS);
 
       expect(findDraw(convention, 's1')?.assignments).toEqual([
         new Assignment('p-g2', 'brumes', false),
@@ -311,11 +340,11 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         draws: [new Draw('s1', false, [new Assignment('p-g2', null, false)], ['epice'])],
       });
 
-      expect(convention.computeMergeVerdict('p1', 'p-g2')[0]).toMatchObject({
+      expect(convention.computeMergeVerdict('p1', 'p-g2', NO_ACCOUNTS)[0]).toMatchObject({
         lostSignUpGameIds: ['epice'],
       });
 
-      convention.mergeParticipant('p1', 'p-g2');
+      convention.mergeParticipant('p1', 'p-g2', NO_ACCOUNTS);
 
       expect(listSignUps(convention)).toEqual(['p-g2 brumes']);
     });
@@ -328,7 +357,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         participantsWithoutGame: [new ParticipantWithoutGame('p1', 's2')],
       });
 
-      convention.mergeParticipant('p1', 'p2');
+      convention.mergeParticipant('p1', 'p2', NO_ACCOUNTS);
 
       expect(convention.participantsWithoutGame).toEqual([new ParticipantWithoutGame('p2', 's2')]);
     });
@@ -339,7 +368,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         participantsWithoutGame: [new ParticipantWithoutGame('p1', 's2')],
       });
 
-      convention.mergeParticipant('p1', 'p2');
+      convention.mergeParticipant('p1', 'p2', NO_ACCOUNTS);
 
       expect(convention.participantsWithoutGame).toEqual([]);
     });
@@ -349,7 +378,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         participantsWithoutGame: [new ParticipantWithoutGame('p1', 's2')],
       });
 
-      convention.mergeParticipant('p1', 'p-g1');
+      convention.mergeParticipant('p1', 'p-g1', NO_ACCOUNTS);
 
       expect(convention.participantsWithoutGame).toEqual([]);
     });
@@ -362,7 +391,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         ],
       });
 
-      convention.mergeParticipant('p1', 'p2');
+      convention.mergeParticipant('p1', 'p2', NO_ACCOUNTS);
 
       expect(convention.participantsWithoutGame).toEqual([new ParticipantWithoutGame('p2', 's2')]);
     });
@@ -390,7 +419,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
       });
       const before = convention.version;
 
-      const verdict = convention.computeMergeVerdict('p1', 'p2');
+      const verdict = convention.computeMergeVerdict('p1', 'p2', NO_ACCOUNTS);
 
       expect(verdict).toEqual([
         {
@@ -415,7 +444,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
       expect(listParticipants(convention)).toContain('p1 Élodie');
       expect(convention.version).toBe(before);
 
-      convention.mergeParticipant('p1', 'p2');
+      convention.mergeParticipant('p1', 'p2', NO_ACCOUNTS);
 
       expect(convention.draws).toEqual([
         new Draw('s1', true, [new Assignment('p2', 'epice', true)]),
@@ -432,7 +461,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         draws: [new Draw('s1', false, [new Assignment('p1', null, false)])],
       });
 
-      const verdict = convention.computeMergeVerdict('p1', 'p-g1');
+      const verdict = convention.computeMergeVerdict('p1', 'p-g1', NO_ACCOUNTS);
 
       expect(verdict).toEqual([
         {
@@ -455,7 +484,7 @@ describe('Fusionner deux pseudos (ID-11)', () => {
         },
       ]);
 
-      convention.mergeParticipant('p1', 'p-g1');
+      convention.mergeParticipant('p1', 'p-g1', NO_ACCOUNTS);
 
       expect(convention.draws).toEqual([new Draw('s1', false, [])]);
       expect(listSignUps(convention)).toEqual(['p-g1 epice']);
@@ -463,9 +492,9 @@ describe('Fusionner deux pseudos (ID-11)', () => {
     });
 
     it('refuse comme la fusion', () => {
-      expect(catchRefusal(() => aConvention().computeMergeVerdict('p1', 'p1')).code).toBe(
-        'merge-into-itself',
-      );
+      expect(
+        catchRefusal(() => aConvention().computeMergeVerdict('p1', 'p1', NO_ACCOUNTS)).code,
+      ).toBe('merge-into-itself');
     });
   });
 });

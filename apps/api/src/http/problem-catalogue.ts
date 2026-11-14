@@ -408,6 +408,16 @@ export const problemCatalogue: Catalogue = {
     detail: () =>
       fr`Tu ne peux pas te retirer toi-même le rôle d'Organisateur : un autre Organisateur peut le faire.`,
   },
+  'own-nickname-removal': {
+    title: 'Pseudo gardé',
+    detail: () =>
+      fr`Tu ne peux pas supprimer ton propre pseudo : un autre Organisateur peut le faire.`,
+  },
+  'merge-source-has-account': {
+    title: 'Pseudo avec un compte',
+    detail: ({ nickname }) =>
+      fr`${nickname} a un compte : retire-lui d'abord ses rôles, dans l'onglet « Compte », avant de le fusionner.`,
+  },
   'access-link-unknown': {
     title: "Lien d'accès inconnu",
     detail: () =>
