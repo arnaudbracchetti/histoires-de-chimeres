@@ -64,14 +64,13 @@ import { ScenarioIllustration } from '../ui/scenario-illustration';
         display: flex;
         flex-direction: column;
         gap: var(--space-xs);
-        /* Même largeur que les champs du formulaire : les bords droits s'alignent. */
-        max-width: 44rem;
       }
 
+      /* En colonne : l'aperçu sur toute la largeur, puis le rappel et les boutons. */
       .zone {
         display: flex;
-        gap: var(--space-l);
-        align-items: center;
+        flex-direction: column;
+        gap: var(--space-m);
         padding: var(--space-m);
         border: 1px dashed var(--border);
         border-radius: var(--radius-card);
@@ -83,13 +82,10 @@ import { ScenarioIllustration } from '../ui/scenario-illustration';
       }
 
       app-scenario-illustration {
-        flex: none;
-        width: 22.5rem;
         border-radius: var(--radius-control);
       }
 
       .side {
-        flex: 1;
         display: flex;
         flex-direction: column;
         gap: var(--space-s);

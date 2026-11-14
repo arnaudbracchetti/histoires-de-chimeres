@@ -2,24 +2,17 @@ import { Component, computed, input } from '@angular/core';
 import type { ScenarioDto } from '@chimeres/contract';
 import { formatSeats } from '@chimeres/design';
 import { renderPresentation } from '@chimeres/design/presentation';
-import { ScenarioIllustration } from '../ui/scenario-illustration';
 import { formatScenarioDuration } from './scenario-format';
 
 /**
  * Un scénario en lecture seule, pour le compte qui ne peut pas l'écrire (le scénario d'un autre
- * MJ) : son image, son jeu, ses places, sa durée, ses avertissements et sa présentation rendue. Le
- * HTML de la présentation passe par `[innerHTML]`, donc par le sanitizer d'Angular.
+ * MJ) : son jeu, ses places, sa durée, ses avertissements et sa présentation rendue. Son image est
+ * à côté, dans la page. Le HTML de la présentation passe par `[innerHTML]`, donc par le sanitizer d'Angular.
  */
 @Component({
   selector: 'app-scenario-reading',
-  imports: [ScenarioIllustration],
   host: { class: 'reading' },
   template: `
-    <app-scenario-illustration
-      format="card"
-      [title]="scenario().title"
-      [imageUrl]="scenario().imageUrl"
-    />
     <dl>
       <dt>Jeu</dt>
       <dd>{{ scenario().system }}</dd>
@@ -41,12 +34,6 @@ import { formatScenarioDuration } from './scenario-format';
         display: flex;
         flex-direction: column;
         gap: var(--space-l);
-        max-width: 44rem;
-      }
-
-      app-scenario-illustration {
-        width: 22.5rem;
-        border-radius: var(--radius-control);
       }
 
       dl {

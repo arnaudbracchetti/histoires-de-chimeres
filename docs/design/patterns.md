@@ -136,6 +136,7 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 ### Image d'un scénario
 
 - L'image **ne fait pas partie de « Enregistrer »** : elle part dès qu'elle est choisie, par ses propres endpoints ([ADR 0007](../adr/0007-images-de-scenario-stockees-en-base.md)).
+- **Sa propre colonne**, à droite du formulaire (20rem, le formulaire 40rem au plus) : l'aperçu sur toute la largeur, puis le rappel et les boutons. Même place pour l'illustration de la page en lecture seule et pour la zone de « Nouveau scénario ». Trop étroite, la page passe l'image sous le contenu. Dans le formulaire, Titre et Jeu partagent une ligne, comme Places minimum, Places maximum et Durée : à 1280 × 800, « Enregistrer » reste dans l'écran.
 - Elle ne s'ajoute **qu'une fois le scénario créé**. À la création, la zone image dit « Tu pourras ajouter une image après l'enregistrement. »
 - La zone montre l'aperçu 3:2, ou l'illustration par défaut, le bouton « Choisir une image », et accepte aussi le dépôt d'un fichier (une alternative au bouton, pas l'inverse). Elle rappelle : « JPEG, PNG, WebP ou AVIF, 10 Mo au plus. L'image est recadrée en 3:2 au centre. »
 - Pendant l'envoi, une barre de progression. Ensuite, l'aperçu est **celui que renvoie le serveur**, donc recadré.

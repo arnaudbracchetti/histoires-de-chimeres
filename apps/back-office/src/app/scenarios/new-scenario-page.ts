@@ -31,11 +31,14 @@ import { fr } from '@chimeres/design';
       notFound="Ce MJ n'existe pas, ou plus."
     >
       @if (gameMaster.hasValue()) {
-        <p class="image-zone">Tu pourras ajouter une image après l'enregistrement.</p>
-        <app-scenario-form [save]="propose" (saved)="onProposed($event)" />
+        <div class="layout">
+          <app-scenario-form class="main" [save]="propose" (saved)="onProposed($event)" />
+          <p class="aside image-zone">Tu pourras ajouter une image après l'enregistrement.</p>
+        </div>
       }
     </app-loadable>
   `,
+  styleUrl: './scenario-layout.css',
   styles: `
     @layer components {
       app-loadable {
@@ -48,11 +51,13 @@ import { fr } from '@chimeres/design';
       .image-zone {
         display: grid;
         place-items: center;
-        max-width: 44rem;
-        aspect-ratio: 4 / 1;
+        /* La place de l'aperçu 3:2 que prendra l'image. */
+        aspect-ratio: 3 / 2;
+        padding: var(--space-l);
         border: 1px dashed var(--border);
         border-radius: var(--radius-card);
         color: var(--text-muted);
+        text-align: center;
       }
     }
   `,

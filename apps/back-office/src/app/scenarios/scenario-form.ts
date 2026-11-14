@@ -81,12 +81,14 @@ function seatsRules(path: SchemaPath<number | null>, missing: string): void {
   imports: [Field, FormField, FormRoot, PresentationPreview, SaveButton],
   template: `
     <form [formRoot]="form">
-      <app-field label="Titre" [counter]="limits.title">
-        <input [formField]="form.title" autocomplete="off" />
-      </app-field>
-      <app-field label="Jeu" [counter]="limits.system">
-        <input [formField]="form.system" autocomplete="off" />
-      </app-field>
+      <div class="identity">
+        <app-field label="Titre" [counter]="limits.title">
+          <input [formField]="form.title" autocomplete="off" />
+        </app-field>
+        <app-field label="Jeu" [counter]="limits.system">
+          <input [formField]="form.system" autocomplete="off" />
+        </app-field>
+      </div>
       <app-field label="Présentation" [counter]="limits.presentation" [help]="markdownHelp">
         <div class="modes" role="group" aria-label="Présentation">
           <button type="button" [attr.aria-pressed]="!previewing()" (click)="previewing.set(false)">
@@ -106,24 +108,26 @@ function seatsRules(path: SchemaPath<number | null>, missing: string): void {
       <app-field label="Avertissements de contenu" optional [counter]="limits.contentWarnings">
         <textarea [formField]="form.contentWarnings" rows="2"></textarea>
       </app-field>
-      <div class="seats">
+      <div class="format">
         <app-field label="Places minimum" help="MJ non compris.">
           <input type="number" step="1" [formField]="form.seats.min" />
         </app-field>
         <app-field label="Places maximum">
           <input type="number" step="1" [formField]="form.seats.max" />
         </app-field>
-      </div>
-      <div class="duration">
-        <fieldset [attr.aria-describedby]="durationError() ? 'duration-error' : null">
-          <legend>Durée</legend>
-          <label><input type="radio" value="1" [formField]="form.duration" /> 1&nbsp;créneau</label>
-          <label
-            ><input type="radio" value="2" [formField]="form.duration" /> 2&nbsp;créneaux</label
-          >
-        </fieldset>
-        <!-- Ligne réservée, vide sans erreur : le refus de l'API n'y décale rien. -->
-        <p class="error" id="duration-error">{{ durationError() }}</p>
+        <div class="duration">
+          <fieldset [attr.aria-describedby]="durationError() ? 'duration-error' : null">
+            <legend>Durée</legend>
+            <label
+              ><input type="radio" value="1" [formField]="form.duration" /> 1&nbsp;créneau</label
+            >
+            <label
+              ><input type="radio" value="2" [formField]="form.duration" /> 2&nbsp;créneaux</label
+            >
+          </fieldset>
+          <!-- Lignes réservées, vides sans erreur : le refus de l'API n'y décale rien. -->
+          <p class="error" id="duration-error">{{ durationError() }}</p>
+        </div>
       </div>
       <app-save-button [submitting]="form().submitting()" [savedAt]="savedAt()" />
     </form>
@@ -135,11 +139,19 @@ function seatsRules(path: SchemaPath<number | null>, missing: string): void {
         flex-direction: column;
         gap: var(--space-m);
         align-items: flex-start;
-        max-width: 44rem;
       }
 
-      app-field {
+      app-field,
+      .identity,
+      .format {
         align-self: stretch;
+      }
+
+      /* Le titre et son jeu sur une ligne : le jeu est court. */
+      .identity {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 15rem;
+        gap: var(--space-l);
       }
 
       textarea {
@@ -175,16 +187,21 @@ function seatsRules(path: SchemaPath<number | null>, missing: string): void {
         }
       }
 
-      /* Deux lignes réservées sous chaque nombre : l'erreur ne déborde pas sur la durée. */
-      .seats {
+      /*
+       * Le format de la partie sur une ligne. Deux lignes réservées sous chaque nombre, trois sous
+       * la durée, dont le refus est long : une erreur ne déborde pas sur sa voisine.
+       */
+      .format {
         --field-error-lines: 2;
         display: grid;
-        grid-template-columns: repeat(2, 14rem);
-        gap: var(--space-m);
-      }
+        grid-template-columns: 10rem 10rem minmax(0, 1fr);
+        gap: var(--space-l);
+        align-items: start;
 
-      .duration {
-        margin-bottom: var(--space-m);
+        /* Un ou deux chiffres : le champ est étroit, sa colonne garde la place du libellé et de l'erreur. */
+        input[type='number'] {
+          width: 4rem;
+        }
       }
 
       fieldset {
@@ -196,7 +213,7 @@ function seatsRules(path: SchemaPath<number | null>, missing: string): void {
       }
 
       .error {
-        min-height: calc(var(--font-size-meta) * 1.4);
+        min-height: calc(var(--font-size-meta) * 1.4 * 3);
         margin-top: var(--space-xxs);
         color: var(--danger);
         font-size: var(--font-size-meta);

@@ -1,0 +1,23 @@
+/*
+ * La mise en page d'un scénario (docs/design/patterns.md, Image d'un scénario), commune à sa page et à
+ * « Nouveau scénario » : le contenu à gauche, l'image dans sa propre colonne à droite, car elle part
+ * hors de « Enregistrer ». Trop étroite, la page passe l'image sous le contenu.
+ */
+@layer components {
+  .layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xl) var(--space-xxl);
+    align-items: flex-start;
+  }
+
+  .main {
+    flex: 1 1 30rem;
+    min-width: 0;
+    max-width: 40rem;
+  }
+
+  .aside {
+    flex: 0 0 20rem;
+  }
+}

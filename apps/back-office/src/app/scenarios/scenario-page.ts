@@ -14,6 +14,7 @@ import type { UnsavedChanges } from '../shell/leave-unsaved';
 import { ScenarioForm } from './scenario-form';
 import { ScenarioImage } from './scenario-image';
 import { ScenarioReading } from './scenario-reading';
+import { ScenarioIllustration } from '../ui/scenario-illustration';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
@@ -26,8 +27,8 @@ const MENU: readonly MoreMenuItem[] = [
 ];
 
 /**
- * Page d'un scénario : « Scénarios › titre », son MJ, la zone de son image, et la saisie de son contenu, de
- * ses places et de sa durée (PR-14), et son image (PR-7), qui part hors de « Enregistrer ». Quitter avec des modifications non enregistrées demande
+ * Page d'un scénario : « Scénarios › titre », son MJ, puis sur deux colonnes la saisie de son contenu,
+ * de ses places et de sa durée (PR-14), et à droite son image (PR-7), qui part hors de « Enregistrer ». Quitter avec des modifications non enregistrées demande
  * confirmation. La suppression passe par « ⋯ », après confirmation, puis revient à la liste. Pour
  * un compte qui ne peut pas l'écrire (le scénario d'un autre MJ), la page se lit seulement, et son
  * MJ ne mène à sa fiche que si le compte peut la lire (ADR 0017).
@@ -40,6 +41,7 @@ const MENU: readonly MoreMenuItem[] = [
     PageHeader,
     RouterLink,
     ScenarioForm,
+    ScenarioIllustration,
     ScenarioImage,
     ScenarioReading,
   ],
@@ -70,21 +72,36 @@ const MENU: readonly MoreMenuItem[] = [
             {{ scenario.gameMaster.nickname }}
           }
         </p>
-        @if (canUpdate()) {
-          <app-scenario-image
-            [gameMasterId]="scenario.gameMaster.id"
-            [scenarioId]="scenario.id"
-            [title]="scenario.title"
-            [imageUrl]="imageUrl()"
-            (changed)="imageUrl.set($event.imageUrl)"
-          />
-          <app-scenario-form [scenario]="scenario" [save]="update" (saved)="onUpdated($event)" />
-        } @else {
-          <app-scenario-reading [scenario]="scenario" />
-        }
+        <div class="layout">
+          @if (canUpdate()) {
+            <app-scenario-form
+              class="main"
+              [scenario]="scenario"
+              [save]="update"
+              (saved)="onUpdated($event)"
+            />
+            <app-scenario-image
+              class="aside"
+              [gameMasterId]="scenario.gameMaster.id"
+              [scenarioId]="scenario.id"
+              [title]="scenario.title"
+              [imageUrl]="imageUrl()"
+              (changed)="imageUrl.set($event.imageUrl)"
+            />
+          } @else {
+            <app-scenario-reading class="main" [scenario]="scenario" />
+            <app-scenario-illustration
+              class="aside illustration"
+              format="card"
+              [title]="scenario.title"
+              [imageUrl]="scenario.imageUrl"
+            />
+          }
+        </div>
       }
     </app-loadable>
   `,
+  styleUrl: './scenario-layout.css',
   styles: `
     @layer components {
       app-loadable {
@@ -96,6 +113,10 @@ const MENU: readonly MoreMenuItem[] = [
 
       .game-master {
         color: var(--text-muted);
+      }
+
+      .illustration {
+        border-radius: var(--radius-control);
       }
     }
   `,
