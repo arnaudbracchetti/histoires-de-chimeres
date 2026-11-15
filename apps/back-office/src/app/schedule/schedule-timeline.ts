@@ -1,7 +1,14 @@
 import { CdkDrag, CdkDropList } from '@angular/cdk/drag-drop';
 import { Component, computed, inject, input, output } from '@angular/core';
-import type { GameDto, TableDto, TimeSlotDto } from '@chimeres/contract';
+import {
+  hasPublishedDraw,
+  type GameDto,
+  type TableDto,
+  type TimeSlotDto,
+  type TimeSlotStateDto,
+} from '@chimeres/contract';
 import { formatDuration, formatSeats, formatTimeRange, minutesOf } from '@chimeres/design';
+import { TimeSlotState } from '../time-slots/time-slot-state';
 import { ScenarioIllustration } from '../ui/scenario-illustration';
 import { TwoSlotBadge } from '../ui/two-slot-badge';
 import { ScheduleDrag, type Drop, type DropTarget } from './schedule-drag';
@@ -19,17 +26,25 @@ const PX_PER_MINUTE = 0.8;
 const TABLE_COLUMN = 'fit-content(10rem)';
 const PAUSE_COLUMN = 'minmax(3rem, max-content)';
 
-/** Une colonne de la frise : un créneau, ou la pause qui sépare deux créneaux. */
+/** Une colonne de la frise : un créneau, avec son état, ou la pause qui sépare deux créneaux. */
 type Column =
-  | { kind: 'slot'; slot: TimeSlotDto; minutes: number }
+  | { kind: 'slot'; slot: TimeSlotDto; minutes: number; state: TimeSlotStateDto | undefined }
   | { kind: 'pause'; id: string; duration: string };
 
 /**
  * Une case d'une ligne : celle d'un créneau, avec sa partie, qui couvre `span` colonnes (une partie
- * double couvre ses deux créneaux et la pause entre eux), ou celle d'une pause.
+ * double couvre ses deux créneaux et la pause entre eux), ou celle d'une pause. `frozen` : le
+ * tirage de son créneau, le premier de sa partie double, est publié.
  */
 type Cell =
-  | { kind: 'slot'; id: string; game: GameDto | undefined; span: number }
+  | {
+      kind: 'slot';
+      id: string;
+      game: GameDto | undefined;
+      span: number;
+      state: TimeSlotStateDto | undefined;
+      frozen: boolean;
+    }
   | { kind: 'pause'; id: string };
 
 /**
@@ -39,11 +54,16 @@ type Cell =
  * id (`game-<id>`). Une partie double est une seule carte, étendue sur ses deux créneaux, par-dessus
  * la pause qui les sépare, avec le badge « double ». Une partie se glisse vers une case, une autre
  * partie ou le bac de réserve (`ScheduleDrag`) ; chaque case est une cible du geste.
+ *
+ * L'en-tête de chaque créneau porte son état (docs/design/patterns.md, Statuts). Sur un créneau
+ * dont le tirage est publié, le programme est figé : ses cases ont un contour plein, teinté de la
+ * couleur de l'état, au lieu des pointillés de ce qui peut encore changer, et ses parties ne se
+ * saisissent plus. Elles s'ouvrent toujours.
  */
 @Component({
   selector: 'app-schedule-timeline',
   host: { '[class.dragging]': '!!drag.subject()' },
-  imports: [CdkDrag, CdkDropList, ScenarioIllustration, TwoSlotBadge],
+  imports: [CdkDrag, CdkDropList, ScenarioIllustration, TimeSlotState, TwoSlotBadge],
   template: `
     <div class="scroller">
       <div
@@ -60,6 +80,9 @@ type Cell =
                 <span class="caps">Créneau {{ column.slot.rank }}</span
                 >{{ ' ' }}
                 <span class="range">{{ range(column.slot) }}</span>
+                @if (column.state; as state) {
+                  <app-time-slot-state class="state" [state]="state" />
+                }
               </div>
             } @else {
               <div role="columnheader" class="pause">
@@ -80,6 +103,8 @@ type Cell =
                   cdkDropList
                   cdkDropListSortingDisabled
                   [class.valid]="state.kind === 'valid'"
+                  [class.frozen]="cell.frozen"
+                  [attr.data-time-slot-state]="cell.frozen ? cell.state : null"
                   [style.grid-column]="'span ' + cell.span"
                   [attr.aria-colspan]="cell.span > 1 ? cell.span : null"
                   [attr.data-drop-time-slot]="cell.id"
@@ -91,6 +116,9 @@ type Cell =
                     <article
                       class="game"
                       cdkDrag
+                      [cdkDragDisabled]="cell.frozen"
+                      [class.frozen]="cell.frozen"
+                      [class.ended]="cell.state === 'ended'"
                       [cdkDragStartDelay]="{ touch: 300, mouse: 0 }"
                       [class.selected]="game.id === selectedGameId()"
                       [class.pending]="pendingGameIds().includes(game.id)"
@@ -180,9 +208,14 @@ type Cell =
       }
 
       .range,
-      .pause {
+      .pause,
+      .state {
         color: var(--text-muted);
         font-size: var(--font-size-meta);
+      }
+
+      .state {
+        margin-top: var(--space-xxs);
       }
 
       .pause {
@@ -204,6 +237,13 @@ type Cell =
         /* Une cible valide du geste s'éclaire ; une cible refusée reste éteinte, avec son motif. */
         &.valid {
           box-shadow: var(--halo);
+        }
+
+        /* Figée : contour plein, comme le trait de ce qui ne change plus dans la frise d'un pseudo. */
+        &.frozen {
+          border-style: solid;
+          border-color: color-mix(in srgb, var(--time-slot-state) 35%, var(--border));
+          background: color-mix(in srgb, var(--time-slot-state) 6%, transparent);
         }
       }
 
@@ -253,6 +293,21 @@ type Cell =
           border-color: var(--accent);
         }
 
+        /* Une partie figée ne se saisit plus : seul le clic, qui ouvre sa fiche, reste. */
+        &.frozen {
+          border-color: transparent;
+        }
+
+        &.frozen.selected {
+          border-color: var(--accent);
+        }
+
+        /* Créneau terminé : la carte s'atténue, comme sa ligne au pilotage. Survolée, focalisée ou
+           ouverte, elle redevient lisible. */
+        &.ended:not(.selected, :hover, :has(.open:focus-visible)) {
+          opacity: 0.55;
+        }
+
         &:has(.open:focus-visible) {
           outline: 2px solid var(--focus);
           outline-offset: 2px;
@@ -265,7 +320,11 @@ type Cell =
         box-shadow: var(--halo-soft);
       }
 
-      /* Le bouton du titre couvre toute la carte : un clic n'importe où l'ouvre. */
+      /*
+       * Le bouton du titre couvre toute la carte : un clic n'importe où l'ouvre. Son curseur dit le
+       * geste, comme dans le bac de réserve : la main ouverte pour une partie qu'on peut saisir, la
+       * flèche pour une partie figée.
+       */
       .open {
         padding: 0;
         border: 0;
@@ -273,7 +332,11 @@ type Cell =
         color: inherit;
         font: inherit;
         text-align: left;
-        cursor: pointer;
+        cursor: grab;
+
+        .frozen & {
+          cursor: default;
+        }
 
         &::after {
           content: '';
@@ -331,6 +394,10 @@ export class ScheduleTimeline {
   readonly timeSlots = input.required<readonly TimeSlotDto[]>();
   readonly tables = input.required<readonly TableDto[]>();
   readonly games = input.required<readonly GameDto[]>();
+  /** L'état de chaque créneau, lu avec le programme. */
+  readonly timeSlotStates = input<readonly { timeSlotId: string; state: TimeSlotStateDto }[]>(
+    [],
+  );
   /** La partie dont la fiche est ouverte. */
   readonly selectedGameId = input<string | null>(null);
   /** Les parties dont un geste s'écrit encore : atténuées. */
@@ -342,12 +409,14 @@ export class ScheduleTimeline {
 
   protected readonly formatSeats = formatSeats;
 
-  protected readonly columns = computed<Column[]>(() =>
-    this.timeSlots().flatMap((slot, index, slots) => {
+  protected readonly columns = computed<Column[]>(() => {
+    const states = new Map(this.timeSlotStates().map(({ timeSlotId, state }) => [timeSlotId, state]));
+    return this.timeSlots().flatMap((slot, index, slots) => {
       const column: Column = {
         kind: 'slot',
         slot,
         minutes: minutesOf(slot.end) - minutesOf(slot.start),
+        state: states.get(slot.id),
       };
       const next = slots[index + 1];
       if (!next || next.start === slot.end) return [column];
@@ -355,8 +424,8 @@ export class ScheduleTimeline {
         column,
         { kind: 'pause', id: `pause-${slot.id}`, duration: formatDuration(slot.end, next.start) },
       ];
-    }),
-  );
+    });
+  });
 
   /** Chaque créneau : sa durée en `fr`, jamais sous 0,8 px par minute ; la frise défile au-delà. */
   protected readonly gridColumns = computed(() =>
@@ -406,7 +475,15 @@ export class ScheduleTimeline {
       const last = columns.findIndex(
         (other) => other.kind === 'slot' && other.slot.id === lastSlotId,
       );
-      cells.push({ kind: 'slot', id: column.slot.id, game, span: last - index + 1 });
+      const { state } = column;
+      cells.push({
+        kind: 'slot',
+        id: column.slot.id,
+        game,
+        span: last - index + 1,
+        state,
+        frozen: !!state && hasPublishedDraw(state),
+      });
       index = last;
     }
     return cells;

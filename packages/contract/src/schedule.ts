@@ -1,4 +1,5 @@
 import { endpoint } from './endpoint.js';
+import type { TimeSlotStateDto } from './front-office.js';
 import type { VerdictRefusalDto } from './problem.js';
 import type {
   ScenarioGameMasterDto,
@@ -31,9 +32,13 @@ export type ReserveScenarioDto = ScheduleScenarioDto & {
   unschedulable: VerdictRefusalDto | null;
 };
 
-/** Le programme, et la réserve. */
+/**
+ * Le programme, la réserve, et l'état de chaque créneau, dans l'ordre de la journée : sur un
+ * créneau dont le tirage est publié, le programme est figé.
+ */
 export type ScheduleDto = {
   games: GameDto[];
+  timeSlots: { timeSlotId: string; state: TimeSlotStateDto }[];
   /** Tous les scénarios, dans l'ordre naturel de leur titre. */
   reserve: ReserveScenarioDto[];
 };

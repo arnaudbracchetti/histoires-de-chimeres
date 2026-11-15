@@ -735,6 +735,7 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
       const programme = (await server().get(apiUrl(scheduleEndpoints.read)).expect(200))
         .body as ScheduleDto;
       expect(programme.games.map(({ id }) => id)).toEqual([neons]);
+      expect(programme.timeSlots[0]).toEqual({ timeSlotId: slot(1), state: 'published' });
       const reserved = programme.reserve.find(({ title }) => title === 'Le Marché')!;
       expect(reserved.timeSlots[0]).toMatchObject({ inReserve: true, scheduled: false });
     });

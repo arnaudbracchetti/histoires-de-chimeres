@@ -74,7 +74,7 @@ const confirmationButton = (name: string) =>
   )!;
 const ERASED_DRAW_OF_SLOT_1 = `Le tirage provisoire du créneau 1 sera effacé, avec ses déplacements et ses parties annulées. Les inscriptions sur ce créneau seront rouvertes.`;
 
-const SCHEDULE: ScheduleDto = { games: [], reserve: [] };
+const SCHEDULE: ScheduleDto = { games: [], reserve: [], timeSlots: [] };
 
 describe('PlacementDialog', () => {
   beforeEach(() => {

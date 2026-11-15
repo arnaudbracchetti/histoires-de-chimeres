@@ -50,7 +50,7 @@ const PLACEMENTS: CellPlacementDto[] = [
   },
 ];
 
-const SCHEDULE: ScheduleDto = { games: [], reserve: [] };
+const SCHEDULE: ScheduleDto = { games: [], reserve: [], timeSlots: [] };
 
 describe('CellPlacementDialog', () => {
   beforeEach(() => {

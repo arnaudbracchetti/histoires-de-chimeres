@@ -10,11 +10,14 @@ import {
   ScheduleGame,
   SwapGames,
   UnscheduleGame,
+  type Clock,
   type ConventionRepository,
   type NotificationSender,
   type ScenarioRepository,
   type ScheduleReader,
 } from '@chimeres/application';
+import { CLOCK } from '../clock/clock.token.js';
+import { ParisClock } from '../clock/paris-clock.js';
 import { CONVENTION_REPOSITORY } from '../convention/convention-repository.token.js';
 import { ConventionModule } from '../convention/convention.module.js';
 import { NOTIFICATION_SENDER } from '../notification/notification-sender.token.js';
@@ -30,14 +33,16 @@ import { SCHEDULE_READER } from './schedule-reader.token.js';
   controllers: [ScheduleController],
   providers: [
     { provide: SCHEDULE_READER, useClass: PrismaScheduleReader },
+    { provide: CLOCK, useClass: ParisClock },
     {
       provide: ReadSchedule,
       useFactory: (
         conventions: ConventionRepository,
         scenarios: ScenarioRepository,
         reader: ScheduleReader,
-      ) => new ReadSchedule(conventions, scenarios, reader),
-      inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY, SCHEDULE_READER],
+        clock: Clock,
+      ) => new ReadSchedule(conventions, scenarios, reader, clock),
+      inject: [CONVENTION_REPOSITORY, SCENARIO_REPOSITORY, SCHEDULE_READER, CLOCK],
     },
     {
       provide: ReadPlacements,

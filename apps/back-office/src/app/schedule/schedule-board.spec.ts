@@ -47,7 +47,7 @@ const GAME: GameDto = {
   },
 };
 
-const SCHEDULED: ScheduleDto = { games: [GAME], reserve: [] };
+const SCHEDULED: ScheduleDto = { games: [GAME], reserve: [], timeSlots: [] };
 const UNSCHEDULED: ScheduleDto = {
   games: [],
   reserve: [
@@ -57,6 +57,7 @@ const UNSCHEDULED: ScheduleDto = {
       unschedulable: null,
     },
   ],
+  timeSlots: [],
 };
 
 describe('ScheduleBoard', () => {
@@ -154,6 +155,57 @@ describe('ScheduleBoard', () => {
 
     expect(button('Déprogrammer')).toBeDefined();
     expect(sheet()?.querySelector('.sign-ups')).toBeNull();
+  });
+
+  describe('créneau dont le tirage est publié', () => {
+    const PUBLISHED: ScheduleDto = {
+      ...SCHEDULED,
+      timeSlots: [{ timeSlotId: 's1', state: 'published' }],
+    };
+
+    it('l’en-tête du créneau porte son état, et ses cases sont figées', async () => {
+      const { host, text } = await render(CONVENTION, PUBLISHED);
+
+      expect(text(host.querySelector('[role="columnheader"].slot'))).toContain('Tirage publié');
+      const cells = host.querySelectorAll('[data-drop-time-slot="s1"]');
+      expect([...cells].every((cell) => cell.matches('.frozen'))).toBe(true);
+      expect(host.querySelector('.game')?.matches('.cdk-drag-disabled')).toBe(true);
+      expect(host.querySelector('.game')?.matches('.ended')).toBe(false);
+    });
+
+    it('terminé : la carte est atténuée, et toujours figée', async () => {
+      const ended: ScheduleDto = { ...SCHEDULED, timeSlots: [{ timeSlotId: 's1', state: 'ended' }] };
+      const { host, text } = await render(CONVENTION, ended);
+
+      expect(text(host.querySelector('[role="columnheader"].slot'))).toContain('Terminé');
+      expect(host.querySelector('.game')?.matches('.ended.frozen')).toBe(true);
+    });
+
+    it('la fiche s’ouvre, sans geste, et dit pourquoi', async () => {
+      const { host, settle, sheet, text } = await render(CONVENTION, PUBLISHED);
+
+      host.querySelector<HTMLButtonElement>('#game-p1')!.click();
+      await settle();
+
+      expect(sheet()?.querySelectorAll('.actions button').length ?? 0).toBe(0);
+      expect(text(sheet())).toContain(
+        `Tirage publié${NBSP}: la partie ne peut plus être déplacée ni déprogrammée.`,
+      );
+    });
+
+    it('un tirage provisoire ne fige rien : l’état est dit, les gestes restent', async () => {
+      const drawing: ScheduleDto = {
+        ...SCHEDULED,
+        timeSlots: [{ timeSlotId: 's1', state: 'drawing' }],
+      };
+      const { host, settle, button, text } = await render(CONVENTION, drawing);
+
+      expect(text(host.querySelector('[role="columnheader"].slot'))).toContain('Tirage provisoire');
+      expect(host.querySelector('.frozen')).toBeNull();
+      host.querySelector<HTMLButtonElement>('#game-p1')!.click();
+      await settle();
+      expect(button('Déprogrammer')).toBeDefined();
+    });
   });
 
   it('« Déprogrammer » ferme la fiche, et le scénario revient dans la réserve', async () => {
@@ -258,7 +310,7 @@ describe('ScheduleBoard', () => {
             { id: 's2', rank: 2, start: '14:00', end: '16:30', availabilityCount: 1 },
           ],
         },
-        { games: [{ ...GAME, timeSlotIds: ['s1', 's2'] }], reserve: [] },
+        { games: [{ ...GAME, timeSlotIds: ['s1', 's2'] }], reserve: [], timeSlots: [] },
       );
 
       await askUnschedule(TWELVE);
@@ -322,7 +374,7 @@ describe('ScheduleBoard', () => {
 
   describe('glisser-déposer', () => {
     const toLicorne = { kind: 'cell', timeSlotId: 's1', tableId: 't2', gameId: null } as const;
-    const MOVED: ScheduleDto = { games: [{ ...GAME, tableId: 't2' }], reserve: [] };
+    const MOVED: ScheduleDto = { games: [{ ...GAME, tableId: 't2' }], reserve: [], timeSlots: [] };
 
     it('pendant l’écriture, la partie est à sa nouvelle place, atténuée ; puis le focus y va', async () => {
       const { http, settle, drop, gameAt } = await render();
@@ -408,6 +460,7 @@ describe('ScheduleBoard', () => {
       const MOVED_TO_SLOT2: ScheduleDto = {
         games: [{ ...GAME, timeSlotIds: ['s2'] }],
         reserve: [],
+        timeSlots: [],
       };
 
       it('sur une case : confirmation avant toute écriture, la carte atténuée à sa nouvelle place', async () => {
@@ -444,6 +497,7 @@ describe('ScheduleBoard', () => {
         const { http, settle, drop, gameAt, dialog, dialogButton, text } = await render(TWO_SLOTS, {
           games: [GAME, OTHER],
           reserve: [],
+          timeSlots: [],
         });
 
         await drop({ kind: 'cell', timeSlotId: 's2', tableId: 't1', gameId: 'p2' }, [

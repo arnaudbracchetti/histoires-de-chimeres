@@ -294,6 +294,8 @@ La page Calendrier est l'écran d'accueil et le lieu de la programmation.
 - **Partie** : une carte avec sa vignette de 32 px, son titre, son jeu, son MJ et ses places.
 - **Partie double** : une seule carte, étendue sur ses deux créneaux, par-dessus la pause qui les sépare.
 - **Barre d'aide** au-dessus de la frise : elle donne la phrase complète du motif de la cible survolée pendant un geste.
+- **État du créneau** : sous la plage de chaque en-tête, la pastille de son état ([Statuts](#statuts)), lu avec le programme.
+- **Créneau publié ou terminé : programme figé.** Ses cases ont un contour plein, teinté de la couleur de l'état, au lieu des pointillés de ce qui peut encore changer (comme le trait de la frise d'un pseudo). Ses parties ne se saisissent plus, mais s'ouvrent, avec la flèche pour curseur au lieu de la main ouverte des parties qu'on peut saisir : la fiche n'offre aucun geste et dit « Tirage publié : la partie ne peut plus être déplacée ni déprogrammée. ». Sur un créneau terminé, les cartes sont atténuées, et redeviennent pleines au survol, au focus ou ouvertes. Un tirage provisoire ne fige rien : seule sa pastille change.
 
 ### Bac de réserve
 

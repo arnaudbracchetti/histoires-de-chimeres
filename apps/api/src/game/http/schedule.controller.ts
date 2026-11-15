@@ -154,6 +154,6 @@ function toMovePlacementDto({ swapWith, removedSignUps, ...placement }: MovePlac
   return { ...toPlacementDto(placement), swapWith, removedSignUps };
 }
 
-function toDto({ games, reserve }: Schedule): ResponseOf<typeof scheduleEndpoints.read> {
-  return { games, reserve: toReserveDto(reserve) };
+function toDto({ games, reserve, timeSlots }: Schedule): ResponseOf<typeof scheduleEndpoints.read> {
+  return { games, reserve: toReserveDto(reserve), timeSlots };
 }

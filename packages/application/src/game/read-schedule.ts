@@ -1,5 +1,6 @@
-import type { GameDto, ScheduleScenarioDto } from '@chimeres/contract';
+import type { GameDto, ScheduleScenarioDto, TimeSlotStateDto } from '@chimeres/contract';
 import type { Convention, ReserveOfScenario, ScenarioCatalogue } from '@chimeres/domain';
+import type { Clock } from '../clock.js';
 import type { ConventionRepository } from '../convention/convention-repository.js';
 import type { ScenarioRepository } from '../scenario/scenario-repository.js';
 import type { ScheduleReader } from './schedule-reader.js';
@@ -7,15 +8,26 @@ import type { ScheduleReader } from './schedule-reader.js';
 /** Un scénario de la réserve : sa présentation, et sa place que la convention calcule. */
 export type ReserveScenario = ScheduleScenarioDto & Omit<ReserveOfScenario, 'scenarioId'>;
 
-/** Le programme, et la réserve dans l'ordre naturel des titres. */
-export type Schedule = { games: GameDto[]; reserve: ReserveScenario[] };
+/**
+ * Le programme, la réserve dans l'ordre naturel des titres, et l'état de chaque créneau dans
+ * l'ordre de la journée.
+ */
+export type Schedule = {
+  games: GameDto[];
+  reserve: ReserveScenario[];
+  timeSlots: { timeSlotId: string; state: TimeSlotStateDto }[];
+};
 
-/** Le programme, avec la réserve que la convention calcule (PR-6). */
+/**
+ * Le programme, avec la réserve (PR-6) et l'état de chaque créneau à cet instant, terminé compris,
+ * que la convention calcule.
+ */
 export class ReadSchedule {
   constructor(
     private readonly conventions: ConventionRepository,
     private readonly scenarios: ScenarioRepository,
     private readonly reader: ScheduleReader,
+    private readonly clock: Clock,
   ) {}
 
   async execute(): Promise<Schedule> {
@@ -24,7 +36,15 @@ export class ReadSchedule {
       this.scenarios.catalogue(),
       this.reader.games(),
     ]);
-    return { games, reserve: await readReserve(convention, catalogue, this.reader) };
+    const now = this.clock.now();
+    return {
+      games,
+      reserve: await readReserve(convention, catalogue, this.reader),
+      timeSlots: convention.timeSlots.map(({ id }) => ({
+        timeSlotId: id,
+        state: convention.computeTimeSlotStateAt(id, now),
+      })),
+    };
   }
 }
 

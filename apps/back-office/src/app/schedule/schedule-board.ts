@@ -9,6 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import {
+  hasPublishedDraw,
   scheduleEndpoints,
   type ConventionDto,
   type GameDto,
@@ -63,6 +64,7 @@ import { ScheduleTimeline } from './schedule-timeline';
               [timeSlots]="convention().timeSlots"
               [tables]="convention().tables"
               [games]="games()"
+              [timeSlotStates]="schedule.value().timeSlots"
               [pendingGameIds]="pending()?.gameIds ?? []"
               [selectedGameId]="selected()?.id ?? null"
               (opened)="open($event)"
@@ -74,10 +76,17 @@ import { ScheduleTimeline } from './schedule-timeline';
                 [game]="game"
                 [timeSlots]="convention().timeSlots"
                 [tables]="convention().tables"
+                [offersGestures]="!isFrozen(game)"
                 (closed)="close(game)"
                 (moveRequested)="move(game)"
                 (unscheduleRequested)="unschedule(game)"
-              />
+              >
+                @if (isFrozen(game)) {
+                  <p class="frozen">
+                    Tirage publié&nbsp;: la partie ne peut plus être déplacée ni déprogrammée.
+                  </p>
+                }
+              </app-game-sheet>
             }
           </div>
         </div>
@@ -134,6 +143,10 @@ import { ScheduleTimeline } from './schedule-timeline';
         width: 20rem;
       }
 
+      .frozen {
+        color: var(--text-muted);
+      }
+
       section {
         display: flex;
         flex-direction: column;
@@ -178,6 +191,14 @@ export class ScheduleBoard {
     const known = this.gameIds();
     const schedule = await this.placements.scheduleOn({ scenario, timeSlots, tables });
     if (schedule) this.scheduled(schedule, known);
+  }
+
+  /** Le tirage du premier créneau de la partie est publié : elle ne bouge plus. */
+  protected isFrozen(game: GameDto): boolean {
+    const slot = this.schedule.value()?.timeSlots.find(
+      ({ timeSlotId }) => timeSlotId === game.timeSlotIds[0],
+    );
+    return !!slot && hasPublishedDraw(slot.state);
   }
 
   /** Ouvre la fiche de la partie, et y met le focus. */

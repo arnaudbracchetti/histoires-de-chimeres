@@ -962,7 +962,7 @@ describe('Pilotage du jour J', () => {
       const request = http.expectOne(apiUrl(scheduleEndpoints.schedule));
       expect(request.request.body).toEqual({ scenarioId: 'r2', timeSlotId: 's2', tableId: 't3' });
       const cendres = game('p9', 'Cendres', 't3', ['s2']);
-      request.flush({ games: [BRUMES, EPICE, NEONS, cendres], reserve: [] });
+      request.flush({ games: [BRUMES, EPICE, NEONS, cendres], reserve: [], timeSlots: [] });
       await reread({ ...TRACKING, games: [BRUMES, EPICE, NEONS, cendres] });
 
       expect(placementDialog()).toBeNull();
@@ -1824,7 +1824,7 @@ describe('Pilotage du jour J', () => {
       const { rows, tabs, reread } = await render();
       const programmed = game('p4', 'Abysses', 't3', ['s2']);
       const games = [BRUMES, EPICE, NEONS, programmed];
-      scheduleOnCell.mockResolvedValue({ games, reserve: [] });
+      scheduleOnCell.mockResolvedValue({ games, reserve: [], timeSlots: [] });
 
       rows()[2]!.querySelector('button')!.click();
       await reread({ ...TRACKING, games });
@@ -1917,7 +1917,7 @@ describe('Pilotage du jour J', () => {
       const { settle, host, tiles, button, reread } = await render();
       const moved = { ...BRUMES, timeSlotIds: ['s3'] };
       moveTo.mockResolvedValue({
-        schedule: { games: [moved, EPICE, NEONS], reserve: [] },
+        schedule: { games: [moved, EPICE, NEONS], reserve: [], timeSlots: [] },
         swappedWith: null,
       });
       host.querySelector<HTMLButtonElement>('#tracked-game-p1')!.click();
@@ -1940,7 +1940,7 @@ describe('Pilotage du jour J', () => {
       const { http, sheet, askUnschedule, reread } = await render();
 
       await askUnschedule();
-      const unscheduled: ScheduleDto = { games: [EPICE, NEONS], reserve: [] };
+      const unscheduled: ScheduleDto = { games: [EPICE, NEONS], reserve: [], timeSlots: [] };
       http.expectOne(apiUrl(scheduleEndpoints.unschedule, { gameId: 'p1' })).flush(unscheduled);
       await reread({ ...TRACKING, games: [EPICE, NEONS] });
 
@@ -1969,7 +1969,7 @@ describe('Pilotage du jour J', () => {
         .click();
       http
         .expectOne(apiUrl(scheduleEndpoints.unschedule, { gameId: 'p1' }))
-        .flush({ games: [EPICE, NEONS], reserve: [] });
+        .flush({ games: [EPICE, NEONS], reserve: [], timeSlots: [] });
       await reread({ ...TRACKING, games: [EPICE, NEONS] });
       await settle();
 
@@ -2083,7 +2083,7 @@ describe('Pilotage du jour J', () => {
         scenario: { ...game('p4', 'Abysses', 't3', ['s2']).scenario, id: 'r1' },
       });
       const games = [BRUMES, EPICE, NEONS, programmed];
-      scheduleOn.mockResolvedValue({ games, reserve: [] });
+      scheduleOn.mockResolvedValue({ games, reserve: [], timeSlots: [] });
 
       cards()[0]!.querySelector('button')!.click();
       await reread({ ...TRACKING, games });
