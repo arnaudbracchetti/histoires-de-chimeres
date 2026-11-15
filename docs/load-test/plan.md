@@ -24,8 +24,11 @@ Détail : [Choix de l'outil de test de charge](https://github.com/arnaudbracchet
 - Réglages obligatoires de k6 : `noCookiesReset: true`, et `summaryTrendStats` avec `p(99)`.
 - Les URL se construisent par `apiUrl()` et les descripteurs de `contract`. Aucune route n'est écrite en dur. Ne pas appeler `buildFrontOfficeUrl`, car `URLSearchParams` n'existe pas dans k6.
 - Chaque écriture pose `Sec-Fetch-Site: same-origin`, à cause du garde CSRF (ADR 0019).
-- Trois points sont à vérifier au premier essai : l'import de `contract`, le traitement du cookie `__Host-account-session` par la boîte à cookies, et l'écart réel entre la première et la dernière requête du pic.
-- Le typage se vérifie à part : `tsc --noEmit`, avec `@types/k6` et les `.d.ts` de `contract/dist`.
+- Les trois points ouverts du choix de l'outil ([#210](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/210)). Les deux premiers sont vérifiés au premier essai (15/11/2026, k6 2.3.0), le troisième est une décision, codée avec le pic :
+  - **import de `contract`** : k6 importe directement `packages/contract/dist/index.js`. Le bundle esbuild n'est pas nécessaire ;
+  - **cookie `__Host-account-session`** : la boîte à cookies de k6 le garde et le renvoie. Après `logIn`, toutes les écritures de l'Organisateur passent. Le cookie `linked-phone` (`Path=/api`) passe aussi ;
+  - **le pic** : il suit l'horloge, pas la réception du push. `setup()` fixe un instant commun. Chaque téléphone du pic dort jusqu'à cet instant, puis relit dans sa fenêtre (0 à 2 s, ou 60 s pour les applications fermées). L'écart réel entre la première et la dernière relecture se mesure dans l'issue du pic.
+- Le typage se vérifie à part : `tsc --noEmit`, avec `@types/k6` et les `.d.ts` de `contract/dist` (`pnpm --ignore-workspace typecheck` dans `load-test/`).
 
 ## 3. Requêtes rejouées
 
@@ -58,7 +61,7 @@ Détail : [Données de départ et remise à zéro de la base de test2](https://g
 
 - **Remise à zéro avant chaque palier**, par SSH depuis `run.sh` : on arrête `app` et `database`, on supprime le volume `db_data`, puis on relance avec `docker-compose.load-test.yml`. Les migrations recréent la convention, et l'API recrée l'Organisateur.
 - **Préparation** dans le `setup()` de k6, par `contract`. L'Organisateur se connecte par `accountEndpoints.logIn` avec le `ORGANIZER_PSEUDO` / `ORGANIZER_PASSWORD` de test2. Ces identifiants sont gardés sur le poste (variables d'environnement ou fichier ignoré par git). Le code de présence se lit par `conventionEndpoints.read`.
-- **Volumes** : 5 créneaux, 6 tables, 6 parties par créneau (30 en tout), 5 places au plus par partie, 15 MJ avec 2 à 3 scénarios chacun, une présentation d'environ 800 caractères sans image, deux parties doubles, 3 scénarios en réserve. Aucun participant n'est créé d'avance : les pseudos naissent pendant l'arrivée.
+- **Volumes** : 5 créneaux, 6 tables, 6 parties par créneau (28 parties, dont les 2 doubles, pour 30 cases), 5 places au plus par partie, 15 MJ avec 2 à 3 scénarios chacun, une présentation d'environ 800 caractères sans image, deux parties doubles, 3 scénarios en réserve, soit 31 scénarios. Aucun participant n'est créé d'avance : les pseudos naissent pendant l'arrivée.
 - **Dates** : la convention a lieu le jour du lancement. Le créneau mesuré commence une heure après le lancement, et les 4 autres suivent le même jour. Les heures reculent si elles dépassent minuit.
 - **Publication garantie** : chaque téléphone s'inscrit d'abord à la partie `n mod 6` du créneau mesuré. Ses désinscriptions ne touchent jamais cette première inscription.
 
@@ -88,6 +91,7 @@ Détail : [Mesures et lancement : ce qu'on relève et d'où on tire](https://git
   - `pg_stat_activity` de la base de test2, avec le nombre de connexions par état. Si 10 connexions restent actives longtemps, le pool est saturé.
 - Le pool `pg` reste à 10 connexions. On ne le règle que si la mesure le montre.
 - **Référence** : avant les paliers, on lance une mesure à 1 téléphone sur une base vide. Elle donne la latence propre au réseau du poste.
+  - Première mesure, 15/11/2026, arrivée seule, depuis le poste : 0 erreur sur 171 requêtes (préparation comprise). `readSchedule` 82 ms, `readSituation` 57 ms, `link` 45 ms, `frontOfficeEndpoints.read` 33 ms, `linkedPhoneEndpoints.read` 30 ms, `verifyPresenceCode` 22 ms, `readPublicKey` 12 ms (une requête chacun). La confirmation de MJ (`link` avec `game-master`), faite par un téléphone sur dix à partir du dixième, a passé dans un essai à 10 téléphones, sans erreur.
 
 ## 8. Lancer une campagne
 

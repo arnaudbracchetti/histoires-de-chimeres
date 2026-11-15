@@ -1,0 +1,13 @@
+{
+  "name": "load-test",
+  "private": true,
+  "description": "Test de charge de l'API par k6, hors du workspace pnpm (docs/load-test/plan.md).",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/k6": "2.3.1",
+    "typescript": "~6.0.2"
+  }
+}

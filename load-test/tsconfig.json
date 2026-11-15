@@ -1,0 +1,18 @@
+{
+  // Vérifie seulement les types : k6 lit les .ts lui-même, en retirant les types (esbuild).
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "lib": ["ES2023"],
+    "types": ["k6"]
+  },
+  "include": ["k6/**/*.ts"]
+}
