@@ -1,0 +1,130 @@
+# Plan de test de charge de l'API
+
+Ce plan rassemble les décisions de la carte [Carte : tests de charge de l'API](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/202). Chaque section renvoie au ticket qui contient le détail et les raisons du choix.
+
+## 1. But et règle d'usage
+
+- **Besoin** : PRD § Charge, « jusqu'à ~80 personnes qui consultent et s'inscrivent en même temps, avec un pic à chaque publication ».
+- **But** : contrôler la charge avant une convention. Le test se lance à la main. Il n'y a pas de garde-fou en CI pour l'instant.
+- **Cible** : `test2.nekbet.fr`, avec son propre PostgreSQL. Cette machine (152.228.233.17) héberge aussi la production et d'autres services. Le test ne touche jamais la base de production. **test2 reste donc en place.**
+- **Règle** : on ne lance jamais de test pendant une convention. Les utilisateurs des autres services de la machine sont prévenus avant chaque lancement. Ces services ont peu d'utilisateurs, donc on peut choisir le moment. `run.sh` demande une confirmation tapée avant de toucher au serveur.
+- **Simulation** : des utilisateurs virtuels HTTP rejouent les requêtes de la PWA et de l'écran de suivi. Aucun vrai navigateur n'est utilisé.
+
+## 2. Outil et emplacement du code
+
+Détail : [Choix de l'outil de test de charge](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/203), [docs/research/outil-test-de-charge.md](../research/outil-test-de-charge.md).
+
+- **k6** (2.x), installé sur le poste hors du monorepo (apt ou binaire).
+- Le code est dans le dossier `load-test/` à la racine. Ce dossier ne fait pas partie du workspace pnpm :
+  - `load-test/k6/` : les scripts k6. Ils importent `packages/contract/dist/index.js`, donc il faut lancer `pnpm build` avant. Si cet import ne marche pas, on passe par un bundle esbuild ;
+  - `load-test/fake-push/` : le faux service de push (script Node et son Dockerfile) ;
+  - `load-test/docker-compose.load-test.yml` : ce fichier est copié seulement sur test2 ;
+  - `load-test/run.sh` : le script de lancement ;
+  - `load-test/results/` : les résultats bruts, ignorés par git.
+- Réglages obligatoires de k6 : `noCookiesReset: true`, et `summaryTrendStats` avec `p(99)`.
+- Les URL se construisent par `apiUrl()` et les descripteurs de `contract`. Aucune route n'est écrite en dur. Ne pas appeler `buildFrontOfficeUrl`, car `URLSearchParams` n'existe pas dans k6.
+- Chaque écriture pose `Sec-Fetch-Site: same-origin`, à cause du garde CSRF (ADR 0019).
+- Trois points sont à vérifier au premier essai : l'import de `contract`, le traitement du cookie `__Host-account-session` par la boîte à cookies, et l'écart réel entre la première et la dernière requête du pic.
+- Le typage se vérifie à part : `tsc --noEmit`, avec `@types/k6` et les `.d.ts` de `contract/dist`.
+
+## 3. Requêtes rejouées
+
+Détail : [Relever les requêtes du front office et de l'écran de suivi, phase par phase](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/204#issuecomment-6894985082).
+
+- **Ouverture de l'application** : `frontOfficeEndpoints.read` et `linkedPhoneEndpoints.read` en parallèle, puis `pushSubscriptionEndpoints.readPublicKey`. Si le téléphone est relié, il appelle aussi `pushSubscriptionEndpoints.save`, puis fait une lecture.
+- **Lecture** (l'unité de charge du téléphone) : `frontOfficeEndpoints.readSchedule` et `frontOfficeEndpoints.readSituation` en parallèle. Un téléphone ne fait jamais deux lectures en même temps.
+- **Gestes** : `signUpEndpoints.signUp` et `signUpEndpoints.withdraw`. Chaque geste est suivi d'une lecture.
+- **Écran de suivi** : `accountEndpoints.read` au chargement, puis `signUpTrackingEndpoints.read` toutes les 30 s et après chaque geste.
+
+## 4. Scénarios et volumes
+
+Détail : [Scénarios de charge : profils, rythmes et volumes par phase](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/205#issuecomment-6895185201).
+
+Un seul lancement k6 enchaîne les phases d'un créneau. Chaque requête porte le tag `scenario` de sa phase. Une option permet de lancer une seule phase pendant la mise au point.
+
+| Phase | Profil |
+|---|---|
+| Arrivée | 80 téléphones en 2 min, montée linéaire. Chaque téléphone ouvre l'application, puis appelle `verifyPresenceCode`, attend 5 à 15 s de saisie, appelle `link` et `linkedPhoneEndpoints.read`, s'abonne au faux push, appelle `pushSubscriptionEndpoints.save` et fait une première lecture. 10 % saisissent le pseudo d'un MJ et refont `link` avec la confirmation `game-master`. |
+| Inscriptions | Plateau de 10 min. Chaque téléphone fait une lecture toutes les 30 s (départ décalé au hasard), une lecture de changement d'écran toutes les 60 s environ, et un geste toutes les 2 min en moyenne (70 % `signUp`, 30 % `withdraw`). Charge attendue : environ 8 à 10 GET/s et moins d'une écriture par seconde. |
+| Pic de publication | Un Organisateur appelle `drawEndpoints.launch`, puis `publish` 30 s plus tard. À partir d'un instant commun, 80 % des téléphones (page ouverte) relisent dans une fenêtre de 0 à 2 s. Les 20 % restants (application fermée) ouvrent l'application puis lisent, étalés sur 60 s. Les lectures toutes les 30 s continuent. Le déclenchement suit l'horloge, pas la réception du push. |
+| Organisateurs en fond | 3 Organisateurs, du début à la fin : `accountEndpoints.read`, puis `signUpTrackingEndpoints.read` toutes les 30 s. Un seul d'entre eux porte les gestes du pic, et chaque geste est suivi d'une relecture du suivi. |
+
+- **Paliers** : le nombre de téléphones est un paramètre. On fait trois lancements séparés : 80, puis 160, puis 240 si 160 tient. On s'arrête au palier où le p95 ou le taux d'erreur décroche. Il y a toujours 3 Organisateurs, et les durées ne changent pas.
+- Le test couvre un seul créneau. Les créneaux suivants répètent la même charge.
+
+## 5. Données de départ et remise à zéro
+
+Détail : [Données de départ et remise à zéro de la base de test2](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/207#issuecomment-6895530263).
+
+- **Remise à zéro avant chaque palier**, par SSH depuis `run.sh` : on arrête `app` et `database`, on supprime le volume `db_data`, puis on relance avec `docker-compose.load-test.yml`. Les migrations recréent la convention, et l'API recrée l'Organisateur.
+- **Préparation** dans le `setup()` de k6, par `contract`. L'Organisateur se connecte par `accountEndpoints.logIn` avec le `ORGANIZER_PSEUDO` / `ORGANIZER_PASSWORD` de test2. Ces identifiants sont gardés sur le poste (variables d'environnement ou fichier ignoré par git). Le code de présence se lit par `conventionEndpoints.read`.
+- **Volumes** : 5 créneaux, 6 tables, 6 parties par créneau (30 en tout), 5 places au plus par partie, 15 MJ avec 2 à 3 scénarios chacun, une présentation d'environ 800 caractères sans image, deux parties doubles, 3 scénarios en réserve. Aucun participant n'est créé d'avance : les pseudos naissent pendant l'arrivée.
+- **Dates** : la convention a lieu le jour du lancement. Le créneau mesuré commence une heure après le lancement, et les 4 autres suivent le même jour. Les heures reculent si elles dépassent minuit.
+- **Publication garantie** : chaque téléphone s'inscrit d'abord à la partie `n mod 6` du créneau mesuré. Ses désinscriptions ne touchent jamais cette première inscription.
+
+## 6. Faux service de push
+
+Détail : [Faux service de push : forme et branchement](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/206#issuecomment-6895317892).
+
+- Le conteneur `fake-push` est sur le réseau Docker de test2. Il répond en https avec un certificat auto-signé au nom du conteneur. `docker-compose.load-test.yml` le déclare, monte la CA dans `app` et pose `NODE_EXTRA_CA_CERTS`. Le Caddy edge et le DNS ne changent pas.
+- test2 a sa propre paire de clés VAPID, dans son `.env`. Elle n'est jamais celle de la production.
+- `POST /subscriptions` renvoie `{endpoint, keys}` (vraie clé P-256, `auth` de 16 octets). `fake-push` garde la clé privée. Il répond 201 après un délai réglable (`DELAY_MS`) et déchiffre chaque message reçu.
+- `GET /stats` donne le nombre de messages reçus, l'heure du premier et du dernier, le nombre par abonnement et le nombre de messages illisibles. `POST /reset` remet tout à zéro.
+- k6 joint le port d'administration par un tunnel SSH. Ce port est publié seulement sur le `127.0.0.1` du serveur.
+- `fake-push` ne vit que le temps d'un lancement. Il ne partage pas de code avec `apps/api/test/fake-push-service.ts`.
+
+## 7. Mesures
+
+Détail : [Mesures et lancement : ce qu'on relève et d'où on tire](https://github.com/arnaudbracchetti/histoires-de-chimeres/issues/208#issuecomment-6895668598).
+
+- **Côté k6**, chaque requête porte les tags `endpoint` (clé du descripteur) et `scenario`. On relève, par endpoint et par phase : p50, p95, p99, max, `http_req_failed` et les codes HTTP. `handleSummary()` écrit le résumé en JSON et en texte.
+- **Refus attendus** : un `responseCallback` par requête marque comme attendus les refus métier normaux. Par exemple, un `signUp` sur une partie complète, ou un `link` qui demande une confirmation. Le taux d'erreur ne compte donc que les 5xx, les délais dépassés et les 4xx imprévus.
+- **Deux métriques propres** :
+  - le délai du pic, de la réponse de `publish` à la dernière relecture ;
+  - la durée d'envoi des notifications, de la réponse de `publish` à la dernière réception dans `fake-push`. Les échecs se calculent ainsi : notifications attendues moins notifications reçues. On les recoupe avec les avertissements `Envoi push refusé` des journaux de `app`.
+- **Côté serveur**, toutes les 5 s par SSH, dans un CSV horodaté :
+  - `docker stats --no-stream` sur tous les conteneurs de la machine ;
+  - `/proc/loadavg` et `free` ;
+  - `pg_stat_activity` de la base de test2, avec le nombre de connexions par état. Si 10 connexions restent actives longtemps, le pool est saturé.
+- Le pool `pg` reste à 10 connexions. On ne le règle que si la mesure le montre.
+- **Référence** : avant les paliers, on lance une mesure à 1 téléphone sur une base vide. Elle donne la latence propre au réseau du poste.
+
+## 8. Lancer une campagne
+
+1. **Prérequis sur le poste** : k6 installé, `pnpm build` fait, accès SSH au serveur, identifiants de test2 disponibles.
+2. **Prérequis sur le serveur** : `docker-compose.load-test.yml` est copié dans le dossier de test2, et les clés VAPID propres à test2 sont dans son `.env`.
+3. **Prévenir** les utilisateurs des autres services de la machine, et vérifier qu'aucune convention n'est en cours.
+4. Lancer `load-test/run.sh <palier>`. Le script :
+   1. demande une confirmation tapée (pas de convention en cours, autres services prévenus) ;
+   2. remet la base de test2 à zéro et relance avec `docker-compose.load-test.yml` ;
+   3. ouvre le tunnel SSH vers `fake-push` et lance la collecte côté serveur ;
+   4. lance k6 ;
+   5. à la fin, ou sur Ctrl-C par un `trap` : arrête `fake-push`, relance `app` sans `docker-compose.load-test.yml`, puis rapatrie les CSV et les journaux dans `load-test/results/<date>-<palier>/`.
+5. **Ordre d'une campagne** : la référence à 1 téléphone, puis 80, 160 et 240 téléphones, avec une réponse du push à 0 ms. On refait ensuite le palier 80 avec une réponse du push à 300 ms.
+
+Le test s'arrête vite dans trois cas :
+
+- Ctrl-C sur k6 ;
+- `abortOnFail` si le taux d'erreur dépasse 20 % sur 30 s ;
+- le garde-fou : un scénario k6 interroge toutes les 5 s `/api/health` de la production et une liste d'URL des autres services de la machine. Cette liste se règle sur le poste. Si une réponse prend plus de 2 s ou échoue, le test s'arrête.
+
+## 9. Résultats et seuils
+
+- Les résultats bruts sont dans `load-test/results/`, qui est ignoré par git.
+- Une synthèse par campagne va dans `docs/load-test/<date>.md` : date, version, paliers, p95, erreurs, CPU max et conclusion. Elle n'est commitée qu'après accord.
+- **Les seuils se fixent à la fin de la première campagne**, au moment d'écrire sa synthèse. On les inscrit dans ce plan et dans les `thresholds` de k6, selon la méthode suivante :
+  - **à 80 téléphones** (le besoin), par phase :
+    - aucune erreur, refus attendus exclus ;
+    - p95 des lectures (`readSchedule` + `readSituation`) : la valeur mesurée × 1,5, arrondie, jamais au-dessus de 1 s ;
+    - délai du pic et durée d'envoi des notifications : même règle, avec un plafond de 10 s chacun ;
+  - **à 160 téléphones** (le double, une marge et non une exigence) : taux d'erreur sous 1 %, et p95 des lectures sous 2 s ;
+  - **à 240 téléphones** : informatif, sans seuil.
+- Si la mesure à 80 dépasse déjà un plafond, on ouvre une issue d'optimisation avant la convention. On n'assouplit pas les seuils.
+
+## 10. Hors de ce plan
+
+- Le temps de calcul du tirage (`packages/draw`).
+- Le poids et le temps d'affichage du front office sur mobile en 4G.
+- Un garde-fou de performance en CI.
+- Tout test sur la base de production.
+- Les autres gestes du jour J (ajustements, réserve) : pas dans ce premier plan.
