@@ -71,7 +71,7 @@ describe('ScenarioForm', () => {
   describe('compteurs', () => {
     it.each([
       ['Titre', '80'],
-      ['Jeu', '60'],
+      ['Jeu / Univers', '60'],
       ['Présentation', '1\u202f500'],
       ['Avertissements de contenu', '300'],
     ])('« %s » compte ses caractères sur %s', async (label, max) => {
@@ -114,12 +114,12 @@ describe('ScenarioForm', () => {
     it('se mettent à jour à chaque frappe une fois le champ quitté', async () => {
       const { type, errorOf } = await render();
 
-      await type('Jeu', '');
-      expect(errorOf('Jeu')).toBe(
+      await type('Jeu / Univers', '');
+      expect(errorOf('Jeu / Univers')).toBe(
         `Indique le jeu de rôle utilisé pour ce scénario${NBSP}: ses règles et son univers.`,
       );
-      await type('Jeu', 'Dune', { leave: false });
-      expect(errorOf('Jeu')).toBe('');
+      await type('Jeu / Univers', 'Dune', { leave: false });
+      expect(errorOf('Jeu / Univers')).toBe('');
     });
 
     it('refusent des places dans le désordre sous le maximum', async () => {
@@ -145,8 +145,16 @@ describe('ScenarioForm', () => {
     });
   });
 
+  it('un nouveau scénario propose 3 à 5 places', async () => {
+    const { control } = await render();
+
+    expect(control('Places minimum').value).toBe('3');
+    expect(control('Places maximum').value).toBe('5');
+  });
+
   it('« Enregistrer » n’est jamais désactivé : l’envoi est bloqué et le focus va au premier champ en erreur', async () => {
-    const { button, submit, save, control, errorOf } = await render();
+    const { button, submit, save, control, errorOf, type } = await render();
+    await type('Places minimum', '');
 
     expect(button('Enregistrer').disabled).toBe(false);
     await submit();
@@ -162,7 +170,7 @@ describe('ScenarioForm', () => {
     save.mockResolvedValue(SCENARIO);
 
     await type('Titre', "La Tour d'ébène");
-    await type('Jeu', "L'Appel de Cthulhu");
+    await type('Jeu / Univers', "L'Appel de Cthulhu");
     await type('Présentation', 'Une tour, une nuit.');
     await type('Places minimum', '3');
     await type('Places maximum', '5');
@@ -253,7 +261,7 @@ describe('ScenarioForm', () => {
     it('revient à la saisie pour mettre le focus sur une présentation en erreur', async () => {
       const { type, button, submit, control, fixture } = await render();
       await type('Titre', 'Titre');
-      await type('Jeu', 'Jeu');
+      await type('Jeu / Univers', 'Jeu');
       button('Aperçu').click();
       await fixture.whenStable();
 

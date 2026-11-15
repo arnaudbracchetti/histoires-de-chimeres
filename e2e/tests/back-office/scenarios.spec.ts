@@ -46,7 +46,7 @@ async function proposeScenario(
 function form(page: Page) {
   return {
     title: page.getByRole('textbox', { name: 'Titre', exact: true }),
-    system: page.getByRole('textbox', { name: 'Jeu', exact: true }),
+    system: page.getByRole('textbox', { name: 'Jeu / Univers', exact: true }),
     presentation: page.getByRole('textbox', { name: 'Présentation', exact: true }),
     contentWarnings: page.getByRole('textbox', { name: /^Avertissements de contenu/ }),
     min: page.getByRole('spinbutton', { name: 'Places minimum' }),

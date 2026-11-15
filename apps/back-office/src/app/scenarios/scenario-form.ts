@@ -22,7 +22,10 @@ import { Field } from '../ui/field';
 import { SaveButton } from '../ui/save-button';
 import { PresentationPreview } from './presentation-preview';
 
-/** La saisie : des places vides tant qu'on ne les a pas saisies, la durée en texte (boutons radio). */
+/**
+ * La saisie : des places vides si on efface le champ (un nouveau scénario part de 3 à 5), la durée
+ * en texte (boutons radio).
+ */
 type ScenarioModel = {
   title: string;
   system: string;
@@ -37,7 +40,7 @@ const EMPTY: ScenarioModel = {
   system: '',
   presentation: '',
   contentWarnings: '',
-  seats: { min: null, max: null },
+  seats: { min: 3, max: 5 },
   duration: '1',
 };
 
@@ -85,7 +88,7 @@ function seatsRules(path: SchemaPath<number | null>, missing: string): void {
         <app-field label="Titre" [counter]="limits.title">
           <input [formField]="form.title" autocomplete="off" />
         </app-field>
-        <app-field label="Jeu" [counter]="limits.system">
+        <app-field label="Jeu / Univers" [counter]="limits.system">
           <input [formField]="form.system" autocomplete="off" />
         </app-field>
       </div>

@@ -77,7 +77,7 @@ test("un MJ entre par son lien d'accès, propose un scénario, déclare une disp
 
   await lune.getByRole('link', { name: 'Proposer un scénario' }).click();
   await lune.getByRole('textbox', { name: 'Titre', exact: true }).fill("La Tour d'ébène");
-  await lune.getByRole('textbox', { name: 'Jeu', exact: true }).fill("L'Appel de Cthulhu");
+  await lune.getByRole('textbox', { name: 'Jeu / Univers', exact: true }).fill("L'Appel de Cthulhu");
   await lune
     .getByRole('textbox', { name: 'Présentation', exact: true })
     .fill('Une tour, une nuit.');
