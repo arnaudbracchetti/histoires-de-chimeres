@@ -28,7 +28,7 @@ import { formatScenarioDuration } from '../scenarios/scenario-format';
 import { Announcer } from '../shell/announcer';
 import { Loadable } from '../shell/loadable';
 import { PageHeader } from '../shell/page-header';
-import { formatSeats, fr, timeSlotLabel } from '@chimeres/design';
+import { formatSeats, fr, NBSP, timeSlotLabel } from '@chimeres/design';
 import { Button } from '../ui/button';
 import { Confirmation } from '../ui/confirmation';
 import { Icon } from '../ui/icon';
@@ -131,6 +131,9 @@ type TabValue = 'scenarios' | 'availabilities' | 'games';
             </div>
             <div ngTabPanel value="scenarios" class="panel">
               <ng-template ngTabContent>
+                @if (labels().intro; as intro) {
+                  <p class="intro">{{ intro.scenarios }}</p>
+                }
                 @if (gameMaster.scenarios.length) {
                   <ul class="rows scenarios">
                     @for (scenario of gameMaster.scenarios; track scenario.id) {
@@ -162,6 +165,9 @@ type TabValue = 'scenarios' | 'availabilities' | 'games';
             </div>
             <div ngTabPanel value="availabilities" class="panel">
               <ng-template ngTabContent>
+                @if (labels().intro; as intro) {
+                  <p class="intro">{{ intro.availabilities }}</p>
+                }
                 @if (timeSlots().length) {
                   <app-availability-timeline
                     [gameMaster]="gameMaster"
@@ -179,6 +185,9 @@ type TabValue = 'scenarios' | 'availabilities' | 'games';
             </div>
             <div ngTabPanel value="games" class="panel">
               <ng-template ngTabContent>
+                @if (labels().intro; as intro) {
+                  <p class="intro">{{ intro.games }}</p>
+                }
                 @if (gameMaster.games.length) {
                   <ul class="rows games">
                     @for (game of gameMaster.games; track game.gameId + game.timeSlotId) {
@@ -212,6 +221,12 @@ type TabValue = 'scenarios' | 'availabilities' | 'games';
       }
 
       .none {
+        color: var(--text-muted);
+      }
+
+      /* Sur « Ma fiche » : à quoi sert l'onglet, avant son contenu. */
+      .intro {
+        margin: 0 0 var(--space-m);
         color: var(--text-muted);
       }
 
@@ -300,12 +315,20 @@ export class GameMasterPage {
           scenarios: 'Mes scénarios',
           availabilities: 'Mes disponibilités',
           games: 'Mes parties',
+          intro: {
+            scenarios:
+              'Propose les scénarios que tu aimerais faire jouer pendant la convention. Les Organisateurs les programmeront sur les créneaux où tu es disponible.',
+            availabilities:
+              'Indique les créneaux où tu peux mener une partie. Les Organisateurs ne programment tes scénarios que sur ces créneaux.',
+            games: `Retrouve ici tes scénarios programmés par les Organisateurs${NBSP}: le créneau et la table où tu mèneras chaque partie.`,
+          },
         }
       : {
           tabs: 'Vues du MJ',
           scenarios: 'Scénarios',
           availabilities: 'Disponibilités',
           games: 'Parties',
+          intro: null,
         },
   );
   protected readonly menu = MENU;

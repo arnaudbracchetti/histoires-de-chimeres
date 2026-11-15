@@ -305,6 +305,34 @@ describe('GameMasterPage', () => {
     expect(propose?.getAttribute('href')).toBe('/mj/g1/nouveau-scenario');
   });
 
+  it('« Ma fiche » : chaque onglet s’ouvre sur une phrase qui dit à quoi il sert', async () => {
+    const { host, text, settle } = await render(
+      { nickname: 'Élodie', availabilities: ['t1'] },
+      { account: ELODIE, mine: true, timeSlots: TIME_SLOTS },
+    );
+    const intro = async (tab: string) => {
+      host.querySelector<HTMLButtonElement>(`#tab-${tab}`)!.click();
+      await settle();
+      return text(host.querySelector('[role="tabpanel"]:not([inert]) .intro'));
+    };
+
+    expect(await intro('scenarios')).toBe(
+      'Propose les scénarios que tu aimerais faire jouer pendant la convention. Les Organisateurs les programmeront sur les créneaux où tu es disponible.',
+    );
+    expect(await intro('availabilities')).toBe(
+      'Indique les créneaux où tu peux mener une partie. Les Organisateurs ne programment tes scénarios que sur ces créneaux.',
+    );
+    expect(await intro('games')).toBe(
+      `Retrouve ici tes scénarios programmés par les Organisateurs${NBSP}: le créneau et la table où tu mèneras chaque partie.`,
+    );
+  });
+
+  it('la fiche d’un MJ vue par un Organisateur n’a pas de phrase d’introduction', async () => {
+    const { host } = await render();
+
+    expect(host.querySelector('.intro')).toBeNull();
+  });
+
   it('« Mes parties » : le créneau, le scénario et la table de chaque partie', async () => {
     const { host, text, settle } = await render(
       {
