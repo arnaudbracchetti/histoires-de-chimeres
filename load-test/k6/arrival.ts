@@ -11,6 +11,7 @@ import {
 import type {
   FrontOfficeScheduleDto,
   ParticipantSituationDto,
+  PushSubscriptionBody,
 } from '../../packages/contract/dist/index.js';
 import { frontOffice, linkedPhone, pushSubscription } from './endpoints.ts';
 import { FAKE_PUSH_URL, requestFakePushSubscription } from './fake-push.ts';
@@ -25,21 +26,28 @@ const PHONE_NOT_LINKED = 401;
 /** Ce que rend une lecture : le programme et la situation du pseudo. */
 export type Reading = { schedule: FrontOfficeScheduleDto; situation: ParticipantSituationDto };
 
-/** Le rang du téléphone dans le test, à partir de 0 : un utilisateur virtuel k6 par téléphone. */
+/**
+ * Le rang du téléphone dans le test, à partir de 0 : un utilisateur virtuel k6 par téléphone, qui
+ * fait une seule itération. Le rang de l'itération ne dépend pas des autres scénarios, au contraire
+ * du numéro de l'utilisateur virtuel.
+ */
 export function getPhoneIndex(): number {
-  return exec.vu.idInTest - 1;
+  return exec.scenario.iterationInTest;
 }
+
+/** Ce que l'arrivée rend : la première lecture, et l'abonnement au push, s'il y en a un. */
+export type Arrival = { reading: Reading; subscription: PushSubscriptionBody | null };
 
 /**
  * Un téléphone arrive : il ouvre l'application, donne le code de présence, saisit son pseudo, se
- * relie, s'abonne au push, puis fait sa première lecture, qu'il rend. Un téléphone sur dix saisit
- * le pseudo d'un MJ et confirme.
+ * relie, s'abonne au push, puis fait sa première lecture. Il rend cette lecture et son abonnement.
+ * Un téléphone sur dix saisit le pseudo d'un MJ et confirme.
  */
-export function arrive(data: PreparedConvention, phoneCount: number): Reading {
+export function arrive(data: PreparedConvention, phoneCount: number): Arrival {
   const phoneIndex = getPhoneIndex();
   sleep((phoneIndex * ARRIVAL_SECONDS) / phoneCount);
 
-  openApplication();
+  openApplication(ARRIVAL);
   sendAndVerifySuccess(frontOffice.verifyPresenceCode, {
     phase: ARRIVAL,
     body: { presenceCode: data.presenceCode },
@@ -48,20 +56,21 @@ export function arrive(data: PreparedConvention, phoneCount: number): Reading {
 
   linkPhone(ARRIVAL, data, phoneIndex);
   sendAndVerifySuccess(linkedPhone.read, { phase: ARRIVAL });
-  subscribeToPush();
-  return readScheduleAndSituation(ARRIVAL);
+  const subscription = subscribeToPush();
+  return { reading: readScheduleAndSituation(ARRIVAL), subscription };
 }
 
 /**
  * L'ouverture de l'application : la convention et le lien du téléphone en parallèle, puis la clé
- * publique du push. Le téléphone n'est pas encore relié : `phone-not-linked` est attendu.
+ * publique du push. À l'arrivée, le téléphone n'est pas encore relié : `phone-not-linked` est
+ * attendu.
  */
-function openApplication(): void {
+export function openApplication(phase: string): void {
   sendInParallelAndVerifySuccess([
-    prepareRequest(frontOffice.read, { phase: ARRIVAL }),
-    prepareRequest(linkedPhone.read, { phase: ARRIVAL, expectedRefusals: [PHONE_NOT_LINKED] }),
+    prepareRequest(frontOffice.read, { phase }),
+    prepareRequest(linkedPhone.read, { phase, expectedRefusals: [PHONE_NOT_LINKED] }),
   ]);
-  sendAndVerifySuccess(pushSubscription.readPublicKey, { phase: ARRIVAL });
+  sendAndVerifySuccess(pushSubscription.readPublicKey, { phase });
 }
 
 /**
@@ -93,14 +102,13 @@ export function linkPhone(phase: string, data: PreparedConvention, phoneIndex: n
 
 /**
  * L'abonnement au push, une fois le téléphone relié : fake-push le fabrique à la place du
- * navigateur, puis le téléphone le range sur l'API. Sans `FAKE_PUSH_URL`, rien.
+ * navigateur, puis le téléphone le range sur l'API, et le rend. Sans `FAKE_PUSH_URL`, rien.
  */
-function subscribeToPush(): void {
-  if (FAKE_PUSH_URL === null) return;
-  sendAndVerifySuccess(pushSubscription.save, {
-    phase: ARRIVAL,
-    body: requestFakePushSubscription(FAKE_PUSH_URL, ARRIVAL),
-  });
+function subscribeToPush(): PushSubscriptionBody | null {
+  if (FAKE_PUSH_URL === null) return null;
+  const subscription = requestFakePushSubscription(FAKE_PUSH_URL, ARRIVAL);
+  sendAndVerifySuccess(pushSubscription.save, { phase: ARRIVAL, body: subscription });
+  return subscription;
 }
 
 /** Une lecture, l'unité de charge du téléphone : le programme et la situation, en parallèle. */

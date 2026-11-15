@@ -22,3 +22,39 @@ export function requestFakePushSubscription(
   }
   return response.json() as PushSubscriptionBody;
 }
+
+/**
+ * Les compteurs de fake-push, et sa dernière réception à l'heure du poste. fake-push date ses
+ * réceptions à l'heure du serveur, et rend aussi l'heure de sa réponse (`now`) : l'écart entre les
+ * deux horloges s'estime au milieu de l'aller-retour, à la latence du tunnel près.
+ */
+export type FakePushCounts = {
+  readable: number;
+  unreadable: number;
+  /** En ms, à l'heure du poste ; `null` sans réception. */
+  lastReceivedAtMs: number | null;
+};
+
+export function readFakePushCounts(fakePushUrl: string, phase: string): FakePushCounts {
+  const sentAtMs = Date.now();
+  const response = http.get(`${fakePushUrl}/stats`, {
+    tags: { endpoint: 'fakePush.stats', scenario: phase },
+  });
+  const receivedAtMs = Date.now();
+  if (response.status !== 200) {
+    throw new Error(`fake-push : ${response.status} ${String(response.body)}`);
+  }
+  const stats = response.json() as {
+    readable: number;
+    unreadable: number;
+    lastReceivedAt: string | null;
+    now: string;
+  };
+  const serverAheadMs = Date.parse(stats.now) - (sentAtMs + receivedAtMs) / 2;
+  return {
+    readable: stats.readable,
+    unreadable: stats.unreadable,
+    lastReceivedAtMs:
+      stats.lastReceivedAt === null ? null : Date.parse(stats.lastReceivedAt) - serverAheadMs,
+  };
+}

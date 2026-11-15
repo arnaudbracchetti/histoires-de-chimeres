@@ -23,8 +23,8 @@ set -euo pipefail
 #   8. À la fin, ou sur Ctrl-C : rapatrie les statistiques de fake-push et les journaux de app, puis
 #      relance test2 sans docker-compose.load-test.yml. Les mesures déjà prises restent.
 #
-# Résultats : load-test/results/<date>-<téléphones>/ (server.csv, k6.txt, app.log,
-# fake-push-stats.json).
+# Résultats : load-test/results/<date>-<téléphones>/ (server.csv, k6.txt, summary.txt,
+# summary.json, app.log, fake-push-stats.json).
 #
 # Variables : celles de load-test/.env (voir .env.example), plus, pour un autre serveur :
 #   DEPLOY_HOST, DEPLOY_DIR, DEPLOY_DOMAIN, DEPLOY_SSH_OPTS (les mêmes que scripts/deploy-test.sh),
@@ -233,7 +233,7 @@ step "k6 : $phones téléphone(s)"
 set +e
 # tee -i, et le filtre qui ignore SIGINT : un Ctrl-C arrête k6, mais pas l'écriture de son résumé.
 # Le fichier garde tout sauf la barre de progression, réécrite à chaque seconde.
-PHONES="$phones" FAKE_PUSH_URL="$fake_push_url" k6 run k6/load-test.ts 2>&1 \
+PHONES="$phones" FAKE_PUSH_URL="$fake_push_url" RESULTS_DIR="$run_dir" k6 run k6/load-test.ts 2>&1 \
   | tee -i >(trap '' INT; exec grep --line-buffered -vE '\[ *[0-9]+% \]|^running \(' > "$run_dir/k6.txt")
 k6_status=${PIPESTATUS[0]}
 set -e

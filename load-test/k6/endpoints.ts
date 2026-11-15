@@ -3,6 +3,7 @@ import {
   accountEndpoints,
   availabilityEndpoints,
   conventionEndpoints,
+  drawEndpoints,
   frontOfficeEndpoints,
   linkedPhoneEndpoints,
   participantEndpoints,
@@ -10,6 +11,7 @@ import {
   scenarioEndpoints,
   scheduleEndpoints,
   signUpEndpoints,
+  signUpTrackingEndpoints,
   tableEndpoints,
   timeSlotEndpoints,
 } from '../../packages/contract/dist/index.js';
@@ -18,6 +20,7 @@ import { nameEndpoints } from './api.ts';
 export const account = nameEndpoints('accountEndpoints', accountEndpoints);
 export const availability = nameEndpoints('availabilityEndpoints', availabilityEndpoints);
 export const convention = nameEndpoints('conventionEndpoints', conventionEndpoints);
+export const draw = nameEndpoints('drawEndpoints', drawEndpoints);
 export const frontOffice = nameEndpoints('frontOfficeEndpoints', frontOfficeEndpoints);
 export const linkedPhone = nameEndpoints('linkedPhoneEndpoints', linkedPhoneEndpoints);
 export const participant = nameEndpoints('participantEndpoints', participantEndpoints);
@@ -28,5 +31,6 @@ export const pushSubscription = nameEndpoints(
 export const scenario = nameEndpoints('scenarioEndpoints', scenarioEndpoints);
 export const schedule = nameEndpoints('scheduleEndpoints', scheduleEndpoints);
 export const signUp = nameEndpoints('signUpEndpoints', signUpEndpoints);
+export const signUpTracking = nameEndpoints('signUpTrackingEndpoints', signUpTrackingEndpoints);
 export const table = nameEndpoints('tableEndpoints', tableEndpoints);
 export const timeSlot = nameEndpoints('timeSlotEndpoints', timeSlotEndpoints);

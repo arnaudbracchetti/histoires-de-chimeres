@@ -33,9 +33,9 @@ const failedEvents = new Counter('sign_ups_failed_events');
  * partie garantie, puis relit toutes les 30 s, à chaque changement d'écran, et après chacun de ses
  * gestes. Il ne fait jamais deux lectures en même temps : une lecture prévue pendant la précédente
  * s'y fond, comme dans le front office. Une requête en échec compte dans `http_req_failed`, et le
- * téléphone continue son calendrier.
+ * téléphone continue son calendrier. Rend sa dernière lecture.
  */
-export function takePartInSignUps(phoneIndex: number, startMs: number, reading: Reading): void {
+export function takePartInSignUps(phoneIndex: number, startMs: number, reading: Reading): Reading {
   let latest = reading;
   let guaranteedGameId: string | null = null;
   let lastReadEndMs = 0;
@@ -59,6 +59,7 @@ export function takePartInSignUps(phoneIndex: number, startMs: number, reading: 
     }
     lastReadEndMs = Date.now();
   }
+  return latest;
 }
 
 /** Le geste de l'événement : l'inscription garantie, un geste au hasard, ou aucun pour une lecture. */

@@ -30,8 +30,12 @@ export type FakePush = {
   close(): Promise<void>;
 };
 
-/** Ce que `GET /stats` rend. Les heures sont celles de la réception, en ISO 8601. */
+/**
+ * Ce que `GET /stats` rend. Les heures sont celles de la réception, en ISO 8601 ; `now`, l'heure de
+ * la réponse, permet à k6 de corriger l'écart entre l'horloge du poste et celle du serveur.
+ */
 export type FakePushStats = {
+  now?: string;
   subscriptions: number;
   readable: number;
   unreadable: number;
@@ -97,7 +101,7 @@ export async function startFakePush(options: FakePushOptions): Promise<FakePush>
         keys: { p256dh: ecdh.getPublicKey('base64url'), auth: auth.toString('base64url') },
       });
     } else if (route === 'GET /stats') {
-      reply(200, stats);
+      reply(200, { ...stats, now: new Date().toISOString() });
     } else if (route === 'POST /reset') {
       subscriptions.clear();
       stats = emptyStats();

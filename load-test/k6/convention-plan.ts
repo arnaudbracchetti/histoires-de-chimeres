@@ -13,8 +13,9 @@ export const RESERVE_SCENARIO_COUNT = 3;
 /** Les rangs, dans la liste des scénarios programmés, des deux scénarios doubles. */
 const TWO_SLOT_SCENARIO_INDEXES = new Set([3, 20]);
 
-/** Durée d'un créneau, en minutes. */
+/** Durée d'un créneau, en minutes : 2 h, raccourcie le soir pour finir avant minuit, 30 min au moins. */
 const TIME_SLOT_MINUTES = 120;
+const SHORTEST_TIME_SLOT_MINUTES = 30;
 /** Le créneau mesuré commence une heure après le lancement. */
 const MEASURED_TIME_SLOT_DELAY_MINUTES = 60;
 /** Dernière fin possible d'un créneau : la journée ne passe pas minuit. */
@@ -46,7 +47,8 @@ function computeLastSundayAtOneUtc(year: number, month: number): Date {
 /**
  * La date de la convention (le jour du lancement, à Paris) et les heures des créneaux : le premier,
  * le créneau mesuré, commence une heure après le lancement, arrondi aux 5 minutes ; les autres le
- * suivent. Les heures reculent si le dernier finit après 23 h 55.
+ * suivent. Les créneaux raccourcissent si le dernier finirait après 23 h 55. Le créneau mesuré ne
+ * recule jamais : déjà fini, il ne recevrait aucune notification à la publication (NO-3).
  */
 export function computeConventionDay(now: Date): {
   date: string;
@@ -54,15 +56,19 @@ export function computeConventionDay(now: Date): {
 } {
   const paris = new Date(now.getTime() + computeParisOffsetMinutes(now) * 60 * 1000);
   const nowMinutes = paris.getUTCHours() * 60 + paris.getUTCMinutes();
-  const span = TIME_SLOT_COUNT * TIME_SLOT_MINUTES;
-  const wishedStart = Math.ceil((nowMinutes + MEASURED_TIME_SLOT_DELAY_MINUTES) / 5) * 5;
-  const start = Math.min(wishedStart, LATEST_END_MINUTES - span);
-  if (start + span <= nowMinutes) {
-    throw new Error('Lancement trop tard dans la journée : la convention serait déjà terminée.');
+  const start = Math.ceil((nowMinutes + MEASURED_TIME_SLOT_DELAY_MINUTES) / 5) * 5;
+  const slotMinutes = Math.min(
+    TIME_SLOT_MINUTES,
+    Math.floor((LATEST_END_MINUTES - start) / TIME_SLOT_COUNT / 5) * 5,
+  );
+  if (slotMinutes < SHORTEST_TIME_SLOT_MINUTES) {
+    throw new Error(
+      `Lancement trop tard dans la journée : ${TIME_SLOT_COUNT} créneaux de ${SHORTEST_TIME_SLOT_MINUTES} min ne tiennent plus avant 23 h 55.`,
+    );
   }
   const hours = Array.from({ length: TIME_SLOT_COUNT }, (_, rank) => ({
-    start: formatTime(start + rank * TIME_SLOT_MINUTES),
-    end: formatTime(start + (rank + 1) * TIME_SLOT_MINUTES),
+    start: formatTime(start + rank * slotMinutes),
+    end: formatTime(start + (rank + 1) * slotMinutes),
   }));
   return { date: paris.toISOString().slice(0, 10), hours };
 }

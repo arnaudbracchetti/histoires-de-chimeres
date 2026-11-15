@@ -33,7 +33,7 @@ export type PreparedConvention = {
  * créneaux, 6 tables, 15 MJ disponibles partout, 31 scénarios, dont 28 programmés et 3 en réserve.
  */
 export function prepareConvention(): PreparedConvention {
-  logInOrganizer();
+  logInOrganizer(PREPARATION);
   const current = sendAndReadResponse(convention.read, { phase: PREPARATION });
   if (current.timeSlots.length > 0 || current.tables.length > 0) {
     throw new Error('La convention a déjà des créneaux ou des tables : remettre la base à zéro.');
@@ -97,14 +97,17 @@ export function prepareConvention(): PreparedConvention {
   };
 }
 
-/** Les identifiants de l'Organisateur de test2, lus sur le poste, jamais dans le dépôt. */
-function logInOrganizer(): void {
+/**
+ * Connecte l'Organisateur de test2, par ses identifiants lus sur le poste, jamais dans le dépôt. Les
+ * Organisateurs en fond ouvrent chacun leur session sur ce même compte.
+ */
+export function logInOrganizer(phase: string): void {
   const nickname = __ENV.ORGANIZER_PSEUDO;
   const password = __ENV.ORGANIZER_PASSWORD;
   if (!nickname || !password) {
     throw new Error('ORGANIZER_PSEUDO et ORGANIZER_PASSWORD manquent : voir load-test/README.md.');
   }
-  sendAndVerifySuccess(account.logIn, { phase: PREPARATION, body: { nickname, password } });
+  sendAndVerifySuccess(account.logIn, { phase, body: { nickname, password } });
 }
 
 /** Crée les 15 MJ, disponibles sur tous les créneaux. */

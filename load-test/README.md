@@ -18,9 +18,9 @@ load-test/run.sh 80 300    # push qui répond en 300 ms
 
 Le script demande une confirmation tapée, remet la base de test2 à zéro, la relance avec `fake-push` (`docker-compose.load-test.yml`), ouvre le tunnel SSH, collecte les mesures du serveur et lance k6. À la fin, ou sur Ctrl-C, il relance test2 dans sa configuration normale. Détail : en-tête de `run.sh` et [plan § 8](../docs/load-test/plan.md#8-lancer-une-campagne).
 
-`setup()` connecte l'Organisateur, puis crée la convention du jour : 5 créneaux, 6 tables, 15 MJ, 31 scénarios, dont 28 programmés (2 doubles) et 3 en réserve. Puis chaque téléphone arrive : ouverture, code de présence, saisie du pseudo, `link`, abonnement au push, première lecture. Enfin, le plateau des inscriptions, 10 min : inscription à la partie garantie, lectures, `signUp` et `withdraw` sur le créneau mesuré.
+`setup()` connecte l'Organisateur, puis crée la convention du jour : 5 créneaux, 6 tables, 15 MJ, 31 scénarios, dont 28 programmés (2 doubles) et 3 en réserve. Puis chaque téléphone arrive : ouverture, code de présence, saisie du pseudo, `link`, abonnement au push, première lecture. Puis le plateau des inscriptions, 10 min : inscription à la partie garantie, lectures, `signUp` et `withdraw` sur le créneau mesuré. Enfin, la publication : un Organisateur lance le tirage, le publie 30 s plus tard, et les téléphones relisent au pic. 3 Organisateurs relisent le suivi toutes les 30 s, du début à la fin. Le résumé (`summary.txt`, `summary.json`) commence par le délai du pic et la durée d'envoi des notifications.
 
-`PHASE=arrival` ou `PHASE=sign-ups` devant la commande lance une seule phase.
+`PHASE=arrival` ou `PHASE=sign-ups` devant la commande lance une seule phase, sans la publication.
 
 ## Lancer k6 seul, pour la mise au point
 
