@@ -16,6 +16,14 @@ Production sur `hdc.nekbet.fr`, sur le VPS d'Agilometre. Le compte `deploy`, le 
 
 Le détail de chaque option du script est dans l'en-tête de `deploy-hdc.sh`.
 
+**Serveur de test sur la même machine.** `test2.nekbet.fr` est une instance à part, qui ne
+partage rien avec la production : dossier `/opt/hdc-test2`, projet
+Compose `histoires-de-chimeres-test2` (`docker-compose.test2.yml`), donc ses propres conteneurs,
+réseau et volume, image locale `histoires-de-chimeres-test2-app`, alias `chimeres-test2-app`, site
+`/opt/edge/sites/histoires-de-chimeres-test2.caddy`. Elle se déploie par `scripts/deploy-test.sh`.
+`docker-compose.prod.yml` porte le nom de projet `histoires-de-chimeres-prod` : lancé depuis un
+autre dossier que `/opt/hdc`, il agit sur les conteneurs et le volume de la production.
+
 ## 1. Premier déploiement
 
 Une seule fois, dans cet ordre. `<ip>` est l'adresse du VPS.

@@ -1,0 +1,19 @@
+# Bloc de site du serveur de test, pour le Caddy « edge » (/opt/edge/sites/histoires-de-chimeres-test2.caddy).
+# Il vise l'alias chimeres-test2-app de docker-compose.test2.yml, jamais chimeres-app (la production).
+test2.nekbet.fr {
+    encode gzip
+
+    header {
+        X-Content-Type-Options "nosniff"
+        ?Referrer-Policy "strict-origin-when-cross-origin"
+        X-Frame-Options "DENY"
+        # Le serveur de test ne doit pas être indexé.
+        X-Robots-Tag "noindex, nofollow"
+        -Server
+    }
+
+    reverse_proxy chimeres-test2-app:3000 {
+        header_up X-Forwarded-For {http.request.remote.host}
+        header_up X-Real-IP {http.request.remote.host}
+    }
+}

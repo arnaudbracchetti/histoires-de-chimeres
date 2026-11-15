@@ -1,0 +1,66 @@
+name: histoires-de-chimeres-test2
+
+# Serveur de test test2.nekbet.fr, sur la même machine que la production : `scripts/deploy-test.sh`
+# copie ce fichier dans /opt/hdc-test2. Tout y est propre à test2, rien
+# n'est partagé avec docker-compose.prod.yml : nom du projet (donc conteneurs, réseau et volume
+# histoires-de-chimeres-test2_*), image locale jamais publiée, alias sur edge_net. Ne jamais
+# reprendre ici le nom histoires-de-chimeres-prod ni l'alias chimeres-app : ce serait la production.
+services:
+  database:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - chimeres_test2_db_net
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
+    restart: unless-stopped
+
+  app:
+    # Image construite sur le poste et chargée par SSH, sous un nom à part : jamais celui de ghcr.
+    image: histoires-de-chimeres-test2-app:${IMAGE_TAG:?IMAGE_TAG manque dans .env}
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?schema=public
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      PUBLIC_URL: https://${PUBLIC_DOMAIN}
+      ORGANIZER_PSEUDO: ${ORGANIZER_PSEUDO:-}
+      ORGANIZER_PASSWORD: ${ORGANIZER_PASSWORD:-}
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      edge_net:
+        aliases:
+          # Lu par histoires-de-chimeres-test2.caddy.
+          - chimeres-test2-app
+      chimeres_test2_db_net: {}
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
+    restart: unless-stopped
+
+networks:
+  edge_net:
+    external: true
+  chimeres_test2_db_net:
+    driver: bridge
+    internal: true
+
+volumes:
+  db_data:
