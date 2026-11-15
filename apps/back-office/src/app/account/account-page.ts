@@ -87,7 +87,7 @@ const EMPTY_MODEL = { currentPassword: '', password: '' };
 })
 export class AccountPage {
   protected readonly passwordHelp = PASSWORD_HELP;
-  protected readonly sessionsHelp = fr`Tes autres sessions, sur d'autres ordinateurs, seront fermées.`;
+  protected readonly sessionsHelp = fr`Tu seras déconnecté de tes autres ordinateurs.`;
 
   private readonly store = inject(AccountStore);
   private readonly announcer = inject(Announcer);

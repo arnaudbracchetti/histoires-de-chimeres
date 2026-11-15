@@ -23,6 +23,6 @@ export function nicknameRules(
 ): void {
   textRules(path, NICKNAME_MAX_LENGTH, {
     required: () => REQUIRED_MESSAGES[typeof owner === 'function' ? owner() : owner],
-    tooLong: fr`Un pseudo fait ${countOf(NICKNAME_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-le.`,
+    tooLong: fr`Un pseudo ne doit pas dépasser ${countOf(NICKNAME_MAX_LENGTH, 'caractère', 'caractères')} : raccourcis-le.`,
   });
 }

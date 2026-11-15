@@ -122,7 +122,9 @@ describe('MJ', () => {
         title: 'Pseudo déjà pris',
         errors: [{ field: 'nickname', code: 'nickname-taken-by-participant' }],
       });
-      expect(response.body.detail).toContain('Le participant « Élodie »');
+      expect(response.body.detail).toMatch(
+        /^«\sÉlodie\s» est déjà le pseudo d'un autre participant/,
+      );
       expect(await list()).toEqual([]);
     });
 

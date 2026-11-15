@@ -92,8 +92,8 @@ export type RefusalParams = {
   'draw-published': { rank: number };
   /** `rank` : le rang du créneau, dont le tirage n'est pas lancé. */
   'draw-not-launched': { rank: number };
-  /** `rank` : le rang du créneau, dont le tirage n'est pas publié, ou pas lancé (ID-14). */
-  'draw-not-published': { rank: number };
+  /** `rank` : le rang du créneau, dont le tirage n'est pas publié ; `launched` : il est lancé (ID-14). */
+  'draw-not-published': { rank: number; launched: boolean };
   /** `rank` : le rang du créneau, terminé. */
   'time-slot-ended': { rank: number };
   /** `nickname` : le pseudo ; `rank` : le rang du créneau, dont il est déjà dans le tirage (ID-14). */
@@ -126,7 +126,7 @@ export type RefusalParams = {
   /** Une partie ne s'échange pas avec elle-même (PR-17). */
   'game-swapped-with-itself': Record<string, never>;
   'scenario-not-found': Record<string, never>;
-  /** Le scénario a des parties : sa durée ne change plus (PR-14). */
+  /** Le scénario a des parties : sa durée ne peut plus changer (PR-14). */
   'scenario-duration-locked': Record<string, never>;
   'scenario-has-games': Record<string, never>;
   'scenario-title-required': Record<string, never>;

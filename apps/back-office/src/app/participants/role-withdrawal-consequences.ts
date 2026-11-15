@@ -14,7 +14,7 @@ export function roleWithdrawalConsequences(
   if (role === 'game-master') consequences.push(fr`Ses disponibilités seront supprimées.`);
   if (sheet.account?.onlyRole === role) {
     consequences.push(
-      fr`Sans autre rôle, son compte sera supprimé, avec son mot de passe, son lien d'accès et ses sessions. « ${sheet.nickname} » reste un participant, avec ses inscriptions et ses téléphones.`,
+      fr`Sans autre rôle, son compte sera supprimé, avec son mot de passe, son lien d'accès et ses connexions. « ${sheet.nickname} » reste un participant, avec ses inscriptions et ses téléphones.`,
     );
   } else if (role === 'organizer' && sheet.gameMaster) {
     consequences.push(

@@ -113,7 +113,7 @@ describe('ConventionForm', () => {
     const { detail } = await render({ ...onMarch14, date: null, end: null });
 
     expect(detail('Fin')).toBe(
-      `Pas de fin Il faut une date et au moins un créneau${NBSP}: d'ici là, l'application des participants reste ouverte.`,
+      `Pas de fin Sans date ni créneau, la convention n'a pas de fin${NBSP}: l'application des participants reste ouverte.`,
     );
   });
 
@@ -254,7 +254,9 @@ describe('ConventionForm', () => {
     await flush(problem, 500);
 
     expect(TestBed.inject(ErrorDialog).pending()).toEqual([
-      expect.objectContaining({ title: 'Une erreur est survenue, réessaie.' }),
+      expect.objectContaining({
+        title: `Ça n'a pas marché${NBSP}: réessaie. Si ça recommence, recharge la page.`,
+      }),
     ]);
     expect(input('Nom').value).toBe('Chimères 2027');
   });
@@ -265,7 +267,7 @@ describe('ConventionForm', () => {
       type: 'urn:histoires-de-chimeres:problem:concurrent-modification',
       title: 'Modification simultanée',
       status: 409,
-      detail: `La convention a changé entre-temps${NBSP}: recharge la page, puis recommence.`,
+      detail: `Quelqu'un d'autre a modifié la convention en même temps${NBSP}: recharge la page, puis recommence.`,
       code: 'concurrent-modification',
     };
 
@@ -275,7 +277,8 @@ describe('ConventionForm', () => {
     expect(TestBed.inject(ErrorDialog).pending()).toEqual([
       expect.objectContaining({
         title: 'Modification simultanée',
-        detail: 'La convention a changé entre-temps\u00a0: recharge la page, puis recommence.',
+        detail:
+          "Quelqu'un d'autre a modifié la convention en même temps\u00a0: recharge la page, puis recommence.",
       }),
     ]);
   });

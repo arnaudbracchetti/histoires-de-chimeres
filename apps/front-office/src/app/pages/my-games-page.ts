@@ -19,7 +19,7 @@ import { Icon } from '../ui/icon';
  * vers sa fiche, puis sa table ou « Pas de place pour toi » après la publication (story 86). Sur un
  * créneau où son MJ mène, la partie menée s'y déplie (§5.7), et ses inscriptions de secours se
  * groupent sous « En secours » (IN-4). Sur un créneau aux inscriptions
- * ouvertes où il est sans partie, ce qu'il peut faire, et « Me retirer du tirage » (IN-6). `?creneau=2` fait défiler jusqu'au
+ * ouvertes où il est sans partie, ce qu'il peut faire, et « Ne plus participer à ce créneau » (IN-6). `?creneau=2` fait défiler jusqu'au
  * créneau 2.
  */
 @Component({
@@ -60,7 +60,7 @@ import { Icon } from '../ui/icon';
             />
           } @else if (slot.withoutGame) {
             <div class="without-game">
-              <p>{{ withoutGameText(slot.timeSlot.rank) }}</p>
+              <p>{{ withoutGameText }}</p>
               <div>
                 <button
                   type="button"
@@ -68,7 +68,7 @@ import { Icon } from '../ui/icon';
                   [attr.aria-disabled]="data.isWithdrawingFromDraw(slot.timeSlot.id) || null"
                   (click)="data.withdrawFromDraw(slot.timeSlot.id)"
                 >
-                  Me retirer du tirage
+                  Ne plus participer à ce créneau
                 </button>
               </div>
             </div>
@@ -275,9 +275,7 @@ export class MyGamesPage {
   protected readonly timeSlotsOf = timeSlotsOf;
 
   /** Le pseudo sans partie sur le créneau : ce qui lui est arrivé, et ce qu'il peut faire (IN-6). */
-  protected withoutGameText(rank: number): string {
-    return fr`Toutes tes parties ont été retirées de ce créneau. Tu restes dans le tirage du créneau ${rank} : inscris-toi à une autre partie pour avoir une table.`;
-  }
+  protected readonly withoutGameText = fr`Toutes tes parties ont été retirées de ce créneau : inscris-toi à une autre partie pour avoir une table.`;
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly rank = toSignal(

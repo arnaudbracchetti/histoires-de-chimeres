@@ -86,15 +86,17 @@ describe('Textes des avertissements de suivi', () => {
     const reason =
       '2 participants pour 9 places au moins : une partie au moins finira sous son minimum.';
 
+    const action = " Déprogramme une partie, ou attends d'autres inscriptions.";
+
     expect(detail(3, 2)).toBe(
-      `${reason} 3 parties sous leur minimum, 2 participants risquent de rester sans table.`,
+      `${reason} 3 parties sous leur minimum, 2 participants risquent de rester sans table.${action}`,
     );
-    expect(detail(1, 0)).toBe(`${reason} 1 partie sous son minimum.`);
-    expect(detail(0, 1)).toBe(`${reason} 1 participant risque de rester sans table.`);
-    expect(detail(0, 0)).toBe(reason);
+    expect(detail(1, 0)).toBe(`${reason} 1 partie sous son minimum.${action}`);
+    expect(detail(0, 1)).toBe(`${reason} 1 participant risque de rester sans table.${action}`);
+    expect(detail(0, 0)).toBe(`${reason}${action}`);
   });
 
-  it('dit combien de parties sont sous leur minimum, et qui risque de rester sans table, ou à défaut qu’elles risquent d’être annulées', () => {
+  it('dit combien de parties sont sous leur minimum, et qui risque de rester sans table, ou à défaut qu’on pourra les annuler après le tirage', () => {
     const write = (gamesBelowMinimum: number, participantsMayBeLeftWithoutTable: number) => {
       const { title, detail } = writeSignUpWarning({
         code: 'games-below-minimum',
@@ -115,11 +117,11 @@ describe('Textes des avertissements de suivi', () => {
     ]);
     expect(write(1, 0)).toEqual([
       '1 partie sous son minimum',
-      "Elle risque d'être annulée au tirage.",
+      "Si elle reste sous son minimum, tu pourras l'annuler après le tirage.",
     ]);
     expect(write(2, 0)).toEqual([
       '2 parties sous leur minimum',
-      "Elles risquent d'être annulées au tirage.",
+      'Si elles restent sous leur minimum, tu pourras les annuler après le tirage.',
     ]);
   });
 });

@@ -160,7 +160,9 @@ test('l’Organisateur renomme un pseudo en place, même après la publication, 
   await expect(field).toBeFocused();
   await field.fill('sven');
   await page.keyboard.press('Enter');
-  await expect(field).toHaveAccessibleDescription(/^Le participant «\s*Sven\s*»/);
+  await expect(field).toHaveAccessibleDescription(
+    /^«\s*Sven\s*» est déjà le pseudo d'un autre participant/,
+  );
   await expect(page.getByRole('link', { name: 'Voir sa fiche' })).toHaveAttribute(
     'href',
     /\/gestion\/participants\/.+/,
@@ -219,7 +221,7 @@ test('la partie d’un MJ est grisée, « sa partie », sur la fiche de son pseu
   await expect(signUps.getByRole('checkbox', { name: /Les Brumes/ })).toBeDisabled();
   await expect(signUps).toContainText('sa partie');
   await expect(signUps).toContainText(
-    'Mène « Les Brumes » : ses inscriptions sur ce créneau sont de secours.',
+    "Mène «\u00a0Les Brumes\u00a0» sur ce créneau\u00a0: ses inscriptions n'y comptent que si sa partie est annulée.",
   );
 });
 

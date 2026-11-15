@@ -155,7 +155,7 @@ describe('TableList', () => {
     await type('a'.repeat(31));
 
     expect(errorText()).toBe(
-      `Le nom d'une table fait 30${NBSP}caractères au plus${NBSP}: raccourcis-le.`,
+      `Le nom d'une table ne doit pas dépasser 30${NBSP}caractères${NBSP}: raccourcis-le.`,
     );
   });
 
@@ -163,7 +163,7 @@ describe('TableList', () => {
     const { button, type, press, http, settle, errorText, input } = await render(
       conventionWith('Dragon'),
     );
-    const message = 'La table « Dragon » porte déjà ce nom : choisis-en un autre.';
+    const message = "Une autre table s'appelle déjà « Dragon » : choisis un autre nom.";
     const problem: ProblemDto = {
       type: 'urn:histoires-de-chimeres:problem:table-name-taken',
       title: 'Nom déjà pris',

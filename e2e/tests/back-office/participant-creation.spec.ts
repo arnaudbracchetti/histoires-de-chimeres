@@ -93,7 +93,7 @@ test('un pseudo déjà pris est refusé, avec un lien vers l’onglet « Compte 
 
   await expect(creation.nickname).toBeFocused();
   await expect(creation.nickname).toHaveAccessibleDescription(
-    /^Le MJ «\s*Kaïros\s*» porte déjà ce pseudo/,
+    /^«\s*Kaïros\s*» est déjà le pseudo d'un MJ/,
   );
   await creation.dialog.getByRole('link', { name: 'Voir sa fiche' }).click();
 

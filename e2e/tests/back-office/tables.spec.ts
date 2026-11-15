@@ -61,7 +61,7 @@ test('un nom déjà pris est refusé, à la casse et aux accents près (PR-9)', 
 
   await expect(tables.input).toBeFocused();
   await expect(tables.input).toHaveAccessibleDescription(
-    `La table «${NBSP}Dragon${NBSP}» porte déjà ce nom${NBSP}: choisis-en un autre.`,
+    `Une autre table s'appelle déjà «${NBSP}Dragon${NBSP}»${NBSP}: choisis un autre nom.`,
   );
   await expect(tables.names).toHaveText(['Dragon']);
 });

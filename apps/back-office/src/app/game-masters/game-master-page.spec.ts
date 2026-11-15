@@ -198,7 +198,7 @@ describe('GameMasterPage', () => {
 
   it('affiche sous le champ le refus de l’API', async () => {
     const { http, button, settle, type, press, errorText, input } = await render();
-    const message = `Le MJ «${NBSP}Kaïros${NBSP}» porte déjà ce pseudo${NBSP}: choisis-en un autre.`;
+    const message = `«${NBSP}Kaïros${NBSP}» est déjà le pseudo d'un MJ${NBSP}: choisis-en un autre.`;
     const problem: ProblemDto = {
       type: 'urn:histoires-de-chimeres:problem:nickname-taken',
       title: 'Pseudo déjà pris',
@@ -259,7 +259,7 @@ describe('GameMasterPage', () => {
 
   it('un MJ qui a un scénario : le refus de l’API s’affiche dans le dialogue, qui ne garde que « Fermer » (PR-12)', async () => {
     const { http, button, settle, text } = await render();
-    const detail = `Ce MJ a un scénario${NBSP}: supprime-le d'abord.`;
+    const detail = `Ce MJ a un scénario${NBSP}: supprime-le d'abord pour supprimer ce MJ ou lui retirer son rôle.`;
     const problem: ProblemDto = {
       type: 'urn:histoires-de-chimeres:problem:game-master-has-scenarios',
       title: 'MJ avec des scénarios',

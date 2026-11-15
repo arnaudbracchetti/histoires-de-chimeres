@@ -35,7 +35,7 @@ import { PhoneClock } from './phone-clock';
 const REREAD_EVERY_MS = 30_000;
 /** Au-delà, un geste sans réponse dit de vérifier, puis relit (§6). */
 const GESTURE_TIMEOUT_MS = 10_000;
-const SLOW_NETWORK = fr`Le réseau ne répond pas : vérifie ton inscription.`;
+const SLOW_NETWORK = fr`Le réseau ne répond pas : ton choix n'est peut-être pas enregistré. Vérifie dans Mes parties quand le réseau revient.`;
 
 /**
  * Ce que la barre du bas de la fiche montre pour une partie (§5.3) : le geste, quand les

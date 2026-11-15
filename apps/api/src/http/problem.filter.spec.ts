@@ -69,12 +69,14 @@ describe('ProblemFilter', () => {
     expect(sent.status).toBe(422);
     expect(sent.body).toMatchObject({
       title: 'Nom trop long',
-      detail: 'Le nom de la convention fait 80 caractères au plus : raccourcis-le.',
+      detail:
+        'Le nom de la convention ne doit pas dépasser 80\u00a0caractères\u00a0: raccourcis-le.',
       errors: [
         {
           field: 'name',
           code: 'convention-name-too-long',
-          message: 'Le nom de la convention fait 80 caractères au plus : raccourcis-le.',
+          message:
+            'Le nom de la convention ne doit pas dépasser 80\u00a0caractères\u00a0: raccourcis-le.',
         },
       ],
     });

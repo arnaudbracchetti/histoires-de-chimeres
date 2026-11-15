@@ -352,7 +352,7 @@ test('un créneau ou une table qui porte une partie ne se supprime pas : le dial
   let dialog = page.getByRole('alertdialog', { name: /^Supprimer le créneau 1/ });
   await dialog.getByRole('button', { name: 'Supprimer le créneau' }).click();
   await expect(dialog.getByRole('alert')).toHaveText(
-    `Le créneau 1 porte une partie${NBSP}: déprogramme-la d'abord.`,
+    `Le créneau 1 a une partie programmée${NBSP}: déprogramme-la d'abord pour supprimer ce créneau.`,
   );
   await dialog.getByRole('button', { name: 'Fermer' }).click();
 
@@ -360,7 +360,7 @@ test('un créneau ou une table qui porte une partie ne se supprime pas : le dial
   dialog = page.getByRole('alertdialog', { name: /^Supprimer la table/ });
   await dialog.getByRole('button', { name: 'Supprimer la table' }).click();
   await expect(dialog.getByRole('alert')).toHaveText(
-    `La table «${NBSP}Table 1${NBSP}» porte une partie${NBSP}: déprogramme-la d'abord.`,
+    `La table «${NBSP}Table 1${NBSP}» a une partie programmée${NBSP}: déprogramme-la d'abord pour supprimer cette table.`,
   );
   await dialog.getByRole('button', { name: 'Fermer' }).click();
 
@@ -389,7 +389,7 @@ test('les heures d’un créneau qui porte une partie sont refusées (PR-11)', a
   await section.getByRole('button', { name: 'Enregistrer', exact: true }).click();
 
   await expect(page.getByRole('alertdialog', { name: 'Heures figées' })).toContainText(
-    `Le créneau 1 porte une partie${NBSP}: ses heures ne changent plus.`,
+    `Le créneau 1 a une partie programmée${NBSP}: ses heures ne peuvent plus changer.`,
   );
 });
 
@@ -402,7 +402,7 @@ test('la durée d’un scénario programmé est refusée sous son champ (PR-14)'
   await page.getByRole('button', { name: 'Enregistrer' }).click();
 
   await expect(page.getByRole('group', { name: 'Durée' })).toHaveAccessibleDescription(
-    `Ce scénario est programmé${NBSP}: sa durée ne change plus. Déprogramme d'abord ses parties.`,
+    `Ce scénario a des parties programmées${NBSP}: sa durée ne peut plus changer. Pour la changer, demande à un Organisateur de déprogrammer ses parties.`,
   );
   await page.reload();
   await expect(page.getByRole('radio', { name: '1 créneau' })).toBeChecked();
@@ -421,7 +421,7 @@ test('un scénario programmé ne se supprime pas : le dialogue dit pourquoi (PR-
   await dialog.getByRole('button', { name: 'Supprimer le scénario' }).click();
 
   await expect(dialog.getByRole('alert')).toHaveText(
-    `Ce scénario est programmé${NBSP}: déprogramme d'abord ses parties.`,
+    `Ce scénario a des parties programmées${NBSP}: pour le supprimer, demande à un Organisateur de déprogrammer ses parties.`,
   );
   await dialog.getByRole('button', { name: 'Fermer' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Néons' })).toBeVisible();

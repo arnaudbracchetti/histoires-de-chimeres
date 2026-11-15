@@ -51,7 +51,7 @@ describe('App', () => {
   const linked: Respond = (request) => request.flush({ nickname: 'Élodie', gameMaster: false });
   const notLinked: Respond = (request) =>
     request.flush(
-      { code: 'phone-not-linked', title: 'Téléphone relié à aucun pseudo' },
+      { code: 'phone-not-linked', title: 'Pseudo à indiquer' },
       { status: 401, statusText: 'Unauthorized' },
     );
   const offline: Respond = (request) => request.error(new ProgressEvent('error'));
@@ -191,7 +191,7 @@ describe('App', () => {
   ])('dit quand la lecture %s échoue', async (_, frontOffice, linkedPhone) => {
     const page = await open(frontOffice, linkedPhone);
 
-    expect(page.textContent).toContain('Impossible de charger la convention.');
+    expect(page.textContent).toContain('Impossible de charger la convention');
   });
 
   it.each([

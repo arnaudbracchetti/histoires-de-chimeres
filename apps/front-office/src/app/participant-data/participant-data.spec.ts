@@ -466,7 +466,9 @@ describe('ParticipantData', () => {
       await vi.advanceTimersByTimeAsync(9_999);
       expect(alerts()).toEqual([]);
       await vi.advanceTimersByTimeAsync(1);
-      expect(alerts()).toEqual(['Le réseau ne répond pas\u00a0: vérifie ton inscription.']);
+      expect(alerts()).toEqual([
+        "Le réseau ne répond pas\u00a0: ton choix n'est peut-être pas enregistré. Vérifie dans Mes parties quand le réseau revient.",
+      ]);
       // La demande était passée : la relecture le montre.
       await answer(schedule([brumes]), now, situation(['Brumes']));
       await gesture;
@@ -494,7 +496,8 @@ describe('ParticipantData', () => {
         {
           code: 'sign-ups-closed',
           title: 'Inscriptions fermées',
-          detail: 'Le tirage du créneau 1 est lancé : ses inscriptions sont fermées.',
+          detail:
+            "Les inscriptions du créneau 1 sont fermées : les tables sont en cours de répartition. Tu verras ta table dès qu'elle sera publiée.",
           status: 422,
         },
         { status: 422, statusText: '' },
@@ -1235,7 +1238,7 @@ describe('ParticipantData', () => {
       await rereadWith(schedule([neons]), situation([], { ...open('s1'), withoutGame: true }));
 
       expect(changeAlerts().map(({ detail }) => detail)).toEqual([
-        `Brumes est retirée${NBSP}: ton inscription est supprimée. Tu restes dans le tirage du créneau 1${NBSP}: inscris-toi à une autre partie pour avoir une table.`,
+        `Brumes est retirée${NBSP}: ton inscription est supprimée. Tu n'as plus de partie sur le créneau 1${NBSP}: inscris-toi à une autre pour avoir une table.`,
       ]);
     });
 
@@ -1249,7 +1252,7 @@ describe('ParticipantData', () => {
       await rereadWith(schedule([neons]), situation());
 
       expect(changeAlerts().map(({ detail }) => detail)).toEqual([
-        `Brumes est retirée${NBSP}: ton inscription est supprimée. Les inscriptions du créneau sont rouvertes.`,
+        `Brumes est retirée${NBSP}: ton inscription est supprimée. Tu peux de nouveau t'inscrire sur ce créneau.`,
       ]);
     });
 
@@ -1379,7 +1382,7 @@ describe('ParticipantData', () => {
           },
           {
             title: `Créneau 2${NBSP}: ta partie est annulée`,
-            detail: "Néons n'a pas atteint son minimum.",
+            detail: "Néons n'a pas eu assez de joueurs.",
             see: '/',
           },
         ]);
@@ -1477,7 +1480,7 @@ describe('ParticipantData', () => {
 
         expect(changeAlerts()).toContainEqual({
           title: `Créneau 2${NBSP}: ta partie est annulée`,
-          detail: "Néons n'a pas atteint son minimum.",
+          detail: "Néons n'a pas eu assez de joueurs.",
           see: '/',
         });
       });

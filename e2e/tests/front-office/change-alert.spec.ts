@@ -32,7 +32,7 @@ test('signale une inscription retirée par le back office, et « Voir » ouvre l
     alert.getByText(
       new RegExp(
         `^${brumes.title} est retirée.: ton inscription est supprimée\\. ` +
-          `Tu restes dans le tirage du créneau 1.: inscris-toi à une autre partie pour avoir une table\\.$`,
+          `Tu n'as plus de partie sur le créneau 1.: inscris-toi à une autre pour avoir une table\\.$`,
       ),
     ),
   ).toBeVisible();

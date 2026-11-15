@@ -11,7 +11,7 @@ import {
 import { fr } from './french.js';
 
 describe('Textes d’un geste qui rouvre les inscriptions d’un créneau en tirage (NO-2)', () => {
-  const REOPENED = 'Les inscriptions du créneau sont rouvertes.';
+  const REOPENED = "Tu peux de nouveau t'inscrire sur ce créneau.";
 
   it('« nouvelle partie » finit par la réouverture', () => {
     expect(
@@ -28,7 +28,7 @@ describe('Textes d’un geste qui rouvre les inscriptions d’un créneau en tir
       fr`Néons est retirée : ton inscription est supprimée. ${REOPENED}`,
     );
     expect(buildGameUnscheduledText([2], 'Néons', true, true).body).toBe(
-      fr`Néons est retirée : ton inscription est supprimée. Tu restes dans le tirage du créneau 2 : inscris-toi à une autre partie pour avoir une table. ${REOPENED}`,
+      fr`Néons est retirée : ton inscription est supprimée. Tu n'as plus de partie sur le créneau 2 : inscris-toi à une autre pour avoir une table. ${REOPENED}`,
     );
     expect(
       buildOwnGameUnscheduledText([2], 'Néons', { reopened: true, backupSignUps: false }).body,
@@ -77,7 +77,7 @@ describe('Alerte du MJ dont la partie annulée quitte le programme à la publica
   it('reprend le titre de la notification, sans les tables où il reste de la place', () => {
     expect(buildCancelledAlertText([2, 3], 'Sc Double')).toEqual({
       title: fr`Créneaux 2 et 3 : ta partie est annulée`,
-      body: fr`Sc Double n'a pas atteint son minimum.`,
+      body: fr`Sc Double n'a pas eu assez de joueurs.`,
     });
   });
 });

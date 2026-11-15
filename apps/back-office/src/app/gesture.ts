@@ -12,7 +12,7 @@ import { ErrorDialog, type ErrorNotice } from './shell/error-dialog';
 const STALE_STATUSES = [404, 409, 422];
 
 /** Le `detail` d'un 409, quand l'écran se relit (docs/design/patterns.md, Retours d'action). */
-const SCREEN_UP_TO_DATE = fr`La convention a changé entre-temps : l'écran est à jour.`;
+const SCREEN_UP_TO_DATE = fr`Quelqu'un d'autre a modifié la convention en même temps : ton geste n'a pas été fait. L'écran est à jour, recommence si besoin.`;
 
 /** La clé d'un geste lancé sans clé. */
 const NO_KEY = '';

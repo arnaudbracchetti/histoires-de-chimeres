@@ -266,18 +266,18 @@ export class ScenarioForm {
     (path) => {
       textRules(path.title, SCENARIO_TITLE_MAX_LENGTH, {
         required: 'Donne un titre au scénario.',
-        tooLong: fr`Le titre fait ${countOf(SCENARIO_TITLE_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-le.`,
+        tooLong: fr`Le titre ne doit pas dépasser ${countOf(SCENARIO_TITLE_MAX_LENGTH, 'caractère', 'caractères')} : raccourcis-le.`,
       });
       textRules(path.system, SYSTEM_MAX_LENGTH, {
-        required: 'Indique le jeu du scénario.',
-        tooLong: fr`Le jeu fait ${countOf(SYSTEM_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-le.`,
+        required: fr`Indique le jeu de rôle utilisé pour ce scénario : ses règles et son univers.`,
+        tooLong: fr`Le nom du jeu ne doit pas dépasser ${countOf(SYSTEM_MAX_LENGTH, 'caractère', 'caractères')} : raccourcis-le.`,
       });
       textRules(path.presentation, PRESENTATION_MAX_LENGTH, {
         required: 'Présente le scénario en quelques lignes.',
-        tooLong: fr`La présentation fait ${countOf(PRESENTATION_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-la.`,
+        tooLong: fr`La présentation ne doit pas dépasser ${countOf(PRESENTATION_MAX_LENGTH, 'caractère', 'caractères')} : raccourcis-la.`,
       });
       textRules(path.contentWarnings, CONTENT_WARNINGS_MAX_LENGTH, {
-        tooLong: fr`Les avertissements de contenu font ${countOf(CONTENT_WARNINGS_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-les.`,
+        tooLong: fr`Les avertissements de contenu ne doivent pas dépasser ${countOf(CONTENT_WARNINGS_MAX_LENGTH, 'caractère', 'caractères')} : raccourcis-les.`,
       });
       seatsRules(path.seats.min, 'Indique le nombre minimum de places.');
       seatsRules(path.seats.max, 'Indique le nombre maximum de places.');
@@ -287,7 +287,7 @@ export class ScenarioForm {
           ? undefined
           : {
               kind: 'below-one',
-              message: `Il faut au moins 1${NBSP}place.`,
+              message: fr`Une partie accueille au moins un joueur : mets 1${NBSP}place minimum ou plus.`,
             };
       });
       validate(path.seats.max, ({ value, valueOf }) => {
@@ -296,7 +296,7 @@ export class ScenarioForm {
           ? undefined
           : {
               kind: 'out-of-order',
-              message: fr`Le maximum est sous le minimum : augmente-le.`,
+              message: fr`Le maximum est sous le minimum : augmente-le, ou baisse le minimum.`,
             };
       });
     },

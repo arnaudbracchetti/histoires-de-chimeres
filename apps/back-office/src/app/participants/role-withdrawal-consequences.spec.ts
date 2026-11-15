@@ -15,7 +15,7 @@ const aSheet = (sheet: Partial<ParticipantSheetDto>): ParticipantSheetDto => ({
   ...sheet,
 });
 
-const ACCOUNT_REMOVED = `Sans autre rôle, son compte sera supprimé, avec son mot de passe, son lien d'accès et ses sessions. «${NBSP}Lune${NBSP}» reste un participant, avec ses inscriptions et ses téléphones.`;
+const ACCOUNT_REMOVED = `Sans autre rôle, son compte sera supprimé, avec son mot de passe, son lien d'accès et ses connexions. «${NBSP}Lune${NBSP}» reste un participant, avec ses inscriptions et ses téléphones.`;
 
 describe('roleWithdrawalConsequences (ID-16)', () => {
   it('dit que les disponibilités du MJ partent, et son compte avec son dernier rôle', () => {

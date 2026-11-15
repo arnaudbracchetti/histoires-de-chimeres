@@ -224,8 +224,8 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
             title: 'Créneau 1\u00a0: partie retirée du programme',
             // Lune n'avait que cette inscription au créneau 1 : elle reste dans son tirage (IN-6).
             body:
-              'Néons est retirée\u00a0: ton inscription est supprimée. Tu restes dans le tirage du ' +
-              'créneau 1\u00a0: inscris-toi à une autre partie pour avoir une table.',
+              "Néons est retirée\u00a0: ton inscription est supprimée. Tu n'as plus de partie sur le " +
+              'créneau 1\u00a0: inscris-toi à une autre pour avoir une table.',
             navigate: `${PUBLIC_URL}${tap}`,
             lang: 'fr',
             icon: `${PUBLIC_URL}/icons/icon-192.png`,
@@ -360,7 +360,7 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
       expect(titlesOf(elodie)).toEqual([
         {
           title: 'Créneau 1\u00a0: ta partie est annulée',
-          body: "Néons n'a pas atteint son minimum. Toutes les parties du créneau sont complètes.",
+          body: "Néons n'a pas eu assez de joueurs. Toutes les parties du créneau sont complètes.",
           navigate: `${PUBLIC_URL}/programme?creneau=1`,
         },
       ]);
@@ -458,7 +458,7 @@ describe('Notifications des gestes de programmation et des inscriptions (NO-2, A
           title: 'Créneau 1\u00a0: partie déplacée',
           body:
             "Néons passe au créneau 2\u00a0: ton inscription est retirée. Réinscris-toi si l'horaire te va. " +
-            'Tu restes dans le tirage du créneau 1\u00a0: inscris-toi à une autre partie pour y avoir une table.',
+            "Tu n'as plus de partie sur le créneau 1\u00a0: inscris-toi à une autre partie pour y avoir une table.",
           navigate: `${PUBLIC_URL}/parties/${gameId}`,
           data: {
             onActionClick: {

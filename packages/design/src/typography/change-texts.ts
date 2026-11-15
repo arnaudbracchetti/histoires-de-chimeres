@@ -32,19 +32,19 @@ export function formatUnassignedBody(tablesWithSeats: readonly string[]): string
   return fr`Les parties que tu avais choisies sont complètes. ${formatSeatsLeft(tablesWithSeats)} : va voir ${formatGameMasters(tablesWithSeats)}.`;
 }
 
-/** « Partie annulée » (TI-7) : elle n'a pas atteint son minimum, et où il reste de la place. */
+/** « Partie annulée » (TI-7) : elle n'a pas eu assez de joueurs, et où il reste de la place. */
 function formatCancelledBody(gameTitle: string, tablesWithSeats: readonly string[]): string {
   if (!tablesWithSeats.length)
-    return fr`${gameTitle} n'a pas atteint son minimum. ${formatSeatsLeft([])}`;
-  return fr`${gameTitle} n'a pas atteint son minimum. ${formatSeatsLeft(tablesWithSeats)} : va voir ${formatGameMasters(tablesWithSeats)}.`;
+    return fr`${gameTitle} n'a pas eu assez de joueurs. ${formatSeatsLeft([])}`;
+  return fr`${gameTitle} n'a pas eu assez de joueurs. ${formatSeatsLeft(tablesWithSeats)} : va voir ${formatGameMasters(tablesWithSeats)}.`;
 }
 
 /**
- * Le corps, suivi de « Les inscriptions du créneau sont rouvertes. » si le geste a effacé le tirage
+ * Le corps, suivi de « Tu peux de nouveau t'inscrire sur ce créneau. » si le geste a effacé le tirage
  * provisoire du créneau (TI-6, NO-2).
  */
 function appendReopeningSentence(body: string, reopened: boolean): string {
-  return reopened ? `${body} Les inscriptions du créneau sont rouvertes.` : body;
+  return reopened ? `${body} Tu peux de nouveau t'inscrire sur ce créneau.` : body;
 }
 
 /** « avec 5 joueurs », ou « sans joueur ». */
@@ -68,7 +68,7 @@ export function buildGameUnscheduledText(
     title: fr`${formatCapitalizedTimeSlotRanks(ranks)} : partie retirée du programme`,
     body: appendReopeningSentence(
       withoutGame
-        ? fr`${removed} Tu restes dans le tirage du ${formatTimeSlotRanks([ranks[0]!])} : inscris-toi à une autre partie pour avoir une table.`
+        ? fr`${removed} Tu n'as plus de partie sur le ${formatTimeSlotRanks([ranks[0]!])} : inscris-toi à une autre pour avoir une table.`
         : removed,
       reopened,
     ),
@@ -113,7 +113,7 @@ export function buildGameMovedText(
     title: fr`${formatCapitalizedTimeSlotRanks(fromRanks)} : partie déplacée`,
     body: appendReopeningSentence(
       withoutGame
-        ? fr`${moved} Tu restes dans le tirage du ${formatTimeSlotRanks([fromRanks[0]!])} : inscris-toi à une autre partie pour y avoir une table.`
+        ? fr`${moved} Tu n'as plus de partie sur le ${formatTimeSlotRanks([fromRanks[0]!])} : inscris-toi à une autre partie pour y avoir une table.`
         : moved,
       reopened,
     ),
@@ -247,7 +247,7 @@ export function buildCancelledText(
 export function buildCancelledAlertText(ranks: readonly number[], gameTitle: string): ChangeText {
   return {
     title: fr`${formatCapitalizedTimeSlotRanks(ranks)} : ta partie est annulée`,
-    body: fr`${gameTitle} n'a pas atteint son minimum.`,
+    body: fr`${gameTitle} n'a pas eu assez de joueurs.`,
   };
 }
 

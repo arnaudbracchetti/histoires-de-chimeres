@@ -11,7 +11,7 @@ export type FormProblem = {
   notice?: ErrorNotice;
 };
 
-const INTERNAL_ERROR = 'Une erreur est survenue, réessaie.';
+const INTERNAL_ERROR = fr`Ça n'a pas marché : réessaie. Si ça recommence, recharge la page.`;
 const OFFLINE = fr`Pas de connexion : rien n'a été enregistré.`;
 
 /** Lit l'erreur d'un `apiCall()`. Les textes viennent de l'API (ADR 0008), sauf pour un 500 et une coupure. */

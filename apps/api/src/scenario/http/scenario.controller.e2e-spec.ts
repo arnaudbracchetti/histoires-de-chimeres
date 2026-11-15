@@ -225,7 +225,7 @@ describe('Scénarios', () => {
 
     expect(response.body).toMatchObject({
       code: 'game-master-has-scenarios',
-      detail: `Ce MJ a un scénario${NBSP}: supprime-le d'abord.`,
+      detail: `Ce MJ a un scénario${NBSP}: supprime-le d'abord pour supprimer ce MJ ou lui retirer son rôle.`,
     });
     expect((await readGameMaster()).nickname).toBe('Kaïros');
   });

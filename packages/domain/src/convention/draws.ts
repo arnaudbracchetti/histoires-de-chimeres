@@ -367,7 +367,10 @@ export class Draws {
   ): Refusal | undefined {
     const rank = day.getTimeSlotRank(timeSlotId);
     const draw = this.findPublishedDrawOfTimeSlot(timeSlotId);
-    if (!draw) return new Refusal('draw-not-published', { rank });
+    if (!draw) {
+      const launched = this.getDrawStage(timeSlotId) === 'drawing';
+      return new Refusal('draw-not-published', { rank, launched });
+    }
     if (this.hasTimeSlotEndedAt(timeSlotId, now, day, date)) {
       return new Refusal('time-slot-ended', { rank });
     }

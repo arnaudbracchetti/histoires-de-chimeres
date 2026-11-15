@@ -144,7 +144,7 @@ describe('Assistant « Créer un pseudo »', () => {
 
   it('un pseudo déjà pris ramène au pseudo, avec un lien vers l’onglet « Compte » de sa fiche (ID-4)', async () => {
     const { settle, type, button, add, errorText, input, dialog } = open({ gameMaster: true });
-    const message = `Le participant «${NBSP}Élodie${NBSP}» porte déjà ce pseudo${NBSP}: choisis-en un autre.`;
+    const message = `«${NBSP}Élodie${NBSP}» est déjà le pseudo d'un autre participant${NBSP}: choisis-en un autre.`;
     const problem: ProblemDto = {
       type: 'urn:histoires-de-chimeres:problem:nickname-taken-by-participant',
       title: 'Pseudo déjà pris',

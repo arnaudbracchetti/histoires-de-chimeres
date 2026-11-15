@@ -107,7 +107,7 @@ describe('ScenarioForm', () => {
       expect(errorOf('Titre')).toBe('');
       await type('Titre', 'a'.repeat(81));
       expect(errorOf('Titre')).toBe(
-        `Le titre fait 80${NBSP}caractères au plus${NBSP}: raccourcis-le.`,
+        `Le titre ne doit pas dépasser 80${NBSP}caractères${NBSP}: raccourcis-le.`,
       );
     });
 
@@ -115,7 +115,9 @@ describe('ScenarioForm', () => {
       const { type, errorOf } = await render();
 
       await type('Jeu', '');
-      expect(errorOf('Jeu')).toBe('Indique le jeu du scénario.');
+      expect(errorOf('Jeu')).toBe(
+        `Indique le jeu de rôle utilisé pour ce scénario${NBSP}: ses règles et son univers.`,
+      );
       await type('Jeu', 'Dune', { leave: false });
       expect(errorOf('Jeu')).toBe('');
     });
@@ -126,7 +128,9 @@ describe('ScenarioForm', () => {
       await type('Places minimum', '5');
       await type('Places maximum', '3');
 
-      expect(errorOf('Places maximum')).toBe(`Le maximum est sous le minimum${NBSP}: augmente-le.`);
+      expect(errorOf('Places maximum')).toBe(
+        `Le maximum est sous le minimum${NBSP}: augmente-le, ou baisse le minimum.`,
+      );
       expect(errorOf('Places minimum')).toBe('');
     });
 
@@ -135,7 +139,9 @@ describe('ScenarioForm', () => {
 
       await type('Places minimum', '0');
 
-      expect(errorOf('Places minimum')).toBe(`Il faut au moins 1${NBSP}place.`);
+      expect(errorOf('Places minimum')).toBe(
+        `Une partie accueille au moins un joueur${NBSP}: mets 1${NBSP}place minimum ou plus.`,
+      );
     });
   });
 
@@ -178,7 +184,7 @@ describe('ScenarioForm', () => {
   it('pose une erreur de l’API sous son champ (seats.max)', async () => {
     const { submit, save, errorOf } = await render(SCENARIO);
     const problem: Partial<ProblemDto> = {
-      title: 'Places dans le désordre',
+      title: 'Maximum sous le minimum',
       code: 'seats-out-of-order',
       errors: [{ field: 'seats.max', code: 'seats-out-of-order', message: 'Refus de l’API.' }],
     };

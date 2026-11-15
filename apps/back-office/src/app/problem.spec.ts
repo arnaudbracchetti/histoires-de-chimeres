@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { NBSP } from '@chimeres/design';
 import { readProblem } from './problem';
 
 const refused = (status: number, error: object | null) =>
@@ -18,7 +19,9 @@ describe('readProblem', () => {
   });
 
   it('reste sobre sur un 500, et sur une erreur sans Problem Details', () => {
-    const generic = { title: 'Une erreur est survenue, réessaie.' };
+    const generic = {
+      title: `Ça n'a pas marché${NBSP}: réessaie. Si ça recommence, recharge la page.`,
+    };
     expect(
       readProblem(refused(500, { code: 'internal-error', title: 'Erreur interne' })).notice,
     ).toEqual(generic);

@@ -39,7 +39,7 @@ test('un pseudo vide ou trop long est signalé sous le champ', async ({ page }) 
   await expect(field).toHaveAccessibleDescription('Tape ton pseudo.');
 
   await field.fill('a'.repeat(31));
-  await expect(field).toHaveAccessibleDescription(/^Ton pseudo fait 30.caractères au plus/);
+  await expect(field).toHaveAccessibleDescription(/^Ton pseudo ne doit pas dépasser 30.caractères/);
 });
 
 test('une erreur ne décale rien : le bouton reste sous le pouce', async ({ page }) => {
@@ -53,7 +53,7 @@ test('une erreur ne décale rien : le bouton reste sous le pouce', async ({ page
   expect(await button.boundingBox()).toEqual(before);
 
   await field.fill('a'.repeat(31));
-  await expect(field).toHaveAccessibleDescription(/^Ton pseudo fait 30.caractères au plus/);
+  await expect(field).toHaveAccessibleDescription(/^Ton pseudo ne doit pas dépasser 30.caractères/);
   expect(await button.boundingBox()).toEqual(before);
 });
 

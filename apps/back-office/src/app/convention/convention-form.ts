@@ -133,7 +133,7 @@ export class ConventionForm {
     if (!convention?.end) {
       return {
         value: 'Pas de fin',
-        help: fr`Il faut une date et au moins un créneau : d'ici là, l'application des participants reste ouverte.`,
+        help: fr`Sans date ni créneau, la convention n'a pas de fin : l'application des participants reste ouverte.`,
       };
     }
     const { date, time } = convention.end;
@@ -149,7 +149,7 @@ export class ConventionForm {
     (path) =>
       textRules(path.name, CONVENTION_NAME_MAX_LENGTH, {
         required: 'Donne un nom à la convention.',
-        tooLong: fr`Le nom fait ${countOf(CONVENTION_NAME_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-le.`,
+        tooLong: fr`Le nom de la convention ne doit pas dépasser ${countOf(CONVENTION_NAME_MAX_LENGTH, 'caractère', 'caractères')} : raccourcis-le.`,
       }),
     { submission: submitWith(() => this.save()) },
   );

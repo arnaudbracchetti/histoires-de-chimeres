@@ -439,7 +439,7 @@ describe('Liste « Participants » (ID-5)', () => {
         code: 'nickname-taken',
         params: { nickname: 'Kaïros', participantId: kairos!.id },
       });
-      expect(response.body.detail).toMatch(/^Le MJ «\s*Kaïros\s*»/);
+      expect(response.body.detail).toMatch(/^«\s*Kaïros\s*» est déjà le pseudo d'un MJ/);
     });
 
     it('sans PUBLIC_URL, refuse un rôle par un message clair, sans rien créer : 503', async () => {
@@ -625,7 +625,8 @@ describe('Liste « Participants » (ID-5)', () => {
 
       expect(response.body).toMatchObject({
         code: 'sign-ups-closed',
-        detail: 'Le tirage du créneau 1 est lancé : ses inscriptions sont fermées.',
+        detail:
+          "Les inscriptions du créneau 1 sont fermées\u00a0: les tables sont en cours de répartition. Tu verras ta table dès qu'elle sera publiée.",
       });
       expect(withdrawn.body).toMatchObject({ code: 'sign-ups-closed' });
       expect(withdrawnFromDraw.body).toMatchObject({ code: 'sign-ups-closed' });

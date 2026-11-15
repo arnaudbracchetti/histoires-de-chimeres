@@ -151,7 +151,7 @@ export class NicknamePage {
     (path) =>
       textRules(path.nickname, NICKNAME_MAX_LENGTH, {
         required: 'Tape ton pseudo.',
-        tooLong: fr`Ton pseudo fait ${countOf(NICKNAME_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-le.`,
+        tooLong: fr`Ton pseudo ne doit pas dépasser ${countOf(NICKNAME_MAX_LENGTH, 'caractère', 'caractères')} : raccourcis-le.`,
       }),
     { submission: submitWith(() => this.link(null)) },
   );

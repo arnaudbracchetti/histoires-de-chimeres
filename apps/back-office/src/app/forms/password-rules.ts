@@ -15,13 +15,13 @@ export function passwordRules(path: SchemaPath<string>): void {
     if (length < PASSWORD_MIN_LENGTH) {
       return {
         kind: 'too-short',
-        message: fr`Le mot de passe fait au moins ${countOf(PASSWORD_MIN_LENGTH, 'caractère', 'caractères')} : une courte phrase convient.`,
+        message: fr`Le mot de passe doit faire au moins ${countOf(PASSWORD_MIN_LENGTH, 'caractère', 'caractères')} : une courte phrase convient.`,
       };
     }
     if (length > PASSWORD_MAX_LENGTH) {
       return {
         kind: 'too-long',
-        message: fr`Le mot de passe fait ${countOf(PASSWORD_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-le.`,
+        message: fr`Le mot de passe ne doit pas dépasser ${countOf(PASSWORD_MAX_LENGTH, 'caractère', 'caractères')} : raccourcis-le.`,
       };
     }
     return undefined;

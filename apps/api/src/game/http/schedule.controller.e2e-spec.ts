@@ -307,16 +307,18 @@ describe('Programme', () => {
       .expect(422);
     expect(timeSlot.body).toMatchObject({
       code: 'time-slot-has-games',
-      title: 'Créneau programmé',
-      detail: "Le créneau 1 porte une partie\u00a0: déprogramme-la d'abord.",
+      title: 'Créneau avec des parties',
+      detail:
+        "Le créneau 1 a une partie programmée\u00a0: déprogramme-la d'abord pour supprimer ce créneau.",
     });
     const tableResponse = await server()
       .delete(apiUrl(tableEndpoints.remove, { tableId: table('Table 1') }))
       .expect(422);
     expect(tableResponse.body).toMatchObject({
       code: 'table-has-games',
-      title: 'Table programmée',
-      detail: "La table «\u00a0Table 1\u00a0» porte une partie\u00a0: déprogramme-la d'abord.",
+      title: 'Table avec des parties',
+      detail:
+        "La table «\u00a0Table 1\u00a0» a une partie programmée\u00a0: déprogramme-la d'abord pour supprimer cette table.",
     });
     await server()
       .put(apiUrl(tableEndpoints.rename, { tableId: table('Table 1') }))
@@ -344,7 +346,7 @@ describe('Programme', () => {
       code: 'time-slot-hours-locked-by-games',
       title: 'Heures figées',
       detail:
-        'Le créneau 1 porte une partie\u00a0: ses heures ne changent plus. Pour les changer, déprogramme-la, supprime le créneau, puis recrée-le.',
+        'Le créneau 1 a une partie programmée\u00a0: ses heures ne peuvent plus changer. Pour les changer, déprogramme-la, supprime le créneau, puis recrée-le.',
     });
   });
 
@@ -382,7 +384,7 @@ describe('Programme', () => {
         {
           field: 'duration',
           message:
-            "Ce scénario est programmé\u00a0: sa durée ne change plus. Déprogramme d'abord ses parties.",
+            'Ce scénario a des parties programmées\u00a0: sa durée ne peut plus changer. Pour la changer, demande à un Organisateur de déprogrammer ses parties.',
         },
       ],
     });
@@ -390,8 +392,9 @@ describe('Programme', () => {
     const removal = await remove().expect(422);
     expect(removal.body).toMatchObject({
       code: 'scenario-has-games',
-      title: 'Scénario programmé',
-      detail: "Ce scénario est programmé\u00a0: déprogramme d'abord ses parties.",
+      title: 'Scénario avec des parties',
+      detail:
+        'Ce scénario a des parties programmées\u00a0: pour le supprimer, demande à un Organisateur de déprogrammer ses parties.',
     });
 
     await unschedule(gameId);
@@ -409,8 +412,9 @@ describe('Programme', () => {
     const response = await withdraw().expect(422);
     expect(response.body).toMatchObject({
       code: 'availability-has-game',
-      title: 'Disponibilité programmée',
-      detail: "Élodie mène une partie sur le créneau 1\u00a0: déprogramme-la d'abord.",
+      title: 'Disponibilité utilisée',
+      detail:
+        "Élodie mène une partie sur le créneau 1\u00a0: cette disponibilité ne peut pas être retirée tant qu'un Organisateur n'a pas déprogrammé la partie.",
     });
 
     await unschedule(gameId);
@@ -431,8 +435,9 @@ describe('Programme', () => {
         timeSlotId: slot(1),
         refusal: {
           code: 'availability-has-game',
-          title: 'Disponibilité programmée',
-          detail: "Élodie mène une partie sur le créneau 1\u00a0: déprogramme-la d'abord.",
+          title: 'Disponibilité utilisée',
+          detail:
+            "Élodie mène une partie sur le créneau 1\u00a0: cette disponibilité ne peut pas être retirée tant qu'un Organisateur n'a pas déprogrammé la partie.",
         },
       },
       { timeSlotId: slot(2), refusal: null },

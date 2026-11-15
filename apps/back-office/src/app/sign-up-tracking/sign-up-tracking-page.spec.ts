@@ -130,7 +130,7 @@ const RESERVE_OF_SLOT_2: TimeSlotTrackingDto['reserve'] = [
     refusal: {
       code: 'no-free-table',
       title: 'Aucune table libre',
-      detail: `Toutes les tables sont prises sur le créneau 2.`,
+      detail: `Toutes les tables sont prises sur le créneau 2${NBSP}: ajoute une table, ou choisis un autre créneau.`,
     },
   },
 ];
@@ -523,7 +523,7 @@ describe('Pilotage du jour J', () => {
 
       expect(button('Lancer le tirage')).toBeUndefined();
       expect(text(summary())).toContain(
-        'Le tirage de ce créneau se lance après la publication du créneau 2.',
+        "Publie d'abord le tirage du créneau 2 : les tirages se font dans l'ordre des créneaux.",
       );
     });
 
@@ -612,7 +612,8 @@ describe('Pilotage du jour J', () => {
         status: 422,
         code: 'draw-already-launched',
         title: 'Tirage déjà lancé',
-        detail: 'Le tirage du créneau 2 est déjà lancé.',
+        detail:
+          'Le tirage du créneau 2 est déjà lancé : pour le refaire, utilise « Relancer le tirage ».',
       };
 
       http
@@ -620,7 +621,7 @@ describe('Pilotage du jour J', () => {
         .flush(problem, { status: 422, statusText: 'Refus' });
       await settle();
       expect(text(dialog()?.querySelector('[role="alert"]'))).toBe(
-        'Le tirage du créneau 2 est déjà lancé.',
+        'Le tirage du créneau 2 est déjà lancé : pour le refaire, utilise « Relancer le tirage ».',
       );
       [...dialog()!.querySelectorAll('button')]
         .find((candidate) => text(candidate) === 'Fermer')!
@@ -1134,14 +1135,15 @@ describe('Pilotage du jour J', () => {
           status: 422,
           code: 'games-without-players',
           title: 'Partie sans joueur',
-          detail: "1 partie du créneau 2 n'a aucun joueur : annule-la pour publier le tirage.",
+          detail:
+            "1 partie du créneau 2 n'a aucun joueur : annule-la, ou déplaces-y des joueurs, pour publier le tirage.",
         },
         { status: 422, statusText: 'Refus' },
       );
       await settle();
 
       expect(text(dialog()?.querySelector('[role="alert"]'))).toBe(
-        "1 partie du créneau 2 n'a aucun joueur : annule-la pour publier le tirage.",
+        "1 partie du créneau 2 n'a aucun joueur : annule-la, ou déplaces-y des joueurs, pour publier le tirage.",
       );
     });
 
@@ -1625,7 +1627,7 @@ describe('Pilotage du jour J', () => {
       expect(summary()?.querySelector('.warnings')).toBeNull();
     });
 
-    it('mène à l’onglet de chaque bouton, et à la puce « Risquent de ne pas être placés »', async () => {
+    it('mène à l’onglet de chaque bouton, et à la puce « Toutes leurs parties sont très demandées »', async () => {
       const { summary, tabs, panel, settle } = await render(withWarnings(WARNINGS));
       const follow = async (index: number) => {
         lines(summary())[index]!.querySelector('button')!.click();
@@ -1640,7 +1642,7 @@ describe('Pilotage du jour J', () => {
       expect(tabs()[1]!.getAttribute('aria-selected')).toBe('true');
       expect(
         [...panel()!.querySelectorAll('.filters button[aria-pressed="true"]')].map(text),
-      ).toEqual(['Risquent de ne pas être placés · 1']);
+      ).toEqual(['Toutes leurs parties sont très demandées · 1']);
 
       await follow(2);
       expect(tabs()[0]!.getAttribute('aria-selected')).toBe('true');
@@ -1957,7 +1959,7 @@ describe('Pilotage du jour J', () => {
       expect([...dialog()!.querySelectorAll('h2, p')].map(text)).toEqual([
         'Déprogrammer « Brumes » du créneau 2 ?',
         'Il y a 15 inscrits à la partie. Ils perdront leur inscription et seront notifiés.',
-        "8 d'entre eux n'ont pas d'autre inscription sur le créneau : ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie.",
+        "8 d'entre eux n'ont pas d'autre inscription sur le créneau : ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie. Ils devront choisir une autre partie.",
         'Le scénario revient en réserve, sans ses inscriptions.',
       ]);
       http.expectNone(apiUrl(scheduleEndpoints.unschedule, { gameId: 'p1' }));
@@ -2046,7 +2048,7 @@ describe('Pilotage du jour J', () => {
       const aube = cards()[2]!;
 
       expect(aube.querySelector('app-reserve-scenario-card')!.classList).toContain('unschedulable');
-      expect(text(aube)).toContain('Toutes les tables sont prises sur le créneau 2.');
+      expect(text(aube)).toContain('Toutes les tables sont prises sur le créneau 2');
       expect(aube.querySelector('button')).toBeNull();
       expect(text(cards()[1]!.querySelector('button'))).toBe('Programmer ici…');
     });
@@ -2130,8 +2132,8 @@ describe('Pilotage du jour J', () => {
 
       expect(chips().map(text)).toEqual([
         'Tous · 3',
-        'Risquent de ne pas être placés · 1',
-        'Risquent de rester sans table · 1',
+        'Toutes leurs parties sont très demandées · 1',
+        "Leurs parties risquent d'être annulées · 1",
       ]);
       expect(chips().map((chip) => chip.getAttribute('aria-pressed'))).toEqual([
         'true',
@@ -2151,8 +2153,8 @@ describe('Pilotage du jour J', () => {
       ]);
       expect(tableRows()).toEqual([
         ['Une seule inscription · 2'],
-        ['Anna', 'inscrit', '', 'Risque de ne pas être placé'],
-        ['Sven', '', 'inscrit', 'Risque de rester sans table'],
+        ['Anna', 'inscrit', '', 'Toutes ses parties sont très demandées'],
+        ['Sven', '', 'inscrit', "Ses parties risquent d'être annulées"],
         ['Plusieurs inscriptions · 1'],
         ['Lune', 'inscrit', 'inscrit', ''],
       ]);
@@ -2170,8 +2172,8 @@ describe('Pilotage du jour J', () => {
       expect(chips().map(text)).toEqual([
         'Tous · 4',
         'Sans partie · 1',
-        'Risquent de ne pas être placés · 1',
-        'Risquent de rester sans table · 1',
+        'Toutes leurs parties sont très demandées · 1',
+        "Leurs parties risquent d'être annulées · 1",
       ]);
       expect(tableRows().slice(0, 3)).toEqual([
         ['Sans partie · 1'],
@@ -2207,7 +2209,7 @@ describe('Pilotage du jour J', () => {
       expect(chips()[1]!.getAttribute('aria-pressed')).toBe('true');
       expect(tableRows()).toEqual([
         ['Une seule inscription · 1'],
-        ['Anna', 'inscrit', '', 'Risque de ne pas être placé'],
+        ['Anna', 'inscrit', '', 'Toutes ses parties sont très demandées'],
       ]);
     });
 
@@ -2219,7 +2221,7 @@ describe('Pilotage du jour J', () => {
         ),
       });
 
-      expect(chips().map(text)).toEqual(['Tous · 2', 'Risquent de rester sans table · 1']);
+      expect(chips().map(text)).toEqual(['Tous · 2', "Leurs parties risquent d'être annulées · 1"]);
     });
 
     it('garde le filtre à la relecture, et revient à « Tous » quand sa puce disparaît', async () => {
@@ -2285,7 +2287,7 @@ describe('Pilotage du jour J', () => {
       expect(text(section())).toBe(
         'Inscrits 15 inscrits · 3 à 4 places Très demandée ' +
           'dont 8 sans autre inscription sur le créneau ' +
-          'Sans autre inscription sur le créneau · 1 Anna Risque de ne pas être placé ' +
+          'Sans autre inscription sur le créneau · 1 Anna Toutes ses parties sont très demandées ' +
           'Inscrits aussi ailleurs sur le créneau · 1 Lune aussi : « Néons »',
       );
       expect(section()!.querySelector('app-gauge')).not.toBeNull();
@@ -2516,7 +2518,7 @@ describe('Pilotage du jour J', () => {
       expect([...dialog()!.querySelectorAll('h2, p')].map(text)).toEqual([
         'Déprogrammer « Brumes » du créneau 2 ?',
         'Il y a 12 inscrits à la partie. Ils perdront leur inscription et seront notifiés.',
-        "1 d'entre eux n'a pas d'autre inscription sur le créneau : il reste dans le tirage du créneau, mais sans être inscrit à aucune partie.",
+        "1 d'entre eux n'a pas d'autre inscription sur le créneau : il reste dans le tirage du créneau, mais sans être inscrit à aucune partie. Il devra choisir une autre partie.",
         'Le scénario revient en réserve, sans ses inscriptions.',
       ]);
     });

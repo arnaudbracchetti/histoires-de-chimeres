@@ -220,7 +220,7 @@ describe('ScheduleBoard', () => {
       expect([...dialog()!.querySelectorAll('h2, p')].map(text)).toEqual([
         `Déprogrammer «${NBSP}Brumes${NBSP}» du créneau 1${THIN_NBSP}?`,
         `Il y a 12${NBSP}inscrits à la partie. Ils perdront leur inscription et seront notifiés.`,
-        "3 d'entre eux n'ont pas d'autre inscription sur le créneau\u00a0: ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie.",
+        "3 d'entre eux n'ont pas d'autre inscription sur le créneau\u00a0: ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie. Ils devront choisir une autre partie.",
         'Le scénario revient en réserve, sans ses inscriptions.',
       ]);
       expect(document.activeElement).toBe(dialogButton('Annuler'));
@@ -244,7 +244,7 @@ describe('ScheduleBoard', () => {
 
       expect([...dialog()!.querySelectorAll('p')].map(text)).toEqual([
         `Il y a 1${NBSP}inscrit à la partie. Il perdra son inscription et sera notifié.`,
-        "C'est sa seule inscription sur le créneau\u00a0: il reste dans le tirage du créneau, mais sans être inscrit à aucune partie.",
+        "C'est sa seule inscription sur le créneau\u00a0: il reste dans le tirage du créneau, mais sans être inscrit à aucune partie. Il devra choisir une autre partie.",
         'Le scénario revient en réserve, sans ses inscriptions.',
       ]);
     });
@@ -385,7 +385,7 @@ describe('ScheduleBoard', () => {
       expect(TestBed.inject(ErrorDialog).pending()).toEqual([
         expect.objectContaining({
           title: 'Modification simultanée',
-          detail: `La convention a changé entre-temps${NBSP}: l'écran est à jour.`,
+          detail: `Quelqu'un d'autre a modifié la convention en même temps${NBSP}: ton geste n'a pas été fait. L'écran est à jour, recommence si besoin.`,
         }),
       ]);
       http.expectOne(apiUrl(conventionEndpoints.read)).flush(CONVENTION);
@@ -455,7 +455,7 @@ describe('ScheduleBoard', () => {
         expect([...dialog()!.querySelectorAll('h2, p')].map(text)).toEqual([
           `Échanger «${NBSP}Brumes${NBSP}» et «${NBSP}Néons${NBSP}»${THIN_NBSP}?`,
           `Il y a 12${NBSP}inscrits à «${NBSP}Brumes${NBSP}» (créneau 1). Ils perdront leur inscription et seront notifiés.`,
-          "3 d'entre eux n'ont pas d'autre inscription sur le créneau\u00a0: ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie.",
+          "3 d'entre eux n'ont pas d'autre inscription sur le créneau\u00a0: ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie. Ils devront choisir une autre partie.",
           `Il y a 4${NBSP}inscrits à «${NBSP}Néons${NBSP}» (créneau 2). Ils perdront leur inscription et seront notifiés.`,
         ]);
         expect(gameAt('s2', 't1')).toEqual({ title: 'Brumes', pending: true });

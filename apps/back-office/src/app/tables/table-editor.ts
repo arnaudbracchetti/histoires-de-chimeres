@@ -92,7 +92,7 @@ export class TableEditor {
     (path) =>
       textRules(path.name, TABLE_NAME_MAX_LENGTH, {
         required: 'Donne un nom à la table.',
-        tooLong: fr`Le nom d'une table fait ${countOf(TABLE_NAME_MAX_LENGTH, 'caractère', 'caractères')} au plus : raccourcis-le.`,
+        tooLong: fr`Le nom d'une table ne doit pas dépasser ${countOf(TABLE_NAME_MAX_LENGTH, 'caractère', 'caractères')} : raccourcis-le.`,
       }),
     {
       submission: submitWith(() => this.write()),

@@ -34,7 +34,7 @@ describe('NicknamePage', () => {
     TestBed.inject(HttpTestingController)
       .expectOne({ method: 'GET', url: apiUrl(linkedPhoneEndpoints.read) })
       .flush(
-        { code: 'phone-not-linked', title: 'Téléphone relié à aucun pseudo' },
+        { code: 'phone-not-linked', title: 'Pseudo à indiquer' },
         { status: 401, statusText: 'Unauthorized' },
       );
     const page = fixture.nativeElement as HTMLElement;
@@ -101,7 +101,7 @@ describe('NicknamePage', () => {
     [
       'de plus de 30 caractères',
       'a'.repeat(31),
-      `Ton pseudo fait 30${NBSP}caractères au plus${NBSP}: raccourcis-le.`,
+      `Ton pseudo ne doit pas dépasser 30${NBSP}caractères${NBSP}: raccourcis-le.`,
     ],
   ])('refuse un pseudo %s, sans rien envoyer', async (_, typed, message) => {
     const { enter, error, input } = render();

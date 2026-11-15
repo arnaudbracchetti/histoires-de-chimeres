@@ -100,7 +100,7 @@ test('un chevauchement est refusé sous son champ', async ({ page }) => {
 
   await expect(slots.end).toBeFocused();
   await expect(slots.end).toHaveAccessibleDescription(
-    `Ce créneau empiète sur le créneau 1${NBSP}: avance sa fin.`,
+    `Ce créneau empiète sur le créneau 1${NBSP}: termine-le plus tôt.`,
   );
   await expect(slots.cards).toHaveCount(1);
 });

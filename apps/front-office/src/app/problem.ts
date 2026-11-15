@@ -13,7 +13,7 @@ export type Problem = {
   alert?: ErrorNotice;
 };
 
-const INTERNAL_ERROR = 'Une erreur est survenue, réessaie.';
+const INTERNAL_ERROR = fr`Ça n'a pas marché : réessaie. Si ça recommence, préviens un Organisateur.`;
 const OFFLINE = fr`Pas de connexion : rien n'a été enregistré.`;
 
 /**

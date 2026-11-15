@@ -163,7 +163,10 @@ const LAUNCHED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, strin
       @if (value(); as tracking) {
         @if (!tracking.timeSlots.length) {
           <app-empty-state>
-            <p>Aucun créneau pour l'instant&nbsp;: le suivi attend la journée.</p>
+            <p>
+              Aucun créneau pour l'instant&nbsp;: crée d'abord les créneaux de la journée, dans
+              «&nbsp;Créneaux et tables&nbsp;».
+            </p>
             <a appButton="primary" routerLink="/creneaux-et-tables">Créer les créneaux</a>
           </app-empty-state>
         } @else {
@@ -196,14 +199,15 @@ const LAUNCHED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, strin
                   @if (slot.warnings[0]; as top) {
                     <span class="top-warning" [class]="top.level"
                       ><app-icon [name]="levelIcons[top.level]" /><span
-                        >{{ top.title
-                        }}@if (slot.warnings.length > 1) {
+                        >{{ top.title }}
+                        @if (slot.warnings.length > 1) {
                           <span class="more" aria-hidden="true"
                             >&nbsp;+{{ slot.warnings.length - 1 }}</span
                           ><span class="visually-hidden"
                             >, et {{ otherWarnings(slot.warnings.length - 1) }}</span
-                          >}</span
-                      ></span
+                          >
+                        }
+                      </span></span
                     >
                   }
                 } @else {
@@ -289,8 +293,8 @@ const LAUNCHED_SUMMARY: Record<Exclude<TimeSlotStateDto, 'sign-ups-open'>, strin
                       </p>
                     } @else if (drawableSlot(); as drawable) {
                       <p class="quiet">
-                        Le tirage de ce créneau se lance après la publication du créneau
-                        {{ drawable.rank }}.
+                        Publie d'abord le tirage du créneau {{ drawable.rank }}&nbsp;: les tirages
+                        se font dans l'ordre des créneaux.
                       </p>
                     }
                   } @else {
@@ -753,7 +757,7 @@ export class SignUpTrackingPage {
 
   /**
    * Mène à l'onglet où agir sur l'avertissement, et y met le focus : « Voir les participants »
-   * filtre les inscrits sur la puce « Sans partie » ou « Risquent de ne pas être placés ».
+   * filtre les inscrits sur la puce « Sans partie » ou « Toutes leurs parties sont très demandées ».
    */
   protected follow(warning: SignUpWarningDto) {
     const { tab, participantFilter } = WARNING_ACTIONS[warning.code];
@@ -773,9 +777,10 @@ export class SignUpTrackingPage {
       question: fr`Lancer le tirage du créneau ${slot.rank} ?`,
       consequences: [
         fr`${countOf(slot.demand, 'participant', 'participants')} ${plural(slot.demand, 'est inscrit', 'sont inscrits')} sur ce créneau, pour ${formatSeatRange(slot.capacity)} ${this.places(slot.capacity.max)}.`,
-        ...slot.warnings.map(
-          ({ title, detail, level }): Consequence => ({ text: fr`${title}. ${detail}`, level }),
-        ),
+        ...slot.warnings.map(({ title, detail, level }): Consequence => ({
+          text: fr`${title}. ${detail}`,
+          level,
+        })),
         fr`Les inscriptions du créneau seront fermées. Personne n'est notifié avant la publication.`,
       ],
       confirmLabel: 'Lancer le tirage',

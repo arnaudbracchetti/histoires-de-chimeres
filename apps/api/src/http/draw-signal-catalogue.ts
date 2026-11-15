@@ -30,7 +30,8 @@ export const drawSignalCatalogue: { [C in DrawSignalCode]: Text<DrawSignalParams
   },
   'games-without-players': {
     title: ({ gameCount }) => fr`${games(gameCount)} sans joueur`,
-    detail: ({ gameCount }) => fr`Annule-${plural(gameCount, 'la', 'les')} pour publier le tirage.`,
+    detail: ({ gameCount }) =>
+      fr`Annule-${plural(gameCount, 'la', 'les')}, ou déplaces-y des joueurs, pour publier le tirage.`,
   },
   'games-below-minimum': {
     title: ({ gameCount }) =>

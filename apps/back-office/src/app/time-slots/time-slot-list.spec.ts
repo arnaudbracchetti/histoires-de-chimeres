@@ -224,10 +224,10 @@ describe('TimeSlotList', () => {
 
   it('affiche sous la fin un chevauchement refusé par l’API, focus sur la fin', async () => {
     const { button, type, press, http, settle, errorOf, input } = await render();
-    const message = `Ce créneau empiète sur le créneau 1${NBSP}: avance sa fin.`;
+    const message = `Ce créneau empiète sur le créneau 1${NBSP}: termine-le plus tôt.`;
     const problem: ProblemDto = {
       type: 'urn:histoires-de-chimeres:problem:time-slot-end-overlaps',
-      title: 'Chevauchement',
+      title: 'Créneaux qui se chevauchent',
       status: 422,
       detail: message,
       code: 'time-slot-end-overlaps',
@@ -261,7 +261,9 @@ describe('TimeSlotList', () => {
     await settle();
 
     expect(TestBed.inject(ErrorDialog).pending()).toEqual([
-      expect.objectContaining({ title: 'Une erreur est survenue, réessaie.' }),
+      expect.objectContaining({
+        title: `Ça n'a pas marché${NBSP}: réessaie. Si ça recommence, recharge la page.`,
+      }),
     ]);
     expect(input('Début').value).toBe('14:00');
   });

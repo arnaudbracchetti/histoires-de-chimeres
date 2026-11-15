@@ -53,7 +53,9 @@ describe('MyGamesPage', () => {
   /** Le texte, ses blancs de mise en page réduits ; les espaces insécables restent. */
   const text = (element: Element | null) => element?.textContent?.replace(/[ \n\t]+/g, ' ').trim();
   const withdrawButton = (page: HTMLElement) =>
-    [...page.querySelectorAll('button')].find((button) => text(button) === 'Me retirer du tirage');
+    [...page.querySelectorAll('button')].find(
+      (button) => text(button) === 'Ne plus participer à ce créneau',
+    );
 
   beforeEach(() => withdrawFromDraw.mockClear());
 
@@ -61,7 +63,7 @@ describe('MyGamesPage', () => {
     const page = await render(timeSlot({ withoutGame: true }));
 
     expect(text(page.querySelector('section'))).toContain(
-      `Toutes tes parties ont été retirées de ce créneau. Tu restes dans le tirage du créneau 2${NBSP}: inscris-toi à une autre partie pour avoir une table.`,
+      `Toutes tes parties ont été retirées de ce créneau${NBSP}: inscris-toi à une autre partie pour avoir une table.`,
     );
     expect(text(page.querySelector('section'))).not.toContain('Aucune inscription');
   });

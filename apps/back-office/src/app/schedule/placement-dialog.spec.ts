@@ -352,7 +352,7 @@ describe('PlacementDialog', () => {
         expect(confirmationTexts()).toEqual([
           `Déplacer «${NBSP}Brumes${NBSP}» sur le créneau 2${THIN_NBSP}?`,
           `Il y a 12${NBSP}inscrits à la partie. Ils perdront leur inscription et seront notifiés.`,
-          "3 d'entre eux n'ont pas d'autre inscription sur le créneau\u00a0: ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie.",
+          "3 d'entre eux n'ont pas d'autre inscription sur le créneau\u00a0: ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie. Ils devront choisir une autre partie.",
         ]);
         expect(document.activeElement).toBe(confirmationButton('Annuler'));
         http.expectNone(apiUrl(scheduleEndpoints.move, { gameId: 'p1' }));
@@ -375,7 +375,7 @@ describe('PlacementDialog', () => {
 
         expect(confirmationTexts().slice(1)).toEqual([
           `Il y a 12${NBSP}inscrits à la partie. Ils perdront leur inscription et seront notifiés.`,
-          "3 d'entre eux n'ont pas d'autre inscription sur le créneau\u00a0: ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie.",
+          "3 d'entre eux n'ont pas d'autre inscription sur le créneau\u00a0: ils restent dans le tirage du créneau, mais sans être inscrits à aucune partie. Ils devront choisir une autre partie.",
           ERASED_DRAW_OF_SLOT_1,
         ]);
       });
@@ -458,7 +458,7 @@ describe('PlacementDialog', () => {
           `Échanger «${NBSP}Brumes${NBSP}» et «${NBSP}Néons${NBSP}»${THIN_NBSP}?`,
           `Il y a 1${NBSP}inscrit à «${NBSP}Brumes${NBSP}» (créneau 1). Il perdra son inscription et sera notifié.`,
           `Il y a 4${NBSP}inscrits à «${NBSP}Néons${NBSP}» (créneau 2). Ils perdront leur inscription et seront notifiés.`,
-          "1 d'entre eux n'a pas d'autre inscription sur le créneau\u00a0: il reste dans le tirage du créneau, mais sans être inscrit à aucune partie.",
+          "1 d'entre eux n'a pas d'autre inscription sur le créneau\u00a0: il reste dans le tirage du créneau, mais sans être inscrit à aucune partie. Il devra choisir une autre partie.",
         ]);
         confirmationButton('Échanger les parties').click();
         http.expectOne(apiUrl(scheduleEndpoints.swap, { gameId: 'p1' })).flush(SCHEDULE);

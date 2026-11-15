@@ -100,7 +100,7 @@ describe('Page « Mon compte » : changer son mot de passe (ADR 0019)', () => {
 
     TestBed.inject(HttpTestingController).expectNone(apiUrl(accountEndpoints.changePassword));
     expect(host.textContent).toContain('Indique ton mot de passe actuel.');
-    expect(host.textContent).toMatch(/Le mot de passe fait au moins 10\scaractères/);
+    expect(host.textContent).toMatch(/Le mot de passe doit faire au moins 10\scaractères/);
   });
 
   it('affiche le nouveau mot de passe en clair par son œil, et le remasque à l’envoi', async () => {

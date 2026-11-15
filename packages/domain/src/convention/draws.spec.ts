@@ -2573,7 +2573,7 @@ describe('Ajouter un retardataire à un tirage publié (ID-14)', () => {
   });
 
   it.each([
-    ['sans tirage', 's3', 'p4', 'draw-not-published', { rank: 3 }],
+    ['sans tirage', 's3', 'p4', 'draw-not-published', { rank: 3, launched: false }],
     [
       'déjà placé dans ce tirage',
       's1',
@@ -2642,7 +2642,7 @@ describe('Ajouter un retardataire à un tirage publié (ID-14)', () => {
 
     expect(
       refusalOf(() => convention.addLatecomerToPublishedDraw('p4', 's1', NOW, CATALOGUE)),
-    ).toEqual(new Refusal('draw-not-published', { rank: 1 }));
+    ).toEqual(new Refusal('draw-not-published', { rank: 1, launched: true }));
   });
 
   it('refuse un créneau terminé, dès son heure de fin', () => {

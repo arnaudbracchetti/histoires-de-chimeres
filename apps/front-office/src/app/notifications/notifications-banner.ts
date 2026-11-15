@@ -74,7 +74,7 @@ export class NotificationsBanner {
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
 
-  protected readonly unsupported = fr`Ce téléphone ne reçoit pas les notifications : reviens voir ta table ici après chaque tirage`;
+  protected readonly unsupported = fr`Ce téléphone ne reçoit pas les notifications : reviens ici avant chaque créneau pour voir ta table`;
   protected readonly text = computed(() => {
     switch (this.push.status()) {
       case 'not-on-home-screen':

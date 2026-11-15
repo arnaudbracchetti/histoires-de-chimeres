@@ -77,7 +77,7 @@ test('un téléphone sans push passe l’étape des notifications, et a un bande
 
   await expect(nicknameButton(page)).toBeVisible();
   await expect(page.getByRole('status')).toHaveText(
-    /^Ce téléphone ne reçoit pas les notifications.: reviens voir ta table ici après chaque tirage$/,
+    /^Ce téléphone ne reçoit pas les notifications.: reviens ici avant chaque créneau pour voir ta table$/,
   );
   await expect(banner(page)).toHaveCount(0);
 });

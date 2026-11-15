@@ -226,14 +226,14 @@ function describeSignUpsToRemove(
       fr`${signedUp} Il perdra son inscription et sera notifié.`,
       ...(withoutOtherSignUpCount
         ? [
-            fr`C'est sa seule inscription sur le créneau : il reste dans le tirage du créneau, mais sans être inscrit à aucune partie.`,
+            fr`C'est sa seule inscription sur le créneau : il reste dans le tirage du créneau, mais sans être inscrit à aucune partie. Il devra choisir une autre partie.`,
           ]
         : []),
     ];
   }
   const without = withoutOtherSignUpCount
     ? [
-        fr`${formatCount(withoutOtherSignUpCount)} d'entre eux ${plural(withoutOtherSignUpCount, "n'a", "n'ont")} pas d'autre inscription sur le créneau : ${plural(withoutOtherSignUpCount, 'il reste', 'ils restent')} dans le tirage du créneau, mais sans être ${plural(withoutOtherSignUpCount, 'inscrit', 'inscrits')} à aucune partie.`,
+        fr`${formatCount(withoutOtherSignUpCount)} d'entre eux ${plural(withoutOtherSignUpCount, "n'a", "n'ont")} pas d'autre inscription sur le créneau : ${plural(withoutOtherSignUpCount, 'il reste', 'ils restent')} dans le tirage du créneau, mais sans être ${plural(withoutOtherSignUpCount, 'inscrit', 'inscrits')} à aucune partie. ${plural(withoutOtherSignUpCount, 'Il devra', 'Ils devront')} choisir une autre partie.`,
       ]
     : [];
   return [fr`${signedUp} Ils perdront leur inscription et seront notifiés.`, ...without];

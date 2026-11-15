@@ -17,8 +17,8 @@ export type ParticipantFilter = 'all' | ParticipantRiskDto;
 const FILTER_LABELS: Record<ParticipantFilter, string> = {
   all: 'Tous',
   'without-game': 'Sans partie',
-  'may-not-be-placed': 'Risquent de ne pas être placés',
-  'may-be-left-without-table': 'Risquent de rester sans table',
+  'may-not-be-placed': 'Toutes leurs parties sont très demandées',
+  'may-be-left-without-table': "Leurs parties risquent d'être annulées",
 };
 
 /**

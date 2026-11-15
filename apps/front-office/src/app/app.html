@@ -15,7 +15,9 @@
         réseau.
       </p>
     } @else if (failed()) {
-      <p>Impossible de charger la convention.</p>
+      <p>
+        Impossible de charger la convention&nbsp;: vérifie ton réseau, puis rouvre l'application.
+      </p>
     } @else if (loading()) {
       <p>Chargement…</p>
     } @else if (notificationsStep() && linkedPhone.nickname()) {

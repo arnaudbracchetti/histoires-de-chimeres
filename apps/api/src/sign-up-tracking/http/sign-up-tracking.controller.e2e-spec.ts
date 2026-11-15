@@ -348,7 +348,8 @@ describe('Suivi des inscriptions', () => {
           title: 'Trop de parties',
           detail:
             '2 participants pour 5 places au moins : une partie au moins finira sous son minimum. ' +
-            '2 parties sous leur minimum, 2 participants risquent de rester sans table.',
+            '2 parties sous leur minimum, 2 participants risquent de rester sans table. ' +
+            "Déprogramme une partie, ou attends d'autres inscriptions.",
         },
       ]);
     });
@@ -403,15 +404,21 @@ describe('Suivi des inscriptions', () => {
       expect(dto.timeSlots[0]!.reserve).toEqual([
         {
           scenarioId: abysses,
-          refusal: refusal('Toutes les tables sont prises sur le créneau 1.'),
+          refusal: refusal(
+            'Toutes les tables sont prises sur le créneau 1\u00a0: ajoute une table, ou choisis un autre créneau.',
+          ),
         },
         {
           scenarioId: aube,
-          refusal: refusal('Toutes les tables sont prises sur le créneau 1 ou sur le suivant.'),
+          refusal: refusal(
+            'Toutes les tables sont prises sur le créneau 1 ou sur le suivant\u00a0: ajoute une table, ou choisis un autre créneau.',
+          ),
         },
         {
           scenarioId: cendres,
-          refusal: refusal('Toutes les tables sont prises sur le créneau 1.'),
+          refusal: refusal(
+            'Toutes les tables sont prises sur le créneau 1\u00a0: ajoute une table, ou choisis un autre créneau.',
+          ),
         },
       ]);
     });

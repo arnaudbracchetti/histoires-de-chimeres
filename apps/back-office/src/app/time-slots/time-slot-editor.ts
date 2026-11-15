@@ -162,7 +162,7 @@ export class TimeSlotEditor {
         if (!start || !end || end > start) return undefined;
         return {
           kind: 'end-not-after-start',
-          message: fr`La fin du créneau vient après son début : change l'une des deux heures.`,
+          message: fr`La fin du créneau doit venir après son début : change l'une des deux heures.`,
         };
       });
     },

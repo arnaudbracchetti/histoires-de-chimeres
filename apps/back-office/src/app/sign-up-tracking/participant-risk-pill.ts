@@ -6,12 +6,12 @@ import { Icon } from '../ui/icon';
 const RISKS: Record<ParticipantRiskDto, { label: string; icon: string; tone: string }> = {
   'without-game': { label: 'Sans partie', icon: 'octagon-alert', tone: 'danger' },
   'may-not-be-placed': {
-    label: 'Risque de ne pas être placé',
+    label: 'Toutes ses parties sont très demandées',
     icon: 'octagon-alert',
     tone: 'danger',
   },
   'may-be-left-without-table': {
-    label: 'Risque de rester sans table',
+    label: "Ses parties risquent d'être annulées",
     icon: 'triangle-alert',
     tone: 'warning',
   },

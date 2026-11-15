@@ -39,8 +39,9 @@ describe('AvailabilityTimeline', () => {
         refusal: games.some((game) => game.timeSlotId === timeSlotId)
           ? {
               code: 'availability-has-game',
-              title: 'Disponibilité programmée',
-              detail: "Élodie mène une partie sur le créneau 2 : déprogramme-la d'abord.",
+              title: 'Disponibilité utilisée',
+              detail:
+                "Élodie mène une partie sur le créneau 2 : cette disponibilité ne peut pas être retirée tant qu'un Organisateur n'a pas déprogrammé la partie.",
             }
           : null,
       })),
@@ -117,7 +118,9 @@ describe('AvailabilityTimeline', () => {
     expect(box(2).checked).toBe(true);
     expect(box(2).disabled).toBe(true);
     expect(second!.classList).toContain('locked');
-    expect(second!.title).toBe("Élodie mène une partie sur le créneau 2 : déprogramme-la d'abord.");
+    expect(second!.title).toBe(
+      "Élodie mène une partie sur le créneau 2 : cette disponibilité ne peut pas être retirée tant qu'un Organisateur n'a pas déprogrammé la partie.",
+    );
     expect(box(2).getAttribute('aria-describedby')).toBe(game.id);
 
     await click(2);

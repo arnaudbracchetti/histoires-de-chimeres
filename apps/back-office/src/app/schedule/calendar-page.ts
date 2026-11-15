@@ -20,13 +20,19 @@ import { EmptyState } from '../ui/empty-state';
       @if (convention(); as convention) {
         @if (!convention.timeSlots.length) {
           <app-empty-state>
-            <p>Aucun créneau pour l'instant&nbsp;: la frise attend la journée.</p>
+            <p>
+              Aucun créneau pour l'instant&nbsp;: crée d'abord les créneaux de la journée, dans
+              «&nbsp;Créneaux et tables&nbsp;».
+            </p>
             <a appButton="primary" routerLink="/creneaux-et-tables">Créer les créneaux</a>
             <a appButton="quiet" routerLink="/mj">Ou commencer par les MJ</a>
           </app-empty-state>
         } @else if (!convention.tables.length) {
           <app-empty-state>
-            <p>Aucune table pour l'instant&nbsp;: la frise a une ligne par table.</p>
+            <p>
+              Aucune table pour l'instant&nbsp;: ajoute des tables, dans «&nbsp;Créneaux et
+              tables&nbsp;», pour programmer des parties.
+            </p>
             <a appButton="primary" routerLink="/creneaux-et-tables">Ajouter les tables</a>
           </app-empty-state>
         } @else {

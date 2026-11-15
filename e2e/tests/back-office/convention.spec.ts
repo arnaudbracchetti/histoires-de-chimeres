@@ -64,7 +64,7 @@ test('la carte de la convention montre sa fin et son code de présence', async (
     await page.request.get(apiUrl(conventionEndpoints.read))
   ).json()) as ConventionDto;
   await page.goto('/gestion/creneaux-et-tables');
-  await expect(page.getByText('Pas de fin')).toBeVisible();
+  await expect(page.getByText('Pas de fin', { exact: true })).toBeVisible();
   await expect(page.getByText(convention.presenceCode, { exact: true })).toBeVisible();
 
   for (const hours of [

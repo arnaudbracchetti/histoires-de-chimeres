@@ -64,7 +64,9 @@ describe('Gesture', () => {
     expect(gesture.refusal()?.message).toBe("Pas de connexion\u00a0: rien n'a été enregistré.");
 
     await gesture.run(refusedWith(500, { title: 'Erreur interne' }));
-    expect(gesture.refusal()?.message).toBe('Une erreur est survenue, réessaie.');
+    expect(gesture.refusal()?.message).toBe(
+      `Ça n'a pas marché${NBSP}: réessaie. Si ça recommence, recharge la page.`,
+    );
   });
 
   it.each([404, 409, 422])('un refus %i dit que l’écran est périmé', async (status) => {
@@ -86,7 +88,10 @@ describe('Gesture', () => {
 
     expect(outcome).toMatchObject({
       status: 'refused',
-      refusal: { message: 'Une erreur est survenue, réessaie.', stale: false },
+      refusal: {
+        message: `Ça n'a pas marché${NBSP}: réessaie. Si ça recommence, recharge la page.`,
+        stale: false,
+      },
     });
   });
 
@@ -143,11 +148,11 @@ describe('Gesture', () => {
     await gesture.run(
       refusedWith(409, {
         title: 'Modification simultanée',
-        detail: `La convention a changé entre-temps${NBSP}: recharge la page, puis recommence.`,
+        detail: `Quelqu'un d'autre a modifié la convention en même temps${NBSP}: recharge la page, puis recommence.`,
       }),
     );
 
-    const detail = `La convention a changé entre-temps${NBSP}: l'écran est à jour.`;
+    const detail = `Quelqu'un d'autre a modifié la convention en même temps${NBSP}: ton geste n'a pas été fait. L'écran est à jour, recommence si besoin.`;
     expect(gesture.refusal()?.message).toBe(detail);
     expect(TestBed.inject(ErrorDialog).pending()).toEqual([
       expect.objectContaining({ title: 'Modification simultanée', detail }),
@@ -156,7 +161,7 @@ describe('Gesture', () => {
 
   it('après un 409, sur un écran qui ne se relit pas, le refus garde le detail de l’API', async () => {
     const gesture = create();
-    const detail = `La convention a changé entre-temps${NBSP}: recharge la page, puis recommence.`;
+    const detail = `Quelqu'un d'autre a modifié la convention en même temps${NBSP}: recharge la page, puis recommence.`;
 
     await gesture.run(refusedWith(409, { title: 'Modification simultanée', detail }));
 

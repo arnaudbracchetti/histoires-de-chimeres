@@ -255,7 +255,7 @@ function describeAccessLinkConsequences(
 ): string[] {
   if (account.state === 'active') {
     return [
-      fr`Son mot de passe est effacé tout de suite, et ses sessions ouvertes sont fermées. « ${nickname} » en choisira un nouveau par le lien.`,
+      fr`Son mot de passe est effacé tout de suite, et ses connexions ouvertes sont fermées. « ${nickname} » en choisira un nouveau par le lien.`,
     ];
   }
   if (account.state === 'pending') return [fr`Le lien déjà créé ne marchera plus.`];

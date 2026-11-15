@@ -195,7 +195,8 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
     expect(response.body).toMatchObject({
       code: 'previous-draw-not-published',
       title: 'Tirage précédent à publier',
-      detail: 'Le tirage du créneau 2 se lance après la publication du créneau 1.',
+      detail:
+        "Publie d'abord le tirage du créneau 1\u00a0: les tirages se font dans l'ordre des créneaux.",
     });
   });
 
@@ -211,7 +212,8 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
 
     expect(response.body).toMatchObject({
       code: 'draw-already-launched',
-      detail: 'Le tirage du créneau 1 est déjà lancé.',
+      detail:
+        'Le tirage du créneau 1 est déjà lancé\u00a0: pour le refaire, utilise «\u00a0Relancer le tirage\u00a0».',
     });
   });
 
@@ -369,8 +371,8 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
     for (const response of [rerun, reopen]) {
       expect(response.body).toMatchObject({
         code: 'draw-not-launched',
-        title: 'Tirage pas lancé',
-        detail: "Le tirage du créneau 1 n'est pas lancé.",
+        title: 'Tirage pas encore lancé',
+        detail: "Le tirage du créneau 1 n'est pas encore lancé\u00a0: lance-le d'abord.",
       });
     }
   });
@@ -440,9 +442,9 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
 
     expect(response.body).toMatchObject({
       code: 'game-not-below-minimum',
-      title: 'Partie au minimum',
+      title: 'Minimum atteint',
       detail:
-        "Cette partie a 2\u00a0joueurs pour 2\u00a0places au moins\u00a0: elle ne s'annule pas.",
+        'Cette partie a 2\u00a0joueurs pour un minimum de 2\u00a0: seule une partie sous son minimum peut être annulée.',
     });
   });
 
@@ -534,7 +536,7 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
         code: 'games-without-players',
         level: 'danger',
         title: '1 partie sans joueur',
-        detail: 'Annule-la pour publier le tirage.',
+        detail: 'Annule-la, ou déplaces-y des joueurs, pour publier le tirage.',
       },
       {
         code: 'games-below-minimum',
@@ -598,9 +600,9 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
 
     expect(response.body).toMatchObject({
       code: 'time-slot-before-draw',
-      title: 'Tirage lancé après',
+      title: 'Placer un créneau',
       detail:
-        "Le tirage du créneau 1 est lancé\u00a0: rouvre d'abord ses inscriptions pour placer un créneau avant lui.",
+        "Le tirage du créneau 1 est lancé\u00a0: rouvre d'abord ses inscriptions pour ajouter ou placer un créneau avant lui.",
     });
   });
 
@@ -754,7 +756,7 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
         code: 'games-without-players',
         title: 'Partie sans joueur',
         detail:
-          "1\u00a0partie du créneau 1 n'a aucun joueur\u00a0: annule-la pour publier le tirage.",
+          "1\u00a0partie du créneau 1 n'a aucun joueur\u00a0: annule-la, ou déplaces-y des joueurs, pour publier le tirage.",
       });
       expect((await tracking()).timeSlots[0]!.state).toBe('drawing');
     });
@@ -770,7 +772,8 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
       const published = {
         code: 'time-slot-published',
         title: 'Créneau publié',
-        detail: 'Le tirage du créneau 1 est publié\u00a0: son programme ne change plus.',
+        detail:
+          'Le tirage du créneau 1 est publié\u00a0: on ne peut plus y programmer, déplacer ni déprogrammer de partie.',
       };
 
       const placements = (
@@ -798,8 +801,9 @@ describe('Les gestes du tirage (TI-1, TI-6)', () => {
 
       expect(response.body).toMatchObject({
         code: 'time-slot-locked-by-draw',
-        title: 'Créneau tiré',
-        detail: 'Le tirage du créneau 1 est publié\u00a0: le créneau ne change plus.',
+        title: 'Créneau bloqué par son tirage',
+        detail:
+          'Le tirage du créneau 1 est publié\u00a0: ce créneau ne peut plus être modifié ni supprimé.',
       });
     });
 

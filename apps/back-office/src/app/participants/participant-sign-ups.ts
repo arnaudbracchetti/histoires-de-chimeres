@@ -49,7 +49,8 @@ const WITHDRAW_FROM_DRAW = 'withdraw-from-draw:';
       @if (current(); as slot) {
         @if (ledTitle(); as title) {
           <p class="backup">
-            Mène «&nbsp;{{ title }}&nbsp;»&nbsp;: ses inscriptions sur ce créneau sont de secours.
+            Mène «&nbsp;{{ title }}&nbsp;» sur ce créneau&nbsp;: ses inscriptions n'y comptent que
+            si sa partie est annulée.
           </p>
         }
         @if (lines().length) {

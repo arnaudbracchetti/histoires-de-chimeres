@@ -146,7 +146,7 @@ test('erreurs locales au départ du champ, focus au premier champ en erreur, rie
   await expect(scenario.title).toHaveAccessibleDescription('81 / 80');
   await scenario.title.press('Tab');
   await expect(scenario.title).toHaveAccessibleDescription(
-    `81 / 80 Le titre fait 80 caractères au plus${NBSP}: raccourcis-le.`,
+    `81 / 80 Le titre ne doit pas dépasser 80 caractères${NBSP}: raccourcis-le.`,
   );
   await scenario.title.fill("La Tour d'ébène");
   await expect(scenario.title).toHaveAccessibleDescription('15 / 80');
@@ -155,12 +155,14 @@ test('erreurs locales au départ du champ, focus au premier champ en erreur, rie
   await scenario.max.fill('3');
   await scenario.max.press('Tab');
   await expect(scenario.max).toHaveAccessibleDescription(
-    `Le maximum est sous le minimum${NBSP}: augmente-le.`,
+    `Le maximum est sous le minimum${NBSP}: augmente-le, ou baisse le minimum.`,
   );
 
   await scenario.save.click();
   await expect(scenario.system).toBeFocused();
-  await expect(scenario.system).toHaveAccessibleDescription(/Indique le jeu du scénario\./);
+  await expect(scenario.system).toHaveAccessibleDescription(
+    /Indique le jeu de rôle utilisé pour ce scénario/,
+  );
   await expect(scenario.save).toBeEnabled();
   expect(await positionOf(scenario.save)).toEqual(save);
   expect(await positionOf(scenario.max)).toEqual(max);
@@ -342,7 +344,7 @@ test('un MJ qui a un scénario : la suppression est refusée dans le dialogue (P
   await dialog.getByRole('button', { name: 'Supprimer le MJ' }).click();
 
   await expect(dialog.getByRole('alert')).toHaveText(
-    `Ce MJ a un scénario${NBSP}: supprime-le d'abord.`,
+    `Ce MJ a un scénario${NBSP}: supprime-le d'abord pour supprimer ce MJ ou lui retirer son rôle.`,
   );
   await expect(dialog.getByRole('button')).toHaveText(['Fermer']);
   await dialog.getByRole('button', { name: 'Fermer' }).click();

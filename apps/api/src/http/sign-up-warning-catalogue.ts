@@ -58,7 +58,10 @@ export const signUpWarningCatalogue: {
           : []),
       ];
       const reason = fr`${participants(params.demand)} pour ${seats(params.minCapacity)} au moins : une partie au moins finira sous son minimum.`;
-      return shortfalls.length > 0 ? fr`${reason} ${shortfalls.join(', ')}.` : reason;
+      const action = fr`Déprogramme une partie, ou attends d'autres inscriptions.`;
+      return shortfalls.length > 0
+        ? fr`${reason} ${shortfalls.join(', ')}. ${action}`
+        : fr`${reason} ${action}`;
     },
   },
   'games-below-minimum': {
@@ -67,8 +70,8 @@ export const signUpWarningCatalogue: {
       count > 0
         ? fr`${mayBeLeftWithoutTable(count)}.`
         : games > 1
-          ? fr`Elles risquent d'être annulées au tirage.`
-          : fr`Elle risque d'être annulée au tirage.`,
+          ? fr`Si elles restent sous leur minimum, tu pourras les annuler après le tirage.`
+          : fr`Si elle reste sous son minimum, tu pourras l'annuler après le tirage.`,
   },
 };
 

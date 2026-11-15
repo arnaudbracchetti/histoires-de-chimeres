@@ -29,7 +29,10 @@ describe('Textes des signaux du tirage', () => {
   it('accorde les parties sans joueur et sous leur minimum', () => {
     expect(
       write({ code: 'games-without-players', level: 'danger', params: { gameCount: 2 } }),
-    ).toEqual(['2 parties sans joueur', 'Annule-les pour publier le tirage.']);
+    ).toEqual([
+      '2 parties sans joueur',
+      'Annule-les, ou déplaces-y des joueurs, pour publier le tirage.',
+    ]);
     expect(
       write({ code: 'games-below-minimum', level: 'warning', params: { gameCount: 2 } }),
     ).toEqual([

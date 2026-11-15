@@ -98,7 +98,7 @@ test('les heures d’un créneau qui porte une disponibilité sont refusées (PR
 
   const refusal = page.getByRole('alertdialog', { name: 'Heures figées' });
   await expect(refusal).toContainText(
-    `2 MJ sont disponibles sur le créneau 2${NBSP}: ses heures ne changent plus.`,
+    `Les heures du créneau 2 ne peuvent plus changer${NBSP}: 2${NBSP}MJ y ont coché leur disponibilité.`,
   );
   await page.reload();
   await expect(section.locator('article.card').last()).toContainText(time(14));
