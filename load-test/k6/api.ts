@@ -112,19 +112,25 @@ export function sendAndVerifySuccess<E extends AnyEndpoint>(
 }
 
 /**
- * Envoie plusieurs appels en parallèle, comme le front office (`Promise.all`), et vérifie la
- * réussite de chacun, refus attendus exceptés.
+ * Envoie plusieurs appels en parallèle, comme le front office (`Promise.all`), vérifie la réussite
+ * de chacun, refus attendus exceptés, et rend leurs corps JSON, dans l'ordre (`undefined` pour un
+ * refus attendu).
  */
-export function sendInParallelAndVerifySuccess(requests: PreparedRequest[]): void {
+export function sendInParallelAndReadResponses(requests: PreparedRequest[]): unknown[] {
   const responses = http.batch(
     requests.map(({ method, url, body, params }) => ({ method, url, body, params })),
   );
-  responses.forEach((response, index) => {
+  return responses.map((response, index) => {
     const request = requests[index]!;
-    if (!request.expectedRefusals.includes(response.status)) {
-      readSuccessfulResponse(request.endpointName, response);
-    }
+    return request.expectedRefusals.includes(response.status)
+      ? undefined
+      : readSuccessfulResponse(request.endpointName, response);
   });
+}
+
+/** Envoie plusieurs appels en parallèle et vérifie la réussite de chacun, sans lire les réponses. */
+export function sendInParallelAndVerifySuccess(requests: PreparedRequest[]): void {
+  sendInParallelAndReadResponses(requests);
 }
 
 function readSuccessfulResponse(endpointName: string, response: Response): unknown {

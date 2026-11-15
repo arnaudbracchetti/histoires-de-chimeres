@@ -1,0 +1,5 @@
+{
+  // Les tests Node des modules purs de k6 (sans k6 ni réseau) : Node lit les .ts lui-même.
+  "extends": "./fake-push/tsconfig.json",
+  "include": ["k6/*.test.ts"]
+}

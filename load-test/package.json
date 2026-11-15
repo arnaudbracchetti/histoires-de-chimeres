@@ -4,8 +4,8 @@
   "description": "Test de charge de l'API par k6, hors du workspace pnpm (docs/load-test/plan.md).",
   "type": "module",
   "scripts": {
-    "typecheck": "tsc --noEmit && tsc --noEmit -p fake-push",
-    "test": "node --test fake-push/*.test.ts"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p fake-push && tsc --noEmit -p tsconfig.node-tests.json",
+    "test": "node --test fake-push/*.test.ts k6/*.test.ts"
   },
   "devDependencies": {
     "@types/k6": "2.3.1",

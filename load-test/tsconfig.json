@@ -14,5 +14,6 @@
     "lib": ["ES2023"],
     "types": ["k6"]
   },
-  "include": ["k6/**/*.ts"]
+  "include": ["k6/**/*.ts"],
+  "exclude": ["k6/**/*.test.ts"]
 }

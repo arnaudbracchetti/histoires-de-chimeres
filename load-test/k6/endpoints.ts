@@ -9,6 +9,7 @@ import {
   pushSubscriptionEndpoints,
   scenarioEndpoints,
   scheduleEndpoints,
+  signUpEndpoints,
   tableEndpoints,
   timeSlotEndpoints,
 } from '../../packages/contract/dist/index.js';
@@ -26,5 +27,6 @@ export const pushSubscription = nameEndpoints(
 );
 export const scenario = nameEndpoints('scenarioEndpoints', scenarioEndpoints);
 export const schedule = nameEndpoints('scheduleEndpoints', scheduleEndpoints);
+export const signUp = nameEndpoints('signUpEndpoints', signUpEndpoints);
 export const table = nameEndpoints('tableEndpoints', tableEndpoints);
 export const timeSlot = nameEndpoints('timeSlotEndpoints', timeSlotEndpoints);
