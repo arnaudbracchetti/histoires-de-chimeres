@@ -1,4 +1,4 @@
-// La phase d'arrivée (docs/load-test/plan.md § 3 et 4), sans push pour l'instant.
+// La phase d'arrivée (docs/load-test/plan.md § 3 et 4).
 import exec from 'k6/execution';
 import { sleep } from 'k6';
 import {
@@ -8,6 +8,7 @@ import {
   sendInParallelAndVerifySuccess,
 } from './api.ts';
 import { frontOffice, linkedPhone, pushSubscription } from './endpoints.ts';
+import { FAKE_PUSH_URL, requestFakePushSubscription } from './fake-push.ts';
 import type { PreparedConvention } from './preparation.ts';
 
 export const ARRIVAL = 'arrival';
@@ -18,7 +19,8 @@ const PHONE_NOT_LINKED = 401;
 
 /**
  * Un téléphone arrive : il ouvre l'application, donne le code de présence, saisit son pseudo, se
- * relie, puis fait sa première lecture. Un téléphone sur dix saisit le pseudo d'un MJ et confirme.
+ * relie, s'abonne au push, puis fait sa première lecture. Un téléphone sur dix saisit le pseudo
+ * d'un MJ et confirme.
  */
 export function arrive(data: PreparedConvention, phoneCount: number): void {
   const phoneIndex = exec.vu.idInTest - 1;
@@ -37,6 +39,7 @@ export function arrive(data: PreparedConvention, phoneCount: number): void {
     : `Joueur ${String(phoneIndex + 1).padStart(3, '0')}`;
   linkPhone(data.presenceCode, nickname, isGameMaster);
   sendAndVerifySuccess(linkedPhone.read, { phase: ARRIVAL });
+  subscribeToPush();
   readScheduleAndSituation(ARRIVAL);
 }
 
@@ -69,6 +72,18 @@ function linkPhone(presenceCode: string, nickname: string, isGameMaster: boolean
   if (confirmed.status !== 'linked') {
     throw new Error(`${linkedPhone.link.name} : ${nickname} n'est pas relié après confirmation.`);
   }
+}
+
+/**
+ * L'abonnement au push, une fois le téléphone relié : fake-push le fabrique à la place du
+ * navigateur, puis le téléphone le range sur l'API. Sans `FAKE_PUSH_URL`, rien.
+ */
+function subscribeToPush(): void {
+  if (FAKE_PUSH_URL === null) return;
+  sendAndVerifySuccess(pushSubscription.save, {
+    phase: ARRIVAL,
+    body: requestFakePushSubscription(FAKE_PUSH_URL, ARRIVAL),
+  });
 }
 
 /** Une lecture, l'unité de charge du téléphone : le programme et la situation, en parallèle. */

@@ -1,0 +1,47 @@
+# Test de charge seulement (docs/load-test/plan.md § 6), par-dessus docker-compose.test2.yml :
+#   docker compose -f docker-compose.test2.yml -f docker-compose.load-test.yml ...
+# load-test/run.sh le copie dans /opt/hdc-test2, jamais dans /opt/hdc : la production ne le voit pas.
+#
+# fake-push reçoit les messages de l'API en https, sous le nom `fake-push`, sur un réseau propre à
+# test2. Son certificat est signé par une CA jetable, refaite à chaque démarrage et posée dans le
+# volume fake_push_ca : `app` la lit par NODE_EXTRA_CA_CERTS, et attend donc fake-push pour
+# démarrer. Le port d'administration (abonnements, statistiques, remise à zéro) n'est publié que
+# sur le 127.0.0.1 du serveur : k6 y passe par un tunnel SSH. Aucune adresse publique n'est ouverte.
+services:
+  fake-push:
+    # Image construite sur le poste et chargée par SSH (run.sh), jamais publiée.
+    image: histoires-de-chimeres-test2-fake-push:latest
+    pull_policy: never
+    environment:
+      PUSH_HOST: fake-push
+      DELAY_MS: ${FAKE_PUSH_DELAY_MS:-0}
+    volumes:
+      - fake_push_ca:/ca
+    networks:
+      - chimeres_test2_push_net
+    ports:
+      - 127.0.0.1:${FAKE_PUSH_ADMIN_PORT:-9230}:8081
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '2'
+
+  app:
+    environment:
+      NODE_EXTRA_CA_CERTS: /fake-push-ca/ca.pem
+    volumes:
+      - fake_push_ca:/fake-push-ca:ro
+    depends_on:
+      fake-push:
+        condition: service_healthy
+    networks:
+      chimeres_test2_push_net: {}
+
+networks:
+  # Pas `internal` : Docker ne publie aucun port d'un conteneur qui n'est que sur un réseau interne.
+  chimeres_test2_push_net:
+    driver: bridge
+
+volumes:
+  fake_push_ca:

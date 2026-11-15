@@ -71,9 +71,11 @@ Détail : [Faux service de push : forme et branchement](https://github.com/arnau
 
 - Le conteneur `fake-push` est sur le réseau Docker de test2. Il répond en https avec un certificat auto-signé au nom du conteneur. `docker-compose.load-test.yml` le déclare, monte la CA dans `app` et pose `NODE_EXTRA_CA_CERTS`. Le Caddy edge et le DNS ne changent pas.
 - test2 a sa propre paire de clés VAPID, dans son `.env`. Elle n'est jamais celle de la production.
-- `POST /subscriptions` renvoie `{endpoint, keys}` (vraie clé P-256, `auth` de 16 octets). `fake-push` garde la clé privée. Il répond 201 après un délai réglable (`DELAY_MS`) et déchiffre chaque message reçu.
-- `GET /stats` donne le nombre de messages reçus, l'heure du premier et du dernier, le nombre par abonnement et le nombre de messages illisibles. `POST /reset` remet tout à zéro.
-- k6 joint le port d'administration par un tunnel SSH. Ce port est publié seulement sur le `127.0.0.1` du serveur.
+- `POST /subscriptions` renvoie `{endpoint, keys}` (vraie clé P-256, `auth` de 16 octets). `fake-push` garde la clé privée. Il répond 201 après un délai réglable (`DELAY_MS`) et déchiffre chaque message reçu (`aes128gcm`, sans dépendance npm).
+- `GET /stats` donne le nombre de messages lisibles, l'heure de réception du premier et du dernier, le nombre par abonnement et le nombre de messages illisibles. `POST /reset` remet tout à zéro, abonnements compris.
+- k6 joint le port d'administration par un tunnel SSH. Ce port (`FAKE_PUSH_ADMIN_PORT`, 9230) est publié seulement sur le `127.0.0.1` du serveur. Le port d'envoi (8443) reste sur le réseau Docker `chimeres_test2_push_net`, qui n'est pas `internal` : Docker ne publie aucun port d'un conteneur seulement sur un réseau interne.
+- La CA est refaite à chaque démarrage de `fake-push`, dans le volume `fake_push_ca`. `app` attend donc que `fake-push` soit prêt pour démarrer.
+- L'image se construit sur le poste. `run.sh` la charge par SSH si elle a changé.
 - `fake-push` ne vit que le temps d'un lancement. Il ne partage pas de code avec `apps/api/test/fake-push-service.ts`.
 
 ## 7. Mesures
@@ -96,21 +98,25 @@ Détail : [Mesures et lancement : ce qu'on relève et d'où on tire](https://git
 ## 8. Lancer une campagne
 
 1. **Prérequis sur le poste** : k6 installé, `pnpm build` fait, accès SSH au serveur, identifiants de test2 disponibles.
-2. **Prérequis sur le serveur** : `docker-compose.load-test.yml` est copié dans le dossier de test2, et les clés VAPID propres à test2 sont dans son `.env`.
+2. **Prérequis sur le serveur** : les clés VAPID propres à test2 sont dans son `.env` (`npx web-push generate-vapid-keys`). `run.sh` refuse de partir sans elles, ou si ce sont celles de la production. Il copie lui-même `docker-compose.load-test.yml`.
 3. **Prévenir** les utilisateurs des autres services de la machine, et vérifier qu'aucune convention n'est en cours.
-4. Lancer `load-test/run.sh <palier>`. Le script :
-   1. demande une confirmation tapée (pas de convention en cours, autres services prévenus) ;
-   2. remet la base de test2 à zéro et relance avec `docker-compose.load-test.yml` ;
-   3. ouvre le tunnel SSH vers `fake-push` et lance la collecte côté serveur ;
-   4. lance k6 ;
-   5. à la fin, ou sur Ctrl-C par un `trap` : arrête `fake-push`, relance `app` sans `docker-compose.load-test.yml`, puis rapatrie les CSV et les journaux dans `load-test/results/<date>-<palier>/`.
-5. **Ordre d'une campagne** : la référence à 1 téléphone, puis 80, 160 et 240 téléphones, avec une réponse du push à 0 ms. On refait ensuite le palier 80 avec une réponse du push à 300 ms.
+4. Mettre `GUARD_URLS` dans `load-test/.env` : l'`/api/health` de la production, puis une URL par service de la machine.
+5. Lancer `load-test/run.sh <palier> [délai du push en ms]`. Le script :
+   1. demande une confirmation tapée, « lancer <palier> » (pas de convention en cours, autres services prévenus). Sans elle, il ne touche pas au serveur ;
+   2. contrôle le dossier de test2 (`PUBLIC_DOMAIN`, projet Compose) et ses clés VAPID ;
+   3. construit l'image de `fake-push`, la charge sur le serveur si elle a changé, et copie `docker-compose.load-test.yml` dans `/opt/hdc-test2` ;
+   4. remet la base de test2 à zéro (`down --volumes`) et relance avec `docker-compose.load-test.yml` ;
+   5. ouvre le tunnel SSH vers `fake-push`, appelle son `/reset`, et lance la collecte côté serveur (`collect-server.sh`). Le CSV s'écrit sur le poste au fil de l'eau, une ligne par mesure : `time,source,subject,metric,value` ;
+   6. lance k6 ;
+   7. à la fin, ou sur Ctrl-C par un `trap` : rapatrie les statistiques de `fake-push` et les journaux de `app`, arrête `fake-push` et relance `app` sans `docker-compose.load-test.yml`. Tout est dans `load-test/results/<date>-<palier>/` : `server.csv`, `k6.txt`, `app.log`, `fake-push-stats.json`.
+   Essais du 15/11/2026 à 1 téléphone : un lancement complet (0 erreur sur 317 requêtes, un abonnement compté par `fake-push`, `pushSubscriptionEndpoints.save` en 49 ms), puis un Ctrl-C pendant `setup()`. Dans les deux cas, test2 est revenu dans sa configuration normale et les mesures sont restées. Un Ctrl-C pendant `setup()` ne laisse pas de résumé k6.
+6. **Ordre d'une campagne** : la référence à 1 téléphone, puis 80, 160 et 240 téléphones, avec une réponse du push à 0 ms. On refait ensuite le palier 80 avec une réponse du push à 300 ms.
 
 Le test s'arrête vite dans trois cas :
 
 - Ctrl-C sur k6 ;
-- `abortOnFail` si le taux d'erreur dépasse 20 % sur 30 s ;
-- le garde-fou : un scénario k6 interroge toutes les 5 s `/api/health` de la production et une liste d'URL des autres services de la machine. Cette liste se règle sur le poste. Si une réponse prend plus de 2 s ou échoue, le test s'arrête.
+- `abortOnFail` si le taux d'erreur dépasse 20 %. k6 calcule ce taux depuis le début du test, pas sur une fenêtre glissante : il n'est jugé qu'après 30 s (`delayAbortEval`) ;
+- le garde-fou : un scénario k6 interroge toutes les 5 s `/api/health` de la production et une liste d'URL des autres services de la machine (`GUARD_URLS`, sur le poste). Si une réponse prend plus de 2 s ou échoue, le test s'arrête (code 108). Il ne tourne pas pendant `setup()`. Vérifié le 15/11/2026 avec une URL fausse.
 
 ## 9. Résultats et seuils
 
