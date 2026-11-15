@@ -9,21 +9,36 @@ import { TimeSlotList } from '../time-slots/time-slot-list';
   imports: [ConventionForm, PageHeader, TableList, TimeSlotList],
   template: `
     <app-page-header title="Créneaux et tables" />
-    <section class="page-body" aria-labelledby="convention-title">
-      <h2 id="convention-title">Convention</h2>
-      <app-convention-form />
-    </section>
-    <section class="page-body" aria-labelledby="time-slots-title">
-      <h2 id="time-slots-title">Créneaux</h2>
-      <app-time-slot-list />
-    </section>
-    <section class="page-body" aria-labelledby="tables-title">
-      <h2 id="tables-title">Tables</h2>
-      <app-table-list />
-    </section>
+    <div class="page-body">
+      <section class="convention" aria-labelledby="convention-title">
+        <h2 id="convention-title">Convention</h2>
+        <app-convention-form />
+      </section>
+      <section aria-labelledby="time-slots-title">
+        <h2 id="time-slots-title">Créneaux</h2>
+        <app-time-slot-list />
+      </section>
+      <section aria-labelledby="tables-title">
+        <h2 id="tables-title">Tables</h2>
+        <app-table-list />
+      </section>
+    </div>
   `,
   styles: `
     @layer components {
+      /* La convention en une carte résumée, puis les créneaux et les tables côte à côte : toute
+         la page tient dans l'écran. */
+      .page-body {
+        display: grid;
+        grid-template-columns: 30rem minmax(0, 1fr);
+        gap: calc(2 * var(--space-xl)) var(--space-xxl);
+        align-items: start;
+      }
+
+      .convention {
+        grid-column: 1 / -1;
+      }
+
       section {
         display: flex;
         flex-direction: column;

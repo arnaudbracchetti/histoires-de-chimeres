@@ -15,8 +15,10 @@ describe('ConventionForm', () => {
     });
   });
 
+  /** Rend la carte de la convention ; `editing` l'ouvre en saisie par « Modifier ». */
   async function render(
     convention: object = { id: 'c1', name: 'Histoires de Chimères', date: null },
+    { editing = true } = {},
   ) {
     const fixture = TestBed.createComponent(ConventionForm);
     const http = TestBed.inject(HttpTestingController);
@@ -24,6 +26,11 @@ describe('ConventionForm', () => {
     http.expectOne(apiUrl(conventionEndpoints.read)).flush(convention);
     await fixture.whenStable();
     const host = fixture.nativeElement as HTMLElement;
+    const modify = async () => {
+      host.querySelector<HTMLButtonElement>('button[aria-label="Modifier la convention"]')!.click();
+      await fixture.whenStable();
+    };
+    if (editing) await modify();
     const input = (label: string) =>
       [...host.querySelectorAll('label')].find((l) => l.textContent?.trim().startsWith(label))!
         .control as HTMLInputElement;
@@ -59,7 +66,7 @@ describe('ConventionForm', () => {
         .map((line) => line.textContent?.trim())
         .join(' ');
     };
-    return { fixture, host, http, input, type, save, findFieldError, flush, detail };
+    return { fixture, host, http, input, type, save, modify, findFieldError, flush, detail };
   }
 
   /** La convention du 14 mars 2027, en deux créneaux, finie à 18 h 30. */
@@ -76,14 +83,23 @@ describe('ConventionForm', () => {
     presenceCode: 'K7M2',
   };
 
+  it('montre en lecture le nom et la date, sans champ, avec « Modifier »', async () => {
+    const { host } = await render(onMarch14, { editing: false });
+
+    expect(host.querySelector('h3')?.textContent?.trim()).toBe('Histoires de Chimères');
+    expect(host.querySelector('.date')?.textContent).toBe('dimanche 14 mars 2027');
+    expect(host.querySelector('input')).toBeNull();
+    expect(host.querySelector('button[aria-label="Modifier la convention"]')).not.toBeNull();
+  });
+
   it('montre le code de présence, imprimé sous le QR code de l’affiche (ID-2)', async () => {
-    const { detail } = await render(onMarch14);
+    const { detail } = await render(onMarch14, { editing: false });
 
     expect(detail('Code de présence')).toBe("K7M2 Imprimé en clair sous le QR code de l'affiche.");
   });
 
   it('mène du code de présence aux Informations de connexion (ID-15)', async () => {
-    const { host } = await render(onMarch14);
+    const { host } = await render(onMarch14, { editing: false });
 
     const link = [...host.querySelectorAll<HTMLAnchorElement>('dd a')].find(
       (a) => a.textContent?.trim() === "Imprimé en clair sous le QR code de l'affiche.",
@@ -91,30 +107,60 @@ describe('ConventionForm', () => {
     expect(link?.getAttribute('href')).toBe('/informations-de-connexion');
   });
 
-  it('place « Enregistrer » sous la fin et le code de présence', async () => {
-    const { host } = await render(onMarch14);
-
-    const code = [...host.querySelectorAll('dt')].find(
-      (dt) => dt.textContent?.trim() === 'Code de présence',
-    )!;
-    const save = host.querySelector('button[type="submit"]')!;
-    expect(code.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
   it('montre la fin de la convention, et comment elle se calcule', async () => {
-    const { detail } = await render(onMarch14);
+    const { detail } = await render(onMarch14, { editing: false });
 
     expect(detail('Fin')).toBe(
       `dimanche 14 mars 2027 à 18${NBSP}h${NBSP}30 À la fin du dernier créneau (créneau 2), le jour de la convention. L'application des participants se ferme alors pour tous.`,
     );
   });
 
-  it('dit qu’il n’y a pas de fin sans date ou sans créneau', async () => {
-    const { detail } = await render({ ...onMarch14, date: null, end: null });
+  it('dit qu’il n’y a pas de fin sans date', async () => {
+    const { detail } = await render({ ...onMarch14, date: null, end: null }, { editing: false });
 
     expect(detail('Fin')).toBe(
-      `Pas de fin Sans date ni créneau, la convention n'a pas de fin${NBSP}: l'application des participants reste ouverte.`,
+      `Pas de fin Sans date, la convention n'a pas de fin${NBSP}: l'application mobile reste ouverte aux participants.`,
     );
+  });
+
+  it('écrit « date à fixer » tant que la date n’est pas fixée', async () => {
+    const { host } = await render(undefined, { editing: false });
+
+    expect(host.querySelector('.date')?.textContent).toBe('date à fixer');
+  });
+
+  it('« Modifier » retourne la carte en saisie, focus sur le nom', async () => {
+    const { host, input } = await render();
+
+    expect(host.querySelector('.card.editing h3')?.textContent?.trim()).toBe(
+      'Modifier la convention',
+    );
+    expect(document.activeElement).toBe(input('Nom'));
+  });
+
+  it('« Annuler » referme la carte sans rien envoyer, et oublie la saisie', async () => {
+    const { host, http, type, modify, input, fixture } = await render();
+
+    await type('Nom', 'Chimères 2027');
+    [...host.querySelectorAll<HTMLButtonElement>('button')]
+      .find((b) => b.textContent?.trim() === 'Annuler')!
+      .click();
+    await fixture.whenStable();
+
+    http.expectNone(apiUrl(conventionEndpoints.update));
+    expect(host.querySelector('input')).toBeNull();
+    expect(document.activeElement).toBe(host.querySelector('article.card'));
+    await modify();
+    expect(input('Nom').value).toBe('Histoires de Chimères');
+  });
+
+  it('Échap referme la carte en saisie', async () => {
+    const { host, input, fixture } = await render();
+
+    input('Nom').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await fixture.whenStable();
+
+    expect(host.querySelector('input')).toBeNull();
   });
 
   it('reprend le nom et la date de la convention', async () => {
@@ -124,12 +170,6 @@ describe('ConventionForm', () => {
     expect(input('Date').value).toBe('');
   });
 
-  it('écrit « date à fixer » tant que la date n’est pas fixée', async () => {
-    const { host } = await render();
-
-    expect(host.querySelector('.date')?.textContent).toBe('date à fixer');
-  });
-
   it('marque la date comme facultative', async () => {
     const { host } = await render();
 
@@ -137,7 +177,7 @@ describe('ConventionForm', () => {
     expect(date?.textContent).toContain('facultatif');
   });
 
-  it('envoie le nom et la date, puis met à jour la convention partagée avec le rail', async () => {
+  it('envoie le nom et la date, met à jour la convention partagée avec le rail, puis referme la carte', async () => {
     const { type, save, flush, host } = await render();
 
     await type('Nom', 'Chimères 2027');
@@ -152,8 +192,10 @@ describe('ConventionForm', () => {
       name: 'Chimères 2027',
       date: '2027-03-14',
     });
-    expect(host.textContent).toContain('Enregistré');
+    expect(host.querySelector('input')).toBeNull();
+    expect(host.querySelector('h3')?.textContent?.trim()).toBe('Chimères 2027');
     expect(host.querySelector('.date')?.textContent).toBe('dimanche 14 mars 2027');
+    expect(document.activeElement).toBe(host.querySelector('article.card'));
   });
 
   it('envoie une date effacée comme null', async () => {

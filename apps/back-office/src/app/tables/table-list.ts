@@ -90,7 +90,7 @@ import { TableEditor } from './table-editor';
     @layer components {
       .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, 13rem);
+        grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
         gap: var(--space-s);
         margin: 0;
         padding: 0;

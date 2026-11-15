@@ -109,11 +109,17 @@ import { TimeSlotEditor } from './time-slot-editor';
       }
 
       .card {
-        gap: var(--space-l);
-        align-items: center;
-        justify-content: space-between;
         min-height: 72px;
         padding: var(--space-m) var(--space-l);
+      }
+
+      /* La durée dans une colonne fixe, collée aux boutons : elle s'aligne d'une carte à l'autre,
+         quelle que soit la longueur de la plage. */
+      .card:not(.editing) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        gap: var(--space-l);
+        align-items: center;
       }
 
       .heading {
@@ -130,6 +136,11 @@ import { TimeSlotEditor } from './time-slot-editor';
       .duration {
         color: var(--text-muted);
         font-variant-numeric: tabular-nums;
+      }
+
+      .duration {
+        min-width: 6ch;
+        text-align: end;
       }
 
       .buttons {

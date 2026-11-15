@@ -60,6 +60,7 @@ Comportement et accessibilité viennent du CDK et d'Angular Aria, le dessin est 
 
 ### Où se fait la saisie
 
+- **Convention** : une **carte résumée**, qui passe en saisie par « Modifier » (voir [Convention](#convention)).
 - **Créneau** : une **carte par créneau**, dans l'ordre de la journée, et la pause entre deux cartes (voir [Créneaux](#créneaux)).
 - **Table** : une **petite carte par table**, sur une grille, dans l'ordre naturel (voir [Tables](#tables)).
 - **Pseudo, MJ compris** : l'assistant « Créer un pseudo », en dialogue (voir [Participants](#participants)), ouvert par « Créer un pseudo » dans la liste Participants et par « Ajouter un MJ » sous le tableau des MJ. Seule façon de créer un pseudo, et donc un MJ. La ligne d'un MJ mène à sa fiche. Son pseudo se modifie dans l'en-tête de la fiche (crayon, puis champ en place, Entrée ou Échap), jamais dans la liste.
@@ -88,6 +89,15 @@ Forme retenue sur prototype, face au tableau à ligne en édition, aux étiquett
 - **Saisie à la chaîne** : après un ajout, une nouvelle carte vide s'ouvre aussitôt, focus sur le nom. « Annuler », ou Échap, la ferme.
 - **L'erreur** s'affiche dans une bulle sous la carte, par-dessus la rangée suivante, sans couvrir les boutons : aucune carte ne bouge.
 - **Focus** : comme pour les créneaux.
+
+### Convention
+
+En tête de « Créneaux et tables », sur toute la largeur de la colonne ; dessous, les créneaux et les tables côte à côte (30rem pour les créneaux, le reste pour la grille des tables), pour que la page tienne dans l'écran.
+
+- **En lecture**, une carte en deux étages. En tête, l'icône du calendrier, le nom de la convention, sa date dessous (« date à fixer » tant qu'elle n'est pas fixée), et « Modifier » (secondaire) à droite. Sous un filet, deux colonnes, chacune avec son libellé en petites capitales, sa valeur, puis son explication : **Fin** (« Pas de fin » sans date) et **Code de présence** (en Aldrich, espacé), avec le lien « Imprimé en clair sous le QR code de l'affiche. » vers les Informations de connexion.
+- **« Modifier »** retourne la carte en saisie, bordée d'orange, comme celle d'un créneau : « Saisie en cours », « Modifier la convention », les champs Nom et Date (facultative), « Enregistrer » (principal) et « Annuler » (discret).
+- L'enregistrement referme la carte ; « Annuler », ou Échap, la referme sans rien envoyer et oublie la saisie. Une erreur garde la carte ouverte.
+- **Focus** : à l'ouverture, sur le nom ; à la fermeture, sur la carte.
 
 ### MJ
 
@@ -136,7 +146,7 @@ L'apparition d'une erreur ne change jamais la mise en page : aucun champ, bouton
 
 - **Jamais d'enregistrement automatique** dans un formulaire : un bouton « Enregistrer » (sous le tableau pour une ligne), ou Entrée dans une ligne.
 - Pendant l'envoi, le bouton passe en « Enregistrement… » et refuse un second envoi. Dans une ligne, Échap et « Annuler » sont alors sans effet : l'enregistrement en cours n'est pas perdu.
-- Après succès, un formulaire de page affiche « Enregistré » à côté du bouton pendant quelques secondes.
+- Après succès, un formulaire de page affiche « Enregistré » à côté du bouton pendant quelques secondes. Une carte en saisie (créneau, table, convention) se referme à la place.
 - **Quitter la page d'un scénario avec des modifications non enregistrées** ouvre « Quitter sans enregistrer ? ». Quitter la page pendant l'édition d'une ligne abandonne la saisie sans rien demander.
 - **Exception : les cases à cocher de geste** (les blocs de la frise des disponibilités) s'enregistrent dès qu'on les coche. Voir [Disponibilités](#disponibilités).
 

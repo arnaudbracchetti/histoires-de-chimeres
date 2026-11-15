@@ -15,16 +15,21 @@ test('renommer la convention et fixer sa date, puis les voir dans le rail', asyn
   const rail = page.getByRole('link', { name: /Histoires de Chimères/ });
   await expect(rail).toContainText('date à fixer');
 
+  await page.getByRole('button', { name: 'Modifier la convention' }).click();
   await page.getByLabel('Nom').fill('Chimères 2027');
   await page.getByLabel('Date').fill('2027-03-13');
   await page.getByRole('button', { name: 'Enregistrer' }).click();
 
-  await expect(page.getByText('Enregistré', { exact: true })).toBeVisible();
+  // L'enregistrement referme la carte, qui montre la convention enregistrée.
+  const card = page.getByRole('region', { name: 'Convention' });
+  await expect(card.getByLabel('Nom')).toHaveCount(0);
+  await expect(card.getByRole('heading', { name: 'Chimères 2027' })).toBeVisible();
   const convention = page.locator('a.convention');
   await expect(convention).toContainText('Chimères 2027');
   await expect(convention).toContainText('samedi 13 mars 2027');
 
   await page.reload();
+  await page.getByRole('button', { name: 'Modifier la convention' }).click();
   await expect(page.getByLabel('Nom')).toHaveValue('Chimères 2027');
   await expect(convention).toContainText('samedi 13 mars 2027');
 });
@@ -37,6 +42,7 @@ test('effacer la date de la convention', async ({ page }) => {
   const convention = page.locator('a.convention');
   await expect(convention).toContainText('samedi 13 mars 2027');
 
+  await page.getByRole('button', { name: 'Modifier la convention' }).click();
   await page.getByLabel('Date').fill('');
   await page.getByRole('button', { name: 'Enregistrer' }).click();
 
@@ -45,6 +51,7 @@ test('effacer la date de la convention', async ({ page }) => {
 
 test('un nom vide est signalé sous le champ, sans rien envoyer', async ({ page }) => {
   await page.goto('/gestion/creneaux-et-tables');
+  await page.getByRole('button', { name: 'Modifier la convention' }).click();
   const name = page.getByLabel('Nom');
 
   const save = page.getByRole('button', { name: 'Enregistrer' });
@@ -76,6 +83,7 @@ test('la carte de la convention montre sa fin et son code de présence', async (
     );
   }
   await page.reload();
+  await page.getByRole('button', { name: 'Modifier la convention' }).click();
   await page.getByLabel('Date').fill('2027-03-13');
   await page.getByRole('button', { name: 'Enregistrer' }).click();
 
