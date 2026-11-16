@@ -189,7 +189,7 @@ type GameCard = { table: TableDto; game: TrackedGameDto; players: AssignmentDto[
           [class.second-slot]="card.kind === 'second-slot'"
           [class.cancelled]="card.kind === 'drawn' && card.figures.cancelled"
         >
-          <p class="table">{{ card.table.name }}</p>
+          <p class="table">Table {{ card.table.name }}</p>
           <h3>{{ card.game.scenario.title }}</h3>
           <p class="meta">
             {{ card.game.scenario.system }} · {{ card.game.scenario.gameMaster.nickname }}

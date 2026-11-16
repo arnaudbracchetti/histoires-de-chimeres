@@ -33,7 +33,7 @@ test('ajouter des tables à la chaîne, et les voir dans l’ordre naturel', asy
   const tables = room(page);
 
   await tables.button('Ajouter une table').click();
-  for (const [saved, name] of ['Table 10', 'Table 2', 'Dragon', 'Table 1'].entries()) {
+  for (const [saved, name] of ['10', '2', 'Dragon', '1'].entries()) {
     await expect(tables.input).toBeFocused();
     await tables.input.fill(name);
     await page.keyboard.press('Enter');
@@ -45,9 +45,9 @@ test('ajouter des tables à la chaîne, et les voir dans l’ordre naturel', asy
 
   await expect(tables.editor).toHaveCount(0);
   await expect(tables.button('Ajouter une table')).toBeFocused();
-  await expect(tables.names).toHaveText(['Dragon', 'Table 1', 'Table 2', 'Table 10']);
+  await expect(tables.names).toHaveText(['1', '2', '10', 'Dragon']);
   await page.reload();
-  await expect(tables.names).toHaveText(['Dragon', 'Table 1', 'Table 2', 'Table 10']);
+  await expect(tables.names).toHaveText(['1', '2', '10', 'Dragon']);
 });
 
 test('un nom déjà pris est refusé, à la casse et aux accents près (PR-9)', async ({ page }) => {
@@ -67,20 +67,20 @@ test('un nom déjà pris est refusé, à la casse et aux accents près (PR-9)', 
 });
 
 test('renommer une table par « Modifier »', async ({ page }) => {
-  await addThroughApi(page, 'Table 1', 'Table 2');
+  await addThroughApi(page, '1', '2');
   await page.goto('/gestion/creneaux-et-tables');
   const tables = room(page);
 
-  await tables.button('Modifier la table Table 1').click();
-  await expect(tables.input).toHaveValue('Table 1');
-  await tables.input.fill('Table 3');
+  await tables.button('Modifier la table 1').click();
+  await expect(tables.input).toHaveValue('1');
+  await tables.input.fill('3');
   await tables.button('Enregistrer').click();
 
   await expect(tables.editor).toHaveCount(0);
-  await expect(tables.names).toHaveText(['Table 2', 'Table 3']);
-  await expect(tables.card('Table 3')).toBeFocused();
+  await expect(tables.names).toHaveText(['2', '3']);
+  await expect(tables.card('3')).toBeFocused();
   await page.reload();
-  await expect(tables.names).toHaveText(['Table 2', 'Table 3']);
+  await expect(tables.names).toHaveText(['2', '3']);
 });
 
 test('supprimer une table après confirmation ; « Annuler » ne supprime rien', async ({ page }) => {

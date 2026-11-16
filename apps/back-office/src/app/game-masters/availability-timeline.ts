@@ -81,7 +81,7 @@ type Segment = { start: number; end: number; slot?: TimeSlotDto };
               @if (block.game; as game) {
                 <span class="game" [id]="'game-' + block.slot.id">
                   <span>Mène «&nbsp;{{ game.scenario.title }}&nbsp;»</span>
-                  <span class="table">{{ game.table.name }}</span>
+                  <span class="table">Table {{ game.table.name }}</span>
                 </span>
               }
             </span>

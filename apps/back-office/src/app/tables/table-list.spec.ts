@@ -95,9 +95,9 @@ describe('TableList', () => {
   }
 
   it('montre une carte par table, dans l’ordre de l’API', async () => {
-    const { names } = await render(conventionWith('Dragon', 'Table 2', 'Table 10'));
+    const { names } = await render(conventionWith('Dragon', '2', '10'));
 
-    expect(names()).toEqual(['Dragon', 'Table 2', 'Table 10']);
+    expect(names()).toEqual(['Dragon', '2', '10']);
   });
 
   it('ajoute à la chaîne : après l’ajout, une nouvelle carte de saisie vide s’ouvre', async () => {
@@ -195,27 +195,27 @@ describe('TableList', () => {
 
   it('« Modifier » retourne la carte en saisie, et « Enregistrer » renomme la table', async () => {
     const { cardOf, input, type, button, http, settle, names, editor } = await render(
-      conventionWith('Table 1', 'Table 2'),
+      conventionWith('1', '2'),
     );
 
-    button('Modifier la table Table 1').click();
+    button('Modifier la table 1').click();
     await settle();
-    expect(input().value).toBe('Table 1');
+    expect(input().value).toBe('1');
     expect(document.activeElement).toBe(input());
-    await type('Table 3');
+    await type('3');
     button('Enregistrer').click();
     await settle();
-    const request = http.expectOne(apiUrl(tableEndpoints.rename, { tableId: 't-Table 1' }));
-    expect(request.request.body).toEqual({ name: 'Table 3' });
+    const request = http.expectOne(apiUrl(tableEndpoints.rename, { tableId: 't-1' }));
+    expect(request.request.body).toEqual({ name: '3' });
     // La table renommée garde son identifiant.
-    const renamed = conventionWith('Table 2', 'Table 3');
-    renamed.tables[1]!.id = 't-Table 1';
+    const renamed = conventionWith('2', '3');
+    renamed.tables[1]!.id = 't-1';
     request.flush(renamed);
     await settle();
 
     expect(editor()).toBeNull();
-    expect(names()).toEqual(['Table 2', 'Table 3']);
-    expect(document.activeElement).toBe(cardOf('Table 3'));
+    expect(names()).toEqual(['2', '3']);
+    expect(document.activeElement).toBe(cardOf('3'));
   });
 
   it('« Supprimer » demande confirmation, supprime, puis met le focus à la carte suivante', async () => {

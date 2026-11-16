@@ -3,7 +3,7 @@ import { fr } from '@chimeres/design';
 import type { GridTimeSlot } from './grid-time-slot';
 
 /**
- * L'annonce d'une partie programmée : « Partie « Néons » programmée : créneau 2, Dragon. ». Le
+ * L'annonce d'une partie programmée : « Partie « Néons » programmée : créneau 2, table Dragon. ». Le
  * Calendrier et le pilotage la font lire par la région `aria-live` de la coquille.
  */
 export function describeScheduledGame(
@@ -13,7 +13,7 @@ export function describeScheduledGame(
 ): string {
   const slot = timeSlots.find(({ id }) => id === game.timeSlotIds[0]);
   const table = tables.find(({ id }) => id === game.tableId);
-  return fr`Partie « ${game.scenario.title} » programmée : créneau ${slot?.rank}, ${table?.name}.`;
+  return fr`Partie « ${game.scenario.title} » programmée : créneau ${slot?.rank}, table ${table?.name}.`;
 }
 
 /**

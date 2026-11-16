@@ -78,7 +78,7 @@ Les scénarios qui pourraient être programmés sur un créneau : leur MJ y est 
 Pour une case du programme (un créneau et une table), ce que donnerait le geste de programmer un scénario ou de déplacer une partie : permis, ou refusé avec son motif. Il obéit à la même règle que le geste lui-même. Pour déplacer une partie, la première case d'une autre partie propose de l'échanger avec elle (`MovePlacement`, `swapWith`).
 
 **Table** · `Table`:
-L'emplacement physique où se joue une partie.
+L'emplacement physique où se joue une partie. Son nom est court (« Dragon », « 1 ») : l'interface écrit toujours « table » devant.
 _Avoid_: Salle (sauf si c'est réellement une salle)
 
 ## Personnes

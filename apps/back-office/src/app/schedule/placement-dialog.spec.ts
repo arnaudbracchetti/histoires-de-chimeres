@@ -24,8 +24,8 @@ const TIME_SLOTS: TimeSlotDto[] = [
 ];
 
 const TABLES: TableDto[] = [
-  { id: 't1', name: 'Table 1' },
-  { id: 't2', name: 'Table 2' },
+  { id: 't1', name: '1' },
+  { id: 't2', name: '2' },
 ];
 
 const SCENARIO: ScheduleScenarioDto = {
@@ -43,7 +43,7 @@ const refused = (code: 'table-taken' | 'game-master-unavailable' | 'game-master-
     'table-taken': {
       code,
       title: 'Table prise',
-      detail: 'La table « Table 1 » accueille déjà une partie sur le créneau 1.',
+      detail: 'La table « 1 » accueille déjà une partie sur le créneau 1.',
     },
     'game-master-unavailable': {
       code,
@@ -134,7 +134,7 @@ describe('PlacementDialog', () => {
     ]);
     const off = dialog().querySelector('.off')!;
     expect(off.getAttribute('title')).toBe(
-      'La table « Table 1 » accueille déjà une partie sur le créneau 1.',
+      'La table « 1 » accueille déjà une partie sur le créneau 1.',
     );
     expect(dialog().querySelectorAll('button[aria-label^="Choisir"]')).toHaveLength(1);
   });
@@ -144,7 +144,7 @@ describe('PlacementDialog', () => {
     await flushPlacements();
 
     expect(document.activeElement?.getAttribute('aria-label')).toBe(
-      'Choisir Créneau 1 · 9\u00a0h\u00a000\u202f–\u202f11\u00a0h\u00a030, Table 2',
+      'Choisir Créneau 1 · 9\u00a0h\u00a000\u202f–\u202f11\u00a0h\u00a030, table 2',
     );
     expect(dialog().contains(document.activeElement)).toBe(true);
   });
@@ -173,7 +173,7 @@ describe('PlacementDialog', () => {
     await settle();
 
     expect(confirmationTexts()).toEqual([
-      `Programmer «${NBSP}Brumes${NBSP}» sur le créneau 1, Table 2${THIN_NBSP}?`,
+      `Programmer «${NBSP}Brumes${NBSP}» sur le créneau 1, table 2${THIN_NBSP}?`,
       ERASED_DRAW_OF_SLOT_1,
     ]);
     expect(confirmation()!.querySelector('button.danger')).toBeTruthy();
@@ -191,7 +191,7 @@ describe('PlacementDialog', () => {
       type: 'urn:histoires-de-chimeres:problem:table-taken',
       title: 'Table prise',
       status: 422,
-      detail: 'La table « Table 2 » accueille déjà une partie sur le créneau 1.',
+      detail: 'La table « 2 » accueille déjà une partie sur le créneau 1.',
       code: 'table-taken',
     };
 
@@ -301,7 +301,7 @@ describe('PlacementDialog', () => {
       const swap = dialog().querySelector<HTMLButtonElement>('button[aria-label^="Échanger"]')!;
       expect(swap.textContent?.trim()).toBe('Échanger');
       expect(swap.getAttribute('aria-label')).toBe(
-        'Échanger Créneau 1 · 9\u00a0h\u00a000\u202f–\u202f11\u00a0h\u00a030, Table 1',
+        'Échanger Créneau 1 · 9\u00a0h\u00a000\u202f–\u202f11\u00a0h\u00a030, table 1',
       );
       expect(document.activeElement).toBe(swap);
       expect(dialog().querySelectorAll('button[aria-label^="Échanger"]')).toHaveLength(1);

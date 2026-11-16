@@ -153,7 +153,7 @@ describe('GameMasterList', () => {
     const game = (gameId: string, timeSlotId: string) => ({
       gameId,
       timeSlotId,
-      table: { id: 't1', name: 'Table 1' },
+      table: { id: 't1', name: '1' },
       scenario: { id: 'sc1', title: 'Néons' },
     });
     const { host, text } = await render([

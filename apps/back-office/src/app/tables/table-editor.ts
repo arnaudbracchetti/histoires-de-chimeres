@@ -29,12 +29,7 @@ import { IconTile } from '../ui/icon-tile';
         compact
         [attempted]="card.attempted()"
       >
-        <input
-          type="text"
-          autocomplete="off"
-          placeholder="Nom de la table"
-          [formField]="form.name"
-        />
+        <input type="text" autocomplete="off" [placeholder]="placeholder" [formField]="form.name" />
       </app-field>
     </div>
     <div class="buttons">
@@ -77,6 +72,8 @@ import { IconTile } from '../ui/icon-tile';
   `,
 })
 export class TableEditor {
+  /** Le nom seul : l'interface écrit « Table » devant (docs/design/patterns.md, Tables). */
+  protected readonly placeholder = fr`Dragon, 1… sans « Table »`;
   /** La table à renommer ; absente pour une nouvelle table. */
   readonly table = input<TableDto>();
   /** La table est enregistrée, et la convention partagée est à jour. */

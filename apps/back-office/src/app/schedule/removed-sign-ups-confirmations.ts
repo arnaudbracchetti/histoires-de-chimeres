@@ -97,13 +97,13 @@ export function buildScheduleConfirmation(
   };
 }
 
-/** « Programmer « Néons » sur le créneau 2, Licorne ? » */
+/** « Programmer « Néons » sur le créneau 2, table Licorne ? » */
 export function buildScheduleQuestion(
   scenario: Pick<ScheduleScenarioDto, 'title'>,
   rank: number,
   table: Pick<TableDto, 'name'>,
 ): string {
-  return fr`Programmer « ${scenario.title} » sur le créneau ${rank}, ${table.name} ?`;
+  return fr`Programmer « ${scenario.title} » sur le créneau ${rank}, table ${table.name} ?`;
 }
 
 /**

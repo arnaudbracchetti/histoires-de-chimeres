@@ -28,7 +28,7 @@ type TableRow = { table: TableDto } & (
     <ul>
       @for (row of rows(); track row.table.id) {
         <li [class]="row.kind" (click)="openRow(row)">
-          <span class="table" [id]="tableNameIdOf(row.table)">{{ row.table.name }}</span>
+          <span class="table" [id]="tableNameIdOf(row.table)">Table {{ row.table.name }}</span>
           @switch (row.kind) {
             @case ('game') {
               @let game = row.game;

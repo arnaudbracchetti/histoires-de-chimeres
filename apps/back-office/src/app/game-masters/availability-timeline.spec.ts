@@ -101,7 +101,7 @@ describe('AvailabilityTimeline', () => {
         {
           gameId: 'p1',
           timeSlotId: 's2',
-          table: { id: 't1', name: 'Table verte' },
+          table: { id: 't1', name: 'Verte' },
           scenario: { id: 'sc1', title: 'Néons sur Neo-Paris' },
         },
       ],
@@ -113,7 +113,7 @@ describe('AvailabilityTimeline', () => {
     const game = second!.querySelector('.game')!;
     expect([...game.children].map((line) => line.textContent)).toEqual([
       `Mène «${NBSP}Néons sur Neo-Paris${NBSP}»`,
-      'Table verte',
+      'Table Verte',
     ]);
     expect(box(2).checked).toBe(true);
     expect(box(2).disabled).toBe(true);

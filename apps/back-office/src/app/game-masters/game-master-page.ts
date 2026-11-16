@@ -196,7 +196,7 @@ type TabValue = 'scenarios' | 'availabilities' | 'games';
                         <a [routerLink]="['/scenarios', game.scenario.id]">{{
                           game.scenario.title
                         }}</a>
-                        <span class="meta">{{ game.table.name }}</span>
+                        <span class="meta">Table {{ game.table.name }}</span>
                       </li>
                     }
                   </ul>

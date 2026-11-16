@@ -26,9 +26,11 @@ export function describeParticipantResult(result: ParticipantResultDto): ResultL
       );
       return {
         main: 'Non placé',
-        detail: tables.length
-          ? fr`Il reste de la place à ${tables.join(', ')}.`
-          : 'Toutes les parties du créneau sont complètes.',
+        detail: !tables.length
+          ? 'Toutes les parties du créneau sont complètes.'
+          : tables.length > 1
+            ? fr`Il reste de la place aux tables ${tables.join(', ')}.`
+            : fr`Il reste de la place à la table ${tables[0]}.`,
         tone: 'danger',
       };
     }

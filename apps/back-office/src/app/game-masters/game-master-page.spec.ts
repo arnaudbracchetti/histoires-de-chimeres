@@ -342,7 +342,7 @@ describe('GameMasterPage', () => {
           {
             gameId: 'p1',
             timeSlotId: 't2',
-            table: { id: 'tb1', name: 'Table 3' },
+            table: { id: 'tb1', name: '3' },
             scenario: { id: 's1', title: "La Tour d'ébène" },
           },
         ],

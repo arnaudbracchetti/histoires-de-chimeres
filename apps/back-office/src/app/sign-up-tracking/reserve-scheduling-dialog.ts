@@ -48,7 +48,7 @@ let nextId = 0;
  * Dialogue de « Programmer depuis la réserve… » sur un créneau en tirage (docs/design/patterns.md,
  * Pilotage du jour J), en deux temps : la réserve du créneau, comme dans son onglet, puis, pour le
  * scénario choisi, une table libre, que les verdicts de programmation, lus dans l'API, donnent
- * (« Programmer sur Licorne »). Le front ne recalcule jamais PR-5. Si le verdict de la case dit le
+ * (« Programmer sur la table Licorne »). Le front ne recalcule jamais PR-5. Si le verdict de la case dit le
  * tirage effacé (TI-6), une confirmation rouge précède l'écriture ; le dialogue se ferme ensuite sur
  * le programme relu. Un refus s'affiche dans le dialogue ouvert.
  */
@@ -66,7 +66,7 @@ let nextId = 0;
               @for (table of freeTables(); track table.id) {
                 <li>
                   <button type="button" appButton="secondary" (click)="scheduleOn(scenario, table)">
-                    Programmer sur {{ table.name }}
+                    Programmer sur la table {{ table.name }}
                   </button>
                 </li>
               }

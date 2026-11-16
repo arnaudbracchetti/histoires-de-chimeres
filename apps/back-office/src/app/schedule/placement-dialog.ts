@@ -106,7 +106,7 @@ let nextId = 0;
           <tbody>
             @for (table of request.tables; track table.id) {
               <tr>
-                <th scope="row" class="caps">{{ table.name }}</th>
+                <th scope="row" class="caps">Table {{ table.name }}</th>
                 @for (slot of request.timeSlots; track slot.id) {
                   <td>
                     @if (verdictOf(slot.id, table.id); as verdict) {
@@ -229,7 +229,7 @@ export class PlacementDialog {
   }
 
   protected label(slot: GridTimeSlot, table: TableDto): string {
-    return `${timeSlotLabel(slot)}, ${table.name}`;
+    return `${timeSlotLabel(slot)}, table ${table.name}`;
   }
 
   protected isCurrent(slot: GridTimeSlot, table: TableDto): boolean {

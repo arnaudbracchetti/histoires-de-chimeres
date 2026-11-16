@@ -93,7 +93,7 @@ type Cell =
         </div>
         @for (row of rows(); track row.table.id) {
           <div class="row" role="row">
-            <div role="rowheader" class="caps table-name">{{ row.table.name }}</div>
+            <div role="rowheader" class="caps table-name">Table {{ row.table.name }}</div>
             @for (cell of row.cells; track cell.id) {
               @if (cell.kind === 'slot') {
                 @let state = drag.stateOf(targetOf(row.table.id, cell));
@@ -395,9 +395,7 @@ export class ScheduleTimeline {
   readonly tables = input.required<readonly TableDto[]>();
   readonly games = input.required<readonly GameDto[]>();
   /** L'état de chaque créneau, lu avec le programme. */
-  readonly timeSlotStates = input<readonly { timeSlotId: string; state: TimeSlotStateDto }[]>(
-    [],
-  );
+  readonly timeSlotStates = input<readonly { timeSlotId: string; state: TimeSlotStateDto }[]>([]);
   /** La partie dont la fiche est ouverte. */
   readonly selectedGameId = input<string | null>(null);
   /** Les parties dont un geste s'écrit encore : atténuées. */
@@ -410,7 +408,9 @@ export class ScheduleTimeline {
   protected readonly formatSeats = formatSeats;
 
   protected readonly columns = computed<Column[]>(() => {
-    const states = new Map(this.timeSlotStates().map(({ timeSlotId, state }) => [timeSlotId, state]));
+    const states = new Map(
+      this.timeSlotStates().map(({ timeSlotId, state }) => [timeSlotId, state]),
+    );
     return this.timeSlots().flatMap((slot, index, slots) => {
       const column: Column = {
         kind: 'slot',

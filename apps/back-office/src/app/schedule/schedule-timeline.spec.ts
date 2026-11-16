@@ -14,7 +14,7 @@ const TIME_SLOTS: TimeSlotDto[] = [
 ];
 
 const TABLES: TableDto[] = [
-  { id: 't1', name: 'Table 1' },
+  { id: 't1', name: '1' },
   { id: 't2', name: 'Dragon' },
 ];
 
@@ -77,7 +77,7 @@ describe('ScheduleTimeline', () => {
     const rows = [...host.querySelectorAll('[role="row"]')].slice(1);
     expect(rows.map((row) => text(row.querySelector('[role="rowheader"]')))).toEqual([
       'Table 1',
-      'Dragon',
+      'Table Dragon',
     ]);
     const cells = [...rows[1]!.querySelectorAll('[role="cell"]')];
     expect(cells.map((cell) => cell.querySelector('.game button')?.id ?? '')).toEqual([

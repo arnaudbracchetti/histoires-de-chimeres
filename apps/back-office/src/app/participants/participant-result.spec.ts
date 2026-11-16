@@ -18,15 +18,24 @@ describe('describeParticipantResult', () => {
       describeParticipantResult({
         kind: 'unassigned',
         tablesWithSeats: [
-          { tableName: 'T1', freeSeatCount: 3 },
-          { tableName: 'T2', freeSeatCount: 1 },
+          { tableName: 'Dragon', freeSeatCount: 3 },
+          { tableName: 'Licorne', freeSeatCount: 1 },
         ],
       }),
     ).toEqual({
       main: 'Non placé',
-      detail: 'Il reste de la place à T1 (3), T2 (1).',
+      detail: 'Il reste de la place aux tables Dragon (3), Licorne (1).',
       tone: 'danger',
     });
+  });
+
+  it('dit au non placé la seule table où il reste de la place', () => {
+    expect(
+      describeParticipantResult({
+        kind: 'unassigned',
+        tablesWithSeats: [{ tableName: '1', freeSeatCount: 2 }],
+      }).detail,
+    ).toBe('Il reste de la place à la table 1 (2).');
   });
 
   it('dit au non placé que tout est complet', () => {

@@ -703,7 +703,7 @@ describe('Pilotage du jour J', () => {
       const [, brumes, , neons] = [...host.querySelectorAll('app-draw-plan .plan > li')];
 
       expect(text(brumes)).toBe(
-        'Dragon Brumes Cthulhu · Kaïros 5 joueurs · 3 à 4 places · 1 de trop Au-delà du maximum Anna Lune , déplacé à la main Sven , pas inscrit à cette partie',
+        'Table Dragon Brumes Cthulhu · Kaïros 5 joueurs · 3 à 4 places · 1 de trop Au-delà du maximum Anna Lune , déplacé à la main Sven , pas inscrit à cette partie',
       );
       expect(text(neons)).toContain('0 joueur · 3 à 4 places · 4 places libres');
       expect(neons!.querySelector('app-two-slot-badge')).not.toBeNull();
@@ -744,7 +744,7 @@ describe('Pilotage du jour J', () => {
 
       expect(epice.classList).toContain('second-slot');
       expect(text(epice)).toBe(
-        'Licorne Épice Cthulhu · Kaïros Partie double, tirée avec le créneau 1 Anna',
+        'Table Licorne Épice Cthulhu · Kaïros Partie double, tirée avec le créneau 1 Anna',
       );
     });
   });
@@ -943,13 +943,13 @@ describe('Pilotage du jour J', () => {
         'Programmer « Cendres » sur le créneau 2',
       );
       const tables = [...placementDialog()!.querySelectorAll('ul button')];
-      expect(tables.map((table) => text(table))).toEqual(['Programmer sur Phénix']);
+      expect(tables.map((table) => text(table))).toEqual(['Programmer sur la table Phénix']);
       expect(document.activeElement).toBe(tables[0]);
       (tables[0] as HTMLButtonElement).click();
       await settle();
 
       expect([...dialog()!.querySelectorAll('h2, p')].map((element) => text(element))).toEqual([
-        'Programmer « Cendres » sur le créneau 2, Phénix ?',
+        'Programmer « Cendres » sur le créneau 2, table Phénix ?',
         'Le tirage provisoire sera effacé, avec ses déplacements et ses parties annulées, et les inscriptions du créneau 2 rouvertes.',
         "Tous ceux qui peuvent s'inscrire sur ce créneau reçoivent la notification « nouvelle partie », qui annonce la réouverture. Tu relanceras le tirage ensuite.",
       ]);
@@ -967,7 +967,7 @@ describe('Pilotage du jour J', () => {
 
       expect(placementDialog()).toBeNull();
       expect(announce).toHaveBeenCalledWith(
-        `Partie «${NBSP}Cendres${NBSP}» programmée${NBSP}: créneau 2, Phénix.`,
+        `Partie «${NBSP}Cendres${NBSP}» programmée${NBSP}: créneau 2, table Phénix.`,
       );
       expect(document.activeElement?.id).toBe('summary-title');
     });
@@ -1782,10 +1782,10 @@ describe('Pilotage du jour J', () => {
       ]);
       expect(tabs()[0]!.getAttribute('aria-selected')).toBe('true');
       expect(rows().map(text)).toEqual([
-        'Dragon Table libre Programmer ici…',
-        'Licorne Table libre Programmer ici…',
-        'Phénix Table libre Programmer ici…',
-        'Sphinx Partie double, comptée sur le créneau 2',
+        'Table Dragon Table libre Programmer ici…',
+        'Table Licorne Table libre Programmer ici…',
+        'Table Phénix Table libre Programmer ici…',
+        'Table Sphinx Partie double, comptée sur le créneau 2',
       ]);
     });
 
@@ -1806,10 +1806,10 @@ describe('Pilotage du jour J', () => {
       // « B » et « N » : la lettrine de la vignette.
       expect(text(panel()?.querySelector('.free-tables'))).toBe('1 table libre');
       expect(rows().map(text)).toEqual([
-        'Dragon B Brumes Cthulhu · Kaïros 15 inscrits · 3 à 4 places · 11 de trop dont 8 sans autre inscription sur le créneau Très demandée',
-        'Licorne Partie double, comptée sur le créneau 1',
-        'Phénix Table libre Programmer ici…',
-        'Sphinx N Néons Cthulhu · Kaïros 2 inscrits · 3 à 4 places · 1 manquant double Sous son minimum',
+        'Table Dragon B Brumes Cthulhu · Kaïros 15 inscrits · 3 à 4 places · 11 de trop dont 8 sans autre inscription sur le créneau Très demandée',
+        'Table Licorne Partie double, comptée sur le créneau 1',
+        'Table Phénix Table libre Programmer ici…',
+        'Table Sphinx N Néons Cthulhu · Kaïros 2 inscrits · 3 à 4 places · 1 manquant double Sous son minimum',
       ]);
     });
 
@@ -1836,7 +1836,7 @@ describe('Pilotage du jour J', () => {
       expect(tabs()[0]!.getAttribute('aria-selected')).toBe('true');
       expect(document.activeElement?.id).toBe('tracked-game-p4');
       expect(TestBed.inject(Announcer).message()).toBe(
-        `Partie «${NBSP}Abysses${NBSP}» programmée${NBSP}: créneau 2, Phénix.`,
+        `Partie «${NBSP}Abysses${NBSP}» programmée${NBSP}: créneau 2, table Phénix.`,
       );
     });
 
@@ -2096,7 +2096,7 @@ describe('Pilotage du jour J', () => {
       expect(tabs()[0]!.getAttribute('aria-selected')).toBe('true');
       expect(document.activeElement?.id).toBe('tracked-game-p4');
       expect(TestBed.inject(Announcer).message()).toBe(
-        `Partie «${NBSP}Abysses${NBSP}» programmée${NBSP}: créneau 2, Phénix.`,
+        `Partie «${NBSP}Abysses${NBSP}» programmée${NBSP}: créneau 2, table Phénix.`,
       );
     });
 
